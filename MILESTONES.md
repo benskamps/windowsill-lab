@@ -1,0 +1,48 @@
+# Milestones — the lab's curriculum
+
+Each milestone is one night's run, one new piece of behavior or one new
+measurement. Mark `✓ done <date>` when the report it produced is committed
+into `reports/`.
+
+---
+
+## Phase 1 — verify (we are here)
+
+- [x] **M01** — 2D Ising verification. Reproduce Onsager's M(T) curve, locate T_c via susceptibility peak. (done 2026-06-08 — peak at T=2.30 ± 0.05, Onsager: 2.2692)
+- [ ] **M02** — Finite-size scaling: rerun at L = 32, 64, 128, 256, 512 and check that χ_max / L^(γ/ν) collapses (γ/ν = 7/4 for 2D Ising).
+- [ ] **M03** — Critical exponent β from data collapse of M·L^(β/ν) vs (T-T_c)·L^(1/ν). β/ν = 1/8 for 2D Ising.
+- [ ] **M04** — Specific heat curve C(T). Should show a logarithmic divergence at T_c. Compare measured slope to the analytical log coefficient.
+- [ ] **M05** — Verify lattice geometries beyond square: triangular (T_c = 4 / ln 3 ≈ 3.641), hexagonal (T_c = 2 / ln(2+√3) ≈ 1.519). Different geometries, same universality class.
+
+## Phase 2 — map known territory
+
+- [ ] **M06** — 3D simple cubic Ising. Verify T_c ≈ 4.5115 (Monte Carlo benchmark). Different exponents (γ = 1.237, β = 0.326).
+- [ ] **M07** — Potts model (q-state). Run q = 3, 4, 5, 6. Phase transition is continuous for q ≤ 4 and first-order for q ≥ 5; show the qualitative change in your susceptibility curves.
+- [ ] **M08** — 2D XY model. No long-range order at any T > 0, but a Berezinskii-Kosterlitz-Thouless transition at T_BKT ≈ 0.893. Measure the helicity modulus jump.
+- [ ] **M09** — 2D Heisenberg (continuous spins). Confirm no phase transition in 2D (Mermin-Wagner).
+- [ ] **M10** — Antiferromagnetic Ising on a bipartite lattice (same as ferromagnetic by sign-flip — sanity check the framework handles negative J cleanly).
+
+## Phase 3 — push the edge
+
+- [ ] **M11** — Edwards-Anderson spin glass on a 2D square lattice. Run many disorder realizations, measure overlap distribution P(q). At low T it broadens and develops structure — that's the glassy signature.
+- [ ] **M12** — 3D EA spin glass — the harder, more famous case. Look for the spin-glass transition at T_SG ≈ 0.95. Disorder-averaged Binder cumulant crossing is the cleanest signature.
+- [ ] **M13** — Triangular lattice antiferromagnet — frustrated, ordered ground states are degenerate. Measure the entropy by integration of C/T.
+- [ ] **M14** — Random-bond Ising (binary disorder p% antiferromagnetic bonds). Map the multicritical Nishimori point.
+
+## Phase 4 — genuinely open
+
+- [ ] **M15** — Glauber dynamics relaxation: quench from T=∞ to below T_c. Track domain growth — Allen-Cahn predicts L_domain(t) ~ t^(1/2). Measure the exponent.
+- [ ] **M16** — Aging in spin glasses: after a quench, two-time correlator C(t, t_w) should depend on t/t_w only (aging) or only on t-t_w (equilibrium). Time-translation invariance breaks below the transition.
+- [ ] **M17** — KPZ growth on circular geometry — interfaces wrapping around a torus, GUE-Tracy-Widom distribution of fluctuations. Numerical exponents 1/3 in time, 2/3 in space.
+- [ ] **M18** — Directed percolation in 2+1d at the absorbing-state transition. Universality class is one of the simplest non-equilibrium examples.
+
+## Conventions
+
+- Each milestone PR includes the report it generated (drop the HTML +
+  JSON into `reports/`).
+- Don't burn weeks of compute without checkpointing — every long run
+  writes intermediate JSON every N samples.
+- A milestone that doesn't reproduce a known result is a failed
+  calibration, not a discovery. Verify before claiming.
+- Phase 4 results that LOOK novel get a second pass from a real physicist
+  before sharing.
