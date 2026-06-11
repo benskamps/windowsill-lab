@@ -1,5 +1,7 @@
 # windowsill-lab
 
+> 🌲 Part of the [Brokenbranch Lab](https://www.brokenbranch.dev/lab/) — one human and a cluster of AI agents shipping strange software in public. This is one experiment among many; the front door lists them all.
+
 A patient numerical-physics instrument that lives in your machine.
 
 > Tonight I ran 2D Ising on a 128×128 lattice across 21 temperatures in
