@@ -1,11 +1,13 @@
 import argparse
+import os
 import sys
 import webbrowser
-from datetime import datetime
+from pathlib import Path
 
-from . import ising
-from . import render as render_mod
-from .render import LAB_HOME
+# Lightweight commands (open / publish / help) must work without torch or
+# matplotlib, so ising/render are imported lazily inside `run`. LAB_HOME is a
+# trivial constant we keep here to avoid importing render just for the path.
+LAB_HOME = Path.home() / ".lab"
 
 
 HELP = """lab — a windowsill physics lab.
@@ -14,7 +16,11 @@ Usage:
   lab                 run today's experiment and open the report
   lab run             run only — don't open the browser
   lab open            open the latest report (no run)
+  lab publish         write ~/.lab/pot.json — feeds the seed-in-a-pot windowsill
   lab help            show this message
+
+Publish options (only with `publish`):
+  --gist ID           push the snapshot to this public gist (or set POT_GIST_ID)
 
 Knobs (only with `run`):
   --L INT             lattice side length (default 128)
@@ -58,9 +64,21 @@ def main(argv=None):
         webbrowser.open(f"file://{path}")
         print(path); return 0
 
+    if cmd == "publish":
+        from . import publish as publish_mod
+        gist = None
+        if "--gist" in args:
+            i = args.index("--gist")
+            gist = args[i + 1] if i + 1 < len(args) else None
+        path = publish_mod.publish(gist_id=gist)
+        print(f"  ✓ snapshot: {path}")
+        return 0
+
     if cmd == "run" or (cmd not in ("help", "open") and cmd.startswith("--")):
         rest = args if cmd != "run" else args[1:]
         ns = _parse_run(rest)
+        from . import ising
+        from . import render as render_mod
         cfg = ising.RunConfig(
             L=ns.L, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
             n_burnin=ns.burnin, n_sweeps=ns.sweeps, device=ns.device, seed=ns.seed,
@@ -70,6 +88,14 @@ def main(argv=None):
         print(f"  ✓ {cfg.n_sweeps:,} sweeps in {result.wall_seconds:.1f}s")
         path = render_mod.render(result)
         print(f"  ✓ report: {path}")
+        # A run also waters the seed: refresh the sanitized snapshot (and push
+        # it if POT_GIST_ID is set). Best-effort — never let it break a run.
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(gist_id=os.environ.get("POT_GIST_ID"), quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
         if cmd != "run":
             webbrowser.open(f"file://{path}")
         return 0

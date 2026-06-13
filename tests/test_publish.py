@@ -1,0 +1,65 @@
+"""Tests for the seed-in-a-pot snapshot builder (stdlib-only, no torch)."""
+from lab.publish import build_snapshot, parse_milestones
+
+
+SAMPLE = """
+## Phase 1 — verify (we are here)
+
+- [x] **M01** — 2D Ising verification. Reproduce Onsager's M(T) curve, locate T_c via susceptibility peak. (done 2026-06-08 — peak at T=2.30 ± 0.05, Onsager: 2.2692)
+- [ ] **M02** — Finite-size scaling: rerun at L = 32, 64, 128, 256, 512 and check collapse.
+- [~] **M03** — Specific heat curve C(T). Should diverge. (binning unstable — failed calibration)
+- [ ] **M04** — Verify lattice geometries beyond square: triangular (T_c ≈ 3.641).
+
+## Conventions
+- Each milestone PR includes the report it generated.
+"""
+
+
+def test_parses_all_milestone_lines_only():
+    ms = parse_milestones(SAMPLE)
+    assert [m["id"] for m in ms] == ["M01", "M02", "M03", "M04"]
+
+
+def test_status_mapping():
+    ms = {m["id"]: m for m in parse_milestones(SAMPLE)}
+    assert ms["M01"]["status"] == "verified"
+    assert ms["M02"]["status"] == "open"      # first pending → the open experiment
+    assert ms["M03"]["status"] == "null"      # [~] → honest null
+    assert ms["M04"]["status"] == "pending"   # later pending stays pending
+
+
+def test_title_is_first_clause():
+    ms = {m["id"]: m for m in parse_milestones(SAMPLE)}
+    assert ms["M01"]["title"] == "2D Ising verification"
+    assert ms["M02"]["title"] == "Finite-size scaling"  # split on the colon
+
+
+def test_verified_result_lifts_parenthetical():
+    ms = {m["id"]: m for m in parse_milestones(SAMPLE)}
+    assert "peak at T=2.30" in ms["M01"]["result"]
+    assert "done" not in ms["M01"]["result"]   # the "done <date> —" prefix is stripped
+
+
+def test_null_has_no_result_field():
+    ms = {m["id"]: m for m in parse_milestones(SAMPLE)}
+    assert "result" not in ms["M03"]
+
+
+def test_only_first_pending_is_open():
+    statuses = [m["status"] for m in parse_milestones(SAMPLE)]
+    assert statuses.count("open") == 1
+
+
+def test_build_snapshot_shape():
+    ms = parse_milestones(SAMPLE)
+    snap = build_snapshot(ms, "2026-06-08T00:00:00+00:00", 1, 47.0)
+    assert snap["source"] == "windowsill-lab"
+    assert snap["total"] == 4
+    assert snap["runs"] == 1
+    assert snap["temp_c"] == 47.0
+    assert snap["last_run"].startswith("2026-06-08")
+    assert "updated" in snap
+
+
+def test_handles_empty_text():
+    assert parse_milestones("") == []
