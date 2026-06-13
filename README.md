@@ -55,6 +55,27 @@ re-analyze without re-running.
 
 See [MILESTONES.md](MILESTONES.md) for the concrete next-step list.
 
+## Feeding the seed
+
+The lab is the food source for its calm sibling
+[seed-in-a-pot](https://github.com/benskamps/seed-in-a-pot). At
+[brokenbranch.dev/windowsill/](https://www.brokenbranch.dev/windowsill/) a
+single seedling grows on this lab's *passive citizen science*: each **verified**
+milestone hardens into a node on the stem (a green leaf), a **failed
+calibration** is a folded grey leaf (an honest null, kept on the books), the
+patient overnight **runs** water the soil, and CPU heat sets the season.
+
+```bash
+lab publish                 # write a sanitized ~/.lab/pot.json snapshot
+lab publish --gist <id>     # …and push it to the public gist the site reads
+```
+
+The snapshot is built by parsing `MILESTONES.md` (the single source of truth) plus
+the run cadence in `reports/`/`~/.lab`, and the CPU temperature. It's deliberately
+sanitized — milestone ids, titles, results, run counts, and temperature only; no
+private data. A `lab run` refreshes it automatically (and pushes it when
+`POT_GIST_ID` is set), so the seed grows as the science does.
+
 ## Hardware notes
 
 Built and tested on AMD RX 6900 XT (gfx1030) running ROCm 7 / PyTorch

@@ -43,6 +43,12 @@ into `reports/`.
 - Don't burn weeks of compute without checkpointing — every long run
   writes intermediate JSON every N samples.
 - A milestone that doesn't reproduce a known result is a failed
-  calibration, not a discovery. Verify before claiming.
+  calibration, not a discovery. Verify before claiming. Mark it `- [~]`
+  (instead of `- [x]`): it stays on the books as an honest null and shows
+  up as a folded grey leaf on the [seed](https://www.brokenbranch.dev/windowsill/),
+  not a green one.
 - Phase 4 results that LOOK novel get a second pass from a real physicist
   before sharing.
+- The checkboxes here are the single source of truth for `lab publish`:
+  `[x]` → verified, `[~]` → null, `[ ]` → pending (the first pending is the
+  open experiment, the seedling's growing tip).
