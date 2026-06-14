@@ -83,8 +83,8 @@ traced and re-run. See [CITIZEN_SCIENCE.md](CITIZEN_SCIENCE.md).
 
 ## Feeding the seed
 
-The lab is the food source for its calm sibling
-[seed-in-a-pot](https://github.com/benskamps/seed-in-a-pot). At
+The lab feeds the **windowsill** — its calm, public face (the page now ships
+from [`web/`](web/) in this repo). At
 [brokenbranch.dev/windowsill/](https://www.brokenbranch.dev/windowsill/) a
 single seedling grows on this lab's *passive citizen science*: each **verified**
 milestone hardens into a node on the stem (a green leaf), a **failed
@@ -135,9 +135,11 @@ Sibling toys built on the same DNA:
 - [**fish-tank**](https://github.com/benskamps/fish-tank) — a terminal
   aquarium fed by real CPU heat and git activity. Aliveness from your
   machine's pulse.
-- [**seed-in-a-pot**](https://github.com/benskamps/seed-in-a-pot) — a
-  single seed on a windowsill, growing on real signals. Calmer DNA, real
-  graphics.
+- **seed-in-a-pot** — the calm windowsill seedling. Its live page now ships
+  from this repo ([`web/`](web/), at
+  [brokenbranch.dev/windowsill/](https://www.brokenbranch.dev/windowsill/)); the
+  original desktop-toy repo is
+  [archived](https://github.com/benskamps/seed-in-a-pot).
 - **windowsill-lab** (this) — same shape, but the patient observation is
   real physics instead of a fish or a sprout. Numbers, plots, theory.
 

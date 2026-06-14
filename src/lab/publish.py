@@ -1,6 +1,6 @@
-"""Publish a sanitized windowsill snapshot — the food for seed-in-a-pot.
+"""Publish a sanitized windowsill snapshot — the food for the windowsill page.
 
-The lab is the calm sibling's food source. Each verified milestone on the
+The windowsill is the lab's calm, public face. Each verified milestone on the
 ladder becomes a node on the seedling's stem at
 https://www.brokenbranch.dev/windowsill/ ; a failed calibration is a folded
 grey leaf (an honest null). This module builds a small, sanitized ``pot.json``
