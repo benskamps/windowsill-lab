@@ -37,8 +37,14 @@ pip install -e .
 
 lab run     # run today's experiment (Phase 1: Ising)
 lab         # open the latest report in your browser
+lab web     # open your seed-in-the-pot page locally (web/index.html)
 lab setup   # install the nightly job so the windowsill grows on its own
 ```
+
+One repo, everything in it: the **engine** (`src/`), the published **feed**
+(`pot.json`), and the **page** people see (`web/` — see [`web/README.md`](web/README.md)).
+`brokenbranch.dev/windowsill` is the hosted surface; this repo is the one you
+pull, fork, and customize. Where it's headed lives in [`BACKLOG.md`](BACKLOG.md).
 
 `lab setup` runs a pre-flight (Python, git remote, compute device) and then
 installs a nightly job — a systemd **user** timer where available, a cron line

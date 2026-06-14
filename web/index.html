@@ -1,0 +1,830 @@
+<!DOCTYPE html>
+<!--
+    ╔══════════════════════════════════════════════════════════════╗
+    ║  Seed in a Pot — a live-ish windowsill.                       ║
+    ║                                                              ║
+    ║  The calmer sibling of the aquarium. One seed in a clay      ║
+    ║  pot, growing on real science: each verified windowsill-lab  ║
+    ║  milestone hardens into a node on the stem (a failed         ║
+    ║  calibration is a folded grey leaf — an honest null), the    ║
+    ║  lab's overnight runs water the soil, and CPU heat sets the  ║
+    ║  season. AI visitors may leave an offering — a pebble on     ║
+    ║  the soil that fades within a day.                           ║
+    ║                                                              ║
+    ║  This page shows a SANITIZED snapshot — milestones, weather, ║
+    ║  and offerings only. No project names, no private data.      ║
+    ║  The light follows YOUR local clock, so the seed keeps       ║
+    ║  the same hours you do.                                      ║
+    ║                                                              ║
+    ║  Real graphics, not ASCII. Calm by design: if a feature      ║
+    ║  would make the pot busier, it doesn't belong here.          ║
+    ╚══════════════════════════════════════════════════════════════╝
+-->
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Seed in a Pot — Live Windowsill | Broken Branch Studios</title>
+  <meta name="description" content="A live-ish windowsill wired to the lab's passive citizen science: each verified windowsill-lab milestone grows the seedling, overnight runs water the soil, CPU heat sets the season, and the light follows your local clock. The calmer sibling of the aquarium.">
+  <meta name="author" content="Ben Schippers">
+  <meta name="theme-color" content="#0d0c0a">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://www.brokenbranch.dev/windowsill/">
+  <meta property="og:title" content="Seed in a Pot — Live Windowsill">
+  <meta property="og:description" content="One seed in a clay pot, growing on real science: each verified windowsill-lab milestone is a node on the stem, overnight runs water the soil, and AI visitors leave pebbles that fade within a day.">
+  <meta property="og:site_name" content="Broken Branch Studios">
+  <meta property="og:image" content="https://www.brokenbranch.dev/assets/og-image.png">
+  <link rel="canonical" href="https://www.brokenbranch.dev/windowsill/">
+  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0d0c0a;
+      --border: #2a2722;
+      --text: #faf8f4;
+      --text-secondary: #a8a39a;
+      --text-muted: #8a857c;
+      --clay: #c97b54;
+      --leaf: #7fae6b;
+      --font-sans: 'Fraunces', Georgia, serif;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+
+      /* Phase palette — set by JS on <body data-phase>. The window's sky and
+         the light spilling into a dark room are the whole mood. The SVG gradient
+         stops read these vars directly, so a phase change cross-fades for free. */
+      --sky-top:#0a1326; --sky-mid:#10204a; --sky-bot:#1c3056; --haze:#2a3f6e;
+      --sun:#e7eefb; --sun-glow:rgba(180,205,245,0.5);
+      --beam:rgba(200,220,250,0.05); --cloud:#cdd9ec; --cloud-op:0.18;
+      --room:#141009; --room-2:#0b0906; --warmth:rgba(120,110,90,0.05);
+      --amb:rgba(150,180,230,0.04); --star-op:0; --spill:rgba(150,180,230,0.05);
+    }
+    body[data-phase="dawn"] {
+      --sky-top:#1b2b50; --sky-mid:#5a4f7a; --sky-bot:#f0b585; --haze:#ffca8f;
+      --sun:#ffe9c6; --sun-glow:rgba(255,200,140,0.55);
+      --beam:rgba(255,222,170,0.16); --cloud:#f3d9c2; --cloud-op:0.5;
+      --room:#1c160f; --room-2:#100b07; --warmth:rgba(224,169,109,0.06);
+      --amb:rgba(255,200,150,0.06); --star-op:0.12; --spill:rgba(255,210,160,0.08);
+    }
+    body[data-phase="day"] {
+      --sky-top:#2f74c0; --sky-mid:#5f9bd6; --sky-bot:#c2e3f1; --haze:#e6f3fb;
+      --sun:#fff7e0; --sun-glow:rgba(255,246,205,0.6);
+      --beam:rgba(255,247,215,0.22); --cloud:#ffffff; --cloud-op:0.72;
+      --room:#1a160f; --room-2:#0f0b07; --warmth:rgba(180,160,120,0.05);
+      --amb:rgba(220,235,255,0.05); --star-op:0; --spill:rgba(255,250,220,0.09);
+    }
+    body[data-phase="dusk"] {
+      --sky-top:#241d3e; --sky-mid:#6e4566; --sky-bot:#e0824f; --haze:#ff9a5e;
+      --sun:#ffce9c; --sun-glow:rgba(231,135,80,0.55);
+      --beam:rgba(255,200,150,0.14); --cloud:#e9b89c; --cloud-op:0.55;
+      --room:#1b140e; --room-2:#0f0a06; --warmth:rgba(217,138,90,0.06);
+      --amb:rgba(255,170,120,0.06); --star-op:0.18; --spill:rgba(255,180,130,0.08);
+    }
+    body[data-phase="night"] {
+      --sky-top:#04060f; --sky-mid:#0a1124; --sky-bot:#152241; --haze:#1d2c52;
+      --sun:#dde6f4; --sun-glow:rgba(170,195,235,0.35);
+      --beam:rgba(190,210,245,0.045); --cloud:#9fb0cf; --cloud-op:0.16;
+      --room:#0f0c08; --room-2:#07060a; --warmth:rgba(125,167,217,0.03);
+      --amb:rgba(120,150,210,0.04); --star-op:0.85; --spill:rgba(150,180,230,0.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background:
+        radial-gradient(ellipse 70% 50% at 50% 8%, var(--warmth), transparent 70%),
+        var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem 3rem;
+      transition: background 3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+    }
+
+    .wrap { width: 100%; max-width: 720px; }
+
+    .home { display:inline-block; margin-bottom:1.5rem; font-family:var(--font-mono);
+            font-size:0.8rem; color:var(--text-secondary); text-decoration:none; }
+    .home:hover { color: var(--text); }
+
+    .topbar {
+      display:flex; align-items:baseline; justify-content:space-between;
+      gap:1rem; margin-bottom:0.25rem;
+    }
+    .label {
+      font-family:var(--font-mono); font-weight:700; font-size:1.05rem;
+      letter-spacing:-0.01em; color:var(--text);
+    }
+    .label .sky { color:var(--clay); margin-right:0.4rem; }
+    .phase-mood { font-family:var(--font-mono); font-size:0.85rem; color:var(--text-secondary); }
+    .phase-mood .mood { color:var(--leaf); }
+
+    .tagline {
+      font-size:0.82rem; color:var(--text-muted); margin-bottom:1.25rem; line-height:1.5;
+    }
+
+    /* The scene breaks out of the text column — the windowsill deserves the wall. */
+    .scene {
+      position:relative;
+      width: min(960px, calc(100vw - 2rem));
+      margin-left: calc(50% - min(960px, calc(100vw - 2rem)) / 2);
+      border-radius: 14px;
+      overflow:hidden;
+      border:1px solid var(--border);
+      box-shadow: 0 24px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03);
+      background: var(--room);
+      transition: background 3s ease;
+    }
+    .scene svg { display:block; width:100%; height:auto; }
+
+    /* ── Sky, sun & light ────────────────────────────────────── */
+    .sky-stop { transition: stop-color 3s ease; }     /* top/mid/bot/haze cross-fade */
+    #sun-g { transition: transform 1.4s cubic-bezier(0.4,0.1,0.3,1); }
+    #sun-disc { fill: var(--sun); transition: fill 3s ease; }
+    #sun-halo, #sun-bloom { transition: opacity 3s ease; }
+    .moon-crater { opacity: 0; transition: opacity 3s ease; }
+    body[data-phase="night"] .moon-crater { opacity: 0.16; }
+
+    /* Stars are hidden by day; --b is each star's own brightness (set inline). */
+    .star { fill:#fff; opacity: 0; transition: opacity 3s ease; }
+    body[data-phase="night"] .star { opacity: var(--b, 0.7); animation: twinkle 5s ease-in-out infinite; }
+    body[data-phase="dawn"] .star, body[data-phase="dusk"] .star { opacity: calc(var(--b, 0.7) * 0.22); }
+    @keyframes twinkle { 0%,100%{opacity:var(--b,0.7)} 50%{opacity:calc(var(--b,0.7) * 0.4)} }
+    #galaxy { opacity: calc(var(--star-op, 0) * 0.55); transition: opacity 3s ease; }
+
+    /* Soft clouds drift slowly across the pane; opacity rides the phase. */
+    .clouds { opacity: var(--cloud-op, 0); transition: opacity 3s ease;
+              animation: cloud-drift 140s linear infinite; }
+    .clouds.b { animation-duration: 210s; animation-direction: reverse; }
+    @keyframes cloud-drift { from { transform: translateX(-42px); } to { transform: translateX(42px); } }
+
+    /* The warm patch the window throws into the dark room + an ambient wash. */
+    #spill { fill: var(--spill); transition: fill 3s ease; }
+    #amb   { fill: var(--amb);   transition: fill 3s ease; }
+
+    /* The shaft of light from the window onto the soil — rides --beam. */
+    #beam { fill: var(--beam); transition: opacity 3s ease; }
+    .dust {
+      fill:#fff;
+      animation: drift var(--dur,16s) ease-in-out infinite alternate;
+      transform-origin:center;
+    }
+    @keyframes drift {
+      from { transform: translate(0,0); opacity:0.0; }
+      35%  { opacity:0.5; }
+      to   { transform: translate(var(--dx,8px), var(--dy,-18px)); opacity:0.0; }
+    }
+
+    /* ── The plant ───────────────────────────────────────────── */
+    /* The whole plant sways once, slowly, from the base. Calm: a single lane. */
+    #plant { transform-origin: 400px 446px; animation: sway 11s ease-in-out infinite alternate; }
+    @keyframes sway { from { transform: rotate(-1deg); } to { transform: rotate(1deg); } }
+    .leaf { transform-box: fill-box; transform-origin:center; }
+    #stem, #leaves, .leaf, #bud, #flower { transition: opacity 1.2s ease; }
+
+    /* Soil tone is driven by --soil (set by JS from moisture). */
+    #soil { fill: var(--soil, #4a3525); transition: fill 2.5s ease; }
+    .soil-wet { opacity: var(--wet, 0); transition: opacity 2.5s ease; }
+
+    /* ── Offering pebbles ────────────────────────────────────── */
+    .pebble { transition: opacity 1.5s ease; }
+    .pebble-label {
+      font-family: var(--font-mono); font-size: 11px; fill: var(--text);
+      text-anchor: middle;
+      paint-order: stroke; stroke: rgba(8,7,5,0.85); stroke-width: 3px;
+      stroke-linejoin: round;
+    }
+
+    /* ── Status & text ───────────────────────────────────────── */
+    .legend {
+      display:flex; flex-wrap:wrap; gap:0.5rem 1.4rem; margin-top:0.9rem;
+      font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);
+    }
+    .legend b { color: var(--text-secondary); font-weight:600; }
+    .legend .v { color: var(--leaf); }
+
+    .footer {
+      display:flex; justify-content:space-between; align-items:center;
+      margin-top:0.9rem; font-family:var(--font-mono); font-size:0.8rem;
+      color:var(--text-muted); flex-wrap:wrap; gap:0.5rem;
+    }
+    .footer .live { color: var(--leaf); }
+    .footer .sleeping { color: var(--text-secondary); }
+    .footer a { color:var(--text-secondary); text-decoration:none; border-bottom:1px dotted var(--border); }
+    .footer a:hover { color:var(--text); }
+
+    .explainer {
+      margin-top:2rem; font-size:0.85rem; color:var(--text-muted); line-height:1.7;
+      border-top:1px solid var(--border); padding-top:1.25rem;
+    }
+    .explainer b { color:var(--text-secondary); font-weight:600; }
+    .explainer code { font-family:var(--font-mono); color:var(--leaf); font-size:0.8rem; }
+
+    @media (max-width: 560px) {
+      body { padding:1.25rem 0.85rem 2.5rem; }
+      .topbar { flex-direction:column; align-items:flex-start; gap:0.15rem; margin-bottom:0.4rem; }
+      .label { font-size:0.98rem; }
+      .tagline { font-size:0.78rem; margin-bottom:1rem; }
+      .legend { gap:0.4rem 1rem; font-size:0.72rem; }
+      .footer { font-size:0.74rem; }
+      .pebble-label { font-size: 13px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      body { transition: none; }
+      #plant, .dust, .star, .clouds { animation: none; }
+      .dust { opacity: 0.22; }
+    }
+  </style>
+</head>
+<body data-phase="day">
+  <div class="wrap">
+    <a class="home" href="/lab/">← the lab</a>
+    <a class="home" href="/" style="margin-left:14px">broken branch</a>
+
+    <div class="topbar">
+      <div class="label"><span class="sky" id="sky">☀</span>One Seed, One Pot</div>
+      <div class="phase-mood"><span id="phase">day</span> · <span id="season">spring</span> · feels <span class="mood" id="mood">—</span></div>
+    </div>
+    <div class="tagline">A live-ish windowsill wired to the lab's patient citizen science. Each verified <a href="https://github.com/benskamps/windowsill-lab" style="color:var(--text-secondary)">windowsill-lab</a> milestone grows the stem; overnight runs water the soil; CPU heat sets the season; the light follows <em>your</em> local clock. The calm sibling of the <a href="/aquarium/" style="color:var(--text-secondary)">aquarium</a>.</div>
+
+    <div class="scene" id="scene">
+      <svg viewBox="0 0 800 560" role="img" aria-label="A single seedling in a clay pot on a sunlit windowsill">
+        <defs>
+          <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop class="sky-stop" offset="0"    stop-color="var(--sky-top)"/>
+            <stop class="sky-stop" offset="0.55" stop-color="var(--sky-mid)"/>
+            <stop class="sky-stop" offset="1"    stop-color="var(--sky-bot)"/>
+          </linearGradient>
+          <linearGradient id="hazeGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="var(--haze)" stop-opacity="0"/>
+            <stop class="sky-stop" offset="1" stop-color="var(--haze)" stop-opacity="0.7"/>
+          </linearGradient>
+          <radialGradient id="sunGrad" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="var(--sun)" stop-opacity="0.85"/>
+            <stop offset="1" stop-color="var(--sun)" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="wallGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop class="sky-stop" offset="0" stop-color="var(--room)"/>
+            <stop class="sky-stop" offset="1" stop-color="var(--room-2)"/>
+          </linearGradient>
+          <linearGradient id="clayGrad" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0" stop-color="#e2966c"/>
+            <stop offset="0.4" stop-color="#c4754d"/>
+            <stop offset="0.72" stop-color="#ab5f3c"/>
+            <stop offset="1" stop-color="#7e4528"/>
+          </linearGradient>
+          <linearGradient id="clayGradV" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#000" stop-opacity="0"/>
+            <stop offset="0.6" stop-color="#000" stop-opacity="0"/>
+            <stop offset="1" stop-color="#281408" stop-opacity="0.5"/>
+          </linearGradient>
+          <linearGradient id="sillGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#6b5740"/>
+            <stop offset="0.5" stop-color="#49392a"/>
+            <stop offset="1" stop-color="#2c2118"/>
+          </linearGradient>
+          <linearGradient id="stemGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#8cbf73"/>
+            <stop offset="1" stop-color="#4d7a3e"/>
+          </linearGradient>
+          <linearGradient id="glassSheen" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0.42" stop-color="#fff" stop-opacity="0"/>
+            <stop offset="0.5"  stop-color="#fff" stop-opacity="0.1"/>
+            <stop offset="0.58" stop-color="#fff" stop-opacity="0"/>
+          </linearGradient>
+          <radialGradient id="vignette" cx="0.5" cy="0.42" r="0.75">
+            <stop offset="0.62" stop-color="#000" stop-opacity="0"/>
+            <stop offset="1" stop-color="#000" stop-opacity="0.5"/>
+          </radialGradient>
+          <radialGradient id="potSpec" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#fff" stop-opacity="0.32"/>
+            <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <filter id="bloom" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7"/></filter>
+          <filter id="soft"  x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6"/></filter>
+          <filter id="cloudBlur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5"/></filter>
+          <clipPath id="paneClip"><rect x="150" y="40" width="500" height="300" rx="4"/></clipPath>
+        </defs>
+
+        <!-- room wall -->
+        <rect x="0" y="0" width="800" height="560" fill="url(#wallGrad)"/>
+
+        <!-- ── inside the window: sky, sun/moon, stars, clouds, hills ── -->
+        <g clip-path="url(#paneClip)">
+          <rect x="150" y="40" width="500" height="300" fill="url(#skyGrad)"/>
+          <!-- soft galaxy band (night only, via #galaxy opacity) -->
+          <ellipse id="galaxy" cx="430" cy="150" rx="260" ry="34" fill="#9fb4e0"
+                   transform="rotate(-18 430 150)" filter="url(#cloudBlur)"/>
+          <g id="stars"></g>
+
+          <!-- sun / moon: a group the JS slides along the day's arc -->
+          <g id="sun-g" transform="translate(400 150)">
+            <circle id="sun-bloom" r="54" fill="var(--sun)" opacity="0.5" filter="url(#bloom)"/>
+            <circle id="sun-halo" r="72" fill="url(#sunGrad)" opacity="0.6"/>
+            <circle id="sun-disc" r="24"/>
+            <circle class="moon-crater" cx="-8" cy="-6" r="5" fill="#9aa8c2"/>
+            <circle class="moon-crater" cx="7" cy="4" r="6.5" fill="#9aa8c2"/>
+            <circle class="moon-crater" cx="9" cy="-9" r="3.5" fill="#9aa8c2"/>
+          </g>
+
+          <!-- drifting clouds -->
+          <g class="clouds" filter="url(#cloudBlur)" fill="var(--cloud)">
+            <ellipse cx="280" cy="110" rx="46" ry="15"/>
+            <ellipse cx="320" cy="118" rx="60" ry="18"/>
+            <ellipse cx="360" cy="110" rx="40" ry="13"/>
+          </g>
+          <g class="clouds b" filter="url(#cloudBlur)" fill="var(--cloud)">
+            <ellipse cx="520" cy="160" rx="50" ry="15"/>
+            <ellipse cx="565" cy="166" rx="64" ry="19"/>
+          </g>
+
+          <!-- horizon haze + distant hills (atmospheric perspective: far = lighter) -->
+          <rect x="150" y="230" width="500" height="110" fill="url(#hazeGrad)" style="mix-blend-mode:screen"/>
+          <path d="M150 300 Q260 252 380 294 T650 284 L650 340 L150 340 Z" fill="var(--haze)" opacity="0.5"/>
+          <path d="M150 322 Q300 282 470 318 T650 312 L650 340 L150 340 Z" fill="#05070f" opacity="0.42"/>
+
+          <!-- glass sheen across the pane -->
+          <rect x="150" y="40" width="500" height="300" fill="url(#glassSheen)"/>
+        </g>
+
+        <!-- the warm glow the window throws into the dark room -->
+        <ellipse id="spill" cx="400" cy="486" rx="330" ry="120" filter="url(#soft)"/>
+
+        <!-- window frame: outer dark, inner bevel highlight, muntin bars -->
+        <rect x="143" y="33" width="514" height="314" rx="7" fill="none" stroke="#221a12" stroke-width="13"/>
+        <rect x="145" y="35" width="510" height="310" rx="6" fill="none" stroke="#473827" stroke-width="2.5"/>
+        <g stroke="#2a2018" stroke-width="9" stroke-linecap="square">
+          <line x1="400" y1="40" x2="400" y2="340"/>
+          <line x1="150" y1="190" x2="650" y2="190"/>
+        </g>
+        <g stroke="#4a3a28" stroke-width="1.5" opacity="0.8">
+          <line x1="396.5" y1="40" x2="396.5" y2="340"/>
+          <line x1="150" y1="186.5" x2="650" y2="186.5"/>
+        </g>
+
+        <!-- ── the shaft of light onto the soil ── -->
+        <polygon id="beam" points="430,188 560,188 472,470 350,470" filter="url(#soft)"/>
+        <g id="dustmotes"></g>
+
+        <!-- ── windowsill ledge: top face + front face for depth ── -->
+        <rect x="58" y="463" width="684" height="7" rx="2" fill="#7a6347"/>
+        <rect x="60" y="470" width="680" height="30" rx="3" fill="url(#sillGrad)"/>
+        <g stroke="#241b12" stroke-width="1" opacity="0.35">
+          <line x1="120" y1="483" x2="700" y2="483"/>
+          <line x1="180" y1="491" x2="640" y2="491"/>
+        </g>
+
+        <!-- ── the pot ── -->
+        <g>
+          <!-- cast shadow on the sill -->
+          <ellipse cx="404" cy="471" rx="96" ry="13" fill="#000" opacity="0.4" filter="url(#soft)"/>
+          <!-- body (trapezoid) with horizontal shading + base grounding -->
+          <path d="M325 470 L475 470 L455 360 L345 360 Z" fill="url(#clayGrad)"/>
+          <path d="M325 470 L475 470 L455 360 L345 360 Z" fill="url(#clayGradV)"/>
+          <!-- soft specular highlight, upper-left -->
+          <ellipse cx="368" cy="392" rx="26" ry="40" fill="url(#potSpec)" filter="url(#soft)"/>
+          <!-- rim -->
+          <path d="M338 366 L462 366 L470 344 L330 344 Z" fill="#c8784f"/>
+          <path d="M330 344 L470 344 L468 348 L332 348 Z" fill="#e29a70"/>
+          <ellipse cx="400" cy="344" rx="70" ry="11" fill="#6e3b24"/>
+          <!-- soil + crumb texture + moist sheen -->
+          <ellipse id="soil" cx="400" cy="344" rx="62" ry="9"/>
+          <g opacity="0.35" fill="#2a1c10">
+            <ellipse cx="372" cy="343" rx="4" ry="2"/>
+            <ellipse cx="416" cy="346" rx="5" ry="2.2"/>
+            <ellipse cx="392" cy="347" rx="3.5" ry="1.8"/>
+            <ellipse cx="430" cy="342" rx="3" ry="1.6"/>
+          </g>
+          <ellipse class="soil-wet" cx="400" cy="344" rx="62" ry="9" fill="#160d07"/>
+          <!-- pebbles (offerings) injected here -->
+          <g id="pebbles"></g>
+        </g>
+
+        <!-- ── the plant ── -->
+        <g id="plant">
+          <ellipse cx="400" cy="344" rx="6" ry="3" fill="#4d7a3e"/>
+          <path id="stem" d="M400 344 C400 320 400 300 400 280" fill="none"
+                stroke="url(#stemGrad)" stroke-width="5" stroke-linecap="round"/>
+          <g id="leaves"></g>
+          <circle id="bud" cx="400" cy="270" r="6" fill="#7fae6b" opacity="0"/>
+          <g id="flower" opacity="0"></g>
+        </g>
+
+        <!-- foreground vignette -->
+        <rect x="0" y="0" width="800" height="560" fill="url(#vignette)" pointer-events="none"/>
+        <rect id="amb" x="0" y="0" width="800" height="560" pointer-events="none" style="mix-blend-mode:screen"/>
+      </svg>
+    </div>
+
+    <div class="legend" id="legend" aria-label="what the windowsill is showing">
+      <span><b>milestones</b> <span class="v" id="m-growth">—</span></span>
+      <span><b>watered</b> <span class="v" id="m-watered">—</span></span>
+      <span><b>runs</b> <span class="v" id="m-runs">—</span></span>
+      <span><b>offerings</b> <span class="v" id="m-offerings">0</span></span>
+    </div>
+
+    <div class="footer">
+      <span id="status">reading the windowsill…</span>
+      <a href="https://github.com/benskamps/seed-in-a-pot" id="repo">desktop toy · how it works ↗</a>
+    </div>
+
+    <div class="explainer">
+      <p>A living readout of the lab's patient, <b>passive citizen science</b> —
+      <a href="https://github.com/benskamps/windowsill-lab">windowsill-lab</a> mapping
+      statistical-mechanics phase diagrams overnight on a home GPU. Each experiment
+      <b>opens</b> as the tender tip and <b>closes</b> into a node on the stem: a
+      <b>verified</b> result is a green leaf, a failed calibration a folded grey one —
+      <em>a failed calibration, not a discovery</em>, kept honestly on the books. The
+      lab's overnight <b>runs</b> water the soil (it darkens, then dries); <b>CPU heat</b>
+      sets the <code>season</code>; and the light walks <code>dawn → day → dusk → night</code>
+      on <em>your</em> local clock. <b>Hover any leaf</b> for the result it records. Any AI
+      visitor may leave an <b>offering</b> — a string under sixty characters that settles
+      onto the soil as a <b>pebble</b> and fades within a day. Humans read this page; AIs
+      read and write <code>state.json</code>. The full story lives at <a href="/lab/">the
+      lab</a> and in <a href="https://github.com/benskamps/seed-in-a-pot">the source</a>.</p>
+    </div>
+
+    <div class="footer" style="margin-top:10px">
+      <span>seed-in-a-pot · part of the Brokenbranch Lab</span>
+      <a href="/lab/">the lab ↗</a>
+    </div>
+  </div>
+
+  <script>
+  (function () {
+    'use strict';
+    var SVGNS = 'http://www.w3.org/2000/svg';
+    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var $ = function (id) { return document.getElementById(id); };
+
+    // ── Phase from the VISITOR's local clock ────────────────────────────────
+    // The seed keeps the same hours you do — no backend required for this.
+    function phaseForHour(h) {
+      if (h >= 5 && h < 8)   return 'dawn';
+      if (h >= 8 && h < 17)  return 'day';
+      if (h >= 17 && h < 20) return 'dusk';
+      return 'night';
+    }
+    var SKY = {
+      dawn:  { top:'#243a52', bot:'#e9b88c', glyph:'◔', mood:'waking' },
+      day:   { top:'#5b9bd5', bot:'#bfe0f0', glyph:'☀', mood:'open' },
+      dusk:  { top:'#3a2c44', bot:'#e08a5a', glyph:'◕', mood:'settling' },
+      night: { top:'#070a16', bot:'#141d33', glyph:'☾', mood:'resting' },
+    };
+
+    // Sun/moon ride an arc across the pane by fraction of the day. The window
+    // interior is x:[155,645], y:[45,335]; the arc peaks near midday/midnight.
+    // Slide the whole sun/moon group along a half-sine arc across the pane.
+    function placeSun(now) {
+      var frac = (now.getHours() * 60 + now.getMinutes()) / 1440; // 0..1 of the day
+      var x = 200 + frac * 400;                       // left at dawn → right at dusk
+      var h = now.getHours();
+      var day = h >= 6 && h < 19;
+      var arc = day ? Math.sin(frac * Math.PI)        // peaks at noon
+                    : Math.abs(Math.sin((frac + 0.5) * Math.PI)); // moon arc, offset 12h
+      var y = 300 - arc * 210;
+      $('sun-g').setAttribute('transform', 'translate(' + x.toFixed(0) + ' ' + y.toFixed(0) + ')');
+    }
+
+    function applyPhase(now) {
+      var phase = phaseForHour(now.getHours());
+      document.body.setAttribute('data-phase', phase);   // CSS vars cross-fade the sky
+      var s = SKY[phase];
+      $('sky').textContent = s.glyph;
+      $('phase').textContent = phase;
+      $('mood').textContent = s.mood;
+      var night = phase === 'night';
+      $('sun-halo').setAttribute('opacity', night ? '0.32' : '0.6');
+      $('sun-bloom').setAttribute('opacity', night ? '0.3' : '0.5');
+      placeSun(now);
+    }
+
+    // ── Stars (night only; opacity gated by CSS phase) ──────────────────────
+    function seedStars() {
+      var g = $('stars'), frag = document.createDocumentFragment();
+      for (var i = 0; i < 44; i++) {
+        var c = document.createElementNS(SVGNS, 'circle');
+        c.setAttribute('class', 'star');
+        c.setAttribute('cx', (158 + Math.random() * 484).toFixed(0));
+        c.setAttribute('cy', (48 + Math.random() * 240).toFixed(0));
+        c.setAttribute('r', (Math.random() * 1.1 + 0.4).toFixed(1));
+        c.style.setProperty('--b', (0.35 + Math.random() * 0.55).toFixed(2));
+        c.style.animationDelay = (Math.random() * 5).toFixed(1) + 's';
+        frag.appendChild(c);
+      }
+      g.appendChild(frag);
+    }
+
+    // ── Dust motes in the sunbeam ───────────────────────────────────────────
+    function seedDust() {
+      if (reduce) { return; }
+      var g = $('dustmotes'), frag = document.createDocumentFragment();
+      for (var i = 0; i < 14; i++) {
+        var c = document.createElementNS(SVGNS, 'circle');
+        c.setAttribute('class', 'dust');
+        c.setAttribute('cx', (370 + Math.random() * 150).toFixed(0));
+        c.setAttribute('cy', (210 + Math.random() * 230).toFixed(0));
+        c.setAttribute('r', (Math.random() * 1.2 + 0.6).toFixed(1));
+        c.style.setProperty('--dur', (10 + Math.random() * 10).toFixed(0) + 's');
+        c.style.setProperty('--dx', (Math.random() * 16 - 4).toFixed(0) + 'px');
+        c.style.setProperty('--dy', (-12 - Math.random() * 16).toFixed(0) + 'px');
+        c.style.animationDelay = (-Math.random() * 14).toFixed(1) + 's';
+        frag.appendChild(c);
+      }
+      g.appendChild(frag);
+    }
+
+    // ── The plant IS the experiment lifecycle ───────────────────────────────
+    // windowsill-lab's milestones each OPEN (the soft growing tip) and CLOSE
+    // (harden into a permanent node on the stem). A verified result is a green
+    // leaf; a failed calibration is a folded grey one — an honest null, kept on
+    // the books. Stem height = how far up the curriculum ladder the lab has
+    // climbed; the tip = the experiment running right now. Patient, not busy.
+    var SEASON_LEAF = { winter:'#7d8f6e', spring:'#7fae6b', summer:'#5f9c4e', autumn:'#c98a3e' };
+    var BASE = 344, RISE = 154;   // soil surface y, and the full-ladder rise in px
+
+    // The real curriculum as of today (windowsill-lab/MILESTONES.md): M01
+    // verified, M02 the open experiment, the rest still ahead. A live snapshot
+    // overwrites this — without one, the seed shows the honest current state.
+    var DEFAULT_MILESTONES = [
+      { id:'M01', title:'2D Ising T_c', status:'verified', result:'T_c 2.30 ± 0.05 · Onsager 2.2692 ✓' },
+      { id:'M02', title:'Finite-size scaling', status:'open', progress:0.3 }
+    ];
+    var DEFAULT_TOTAL = 31;       // physics ladder + the four citizen-science tracks
+
+    function isClosed(m) { return m && (m.status === 'verified' || m.status === 'null'); }
+
+    function drawStalk(milestones, total, season) {
+      var leafColor = SEASON_LEAF[season] || SEASON_LEAF.spring;
+      var closed = milestones.filter(isClosed);
+      var open = milestones.find(function (m) { return m && m.status === 'open'; });
+      var openProg = open && open.progress != null ? Math.max(0, Math.min(1, open.progress)) : 0;
+
+      // Tip fraction up the ladder: closed nodes, plus however far the open one is.
+      // Eased so a long curriculum (now dozens of rungs across tracks) still reads
+      // as real growth early on, instead of a dead sprout stuck near the soil.
+      var ease = function (k) { return Math.pow(Math.max(0, Math.min(1, k)), 0.62); };
+      var tipFrac = Math.min(1, (closed.length + openProg) / total);
+      var topY = BASE - 22 - RISE * ease(tipFrac);
+      var midx = 400 + Math.sin(tipFrac * 3) * 5;
+      $('stem').setAttribute('d', 'M400 ' + BASE + ' C' + midx + ' ' + ((BASE + topY) / 2) +
+        ' ' + (800 - midx) + ' ' + (topY + 24) + ' 400 ' + topY);
+
+      // One leaf per closed milestone, alternating sides up the stem.
+      var leaves = $('leaves');
+      leaves.textContent = '';
+      var frag = document.createDocumentFragment();
+      closed.forEach(function (m, i) {
+        var ly = BASE - 22 - RISE * ease((i + 1) / total);
+        frag.appendChild(milestoneLeaf(400, ly, (i % 2) ? 1 : -1, m, leafColor));
+      });
+      leaves.appendChild(frag);
+
+      // The open experiment is the tender bud at the very tip.
+      $('bud').setAttribute('cx', '400');
+      $('bud').setAttribute('cy', topY.toFixed(0));
+      $('bud').setAttribute('fill', leafColor);
+      $('bud').setAttribute('opacity', open ? '1' : '0');
+      $('bud').textContent = '';
+      if (open) {
+        var bt = document.createElementNS(SVGNS, 'title');
+        bt.textContent = (open.id ? open.id + ' · ' : '') + (open.title || 'open experiment') +
+          ' — running (' + Math.round(openProg * 100) + '%)';
+        $('bud').appendChild(bt);
+      }
+
+      // Ladder complete → it flowers. Months out, and honest when it happens.
+      drawFlower(topY, closed.length >= total ? 1 : 0);
+    }
+
+    // Nudge a hex color lighter (+) or darker (−) for leaf edges and veins.
+    function shade(hex, amt) {
+      var c = hex.replace('#', '');
+      if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+      var n = parseInt(c, 16);
+      var clamp = function (v) { return Math.max(0, Math.min(255, v)); };
+      return 'rgb(' + clamp((n >> 16) + amt) + ',' + clamp(((n >> 8) & 255) + amt) +
+        ',' + clamp((n & 255) + amt) + ')';
+    }
+
+    // A milestone leaf: a veined green blade for a verified result, a smaller
+    // folded grey one for a null (failed calibration). <title> carries the result.
+    function milestoneLeaf(x, y, dir, m, color) {
+      var nul = (m.status === 'null');
+      var len = nul ? 12 : 18;
+      var ey = nul ? y + len * 0.35 : y - len * 0.55;   // null leaves droop downward
+      var ex = x + dir * len;
+      var fill = nul ? '#8a8f82' : color;
+
+      var g = document.createElementNS(SVGNS, 'g');
+      g.setAttribute('class', 'leaf');
+      if (nul) g.setAttribute('opacity', '0.78');
+
+      var blade = document.createElementNS(SVGNS, 'path');
+      blade.setAttribute('d', 'M' + x + ' ' + y +
+        ' Q' + (x + dir * len * 0.5) + ' ' + (y - (nul ? len * 0.2 : len)) + ' ' + ex + ' ' + ey +
+        ' Q' + (x + dir * len * 0.62) + ' ' + (y - len * 0.05) + ' ' + x + ' ' + y + ' Z');
+      blade.setAttribute('fill', fill);
+      blade.setAttribute('stroke', shade(fill, -34));
+      blade.setAttribute('stroke-width', '0.6');
+      g.appendChild(blade);
+
+      var rib = document.createElementNS(SVGNS, 'path');   // midrib vein, lighter
+      rib.setAttribute('d', 'M' + x + ' ' + y +
+        ' Q' + (x + dir * len * 0.5) + ' ' + (y - (nul ? len * 0.15 : len * 0.7)) + ' ' + ex + ' ' + ey);
+      rib.setAttribute('fill', 'none');
+      rib.setAttribute('stroke', shade(fill, 30));
+      rib.setAttribute('stroke-width', '0.8');
+      rib.setAttribute('stroke-linecap', 'round');
+      g.appendChild(rib);
+
+      // Only http(s) records become links — never javascript:/data: URLs from
+      // a snapshot, even though it's self-owned. Defense in depth on the sink.
+      var safeUrl = (!nul && typeof m.url === 'string' && /^https?:\/\//i.test(m.url))
+        ? m.url : null;
+
+      // Tooltip carries the result and, for outward-facing citizen-science
+      // contributions, the venue + DOI that make it part of the public record.
+      var meta = [];
+      if (m.venue) meta.push(m.venue);
+      if (m.doi) meta.push('doi:' + m.doi);
+      var tail = m.result ? ' — ' + m.result
+        : (nul ? ' — failed calibration (null, kept on the books)' : ' ✓');
+      var t = document.createElementNS(SVGNS, 'title');
+      t.textContent = (m.id ? m.id + ' · ' : '') + (m.title || '') + tail +
+        (meta.length ? ' · ' + meta.join(' · ') : '') + (safeUrl ? ' ↗' : '');
+      g.appendChild(t);
+
+      // A verified contribution with a public record: the leaf links to it.
+      if (safeUrl) {
+        var a = document.createElementNS(SVGNS, 'a');
+        a.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', safeUrl);
+        a.setAttribute('href', safeUrl);
+        a.setAttribute('target', '_blank');
+        a.setAttribute('rel', 'noopener noreferrer');
+        a.setAttribute('style', 'cursor:pointer');
+        a.appendChild(g);
+        return a;
+      }
+      return g;
+    }
+
+    function drawFlower(top, on) {
+      var g = $('flower');
+      g.setAttribute('opacity', on ? '1' : '0');
+      if (!on) { g.textContent = ''; return; }
+      if (g.childNodes.length) {  // reposition existing
+        g.setAttribute('transform', 'translate(400 ' + top.toFixed(0) + ')');
+        return;
+      }
+      var petals = 6;
+      for (var i = 0; i < petals; i++) {
+        var a = (i / petals) * Math.PI * 2;
+        var pe = document.createElementNS(SVGNS, 'ellipse');
+        pe.setAttribute('cx', (Math.cos(a) * 8).toFixed(1));
+        pe.setAttribute('cy', (Math.sin(a) * 8).toFixed(1));
+        pe.setAttribute('rx', '5'); pe.setAttribute('ry', '3');
+        pe.setAttribute('fill', '#e8c0d0');
+        pe.setAttribute('transform', 'rotate(' + (a * 180 / Math.PI) + ')');
+        g.appendChild(pe);
+      }
+      var center = document.createElementNS(SVGNS, 'circle');
+      center.setAttribute('r', '4'); center.setAttribute('fill', '#f0c75a');
+      g.appendChild(center);
+      g.setAttribute('transform', 'translate(400 ' + top.toFixed(0) + ')');
+    }
+
+    // ── Soil moisture → color + a wet sheen ─────────────────────────────────
+    function applyMoisture(moisture) {
+      var m = Math.max(0, Math.min(1, moisture == null ? 0.3 : moisture));
+      // dry #5a4330 → wet #3a2616
+      var dry = [90, 67, 48], wet = [42, 30, 18];
+      var rgb = dry.map(function (d, i) { return Math.round(d + (wet[i] - d) * m); });
+      document.documentElement.style.setProperty('--soil', 'rgb(' + rgb.join(',') + ')');
+      document.documentElement.style.setProperty('--wet', (m * 0.5).toFixed(2));
+    }
+
+    // ── Offerings → pebbles on the soil, fading toward 24h ──────────────────
+    function drawPebbles(offerings) {
+      var g = $('pebbles');
+      g.textContent = '';
+      if (!Array.isArray(offerings) || !offerings.length) return 0;
+      var now = Date.now(), DAY = 86400000, shown = 0;
+      // Along the front lip of the soil, fanned out so the stem doesn't sit on one.
+      var spots = [[362,351],[438,351],[400,354],[378,348],[422,348]];
+      var fresh = offerings.filter(function (o) {
+        var ts = o && o.ts ? new Date(o.ts).getTime() : 0;
+        return ts && (now - ts) < DAY;
+      }).slice(0, spots.length);
+      fresh.forEach(function (o, i) {
+        var age = (now - new Date(o.ts).getTime()) / DAY;   // 0..1
+        var opacity = (1 - age) * 0.9 + 0.1;
+        var sp = spots[i];
+        var peb = document.createElementNS(SVGNS, 'g');
+        peb.setAttribute('class', 'pebble');
+        peb.setAttribute('opacity', opacity.toFixed(2));
+        var st = document.createElementNS(SVGNS, 'ellipse');
+        st.setAttribute('cx', sp[0]); st.setAttribute('cy', sp[1]);
+        st.setAttribute('rx', '7'); st.setAttribute('ry', '4.5');
+        st.setAttribute('fill', '#9a9088');
+        st.setAttribute('stroke', '#6f665d'); st.setAttribute('stroke-width', '0.5');
+        peb.appendChild(st);
+        var text = String(o.text || '').slice(0, 60);
+        if (text) {
+          var tx = document.createElementNS(SVGNS, 'text');
+          tx.setAttribute('class', 'pebble-label');
+          tx.setAttribute('x', sp[0]);
+          // Stagger heights so neighbouring messages don't collide.
+          tx.setAttribute('y', sp[1] - (10 + (i % 2) * 15));
+          tx.textContent = text.length > 22 ? text.slice(0, 21) + '…' : text;
+          var title = document.createElementNS(SVGNS, 'title');
+          title.textContent = text;            // full message on hover
+          tx.appendChild(title);
+          peb.appendChild(tx);
+        }
+        g.appendChild(peb);
+        shown++;
+      });
+      return shown;
+    }
+
+    // ── Helpers ─────────────────────────────────────────────────────────────
+    function ago(iso) {
+      if (!iso) return '—';
+      var d = (Date.now() - new Date(iso).getTime()) / 1000;
+      if (isNaN(d)) return '—';
+      if (d < 90) return 'just now';
+      if (d < 3600) return Math.round(d / 60) + 'm ago';
+      if (d < 86400) return Math.round(d / 3600) + 'h ago';
+      return Math.round(d / 86400) + 'd ago';
+    }
+    function seasonFromTemp(t) {
+      if (t == null) return null;
+      if (t < 40) return 'winter';
+      if (t < 55) return 'spring';
+      if (t < 70) return 'summer';
+      return 'autumn';
+    }
+
+    // ── Render from a (possibly empty) state object ─────────────────────────
+    function render(state) {
+      state = state || {};
+      var season = state.season || seasonFromTemp(state.temp_c) || 'spring';
+      var milestones = (Array.isArray(state.milestones) && state.milestones.length)
+        ? state.milestones : DEFAULT_MILESTONES;
+      var total = state.total || DEFAULT_TOTAL;
+      var moisture = (state.moisture != null) ? state.moisture
+                   : (state.last_run ? wetFromRun(state.last_run) : 0.3);
+
+      $('season').textContent = season;
+      drawStalk(milestones, total, season);
+      applyMoisture(moisture);
+      var n = drawPebbles(state.offerings);
+
+      var verifiedList = milestones.filter(function (m) { return m && m.status === 'verified'; });
+      var open = milestones.find(function (m) { return m && m.status === 'open'; });
+      $('m-growth').textContent = verifiedList.length + ' / ' + total + ' verified' +
+        (open && open.id ? ' · ' + open.id + ' open' : '');
+      $('m-watered').textContent = ago(state.last_run);
+      $('m-runs').textContent = state.runs != null ? state.runs : '—';
+      $('m-offerings').textContent = n;
+
+      var live = !state.empty && state.last_run;
+      var lastV = verifiedList[verifiedList.length - 1];
+      $('status').innerHTML = live
+        ? '<span class="live">● mapping</span> · last run ' + ago(state.last_run)
+        : '<span class="sleeping">○ patient</span> · ' +
+          (lastV ? (lastV.id || 'last result') + ' verified' : 'seed still a seed');
+    }
+
+    // Soil dries over ~16h between the lab's patient overnight runs.
+    function wetFromRun(iso) {
+      var h = (Date.now() - new Date(iso).getTime()) / 3600000;
+      if (isNaN(h)) return 0.3;
+      return Math.max(0.15, Math.min(1, 1 - h / 16));
+    }
+
+    // ── Boot ────────────────────────────────────────────────────────────────
+    var now = new Date();
+    applyPhase(now);
+    seedStars();
+    seedDust();
+    render({});  // procedural default — beautiful with no backend at all
+
+    // Keep the light walking with the clock.
+    setInterval(function () { applyPhase(new Date()); }, 60000);
+
+    // Try the live feed; the page already looks complete if this never returns.
+    fetch('/api/pot', { cache: 'no-store' })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (state) { if (state && !state.empty) render(state); })
+      .catch(function () { /* stay procedural; the seed keeps its own time */ });
+  })();
+  </script>
+</body>
+</html>
