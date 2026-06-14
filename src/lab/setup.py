@@ -132,24 +132,31 @@ _NIGHTLY_PS1 = r"""# Windowsill Lab — nightly: run the patient experiment, ref
 # Installed by `lab setup` on Windows. The PowerShell analog of nightly.sh.
 # Safe to edit; commits only when something actually changed.
 $ErrorActionPreference = 'Continue'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
 Set-Location '__REPO_ROOT__'
 $log = if ($env:LAB_NIGHTLY_LOG) { $env:LAB_NIGHTLY_LOG } else { Join-Path $HOME '.lab\nightly.log' }
 New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
-"-- $((Get-Date).ToUniversalTime().ToString('s'))Z nightly start" | Out-File -Append -Encoding utf8 $log
+# Append UTF-8 log lines. LogCmd coerces a native command's merged stdout+stderr
+# to plain strings, so git's normal stderr (e.g. "main -> main") isn't logged as a
+# scary NativeCommandError and the whole log stays one consistent encoding. The
+# control flow keys off $LASTEXITCODE, which the pipe preserves.
+function Log($m) { Add-Content -LiteralPath $log -Value $m -Encoding utf8 }
+filter LogCmd { Log "$_" }
+Log "-- $((Get-Date).ToUniversalTime().ToString('s'))Z nightly start"
 # Run today's experiment (best-effort); always leave the feed fresh.
-& '__PY__' -m lab.cli run *>> $log
-if ($LASTEXITCODE -ne 0) { & '__PY__' -m lab.cli publish *>> $log }
-git add pot.json reports/ 2>$null
+& '__PY__' -m lab.cli run 2>&1 | LogCmd
+if ($LASTEXITCODE -ne 0) { & '__PY__' -m lab.cli publish 2>&1 | LogCmd }
+git add pot.json reports/ 2>&1 | LogCmd
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
-    git commit -m "nightly: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd'))" *>> $log
+    git commit -m "nightly: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd'))" 2>&1 | LogCmd
     for ($i = 1; $i -le 4; $i++) {
-        git push *>> $log
+        git push 2>&1 | LogCmd
         if ($LASTEXITCODE -eq 0) { break }
         Start-Sleep -Seconds ([math]::Pow(2, $i))
     }
 }
-"-- done" | Out-File -Append -Encoding utf8 $log
+Log "-- done"
 """
 
 # Task Scheduler XML. schtasks /Create /XML wants UTF-16, so the file is written
