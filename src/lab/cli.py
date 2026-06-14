@@ -16,6 +16,7 @@ Usage:
   lab                 run today's experiment and open the report
   lab run             run only — don't open the browser
   lab open            open the latest report (no run)
+  lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
   lab verify [IDs]    re-derive verified milestones from their reports (CI gate)
   lab setup           install the nightly job (run → publish → push)
@@ -68,6 +69,14 @@ def main(argv=None):
         path = LAB_HOME / "latest.html"
         if not path.exists():
             print("no report yet — run `lab run` first.", file=sys.stderr); return 1
+        webbrowser.open(f"file://{path}")
+        print(path); return 0
+
+    if cmd == "web":
+        from .publish import REPO_ROOT
+        path = REPO_ROOT / "web" / "index.html"
+        if not path.exists():
+            print("web page missing — expected web/index.html", file=sys.stderr); return 1
         webbrowser.open(f"file://{path}")
         print(path); return 0
 
