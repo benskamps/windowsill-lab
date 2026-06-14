@@ -18,7 +18,13 @@ Usage:
   lab open            open the latest report (no run)
   lab publish         write the committed pot.json — feeds the windowsill
   lab verify [IDs]    re-derive verified milestones from their reports (CI gate)
+  lab setup           install the nightly job (run → publish → push)
   lab help            show this message
+
+Setup options (only with `setup`):
+  --check             pre-flight health check only — install nothing
+  --cron              install a cron line instead of a systemd user timer
+  --dry-run           show what would happen, write nothing
 
 Publish options (only with `publish`):
   --gist ID           push the snapshot to this public gist (or set POT_GIST_ID)
@@ -87,6 +93,27 @@ def main(argv=None):
         failed = [r["id"] for r in results if r["status"] == "fail"]
         if failed:
             print(f"\nFAILED: {', '.join(failed)}", file=sys.stderr); return 1
+        return 0
+
+    if cmd == "setup":
+        from . import setup as setup_mod
+        flags = args[1:]
+        print("windowsill-lab — pre-flight\n")
+        checks = setup_mod.health_checks()
+        for c in checks:
+            print(f"  {'✓' if c['ok'] else '✗'} {c['name']}: {c['detail']}")
+        if "--check" in flags:
+            return 0 if all(c["ok"] for c in checks) else 1
+        if not all(c["ok"] for c in checks):
+            print("\nfix the ✗ above first, or re-run with --check to inspect.", file=sys.stderr)
+            return 1
+        plan = setup_mod.install(prefer_cron="--cron" in flags, dry_run="--dry-run" in flags)
+        print(f"\nnightly job ({plan['method']}): {plan['nightly']}")
+        for s in plan["steps"]:
+            print(f"  · {s}")
+        for n in plan["notes"]:
+            print(n)
+        print("\nthe windowsill will now grow on its own. 🌱")
         return 0
 
     if cmd == "run" or (cmd not in ("help", "open") and cmd.startswith("--")):
