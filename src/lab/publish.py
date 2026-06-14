@@ -236,7 +236,7 @@ def build_snapshot(milestones, last_run, runs, temp_c) -> dict:
 
 def collect() -> dict:
     """Build the snapshot from the repo's milestone ladder + local run history."""
-    text = MILESTONES_MD.read_text() if MILESTONES_MD.exists() else ""
+    text = MILESTONES_MD.read_text(encoding="utf-8") if MILESTONES_MD.exists() else ""
     last_run, runs = run_cadence()
     return build_snapshot(parse_milestones(text), last_run, runs, cpu_temp_c())
 
@@ -260,10 +260,10 @@ def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
     """
     snap = collect()
     content = json.dumps(snap, indent=2) + "\n"
-    POT_JSON.write_text(content)          # canonical, committed live feed
+    POT_JSON.write_text(content, encoding="utf-8")  # canonical, committed live feed
     LAB_HOME.mkdir(parents=True, exist_ok=True)
     out = LAB_HOME / "pot.json"
-    out.write_text(content)
+    out.write_text(content, encoding="utf-8")
 
     gist_id = gist_id or os.environ.get("POT_GIST_ID")
     if gist_id:

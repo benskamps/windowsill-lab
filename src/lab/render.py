@@ -165,10 +165,10 @@ def render(result: RunResult, date: str | None = None) -> Path:
         snap_png=_plot_snapshots(result),
         json_dump=json_dump,
     )
-    out.write_text(html)
+    out.write_text(html, encoding="utf-8")
 
     # Also drop the raw JSON next to the HTML so it's easy to grep
-    (LAB_HOME / f"{date}.json").write_text(json_dump)
+    (LAB_HOME / f"{date}.json").write_text(json_dump, encoding="utf-8")
     # And update the latest pointer
-    (LAB_HOME / "latest.html").write_text(html)
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
     return out
