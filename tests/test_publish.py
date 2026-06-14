@@ -59,7 +59,9 @@ def test_build_snapshot_shape():
     assert snap["temp_c"] == 47.0
     assert snap["last_run"].startswith("2026-06-08")
     assert "updated" in snap
-    assert "code_sha" in snap["provenance"] and "env" in snap["provenance"]
+    assert snap["schema_version"] >= 1
+    prov = snap["provenance"]
+    assert "code_sha" in prov and "env" in prov and isinstance(prov["deps"], dict)
 
 
 def test_handles_empty_text():
@@ -101,3 +103,26 @@ def test_tags_flow_on_pending_too():
     assert ms["A02"]["venue"] == "AAVSO"
     # A02 is the first pending across the sample → promoted to the open experiment
     assert ms["A02"]["status"] == "open"
+
+
+# ── Explicit open marker + progress: the lab can pick any track as its front ──
+EXPLICIT = """
+- [x] **M01** — 2D Ising. (done — ok)
+- [ ] **M02** — next physics rung.
+- [>] **A02** — Recover a variable star and submit. {venue=AAVSO; progress=0.4}
+"""
+
+
+def test_explicit_open_marker_overrides_auto_promotion():
+    ms = {m["id"]: m for m in parse_milestones(EXPLICIT)}
+    assert ms["A02"]["status"] == "open"      # explicitly marked [>]
+    assert ms["M02"]["status"] == "pending"   # NOT auto-promoted while [>] exists
+
+
+def test_progress_tag_is_parsed_and_clamped():
+    ms = {m["id"]: m for m in parse_milestones(EXPLICIT)}
+    assert ms["A02"]["progress"] == 0.4
+    over = parse_milestones("- [>] **C01** — calibrate. {progress=9}")[0]
+    assert over["progress"] == 1.0
+    bad = parse_milestones("- [>] **C01** — calibrate. {progress=soon}")[0]
+    assert "progress" not in bad

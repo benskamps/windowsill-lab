@@ -25,13 +25,18 @@ LAB_HOME = Path.home() / ".lab"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MILESTONES_MD = REPO_ROOT / "MILESTONES.md"
 REPORTS_DIR = REPO_ROOT / "reports"
+POT_JSON = REPO_ROOT / "pot.json"   # committed live feed the windowsill reads
+
+# Bump when the snapshot contract changes in a way consumers must adapt to. The
+# /windowsill/ page and schema/pot.schema.json track this number.
+SCHEMA_VERSION = 1
 
 # A checklist line: "- [x] **M01** — 2D Ising verification. ..."
 # IDs are letter-prefixed by track: M=physics, C=compute/number-theory,
 # A=astronomy, I=instrument, B=BOINC. An optional trailing "{venue=…; url=…;
 # doi=…}" tag links a contribution to its official record.
 _MILESTONE_RE = re.compile(
-    r"^\s*-\s*\[(?P<box>[ xX~\-])\]\s*\*\*(?P<id>[A-Z]{1,3}\d+)\*\*\s*[—\-]\s*(?P<body>.*\S)\s*$"
+    r"^\s*-\s*\[(?P<box>[ xX~\->])\]\s*\*\*(?P<id>[A-Z]{1,3}\d+)\*\*\s*[—\-]\s*(?P<body>.*\S)\s*$"
 )
 _TAG_RE = re.compile(r"\{([^}]*)\}\s*$")
 TRACKS = {"M": "physics", "C": "compute", "A": "astronomy", "I": "instrument", "B": "boinc"}
@@ -52,7 +57,7 @@ def _parse_tags(body: str) -> tuple[str, dict]:
         if "=" in pair:
             k, v = pair.split("=", 1)
             k, v = k.strip().lower(), v.strip()
-            if k in ("venue", "url", "doi") and v:
+            if k in ("venue", "url", "doi", "progress") and v:
                 tags[k] = v
     return body[: m.start()].strip(), tags
 
@@ -61,13 +66,14 @@ def parse_milestones(text: str) -> list[dict]:
     """Parse MILESTONES.md checklist lines into milestone dicts.
 
     ``[x]`` → verified, ``[~]``/``[-]`` → null (failed calibration, kept on the
-    books), ``[ ]`` → pending. The first pending milestone is promoted to
-    ``open`` — the experiment running now / next on the bench. Each milestone
-    carries its ``track`` (from the id prefix) and any ``venue``/``url``/``doi``
-    that links a verified contribution to its official record.
+    books), ``[>]`` → the explicitly-open experiment (any track), ``[ ]`` →
+    pending. If nothing is marked ``[>]``, the first pending milestone is
+    promoted to ``open`` — the experiment running now / next on the bench. Each
+    milestone carries its ``track`` (from the id prefix), an optional
+    ``progress`` (0–1), and any ``venue``/``url``/``doi`` linking a verified
+    contribution to its official record.
     """
     out: list[dict] = []
-    first_pending = True
     for line in text.splitlines():
         m = _MILESTONE_RE.match(line)
         if not m:
@@ -80,6 +86,8 @@ def parse_milestones(text: str) -> list[dict]:
             status = "verified"
         elif box in ("~", "-"):
             status = "null"
+        elif box == ">":
+            status = "open"
         else:
             status = "pending"
 
@@ -97,13 +105,21 @@ def parse_milestones(text: str) -> list[dict]:
                 if result:
                     ms["result"] = result
 
-        ms.update(tags)   # venue / url / doi when present
-
-        if status == "pending" and first_pending:
-            ms["status"] = "open"
-            first_pending = False
+        ms.update(tags)   # venue / url / doi / progress when present
+        if "progress" in ms:
+            try:
+                ms["progress"] = max(0.0, min(1.0, float(ms["progress"])))
+            except (TypeError, ValueError):
+                del ms["progress"]
 
         out.append(ms)
+
+    # The lab runs one experiment at a time. If a milestone is explicitly marked
+    # open (any track), respect it; otherwise the first pending is the open bench.
+    if not any(m["status"] == "open" for m in out):
+        nxt = next((m for m in out if m["status"] == "pending"), None)
+        if nxt:
+            nxt["status"] = "open"
     return out
 
 
@@ -151,33 +167,56 @@ def run_cadence() -> tuple[str | None, int]:
     return last_iso, len(dates)
 
 
-def _git_sha() -> str | None:
-    """Short commit SHA of the code that produced this snapshot (best-effort)."""
+def _git(*args: str) -> str | None:
     try:
         out = subprocess.run(
-            ["git", "-C", str(REPO_ROOT), "rev-parse", "--short", "HEAD"],
+            ["git", "-C", str(REPO_ROOT), *args],
             capture_output=True, text=True, check=True,
         )
-        return out.stdout.strip() or None
+        return out.stdout.strip()
     except (FileNotFoundError, subprocess.CalledProcessError):
         return None
+
+
+def _git_sha() -> str | None:
+    """Short commit SHA, with ``-dirty`` if the tree has uncommitted changes."""
+    sha = _git("rev-parse", "--short", "HEAD")
+    if not sha:
+        return None
+    return sha + "-dirty" if _git("status", "--porcelain") else sha
+
+
+def _deps() -> dict:
+    """Versions of the scientific packages a result depends on (best-effort)."""
+    out: dict = {}
+    try:
+        from importlib.metadata import PackageNotFoundError, version
+        for pkg in ("torch", "numpy", "matplotlib"):
+            try:
+                out[pkg] = version(pkg)
+            except PackageNotFoundError:
+                pass
+    except Exception:  # noqa: BLE001 — provenance is never allowed to break a run
+        pass
+    return out
 
 
 def _env() -> str:
     """A compact, sanitized environment string for provenance (no host/user)."""
     import platform
-    parts = ["python " + platform.python_version(), platform.system().lower()]
-    try:
-        from importlib.metadata import version
-        parts.append("torch " + version("torch"))
-    except Exception:  # noqa: BLE001 — torch may not be installed; provenance is best-effort
-        pass
-    return " · ".join(parts)
+    return f"python {platform.python_version()} · {platform.system().lower()}"
+
+
+def provenance() -> dict:
+    """Receipts over vibes: what code + environment produced a result, so it can
+    be traced back and re-run. No host or user data — safe to publish."""
+    return {"code_sha": _git_sha(), "env": _env(), "deps": _deps()}
 
 
 def build_snapshot(milestones, last_run, runs, temp_c) -> dict:
     """Assemble the sanitized snapshot the /windowsill/ page consumes."""
     return {
+        "schema_version": SCHEMA_VERSION,
         "source": "windowsill-lab",
         "milestones": milestones,
         "total": len(milestones),
@@ -185,9 +224,7 @@ def build_snapshot(milestones, last_run, runs, temp_c) -> dict:
         "runs": runs,
         "temp_c": temp_c,
         "updated": datetime.now(timezone.utc).isoformat(),
-        # Receipts over vibes: every snapshot says which code + environment made
-        # it, so a result can be traced back and re-run. No host or user data.
-        "provenance": {"code_sha": _git_sha(), "env": _env()},
+        "provenance": provenance(),
     }
 
 
@@ -208,12 +245,16 @@ def _push_gist(gist_id: str, content: str) -> None:
 
 
 def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
-    """Write ~/.lab/pot.json and (if a gist id is given) push it.
+    """Write the committed ``pot.json`` (the live feed) + a ~/.lab copy.
 
-    ``gist_id`` falls back to the ``POT_GIST_ID`` environment variable.
+    The repo's ``pot.json`` is the canonical feed: the /windowsill/ page reads it
+    straight from GitHub raw, served through the site's edge cache — no gist or
+    secret required. A nightly run commits + pushes it. ``gist_id`` (or the
+    ``POT_GIST_ID`` env var) remains an optional legacy push target.
     """
     snap = collect()
-    content = json.dumps(snap, indent=2)
+    content = json.dumps(snap, indent=2) + "\n"
+    POT_JSON.write_text(content)          # canonical, committed live feed
     LAB_HOME.mkdir(parents=True, exist_ok=True)
     out = LAB_HOME / "pot.json"
     out.write_text(content)
@@ -231,5 +272,5 @@ def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
             if not quiet:
                 print(f"  (gist push failed: {e.stderr.strip() if e.stderr else e})")
     elif not quiet:
-        print("  (no gist configured — set POT_GIST_ID or pass --gist <id> to push)")
-    return out
+        print("  (no gist configured — pot.json is committed to the repo instead)")
+    return POT_JSON

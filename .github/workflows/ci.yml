@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  # Fast feedback: the publish/verify pipeline + contract are stdlib-only, so
+  # they run in seconds without pulling torch.
+  pipeline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install pytest
+      - name: Pipeline + contract tests
+        run: PYTHONPATH=src pytest tests/test_publish.py tests/test_checks.py tests/test_schema.py
+      - name: Verify milestones reproduce their numbers
+        run: PYTHONPATH=src python -m lab.cli verify
+      - name: pot.json is in sync with MILESTONES.md
+        run: |
+          PYTHONPATH=src python - <<'PY'
+          import json, sys
+          from pathlib import Path
+          sys.path.insert(0, "src")
+          from lab.publish import parse_milestones
+          fresh = parse_milestones(Path("MILESTONES.md").read_text())
+          committed = json.loads(Path("pot.json").read_text())["milestones"]
+          if fresh != committed:
+              print("::error::pot.json is stale — run `lab publish` and commit it")
+              sys.exit(1)
+          print(f"pot.json in sync ({len(fresh)} milestones)")
+          PY
+
+  # The numerical physics tests need the full scientific stack.
+  physics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install (CPU torch)
+        run: pip install pytest numpy "torch>=2.4" --extra-index-url https://download.pytorch.org/whl/cpu
+      - name: Physics tests
+        run: PYTHONPATH=src pytest tests/test_ising.py tests/test_onsager.py

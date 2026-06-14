@@ -1,0 +1,44 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://www.brokenbranch.dev/windowsill/pot.schema.json",
+  "title": "windowsill pot.json",
+  "description": "The sanitized snapshot the lab publishes and the /windowsill/ page consumes. Every field is optional so the page degrades to a procedural seed; this schema describes the shape when present. Shared by windowsill-lab (producer) and brokenbranchdevwebsite (consumer).",
+  "type": "object",
+  "properties": {
+    "schema_version": { "type": "integer", "minimum": 1 },
+    "source": { "type": "string" },
+    "milestones": { "type": "array", "items": { "$ref": "#/definitions/milestone" } },
+    "total": { "type": "integer", "minimum": 0 },
+    "last_run": { "type": ["string", "null"] },
+    "runs": { "type": "integer", "minimum": 0 },
+    "temp_c": { "type": ["number", "null"] },
+    "updated": { "type": "string" },
+    "provenance": {
+      "type": "object",
+      "properties": {
+        "code_sha": { "type": ["string", "null"] },
+        "env": { "type": "string" },
+        "deps": { "type": "object" }
+      }
+    },
+    "empty": { "type": "boolean" },
+    "reason": { "type": "string" }
+  },
+  "definitions": {
+    "milestone": {
+      "type": "object",
+      "required": ["id", "status"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Z]{1,3}[0-9]+$" },
+        "title": { "type": "string" },
+        "status": { "type": "string", "enum": ["verified", "null", "open", "pending"] },
+        "track": { "type": "string", "enum": ["physics", "compute", "astronomy", "instrument", "boinc", "misc"] },
+        "progress": { "type": "number", "minimum": 0, "maximum": 1 },
+        "result": { "type": "string" },
+        "venue": { "type": "string" },
+        "url": { "type": "string", "pattern": "^https?://" },
+        "doi": { "type": "string" }
+      }
+    }
+  }
+}

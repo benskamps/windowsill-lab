@@ -43,14 +43,20 @@ identity, under an open license:
 
 ## Provenance — receipts over vibes
 
-Every published snapshot (`pot.json`) now carries a `provenance` block:
+Every published snapshot (`pot.json`) carries a `provenance` block:
 
 ```json
-"provenance": { "code_sha": "9993026", "env": "python 3.11.15 · linux · torch 2.4.0" }
+"provenance": {
+  "code_sha": "9993026",                      // "-dirty" if the tree was uncommitted
+  "env": "python 3.11.15 · linux",
+  "deps": { "torch": "2.4.0", "numpy": "2.1.0", "matplotlib": "3.9.0" }
+}
 ```
 
 so any number can be traced to the exact code and environment that produced it,
-and re-run. No host or user data is included.
+and re-run. No host or user data is included. And `lab verify` re-derives each
+verified milestone's headline number from its committed report — a green leaf is
+a checked claim, not an honor-system tick.
 
 ## Linking a contribution to its record
 
@@ -61,7 +67,13 @@ record so the seed's leaf can point at it:
 - [x] **C03** — Extend OEIS A000123 by 2,000 terms. (done 2026-08-01 — accepted) {venue=OEIS; url=https://oeis.org/A000123; doi=10.5281/zenodo.123456}
 ```
 
-`venue`, `url`, and `doi` are optional and flow through to the snapshot untouched.
+`venue`, `url`, and `doi` are optional and flow through to the snapshot untouched
+(a verified milestone with a `url` becomes a leaf that links to its record).
+
+**Picking the active experiment.** The lab runs one experiment at a time. Mark
+the current one with `[>]` instead of `[ ]` and it becomes the open bud on any
+track — otherwise the first pending milestone is promoted automatically. Add
+`{progress=0.4}` to show how far along it is.
 
 ## Minting a DOI (GitHub → Zenodo)
 

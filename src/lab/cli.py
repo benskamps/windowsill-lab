@@ -16,7 +16,8 @@ Usage:
   lab                 run today's experiment and open the report
   lab run             run only — don't open the browser
   lab open            open the latest report (no run)
-  lab publish         write ~/.lab/pot.json — feeds the seed-in-a-pot windowsill
+  lab publish         write the committed pot.json — feeds the windowsill
+  lab verify [IDs]    re-derive verified milestones from their reports (CI gate)
   lab help            show this message
 
 Publish options (only with `publish`):
@@ -72,6 +73,20 @@ def main(argv=None):
             gist = args[i + 1] if i + 1 < len(args) else None
         path = publish_mod.publish(gist_id=gist)
         print(f"  ✓ snapshot: {path}")
+        return 0
+
+    if cmd == "verify":
+        from . import checks
+        ids = [a for a in args[1:] if not a.startswith("-")] or None
+        results = checks.verify(ids)
+        if not results:
+            print("no verified milestones to check."); return 0
+        mark = {"pass": "✓", "fail": "✗", "unchecked": "·", "no-report": "?"}
+        for r in results:
+            print(f"  {mark.get(r['status'], '?')} {r['id']} [{r['status']}] — {r['detail']}")
+        failed = [r["id"] for r in results if r["status"] == "fail"]
+        if failed:
+            print(f"\nFAILED: {', '.join(failed)}", file=sys.stderr); return 1
         return 0
 
     if cmd == "run" or (cmd not in ("help", "open") and cmd.startswith("--")):

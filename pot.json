@@ -1,0 +1,213 @@
+{
+  "schema_version": 1,
+  "source": "windowsill-lab",
+  "milestones": [
+    {
+      "id": "M01",
+      "title": "2D Ising verification",
+      "status": "verified",
+      "track": "physics",
+      "result": "peak at T=2.30 \u00b1 0.05, Onsager: 2.2692"
+    },
+    {
+      "id": "M02",
+      "title": "Finite-size scaling",
+      "status": "open",
+      "track": "physics"
+    },
+    {
+      "id": "M03",
+      "title": "Critical exponent \u03b2 from data collapse of M\u00b7L^(\u03b2/\u03bd) vs (T-T_c)\u00b7L^(1/\u03bd)",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M04",
+      "title": "Specific heat curve C(T)",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M05",
+      "title": "Verify lattice geometries beyond square",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M06",
+      "title": "3D simple cubic Ising",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M07",
+      "title": "Potts model (q-state)",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M08",
+      "title": "2D XY model",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M09",
+      "title": "2D Heisenberg (continuous spins)",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M10",
+      "title": "Antiferromagnetic Ising on a bipartite lattice (same as ferromagnetic by sign-flip \u2014 sanity check the framework handles negative J cleanly)",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M11",
+      "title": "Edwards-Anderson spin glass on a 2D square lattice",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M12",
+      "title": "3D EA spin glass \u2014 the harder, more famous case",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M13",
+      "title": "Triangular lattice antiferromagnet \u2014 frustrated, ordered ground states are degenerate",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M14",
+      "title": "Random-bond Ising (binary disorder p% antiferromagnetic bonds)",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M15",
+      "title": "Glauber dynamics relaxation",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M16",
+      "title": "Aging in spin glasses",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M17",
+      "title": "KPZ growth on circular geometry \u2014 interfaces wrapping around a torus, GUE-Tracy-Widom distribution of fluctuations",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "M18",
+      "title": "Directed percolation in 2+1d at the absorbing-state transition",
+      "status": "pending",
+      "track": "physics"
+    },
+    {
+      "id": "C01",
+      "title": "Calibrate the number stack",
+      "status": "pending",
+      "track": "compute"
+    },
+    {
+      "id": "C02",
+      "title": "Run one assigned GIMPS exponent (PRP + proof) to completion and submit the residue",
+      "status": "pending",
+      "track": "compute",
+      "venue": "GIMPS"
+    },
+    {
+      "id": "C03",
+      "title": "Extend an existing OEIS sequence's b-file by N verified terms (or submit a new sequence) and get it accepted",
+      "status": "pending",
+      "track": "compute",
+      "venue": "OEIS"
+    },
+    {
+      "id": "C04",
+      "title": "Join PrimeGrid and complete validated work units on an open prime problem (Proth / Sierpi\u0144ski)",
+      "status": "pending",
+      "track": "compute",
+      "venue": "PrimeGrid"
+    },
+    {
+      "id": "A01",
+      "title": "Calibrate photometry",
+      "status": "pending",
+      "track": "astronomy"
+    },
+    {
+      "id": "A02",
+      "title": "Recover a known variable star's light curve and period; register an AAVSO observer code and submit one validated observation",
+      "status": "pending",
+      "track": "astronomy",
+      "venue": "AAVSO"
+    },
+    {
+      "id": "A03",
+      "title": "Reprocess one open LIGO/Virgo event from GWOSC and reproduce its published chirp mass within error",
+      "status": "pending",
+      "track": "astronomy",
+      "venue": "GWOSC"
+    },
+    {
+      "id": "A04",
+      "title": "Blind transit search across one TESS sector; vet the candidates and report a recovered planet",
+      "status": "pending",
+      "track": "astronomy",
+      "venue": "ExoFOP"
+    },
+    {
+      "id": "I01",
+      "title": "Calibrate the CMOS as a particle detector",
+      "status": "pending",
+      "track": "instrument"
+    },
+    {
+      "id": "I02",
+      "title": "Log cosmic-ray muon candidates for a month; check the rate against the ~1 / cm\u00b2 / min expectation and the zenith-angle dependence",
+      "status": "pending",
+      "track": "instrument",
+      "venue": "DECO"
+    },
+    {
+      "id": "I03",
+      "title": "Stand up a hardware-entropy beacon",
+      "status": "pending",
+      "track": "instrument",
+      "venue": "Zenodo"
+    },
+    {
+      "id": "B01",
+      "title": "Join a team and complete validated work units on Einstein@Home (continuous-gravitational-wave / pulsar search)",
+      "status": "pending",
+      "track": "boinc",
+      "venue": "Einstein@Home"
+    },
+    {
+      "id": "B02",
+      "title": "Complete validated units on Rosetta@home or World Community Grid; archive the credit record",
+      "status": "pending",
+      "track": "boinc",
+      "venue": "BOINC"
+    }
+  ],
+  "total": 31,
+  "last_run": "2026-06-08T00:00:00+00:00",
+  "runs": 1,
+  "temp_c": null,
+  "updated": "2026-06-14T00:43:38.771239+00:00",
+  "provenance": {
+    "code_sha": "262018c-dirty",
+    "env": "python 3.11.15 \u00b7 linux",
+    "deps": {}
+  }
+}
