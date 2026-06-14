@@ -136,7 +136,14 @@ def parse_milestones(text: str) -> list[dict]:
 
 
 def cpu_temp_c() -> float | None:
-    """Best-effort CPU temperature from Linux thermal zones (no extra deps)."""
+    """Best-effort CPU temperature — sets the windowsill's season.
+
+    Linux: ``/sys/class/thermal``. Windows: LibreHardwareMonitor's web JSON at
+    localhost:8085 (enable it: Options > Web Server > Run). ``None`` (the page
+    falls back to spring) when neither is available.
+    """
+    if os.name == "nt":
+        return _cpu_temp_windows()
     base = Path("/sys/class/thermal")
     if not base.exists():
         return None
@@ -159,6 +166,45 @@ def cpu_temp_c() -> float | None:
         except (OSError, ValueError):
             continue
     return None
+
+
+def _cpu_temp_windows() -> float | None:
+    """CPU temperature from a local LibreHardwareMonitor web server (port 8085).
+
+    Walks LHM's ``data.json`` sensor tree for a CPU temperature, preferring a
+    package/Tctl/Tdie reading over an individual core. Best-effort: returns
+    ``None`` if LHM's web server isn't running.
+    """
+    try:
+        import urllib.request
+        with urllib.request.urlopen("http://localhost:8085/data.json", timeout=2) as resp:
+            data = json.loads(resp.read().decode("utf-8", "replace"))
+    except Exception:  # noqa: BLE001 — LHM may be off; the season just stays calm
+        return None
+
+    best: list = []  # [temp, preferred] of the chosen sensor
+
+    def walk(node: dict, in_cpu: bool) -> None:
+        low = str(node.get("Text", "")).lower()
+        here_cpu = in_cpu or any(t in low for t in ("cpu", "ryzen", "core i", "intel", "amd"))
+        value = str(node.get("Value", ""))
+        if here_cpu and "°C" in value:
+            try:
+                t = float(value.replace("°C", "").replace(",", ".").strip())
+            except ValueError:
+                t = None
+            if t is not None and -20.0 < t < 130.0:
+                pref = any(k in low for k in ("package", "tctl", "tdie", "cpu"))
+                if not best or (pref and not best[1]):
+                    best[:] = [t, pref]
+        for child in node.get("Children", []) or []:
+            walk(child, here_cpu)
+
+    try:
+        walk(data, False)
+    except Exception:  # noqa: BLE001
+        return None
+    return round(best[0], 1) if best else None
 
 
 def run_cadence() -> tuple[str | None, int]:
