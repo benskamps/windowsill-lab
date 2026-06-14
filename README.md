@@ -135,13 +135,12 @@ Sibling toys built on the same DNA:
 - [**fish-tank**](https://github.com/benskamps/fish-tank) — a terminal
   aquarium fed by real CPU heat and git activity. Aliveness from your
   machine's pulse.
-- **seed-in-a-pot** — the calm windowsill seedling. Its live page now ships
-  from this repo ([`web/`](web/), at
-  [brokenbranch.dev/windowsill/](https://www.brokenbranch.dev/windowsill/)); the
-  original desktop-toy repo is
-  [archived](https://github.com/benskamps/seed-in-a-pot).
 - **windowsill-lab** (this) — same shape, but the patient observation is
-  real physics instead of a fish or a sprout. Numbers, plots, theory.
+  real physics instead of a fish. Numbers, plots, theory. Its calm public
+  face is the **windowsill** page in [`web/`](web/)
+  ([brokenbranch.dev/windowsill/](https://www.brokenbranch.dev/windowsill/));
+  the original seed-in-a-pot desktop-toy repo is
+  [archived](https://github.com/benskamps/seed-in-a-pot).
 
 One machine. One patient observation. Real signal. Accumulates over months.
 

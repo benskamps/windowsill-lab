@@ -24,14 +24,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Seed in a Pot — Live Windowsill | Broken Branch Studios</title>
+  <title>windowsill — live | Broken Branch Studios</title>
   <meta name="description" content="A live-ish windowsill wired to the lab's passive citizen science: each verified windowsill-lab milestone grows the seedling, overnight runs water the soil, CPU heat sets the season, and the light follows your local clock. The calmer sibling of the aquarium.">
   <meta name="author" content="Ben Schippers">
   <meta name="theme-color" content="#0d0c0a">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.brokenbranch.dev/windowsill/">
-  <meta property="og:title" content="Seed in a Pot — Live Windowsill">
-  <meta property="og:description" content="One seed in a clay pot, growing on real science: each verified windowsill-lab milestone is a node on the stem, overnight runs water the soil, and AI visitors leave pebbles that fade within a day.">
+  <meta property="og:title" content="windowsill — a live readout of the lab">
+  <meta property="og:description" content="A live windowsill growing on real science: each verified windowsill-lab milestone is a node on the stem, overnight runs water the soil, and AI visitors leave pebbles that fade within a day.">
   <meta property="og:site_name" content="Broken Branch Studios">
   <meta property="og:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <link rel="canonical" href="https://www.brokenbranch.dev/windowsill/">
@@ -217,6 +217,17 @@
     .footer a { color:var(--text-secondary); text-decoration:none; border-bottom:1px dotted var(--border); }
     .footer a:hover { color:var(--text); }
 
+    .report {
+      display:flex; align-items:baseline; gap:0.6rem; flex-wrap:wrap;
+      margin-top:0.8rem; padding:0.55rem 0.8rem;
+      background:rgba(127,174,107,0.06); border:1px solid var(--border); border-radius:8px;
+      font-family:var(--font-mono); font-size:0.78rem; color:var(--text-secondary);
+    }
+    .report-tag { color:var(--leaf); text-transform:uppercase; letter-spacing:0.06em; font-size:0.66rem; }
+    .report-line { color:var(--text); }
+    .report-link { margin-left:auto; color:var(--text-secondary); text-decoration:none; border-bottom:1px dotted var(--border); }
+    .report-link:hover { color:var(--text); }
+
     .explainer {
       margin-top:2rem; font-size:0.85rem; color:var(--text-muted); line-height:1.7;
       border-top:1px solid var(--border); padding-top:1.25rem;
@@ -247,7 +258,7 @@
     <a class="home" href="/" style="margin-left:14px">broken branch</a>
 
     <div class="topbar">
-      <div class="label"><span class="sky" id="sky">☀</span>One Seed, One Pot</div>
+      <div class="label"><span class="sky" id="sky">☀</span>windowsill</div>
       <div class="phase-mood"><span id="phase">day</span> · <span id="season">spring</span> · feels <span class="mood" id="mood">—</span></div>
     </div>
     <div class="tagline">A live-ish windowsill wired to the lab's patient citizen science. Each verified <a href="https://github.com/benskamps/windowsill-lab" style="color:var(--text-secondary)">windowsill-lab</a> milestone grows the stem; overnight runs water the soil; CPU heat sets the season; the light follows <em>your</em> local clock. The calm sibling of the <a href="/aquarium/" style="color:var(--text-secondary)">aquarium</a>.</div>
@@ -428,6 +439,12 @@
       <span><b>offerings</b> <span class="v" id="m-offerings">0</span></span>
     </div>
 
+    <div class="report" id="report" hidden>
+      <span class="report-tag">last night</span>
+      <span class="report-line" id="report-line">—</span>
+      <a class="report-link" id="report-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">full report ↗</a>
+    </div>
+
     <div class="footer">
       <span id="status">reading the windowsill…</span>
       <a href="https://github.com/benskamps/windowsill-lab" id="repo">source · how it works ↗</a>
@@ -450,7 +467,7 @@
     </div>
 
     <div class="footer" style="margin-top:10px">
-      <span>seed in a pot · part of the Brokenbranch Lab</span>
+      <span>windowsill · part of the Brokenbranch Lab</span>
       <a href="/lab/">the lab ↗</a>
     </div>
   </div>
@@ -793,6 +810,15 @@
       $('m-watered').textContent = ago(state.last_run);
       $('m-runs').textContent = state.runs != null ? state.runs : '—';
       $('m-offerings').textContent = n;
+
+      var rep = state.latest_report, rbox = $('report');
+      if (rbox && rep && rep.headline) {
+        $('report-line').textContent = rep.headline + (rep.date ? ' · ' + rep.date : '');
+        if (rep.url && /^https?:\/\//.test(rep.url)) $('report-link').href = rep.url;
+        rbox.hidden = false;
+      } else if (rbox) {
+        rbox.hidden = true;
+      }
 
       var live = !state.empty && state.last_run;
       var lastV = verifiedList[verifiedList.length - 1];

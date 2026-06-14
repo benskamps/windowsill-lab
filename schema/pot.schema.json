@@ -12,6 +12,17 @@
     "last_run": { "type": ["string", "null"] },
     "runs": { "type": "integer", "minimum": 0 },
     "temp_c": { "type": ["number", "null"] },
+    "latest_report": {
+      "type": ["object", "null"],
+      "properties": {
+        "date": { "type": ["string", "null"] },
+        "headline": { "type": ["string", "null"] },
+        "peak_t": { "type": ["number", "null"] },
+        "onsager_tc": { "type": ["number", "null"] },
+        "wall_s": { "type": ["number", "null"] },
+        "url": { "type": ["string", "null"] }
+      }
+    },
     "updated": { "type": "string" },
     "provenance": {
       "type": "object",
