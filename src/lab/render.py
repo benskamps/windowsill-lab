@@ -17,6 +17,9 @@ from .onsager import onsager_magnetization, T_C
 
 
 LAB_HOME = Path.home() / ".lab"
+# The newest full report is also committed here so the windowsill page can
+# deep-link it; the nightly commits reports/ on every run.
+REPO_REPORTS = Path(__file__).resolve().parents[2] / "reports"
 
 
 def _ensure_home() -> Path:
@@ -155,7 +158,13 @@ def render(result: RunResult, date: str | None = None) -> Path:
     out = LAB_HOME / f"{date}.html"
 
     T_peak, sentence = _tc_estimate(result)
-    json_dump = json.dumps(result.to_json(), indent=2)
+    report = result.to_json()
+    # A compact headline the windowsill page shows under the seedling.
+    report["headline"] = (
+        f"χ peaked at T≈{T_peak:.3f} vs Onsager {T_C:.4f}"
+        f" · {result.wall_seconds:.0f}s on GPU"
+    )
+    json_dump = json.dumps(report, indent=2)
 
     html = HTML_TEMPLATE.format(
         date=date,
@@ -171,4 +180,10 @@ def render(result: RunResult, date: str | None = None) -> Path:
     (LAB_HOME / f"{date}.json").write_text(json_dump, encoding="utf-8")
     # And update the latest pointer
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+
+    # Publish the newest full report into the repo so the windowsill page can
+    # deep-link it (the nightly commits reports/). One overwritten file — the
+    # dated archive stays local in ~/.lab.
+    REPO_REPORTS.mkdir(parents=True, exist_ok=True)
+    (REPO_REPORTS / "latest.html").write_text(html, encoding="utf-8")
     return out

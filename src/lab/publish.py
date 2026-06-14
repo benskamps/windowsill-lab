@@ -14,6 +14,7 @@ torch or matplotlib.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import subprocess
@@ -29,7 +30,18 @@ POT_JSON = REPO_ROOT / "pot.json"   # committed live feed the windowsill reads
 
 # Bump when the snapshot contract changes in a way consumers must adapt to. The
 # /windowsill/ page and schema/pot.schema.json track this number.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+# Onsager's exact 2D Ising critical temperature, 1944 — the lab's calibration target.
+ONSAGER_TC = 2.0 / math.log(1.0 + math.sqrt(2.0))   # ≈ 2.2692
+
+# A rendered "full report" the page deep-links. The nightly commits
+# reports/latest.html every run, so this always resolves to the newest one
+# (htmlpreview renders committed HTML straight from GitHub — no extra hosting).
+REPORT_URL = (
+    "https://htmlpreview.github.io/?"
+    "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html"
+)
 
 # A checklist line: "- [x] **M01** — 2D Ising verification. ..."
 # IDs are letter-prefixed by track: M=physics, C=compute/number-theory,
@@ -219,7 +231,51 @@ def provenance() -> dict:
     return {"code_sha": _git_sha(), "env": _env(), "deps": _deps()}
 
 
-def build_snapshot(milestones, last_run, runs, temp_c) -> dict:
+def _newest_report() -> dict | None:
+    """The newest daily report JSON (repo ``reports/`` or ``~/.lab``)."""
+    paths: list[Path] = []
+    for d in (REPORTS_DIR, LAB_HOME):
+        if d.exists():
+            paths += d.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json")
+    if not paths:
+        return None
+    newest = max(paths, key=lambda p: p.stem)
+    try:
+        data = json.loads(newest.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    data["_date"] = newest.stem
+    return data
+
+
+def latest_report() -> dict | None:
+    """A tiny summary of the most recent run for the windowsill page to show
+    under the seedling — immediate attribution, no heavy payload. ``None`` until
+    a run has happened (the page just omits the line)."""
+    rep = _newest_report()
+    if not rep:
+        return None
+    T, chi = rep.get("T"), rep.get("chi")
+    peak_t = None
+    if T and chi and len(T) == len(chi):
+        peak_t = round(T[max(range(len(chi)), key=lambda i: chi[i])], 3)
+    wall = rep.get("wall_seconds")
+    headline = rep.get("headline")
+    if not headline and peak_t is not None:
+        headline = f"χ peaked at T≈{peak_t:.3f} vs Onsager {ONSAGER_TC:.4f}"
+        if wall:
+            headline += f" · {wall:.0f}s on GPU"
+    return {
+        "date": rep.get("_date"),
+        "headline": headline,
+        "peak_t": peak_t,
+        "onsager_tc": round(ONSAGER_TC, 4),
+        "wall_s": wall,
+        "url": REPORT_URL,
+    }
+
+
+def build_snapshot(milestones, last_run, runs, temp_c, report=None) -> dict:
     """Assemble the sanitized snapshot the /windowsill/ page consumes."""
     return {
         "schema_version": SCHEMA_VERSION,
@@ -229,6 +285,7 @@ def build_snapshot(milestones, last_run, runs, temp_c) -> dict:
         "last_run": last_run,
         "runs": runs,
         "temp_c": temp_c,
+        "latest_report": report,
         "updated": datetime.now(timezone.utc).isoformat(),
         "provenance": provenance(),
     }
@@ -238,7 +295,7 @@ def collect() -> dict:
     """Build the snapshot from the repo's milestone ladder + local run history."""
     text = MILESTONES_MD.read_text(encoding="utf-8") if MILESTONES_MD.exists() else ""
     last_run, runs = run_cadence()
-    return build_snapshot(parse_milestones(text), last_run, runs, cpu_temp_c())
+    return build_snapshot(parse_milestones(text), last_run, runs, cpu_temp_c(), latest_report())
 
 
 def _push_gist(gist_id: str, content: str) -> None:
