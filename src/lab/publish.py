@@ -27,9 +27,34 @@ MILESTONES_MD = REPO_ROOT / "MILESTONES.md"
 REPORTS_DIR = REPO_ROOT / "reports"
 
 # A checklist line: "- [x] **M01** — 2D Ising verification. ..."
+# IDs are letter-prefixed by track: M=physics, C=compute/number-theory,
+# A=astronomy, I=instrument, B=BOINC. An optional trailing "{venue=…; url=…;
+# doi=…}" tag links a contribution to its official record.
 _MILESTONE_RE = re.compile(
-    r"^\s*-\s*\[(?P<box>[ xX~\-])\]\s*\*\*(?P<id>M\d+)\*\*\s*[—\-]\s*(?P<body>.*\S)\s*$"
+    r"^\s*-\s*\[(?P<box>[ xX~\-])\]\s*\*\*(?P<id>[A-Z]{1,3}\d+)\*\*\s*[—\-]\s*(?P<body>.*\S)\s*$"
 )
+_TAG_RE = re.compile(r"\{([^}]*)\}\s*$")
+TRACKS = {"M": "physics", "C": "compute", "A": "astronomy", "I": "instrument", "B": "boinc"}
+
+
+def _track_for(mid: str) -> str:
+    prefix = re.match(r"[A-Z]+", mid)
+    return TRACKS.get(prefix.group()[0], "misc") if prefix else "misc"
+
+
+def _parse_tags(body: str) -> tuple[str, dict]:
+    """Pull a trailing ``{venue=…; url=…; doi=…}`` block off a milestone line."""
+    m = _TAG_RE.search(body)
+    if not m:
+        return body, {}
+    tags: dict = {}
+    for pair in re.split(r"[;,]", m.group(1)):
+        if "=" in pair:
+            k, v = pair.split("=", 1)
+            k, v = k.strip().lower(), v.strip()
+            if k in ("venue", "url", "doi") and v:
+                tags[k] = v
+    return body[: m.start()].strip(), tags
 
 
 def parse_milestones(text: str) -> list[dict]:
@@ -37,7 +62,9 @@ def parse_milestones(text: str) -> list[dict]:
 
     ``[x]`` → verified, ``[~]``/``[-]`` → null (failed calibration, kept on the
     books), ``[ ]`` → pending. The first pending milestone is promoted to
-    ``open`` — the experiment running now / next on the bench.
+    ``open`` — the experiment running now / next on the bench. Each milestone
+    carries its ``track`` (from the id prefix) and any ``venue``/``url``/``doi``
+    that links a verified contribution to its official record.
     """
     out: list[dict] = []
     first_pending = True
@@ -46,7 +73,7 @@ def parse_milestones(text: str) -> list[dict]:
         if not m:
             continue
         box = m.group("box").lower()
-        body = m.group("body").strip()
+        body, tags = _parse_tags(m.group("body").strip())
         title = re.split(r"[.:]", body, 1)[0].strip()
 
         if box == "x":
@@ -56,7 +83,8 @@ def parse_milestones(text: str) -> list[dict]:
         else:
             status = "pending"
 
-        ms = {"id": m.group("id"), "title": title, "status": status}
+        mid = m.group("id")
+        ms = {"id": mid, "title": title, "status": status, "track": _track_for(mid)}
 
         if status == "verified":
             # Lift the "(done <date> — <result>)" parenthetical. Prose can carry
@@ -68,6 +96,8 @@ def parse_milestones(text: str) -> list[dict]:
                 result = re.sub(r"^done\s+\S+\s*[—\-]\s*", "", chosen).strip()
                 if result:
                     ms["result"] = result
+
+        ms.update(tags)   # venue / url / doi when present
 
         if status == "pending" and first_pending:
             ms["status"] = "open"
@@ -121,6 +151,30 @@ def run_cadence() -> tuple[str | None, int]:
     return last_iso, len(dates)
 
 
+def _git_sha() -> str | None:
+    """Short commit SHA of the code that produced this snapshot (best-effort)."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", str(REPO_ROOT), "rev-parse", "--short", "HEAD"],
+            capture_output=True, text=True, check=True,
+        )
+        return out.stdout.strip() or None
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+
+
+def _env() -> str:
+    """A compact, sanitized environment string for provenance (no host/user)."""
+    import platform
+    parts = ["python " + platform.python_version(), platform.system().lower()]
+    try:
+        from importlib.metadata import version
+        parts.append("torch " + version("torch"))
+    except Exception:  # noqa: BLE001 — torch may not be installed; provenance is best-effort
+        pass
+    return " · ".join(parts)
+
+
 def build_snapshot(milestones, last_run, runs, temp_c) -> dict:
     """Assemble the sanitized snapshot the /windowsill/ page consumes."""
     return {
@@ -131,6 +185,9 @@ def build_snapshot(milestones, last_run, runs, temp_c) -> dict:
         "runs": runs,
         "temp_c": temp_c,
         "updated": datetime.now(timezone.utc).isoformat(),
+        # Receipts over vibes: every snapshot says which code + environment made
+        # it, so a result can be traced back and re-run. No host or user data.
+        "provenance": {"code_sha": _git_sha(), "env": _env()},
     }
 
 
