@@ -78,15 +78,31 @@ calibration** is a folded grey leaf (an honest null, kept on the books), the
 patient overnight **runs** water the soil, and CPU heat sets the season.
 
 ```bash
-lab publish                 # write a sanitized ~/.lab/pot.json snapshot
-lab publish --gist <id>     # …and push it to the public gist the site reads
+lab publish                 # write the committed pot.json (the live feed)
+lab verify [IDs]            # re-derive verified milestones from their reports
 ```
 
 The snapshot is built by parsing `MILESTONES.md` (the single source of truth) plus
 the run cadence in `reports/`/`~/.lab`, and the CPU temperature. It's deliberately
 sanitized — milestone ids, titles, results, run counts, and temperature only; no
-private data. A `lab run` refreshes it automatically (and pushes it when
-`POT_GIST_ID` is set), so the seed grows as the science does.
+private data. A `lab run` refreshes it automatically, so the seed grows as the
+science does.
+
+**Live feed, no secrets.** `pot.json` is committed at the repo root; the
+windowsill page reads it straight from GitHub raw through the site's edge cache.
+A nightly run commits and pushes it. (`--gist <id>` / `POT_GIST_ID` remain an
+optional legacy push target.) The shape is pinned by
+[`schema/pot.schema.json`](schema/pot.schema.json) and carries a `schema_version`
+so producer and page can't silently drift.
+
+**Verified means checked.** `lab verify` re-derives each verified milestone's
+headline number from the run report it shipped (e.g. M01's susceptibility peak
+vs Onsager's exact `T_c`) and fails if it doesn't reproduce. CI runs it, so a
+milestone can't wear a green leaf on the honor system.
+
+**Receipts.** Every snapshot carries `provenance` — the code SHA (`-dirty` when
+the tree has uncommitted changes), a sanitized environment string, and the
+versions of `torch`/`numpy`/`matplotlib` a result depended on.
 
 ## Hardware notes
 
