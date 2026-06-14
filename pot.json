@@ -206,15 +206,15 @@
   "temp_c": null,
   "latest_report": {
     "date": "2026-06-14",
-    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 56s on GPU",
+    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 36s on GPU",
     "peak_t": 2.3,
     "onsager_tc": 2.2692,
-    "wall_s": 55.510172605514526,
+    "wall_s": 36.266040325164795,
     "url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html"
   },
-  "updated": "2026-06-14T15:27:58.724211+00:00",
+  "updated": "2026-06-14T16:31:29.670403+00:00",
   "provenance": {
-    "code_sha": "45800de-dirty",
+    "code_sha": "dd5c6ae",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
