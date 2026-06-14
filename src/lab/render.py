@@ -139,8 +139,8 @@ HTML_TEMPLATE = """<!doctype html>
   </details>
 
   <div class="footer">
-    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a> and
-    <a href="https://github.com/benskamps/seed-in-a-pot">seed-in-a-pot</a>.
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
     One machine, one patient observation, real signal, accumulates over months.
   </div>
 </div>
