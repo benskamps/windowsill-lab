@@ -1,0 +1,55 @@
+# Mirror the canonical seed-in-the-pot page to brokenbranch.dev.
+#
+# web/index.html in THIS repo is the single source of truth. Whenever it changes
+# on main, copy it into the website repo so the hosted surface
+# (brokenbranch.dev/windowsill) always matches what people download here.
+#
+# Setup (one time): add a repo secret named SITE_SYNC_TOKEN — a fine-grained
+# Personal Access Token scoped to benskamps/brokenbranchdevwebsite with
+# "Contents: Read and write". Nothing else is needed.
+name: Mirror page to brokenbranch.dev
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - web/index.html
+      - .github/workflows/mirror-page.yml
+  workflow_dispatch: {}   # manual "sync now" button
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mirror-page
+  cancel-in-progress: true
+
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the lab (source of truth)
+        uses: actions/checkout@v4
+
+      - name: Check out the website (mirror target)
+        uses: actions/checkout@v4
+        with:
+          repository: benskamps/brokenbranchdevwebsite
+          token: ${{ secrets.SITE_SYNC_TOKEN }}
+          path: site
+
+      - name: Copy the page across
+        run: cp web/index.html site/windowsill/index.html
+
+      - name: Commit & push only if it actually changed
+        working-directory: site
+        run: |
+          git config user.name "windowsill-bot"
+          git config user.email "windowsill-bot@users.noreply.github.com"
+          if git diff --quiet -- windowsill/index.html; then
+            echo "site already matches web/index.html — nothing to mirror"
+            exit 0
+          fi
+          git add windowsill/index.html
+          git commit -m "chore(windowsill): mirror web/index.html from windowsill-lab@${GITHUB_SHA::7}"
+          git push
