@@ -17,7 +17,7 @@ jobs:
           python-version: "3.11"
       - run: pip install pytest
       - name: Pipeline + contract tests
-        run: PYTHONPATH=src pytest tests/test_publish.py tests/test_checks.py tests/test_schema.py
+        run: PYTHONPATH=src pytest tests/test_publish.py tests/test_checks.py tests/test_schema.py tests/test_setup.py
       - name: Verify milestones reproduce their numbers
         run: PYTHONPATH=src python -m lab.cli verify
       - name: pot.json is in sync with MILESTONES.md
