@@ -59,6 +59,16 @@ def _parse_run(args):
 
 
 def main(argv=None):
+    # Windows consoles default to the cp1252 codec, which can't encode the
+    # unicode the CLI prints (→ ✓ · 🌱) or the reports carry — without this,
+    # every `lab` invocation crashes with a UnicodeEncodeError. A no-op where
+    # stdout is already UTF-8 (Linux/macOS) or isn't reconfigurable (a pipe).
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8")
+        except (AttributeError, ValueError):
+            pass
+
     args = list(sys.argv[1:] if argv is None else argv)
     cmd = args[0] if args else "open"
 

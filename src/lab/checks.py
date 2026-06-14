@@ -67,8 +67,8 @@ def verify(ids: list[str] | None = None) -> list[dict]:
     Each result: ``pass`` / ``fail`` (check ran), ``unchecked`` (no check yet),
     or ``no-report`` (nothing the check can read).
     """
-    ms = parse_milestones(MILESTONES_MD.read_text() if MILESTONES_MD.exists() else "")
-    reports = [json.loads(p.read_text()) for p in _reports_newest_first()]
+    ms = parse_milestones(MILESTONES_MD.read_text(encoding="utf-8") if MILESTONES_MD.exists() else "")
+    reports = [json.loads(p.read_text(encoding="utf-8")) for p in _reports_newest_first()]
 
     results: list[dict] = []
     for m in ms:
