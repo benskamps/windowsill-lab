@@ -36,6 +36,43 @@ into `reports/`.
 - [ ] **M17** — KPZ growth on circular geometry — interfaces wrapping around a torus, GUE-Tracy-Widom distribution of fluctuations. Numerical exponents 1/3 in time, 2/3 in space.
 - [ ] **M18** — Directed percolation in 2+1d at the absorbing-state transition. Universality class is one of the simplest non-equilibrium examples.
 
+---
+
+# The Citizen Science book
+
+The physics ladder above proves the lab can be trusted. This book points that
+trust *outward* — at real contributions a single patient machine can make to
+science that other people use. Same rule as the physics: **calibrate first**
+(reproduce a known result), then contribute, then submit to the official record.
+See [CITIZEN_SCIENCE.md](CITIZEN_SCIENCE.md) for venues, contributor IDs, and the
+provenance/DOI workflow. IDs are track-prefixed (C/A/I/B) and a verified
+contribution carries its record as `{venue=… ; url=… ; doi=…}`.
+
+## Track C — compute & number theory
+
+- [ ] **C01** — Calibrate the number stack: reproduce a known OEIS b-file segment byte-for-byte and re-verify a small known Mersenne prime. A pass means the arithmetic is trustworthy.
+- [ ] **C02** — Run one assigned GIMPS exponent (PRP + proof) to completion and submit the residue. {venue=GIMPS}
+- [ ] **C03** — Extend an existing OEIS sequence's b-file by N verified terms (or submit a new sequence) and get it accepted. {venue=OEIS}
+- [ ] **C04** — Join PrimeGrid and complete validated work units on an open prime problem (Proth / Sierpiński). {venue=PrimeGrid}
+
+## Track A — astronomy from open archives
+
+- [ ] **A01** — Calibrate photometry: recover a *confirmed* TESS hot-Jupiter's period and transit depth from open MAST data, within the published error bars.
+- [ ] **A02** — Recover a known variable star's light curve and period; register an AAVSO observer code and submit one validated observation. {venue=AAVSO}
+- [ ] **A03** — Reprocess one open LIGO/Virgo event from GWOSC and reproduce its published chirp mass within error. {venue=GWOSC}
+- [ ] **A04** — Blind transit search across one TESS sector; vet the candidates and report a recovered planet. {venue=ExoFOP}
+
+## Track I — the machine as instrument
+
+- [ ] **I01** — Calibrate the CMOS as a particle detector: cap the sensor, characterize dark noise, and separate hot pixels from track-like events (DECO/CRAYFIS method).
+- [ ] **I02** — Log cosmic-ray muon candidates for a month; check the rate against the ~1 / cm² / min expectation and the zenith-angle dependence. {venue=DECO}
+- [ ] **I03** — Stand up a hardware-entropy beacon: publish a signed, timestamped randomness feed that passes the NIST SP 800-22 health tests. {venue=Zenodo}
+
+## Track B — donate cycles (BOINC)
+
+- [ ] **B01** — Join a team and complete validated work units on Einstein@Home (continuous-gravitational-wave / pulsar search). {venue=Einstein@Home}
+- [ ] **B02** — Complete validated units on Rosetta@home or World Community Grid; archive the credit record. {venue=BOINC}
+
 ## Conventions
 
 - Each milestone PR includes the report it generated (drop the HTML +

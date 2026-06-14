@@ -55,6 +55,18 @@ re-analyze without re-running.
 
 See [MILESTONES.md](MILESTONES.md) for the concrete next-step list.
 
+## The Citizen Science book
+
+The four phases above are physics — they prove the lab can be trusted. Once
+trusted, the same patient machine can point *outward* at real contributions:
+number theory (GIMPS, OEIS, PrimeGrid), astronomy from open archives (AAVSO,
+TESS/ExoFOP, GWOSC), the hardware itself as a particle detector (DECO/CRAYFIS),
+and donated cycles (BOINC). Same rule throughout — **calibrate against a known
+result first**, then contribute, then submit to the official record. Verified
+contributions carry their record (`venue` / `url` / `doi`) and every published
+snapshot ships a `provenance` block (code SHA + environment) so any number can be
+traced and re-run. See [CITIZEN_SCIENCE.md](CITIZEN_SCIENCE.md).
+
 ## Feeding the seed
 
 The lab is the food source for its calm sibling

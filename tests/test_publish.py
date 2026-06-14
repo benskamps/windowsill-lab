@@ -59,7 +59,45 @@ def test_build_snapshot_shape():
     assert snap["temp_c"] == 47.0
     assert snap["last_run"].startswith("2026-06-08")
     assert "updated" in snap
+    assert "code_sha" in snap["provenance"] and "env" in snap["provenance"]
 
 
 def test_handles_empty_text():
     assert parse_milestones("") == []
+
+
+# ── The Citizen Science book: letter-prefixed tracks + record tags ──────────
+CITIZEN = """
+- [x] **M01** — 2D Ising verification. (done 2026-06-08 — Onsager check)
+- [x] **C03** — Extend OEIS A000123. (done 2026-08-01 — accepted) {venue=OEIS; url=https://oeis.org/A000123; doi=10.5281/zenodo.123456}
+- [ ] **A02** — Recover a variable star and submit. {venue=AAVSO}
+- [ ] **I02** — Log cosmic-ray muon candidates for a month. {venue=DECO}
+"""
+
+
+def test_track_is_derived_from_prefix():
+    ms = {m["id"]: m for m in parse_milestones(CITIZEN)}
+    assert ms["M01"]["track"] == "physics"
+    assert ms["C03"]["track"] == "compute"
+    assert ms["A02"]["track"] == "astronomy"
+    assert ms["I02"]["track"] == "instrument"
+
+
+def test_record_tags_are_parsed():
+    ms = {m["id"]: m for m in parse_milestones(CITIZEN)}
+    assert ms["C03"]["venue"] == "OEIS"
+    assert ms["C03"]["url"] == "https://oeis.org/A000123"
+    assert ms["C03"]["doi"] == "10.5281/zenodo.123456"
+
+
+def test_tag_block_stripped_from_title_and_result():
+    ms = {m["id"]: m for m in parse_milestones(CITIZEN)}
+    assert "{" not in ms["C03"]["title"]
+    assert "venue" not in ms["C03"].get("result", "")
+
+
+def test_tags_flow_on_pending_too():
+    ms = {m["id"]: m for m in parse_milestones(CITIZEN)}
+    assert ms["A02"]["venue"] == "AAVSO"
+    # A02 is the first pending across the sample → promoted to the open experiment
+    assert ms["A02"]["status"] == "open"
