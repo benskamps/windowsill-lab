@@ -179,11 +179,17 @@ def _git(*args: str) -> str | None:
 
 
 def _git_sha() -> str | None:
-    """Short commit SHA, with ``-dirty`` if the tree has uncommitted changes."""
+    """Short commit SHA, with ``-dirty`` only if *code* has uncommitted changes.
+
+    Scoped to ``src/`` + ``pyproject.toml`` on purpose: a fresh untracked run
+    report or a rewritten ``pot.json`` is data churn, not a code change, and
+    shouldn't make every published number look like it came from a dirty tree.
+    """
     sha = _git("rev-parse", "--short", "HEAD")
     if not sha:
         return None
-    return sha + "-dirty" if _git("status", "--porcelain") else sha
+    dirty = _git("status", "--porcelain", "--", "src", "pyproject.toml")
+    return sha + "-dirty" if dirty else sha
 
 
 def _deps() -> dict:

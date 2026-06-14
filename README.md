@@ -37,7 +37,15 @@ pip install -e .
 
 lab run     # run today's experiment (Phase 1: Ising)
 lab         # open the latest report in your browser
+lab setup   # install the nightly job so the windowsill grows on its own
 ```
+
+`lab setup` runs a pre-flight (Python, git remote, compute device) and then
+installs a nightly job — a systemd **user** timer where available, a cron line
+otherwise — that runs the experiment, refreshes `pot.json`, and pushes it. After
+that the seed breathes without you. Inspect first with `lab setup --check`, or
+see the plan with `lab setup --dry-run`. No accounts, no service to sign into —
+publishing is your own `git push`.
 
 The report lives at `~/.lab/YYYY-MM-DD.html` (one per day) with a
 `~/.lab/latest.html` pointer for convenience. Raw measurements are also
