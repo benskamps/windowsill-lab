@@ -1,5 +1,11 @@
 """Tests for the seed-in-a-pot snapshot builder (stdlib-only, no torch)."""
-from lab.publish import build_snapshot, parse_milestones
+import json
+import os
+from datetime import date, datetime, timezone
+
+from lab import publish
+from lab.publish import build_snapshot, parse_milestones, run_cadence, today_local
+from lab.publish import _newest_report
 
 
 SAMPLE = """
@@ -126,3 +132,57 @@ def test_progress_tag_is_parsed_and_clamped():
     assert over["progress"] == 1.0
     bad = parse_milestones("- [>] **C01** — calibrate. {progress=soon}")[0]
     assert "progress" not in bad
+
+
+# ── Report dates are LOCAL, and "newest" is by mtime, not date-string ────────
+# A report run in the evening should carry the operator's local day, not the
+# UTC day (which can already be "tomorrow"). And the *newest* report is the one
+# most recently written — never the one whose filename sorts highest. Those two
+# facts are coupled: once dates are local, a stale future-dated file (e.g. a
+# UTC-dated 06-16 left over from an evening run) must not shadow a fresh 06-15.
+
+def test_today_local_is_the_wall_clock_date():
+    assert today_local() == date.today().isoformat()
+
+
+def _write_report(directory, stem, mtime):
+    """Drop a minimal valid report JSON dated `stem`, stamped at `mtime`."""
+    directory.mkdir(parents=True, exist_ok=True)
+    p = directory / f"{stem}.json"
+    p.write_text(json.dumps({
+        "T": [2.2, 2.3, 2.4],
+        "chi": [1.0, 9.0, 1.0],          # peaks at T=2.3
+        "wall_seconds": 35.0,
+        "headline": f"run {stem}",
+    }), encoding="utf-8")
+    os.utime(p, (mtime, mtime))
+    return p
+
+
+def test_newest_report_is_by_mtime_not_lexicographic_date(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    lab_home = tmp_path / "lab"
+    monkeypatch.setattr(publish, "REPORTS_DIR", reports)
+    monkeypatch.setattr(publish, "LAB_HOME", lab_home)
+    # A stale future-dated file written EARLIER, and the real latest run written
+    # LATER but with an earlier date string. mtime must win.
+    _write_report(lab_home, "2026-06-16", mtime=1000)   # higher date, older write
+    _write_report(lab_home, "2026-06-15", mtime=2000)   # lower date, newer write
+    rep = _newest_report()
+    assert rep["_date"] == "2026-06-15"                  # the truly-newest run
+
+
+def test_run_cadence_last_is_by_mtime_total_is_distinct_days(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    lab_home = tmp_path / "lab"
+    monkeypatch.setattr(publish, "REPORTS_DIR", reports)
+    monkeypatch.setattr(publish, "LAB_HOME", lab_home)
+    _write_report(reports, "2026-06-08", mtime=500)
+    _write_report(lab_home, "2026-06-16", mtime=1000)   # future date, older write
+    newest_mtime = 2000
+    _write_report(lab_home, "2026-06-15", mtime=newest_mtime)   # the real last run
+    last_iso, total = run_cadence()
+    assert total == 3                                    # three distinct days on record
+    # last_run is the actual moment the newest report was written (mtime), so it
+    # tracks the 06-15 file even though 06-16 sorts higher as a string.
+    assert last_iso == datetime.fromtimestamp(newest_mtime, timezone.utc).isoformat()

@@ -207,22 +207,43 @@ def _cpu_temp_windows() -> float | None:
     return round(best[0], 1) if best else None
 
 
+def today_local() -> str:
+    """The local calendar date as ``YYYY-MM-DD`` — the operator's "tonight".
+
+    Reports are dated in *local* time, not UTC. The windowsill is a personal
+    instrument; "last night I ran ..." should match the day on the human's wall
+    clock, so an evening run isn't stamped tomorrow. (The 03:00 nightly is
+    unaffected — at 3 a.m. the local and UTC dates already agree for any sane
+    timezone; the divergence only bit off-hours manual runs.)
+    """
+    return datetime.now().date().isoformat()
+
+
+def _report_jsons() -> list[Path]:
+    """Every daily report JSON on record, across the repo and ``~/.lab``."""
+    paths: list[Path] = []
+    for directory in (REPORTS_DIR, LAB_HOME):
+        if directory.exists():
+            paths += directory.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json")
+    return paths
+
+
 def run_cadence() -> tuple[str | None, int]:
     """``(last_run ISO, total runs)`` from daily report JSONs.
 
     Each ``YYYY-MM-DD.json`` report (in the repo's ``reports/`` and in
-    ``~/.lab``) counts as one patient overnight run.
+    ``~/.lab``) counts as one patient overnight run. "Last run" is the report
+    written most recently — keyed off file mtime, not the highest date string —
+    so a stale future-dated artifact (or a backfilled date) can't masquerade as
+    the latest. ``total`` is the number of *distinct* days observed.
     """
-    dates: set[str] = set()
-    for directory in (REPORTS_DIR, LAB_HOME):
-        if directory.exists():
-            for p in directory.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json"):
-                dates.add(p.stem)
-    if not dates:
+    paths = _report_jsons()
+    if not paths:
         return None, 0
-    last = max(dates)
-    last_iso = datetime.fromisoformat(last).replace(tzinfo=timezone.utc).isoformat()
-    return last_iso, len(dates)
+    last_path = max(paths, key=lambda p: p.stat().st_mtime)
+    last_iso = datetime.fromtimestamp(last_path.stat().st_mtime, timezone.utc).isoformat()
+    total = len({p.stem for p in paths})
+    return last_iso, total
 
 
 def _git(*args: str) -> str | None:
@@ -278,14 +299,15 @@ def provenance() -> dict:
 
 
 def _newest_report() -> dict | None:
-    """The newest daily report JSON (repo ``reports/`` or ``~/.lab``)."""
-    paths: list[Path] = []
-    for d in (REPORTS_DIR, LAB_HOME):
-        if d.exists():
-            paths += d.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json")
+    """The newest daily report JSON (repo ``reports/`` or ``~/.lab``).
+
+    "Newest" = most recently written (mtime), not the highest date string. The
+    page shows whatever ran last; a leftover future-dated file must not win.
+    """
+    paths = _report_jsons()
     if not paths:
         return None
-    newest = max(paths, key=lambda p: p.stem)
+    newest = max(paths, key=lambda p: p.stat().st_mtime)
     try:
         data = json.loads(newest.read_text(encoding="utf-8"))
     except (OSError, ValueError):

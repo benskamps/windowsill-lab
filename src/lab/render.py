@@ -153,7 +153,8 @@ HTML_TEMPLATE = """<!doctype html>
 
 
 def render(result: RunResult, date: str | None = None) -> Path:
-    date = date or datetime.now(timezone.utc).date().isoformat()
+    from .publish import today_local
+    date = date or today_local()   # local day, not UTC — see today_local()
     _ensure_home()
     out = LAB_HOME / f"{date}.html"
 

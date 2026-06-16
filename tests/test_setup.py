@@ -58,6 +58,10 @@ def test_task_xml_is_wellformed_and_runs_the_nightly():
     assert "2026-01-01T04:30:00" in xml                # the chosen schedule time
     assert str(setup.NIGHTLY_PS1) in xml               # the action runs nightly.ps1
     assert "powershell.exe" in xml
+    # Resilience: catch a missed start, and wake a sleeping box so the
+    # windowsill grows even when nobody's at the machine at 3am.
+    assert "<StartWhenAvailable>true</StartWhenAvailable>" in xml
+    assert "<WakeToRun>true</WakeToRun>" in xml
 
 
 def test_windows_dry_run_writes_nothing(tmp_path, monkeypatch):

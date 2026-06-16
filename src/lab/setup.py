@@ -161,7 +161,8 @@ Log "-- done"
 
 # Task Scheduler XML. schtasks /Create /XML wants UTF-16, so the file is written
 # as utf-16 and the declaration says so. InteractiveToken = no stored password
-# (runs while logged in); StartWhenAvailable catches a missed 3am if the box slept.
+# (runs while logged in); StartWhenAvailable catches a missed 3am if the box slept,
+# and WakeToRun wakes a sleeping machine so the windowsill grows even unattended.
 _TASK_XML = """<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
@@ -185,6 +186,7 @@ _TASK_XML = """<?xml version="1.0" encoding="UTF-16"?>
   <Settings>
     <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
     <StartWhenAvailable>true</StartWhenAvailable>
+    <WakeToRun>true</WakeToRun>
     <ExecutionTimeLimit>PT2H</ExecutionTimeLimit>
     <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
     <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
