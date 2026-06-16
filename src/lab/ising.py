@@ -36,7 +36,8 @@ class RunResult:
     T: np.ndarray              # (n_temps,)
     abs_mag: np.ndarray        # mean |M| per spin, (n_temps,)
     abs_mag_err: np.ndarray    # standard error of mean |M|, (n_temps,)
-    chi: np.ndarray            # susceptibility per spin, (n_temps,)
+    chi: np.ndarray            # susceptibility per spin (signed m), (n_temps,)
+    chi_abs: np.ndarray        # |m|-based susceptibility (FSS-appropriate), (n_temps,)
     energy: np.ndarray         # mean energy per spin, (n_temps,)
     snapshots: dict            # {temperature_key: 2D int8 lattice, sampled at end}
     wall_seconds: float
@@ -48,6 +49,7 @@ class RunResult:
             "abs_mag": self.abs_mag.tolist(),
             "abs_mag_err": self.abs_mag_err.tolist(),
             "chi": self.chi.tolist(),
+            "chi_abs": self.chi_abs.tolist(),
             "energy": self.energy.tolist(),
             "snapshots": {k: v.astype(int).tolist() for k, v in self.snapshots.items()},
             "wall_seconds": self.wall_seconds,
@@ -118,6 +120,13 @@ def run(cfg: RunConfig) -> RunResult:
     abs_mag = abs_mag_per_sample.mean(dim=0).numpy()
     abs_mag_err = (abs_mag_per_sample.std(dim=0) / np.sqrt(len(mag_samples))).numpy()
     chi = (cfg.L * cfg.L) * (mag.pow(2).mean(dim=0) - mag.mean(dim=0).pow(2)).numpy() / T.cpu().numpy()
+    # |m|-based susceptibility — the finite-size-scaling–appropriate observable.
+    # Using ⟨|m|⟩ instead of ⟨m⟩ removes the spurious variance from magnetization
+    # sign-flips that contaminates the signed χ on large lattices near T_c, where
+    # the system can't tunnel between ±M in a finite run.  χ' = L²(⟨m²⟩−⟨|m|⟩²)/T.
+    chi_abs = (cfg.L * cfg.L) * (
+        mag.pow(2).mean(dim=0) - abs_mag_per_sample.mean(dim=0).pow(2)
+    ).numpy() / T.cpu().numpy()
     energy_mean = energy.mean(dim=0).numpy()
 
     # Save a few snapshot lattices for the gallery
@@ -131,6 +140,7 @@ def run(cfg: RunConfig) -> RunResult:
         abs_mag=abs_mag,
         abs_mag_err=abs_mag_err,
         chi=chi,
+        chi_abs=chi_abs,
         energy=energy_mean,
         snapshots=snapshots,
         wall_seconds=wall,

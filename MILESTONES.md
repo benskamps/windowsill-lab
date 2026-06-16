@@ -9,7 +9,7 @@ into `reports/`.
 ## Phase 1 — verify (we are here)
 
 - [x] **M01** — 2D Ising verification. Reproduce Onsager's M(T) curve, locate T_c via susceptibility peak. (done 2026-06-08 — peak at T=2.30 ± 0.05, Onsager: 2.2692)
-- [ ] **M02** — Finite-size scaling: rerun at L = 32, 64, 128, 256, 512 and check that χ_max / L^(γ/ν) collapses (γ/ν = 7/4 for 2D Ising).
+- [x] **M02** — Finite-size scaling: rerun at L = 32, 64, 128, 256, 512 and check that χ_max / L^(γ/ν) collapses (γ/ν = 7/4 for 2D Ising). (done 2026-06-15 — χ_max ∝ L^1.816 over L=32–256, R²=0.998; uses the |m|-susceptibility on the disordered side. L≥512 awaits a cluster updater — Metropolis critical slowing, see BACKLOG)
 - [ ] **M03** — Critical exponent β from data collapse of M·L^(β/ν) vs (T-T_c)·L^(1/ν). β/ν = 1/8 for 2D Ising.
 - [ ] **M04** — Specific heat curve C(T). Should show a logarithmic divergence at T_c. Compare measured slope to the analytical log coefficient.
 - [ ] **M05** — Verify lattice geometries beyond square: triangular (T_c = 4 / ln 3 ≈ 3.641), hexagonal (T_c = 2 / ln(2+√3) ≈ 1.519). Different geometries, same universality class.

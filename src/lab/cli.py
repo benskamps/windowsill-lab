@@ -15,6 +15,7 @@ HELP = """lab — a windowsill physics lab.
 Usage:
   lab                 run today's experiment and open the report
   lab run             run only — don't open the browser
+  lab m02             run M02: finite-size scaling across lattice sizes
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -53,6 +54,22 @@ def _parse_run(args):
     p.add_argument("--n-temps", type=int, default=21)
     p.add_argument("--sweeps", type=int, default=40000)
     p.add_argument("--burnin", type=int, default=8000)
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m02(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--L", type=str, default=None,
+                   help="comma-separated lattice sizes, e.g. 32,64,128,256,512")
+    p.add_argument("--quick", action="store_true",
+                   help="cap at L=128 for a faster pass")
+    p.add_argument("--t-min", type=float, default=2.27)
+    p.add_argument("--t-max", type=float, default=2.40)
+    p.add_argument("--n-temps", type=int, default=24)
+    p.add_argument("--sweeps", type=int, default=80000)
+    p.add_argument("--burnin", type=int, default=30000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
@@ -133,6 +150,41 @@ def main(argv=None):
         for n in plan["notes"]:
             print(n)
         print("\nthe windowsill will now grow on its own. 🌱")
+        return 0
+
+    if cmd == "m02":
+        ns = _parse_m02(args[1:])
+        from . import fss
+        from . import render as render_mod
+        if ns.L:
+            L_values = tuple(int(x) for x in ns.L.split(","))
+        elif ns.quick:
+            L_values = (32, 64, 128)
+        else:
+            L_values = fss.DEFAULT_L
+        print(f"M02 finite-size scaling · L = {', '.join(map(str, L_values))} · "
+              f"{ns.n_temps} temps in [{ns.t_min}, {ns.t_max}] · {ns.sweeps:,} sweeps")
+
+        def _progress(L, curve):
+            print(f"  ✓ L={L:<4} χ_max={curve.chi_max:8.1f} at T={curve.T_peak:.3f}"
+                  f"  ({curve.wall_seconds:.1f}s)")
+
+        result = fss.run_fss(
+            L_values=L_values, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
+            n_sweeps=ns.sweeps, n_burnin=ns.burnin, seed=ns.seed, device=ns.device,
+            progress=_progress,
+        )
+        report = fss.to_report(result)
+        print(f"  → χ_max ∝ L^{result.slope:.3f}  (theory γ/ν = 7/4 = 1.75, "
+              f"R²={result.r2:.4f})  ·  {result.wall_seconds:.0f}s total")
+        path = render_mod.render_fss(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
         return 0
 
     if cmd == "run" or (cmd not in ("help", "open") and cmd.startswith("--")):

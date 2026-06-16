@@ -4,6 +4,24 @@ Where the windowsill is headed. Not commitments — a place to park ideas so the
 don't get lost, and so the shape of the project stays legible. Roughly ordered
 by how soon they matter.
 
+## Instrument — a cluster algorithm (the next big unlock)
+
+M02 (finite-size scaling) landed cleanly over L = 32–256 but **stops there**: the
+single-spin Metropolis updater suffers critical slowing down (dynamic exponent
+z ≈ 2.17), so the largest lattices can't develop their full critical fluctuation
+spectrum in a tractable number of sweeps — χ_max gets under-measured and the
+slope sags. This caps every critical-point milestone (M02 finite-size scaling,
+M03 β/ν, M04 specific heat, and the spin-glass runs M11+) at modest L.
+
+- [ ] **Wolff single-cluster updates** (z ≈ 0.25 — essentially no critical
+      slowing). Grow a cluster by adding aligned neighbours with probability
+      p = 1 − exp(−2β), flip it whole. GPU-friendly as an iterative
+      frontier-expansion (parallel BFS) across the batched lattices. This is the
+      correct instrument for criticality and unlocks clean FSS to L ≥ 512 and
+      sharp exponents for M03/M04. Keep Metropolis as the default for
+      off-critical sweeps; pick the updater by regime.
+- [ ] Once Wolff lands, re-run M02 to L = 512/1024 and tighten the measured γ/ν.
+
 ## Growth forms — different plants for different experiments
 
 Today every experiment grows the same seedling. The aim: a small **family** of

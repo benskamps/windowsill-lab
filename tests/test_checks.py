@@ -1,5 +1,18 @@
 """The verification gate: a verified milestone must reproduce its number."""
-from lab.checks import ONSAGER_TC, _grade, check_m01, verify
+from lab.checks import (
+    GAMMA_OVER_NU, ONSAGER_TC, _grade, check_m01, check_m02, verify,
+)
+
+
+def _fss_report(slope=GAMMA_OVER_NU, A=0.4):
+    """A synthetic M02 report whose χ_max follows χ_max = A·L^slope."""
+    Ls = [32, 64, 128, 256, 512]
+    return {
+        "experiment": "M02-finite-size-scaling",
+        "curves": [
+            {"L": L, "chi_max": A * L ** slope, "T_peak": 2.27} for L in Ls
+        ],
+    }
 
 
 def _ising_report(peak_at):
@@ -48,3 +61,35 @@ def test_verify_runs_against_the_repo():
 
 def test_verify_filters_by_id():
     assert verify(["ZZ99"]) == []   # not a verified milestone → nothing to do
+
+
+# ── M02: finite-size scaling check ───────────────────────────────────────────
+def test_m02_passes_on_correct_scaling():
+    ok, detail = check_m02(_fss_report(slope=GAMMA_OVER_NU))
+    assert ok, detail
+    assert "L^1.7" in detail   # measured slope near 7/4
+
+
+def test_m02_fails_on_wrong_scaling():
+    # A simulation scaling like L^1 (e.g. a bug) must be caught.
+    ok, _ = check_m02(_fss_report(slope=1.0))
+    assert ok is False
+
+
+def test_m02_not_applicable_to_an_ising_report():
+    ok, detail = check_m02(_ising_report(2.3))
+    assert ok is None and "not a finite-size" in detail
+
+
+def test_m01_skips_an_fss_report():
+    # The two checks must not cross-grade: M01 reads T/chi, which an FSS report
+    # deliberately omits at top level.
+    ok, detail = check_m01(_fss_report())
+    assert ok is None
+
+
+def test_m02_needs_enough_sizes():
+    short = {"experiment": "M02-finite-size-scaling",
+             "curves": [{"L": 32, "chi_max": 10.0}, {"L": 64, "chi_max": 33.0}]}
+    ok, _ = check_m02(short)
+    assert ok is None   # fewer than 3 sizes → not gradable
