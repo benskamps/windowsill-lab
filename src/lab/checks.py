@@ -20,6 +20,8 @@ from .publish import LAB_HOME, MILESTONES_MD, REPORTS_DIR, parse_milestones
 
 # Onsager's exact 2D Ising critical temperature, 1944.
 ONSAGER_TC = 2.0 / math.log(1.0 + math.sqrt(2.0))   # ≈ 2.2692
+# Exact 2D Ising susceptibility exponent ratio (M02 finite-size scaling).
+GAMMA_OVER_NU = 7.0 / 4.0   # = 1.75
 
 
 def _reports_newest_first() -> list[Path]:
@@ -47,9 +49,54 @@ def check_m01(report: dict) -> tuple[bool | None, str]:
     return ok, f"χ peak at T={peak_T:.3f} vs Onsager {ONSAGER_TC:.3f} (tol ±{tol})"
 
 
+def _loglog_slope(xs: list[float], ys: list[float]) -> tuple[float, float]:
+    """Least-squares slope + R² of ``log y`` vs ``log x`` (stdlib only).
+
+    The check re-derives the scaling exponent itself rather than trusting the
+    number the experiment reported — a receipt, not an honour-system echo.
+    """
+    lx = [math.log(x) for x in xs]
+    ly = [math.log(y) for y in ys]
+    n = len(lx)
+    mx, my = sum(lx) / n, sum(ly) / n
+    sxx = sum((a - mx) ** 2 for a in lx)
+    sxy = sum((a - mx) * (b - my) for a, b in zip(lx, ly))
+    slope = sxy / sxx
+    intercept = my - slope * mx
+    ss_res = sum((b - (slope * a + intercept)) ** 2 for a, b in zip(lx, ly))
+    ss_tot = sum((b - my) ** 2 for b in ly)
+    r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+    return slope, r2
+
+
+def check_m02(report: dict) -> tuple[bool | None, str]:
+    """Finite-size scaling: the peak susceptibility grows as χ_max ∝ L^(γ/ν).
+
+    Returns ``None`` unless this is an M02 report. Otherwise re-fits the slope
+    of log χ_max vs log L from the per-L peaks and asserts it sits near the
+    exact 2D Ising exponent γ/ν = 7/4, with a tight log-log fit. A generous
+    tolerance — this catches a simulation that scales wrong (or not at all),
+    not a high-precision exponent measurement.
+    """
+    if report.get("experiment") != "M02-finite-size-scaling":
+        return None, "not a finite-size-scaling report"
+    curves = report.get("curves") or []
+    Ls = [c.get("L") for c in curves]
+    chimax = [c.get("chi_max") for c in curves]
+    if len(Ls) < 3 or any(v is None or v <= 0 for v in Ls + chimax):
+        return None, "finite-size-scaling report missing per-L peaks"
+    slope, r2 = _loglog_slope(Ls, chimax)
+    tol = 0.15
+    ok = abs(slope - GAMMA_OVER_NU) <= tol and r2 >= 0.97
+    return ok, (
+        f"χ_max ∝ L^{slope:.3f} vs γ/ν={GAMMA_OVER_NU:.2f} "
+        f"(tol ±{tol}, R²={r2:.3f}, {len(Ls)} sizes)"
+    )
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
-CHECKS = {"M01": check_m01}
+CHECKS = {"M01": check_m01, "M02": check_m02}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:
