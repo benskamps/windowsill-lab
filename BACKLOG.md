@@ -21,6 +21,14 @@ M03 β/ν, M04 specific heat, and the spin-glass runs M11+) at modest L.
       sharp exponents for M03/M04. Keep Metropolis as the default for
       off-critical sweeps; pick the updater by regime.
 - [ ] Once Wolff lands, re-run M02 to L = 512/1024 and tighten the measured γ/ν.
+- [ ] **Sharpen M06's 3D T_c via an L-extrapolation.** The Phase-2 M06 run lands
+      the χ-peak at T_c(L=12) = 4.504 (0.17% from the MC benchmark 4.5115), but a
+      single small lattice carries an O(L^−1/ν) finite-size shift in its
+      pseudo-critical peak. Sweep several L (8, 10, 12, 16…) and extrapolate
+      T_c(L) → T_c(∞) to turn a calibration pass into a precision number. The 3D
+      checkerboard engine (`ising3d.py`) already batches over temperatures; a 3D
+      Wolff updater (once the 2D one is generalized) would let this reach L ≥ 24
+      without critical slowing.
 
 ## Growth forms — different plants for different experiments
 

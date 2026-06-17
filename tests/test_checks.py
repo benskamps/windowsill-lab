@@ -2,8 +2,8 @@
 import math
 
 from lab.checks import (
-    BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC,
-    _grade, check_m01, check_m02, check_m03, verify,
+    BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, TC_3D,
+    _grade, check_m01, check_m02, check_m03, check_m06, verify,
 )
 
 
@@ -145,3 +145,45 @@ def test_m03_needs_enough_sizes():
     rep = _m03_report(Ls=(16, 32))
     ok, _ = check_m03(rep)
     assert ok is None   # fewer than 3 sizes → not gradable
+
+
+# ── M06: 3D-Ising check ──────────────────────────────────────────────────────
+def _m06_report(peak_at=TC_3D):
+    """A toy 3D-Ising report whose χ peaks at temperature ``peak_at``."""
+    T = [round(4.1 + 0.04 * i, 3) for i in range(21)]            # 4.1 … 4.9
+    chi = [1.0 / (abs(t - peak_at) + 0.02) for t in T]          # sharp peak at peak_at
+    return {"experiment": "M06-3d-ising", "T": T, "chi": chi}
+
+
+def test_m06_passes_near_benchmark():
+    ok, detail = check_m06(_m06_report(TC_3D))
+    assert ok, detail
+    assert "4.51" in detail   # cites the MC benchmark
+
+
+def test_m06_fails_when_peak_is_wrong():
+    # A transition located at the 2D T_c (≈2.27) — i.e. a dimensionality bug —
+    # is nowhere near 4.5115 and must be caught. (Use an in-window wrong peak.)
+    ok, _ = check_m06(_m06_report(4.2))
+    assert ok is False
+
+
+def test_m06_not_applicable_to_an_ising_report():
+    ok, detail = check_m06(_ising_report(2.3))   # no experiment tag → 2D M01-shaped
+    assert ok is None and "not a 3D-Ising" in detail
+
+
+def test_m01_skips_an_m06_report():
+    # THE cross-grading guard: an M06 report carries top-level T+chi but a 3D
+    # T_c. The M01 check must NOT grade it against Onsager's 2D 2.269.
+    ok, detail = check_m01(_m06_report(TC_3D))
+    assert ok is None and "2D Ising" in detail
+
+
+def test_m01_still_grades_its_own_tagged_report():
+    # The guard must let the real M01 tag through (render.py tags it
+    # "M01-ising-verification"), not just untagged legacy dumps.
+    rep = _ising_report(round(ONSAGER_TC, 1))
+    rep["experiment"] = "M01-ising-verification"
+    ok, detail = check_m01(rep)
+    assert ok, detail

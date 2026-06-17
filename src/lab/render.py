@@ -581,3 +581,180 @@ def render_fss(report: dict, date: str | None = None) -> Path:
     # so this finite-size-scaling run is preserved, not buried by the next run.
     _commit_report(date, slug, html, json_dump)
     return out
+
+
+# ── M06 — 3D simple-cubic Ising ──────────────────────────────────────────────
+
+
+def _plot_m06_chi(report: dict) -> str:
+    """χ(T) and the located T_c vs the 3D MC benchmark — M06's headline plot."""
+    T = report["T"]
+    chi = report["chi"]
+    tc_fit = report.get("tc_chi_refined", report.get("tc_chi"))
+    tc_bench = report.get("tc_benchmark", 4.5115)
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.plot(T, chi, "o-", color="#7a4e2f", markersize=4, linewidth=1.5,
+            label=f"Measured χ (L={report.get('L')})")
+    ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.8,
+               label=f"MC benchmark T_c = {tc_bench:.4f}")
+    if tc_fit is not None:
+        ax.axvline(tc_fit, linestyle=":", color="#3a2e21", alpha=0.8,
+                   label=f"χ-peak T_c(L) = {tc_fit:.3f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("χ  (per spin)")
+    ax.set_title("3D Ising susceptibility — peak locates T_c")
+    ax.legend(frameon=False, fontsize=9)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_m06_mag_cv(report: dict) -> str:
+    """⟨|m|⟩(T) (order parameter melting) with the specific-heat C(T) overlaid."""
+    T = report["T"]
+    m = report["abs_mag"]
+    m_err = report.get("abs_mag_err") or [0.0] * len(T)
+    cv = report.get("specific_heat") or [0.0] * len(T)
+    tc_bench = report.get("tc_benchmark", 4.5115)
+    tc_cv = report.get("tc_cv")
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.errorbar(T, m, yerr=m_err, fmt="o-", color="#3a2e21", markersize=4,
+                capsize=2, linewidth=1.4, label="⟨|m|⟩  (order parameter)")
+    ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.8,
+               label=f"MC benchmark T_c = {tc_bench:.4f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("|m|  (per spin)")
+    ax.set_ylim(0, 1.05)
+    ax2 = ax.twinx()
+    ax2.plot(T, cv, "s-", color="#7a9b56", markersize=3, linewidth=1.2,
+             alpha=0.85, label="C  (specific heat)")
+    if tc_cv is not None:
+        ax2.axvline(tc_cv, linestyle=":", color="#5f7a3e", alpha=0.7,
+                    label=f"C-peak T_c(L) = {tc_cv:.3f}")
+    ax2.set_ylabel("C  (per spin)")
+    ax.set_title("Magnetization melts, specific heat peaks — same transition")
+    lines1, lab1 = ax.get_legend_handles_labels()
+    lines2, lab2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, lab1 + lab2, frameon=False, fontsize=8, loc="upper right")
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M06_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab · {date} · 3D Ising</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab · phase 2</h1>
+  <div class="date">{date} · M06 — 3D simple-cubic Ising</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+
+  <h2>Susceptibility vs Temperature — the peak is T_c</h2>
+  <figure><img src="data:image/png;base64,{chi_png}" alt="3D Ising susceptibility"></figure>
+
+  <h2>Order parameter &amp; specific heat</h2>
+  <figure><img src="data:image/png;base64,{mag_png}" alt="3D Ising magnetization and specific heat"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def render_m06(report: dict, date: str | None = None) -> Path:
+    """Render an M06 3D-Ising report (HTML + plots + JSON sidecar).
+
+    Mirrors ``render_fss``/``render_m03``: a slug-keyed ``~/.lab`` dated cache +
+    ``latest.html`` pointer AND a permanent committed pair in the repo
+    (``reports/<date>-m06.html`` + ``.json``). The verdict is an honest **pass**
+    only when the χ-peak T_c lands within ±0.15 of the MC benchmark 4.5115 — a
+    finite-L tolerance, not a precision-T_c claim (the small-lattice peak sits
+    *above* the infinite-volume value); a miss is kept as a folded grey leaf, its
+    real numbers intact, never relabelled a discovery.
+    """
+    from .publish import today_local
+    date = date or today_local()
+    _ensure_home()
+
+    L = report.get("L")
+    tc_fit = report.get("tc_chi_refined", report.get("tc_chi"))
+    tc_cv = report.get("tc_cv")
+    tc_bench = report.get("tc_benchmark", 4.5115)
+    rel_err = report.get("rel_error")
+
+    sentence = (
+        f"I ran the simple-cubic 3D Ising model on an L={L} lattice across a "
+        f"temperature window straddling the transition and tracked the magnetic "
+        f"susceptibility χ(T). Three dimensions has no exact solution, so the "
+        f"target is the Monte-Carlo benchmark T_c ≈ {tc_bench:.4f}. The χ peak "
+        f"sits at T_c(L) = {tc_fit:.3f}. "
+        f"Wall time on the CPU: {report.get('wall_seconds', 0):.0f}s."
+    )
+    # Honest verdict: pass only when the χ-peak T_c lands within ±0.15 of 4.5115.
+    passed = tc_fit is not None and abs(tc_fit - tc_bench) <= 0.15
+    err_str = f"{rel_err*100:.1f}%" if rel_err is not None else "—"
+    cv_str = f", and the specific-heat peak independently gives T_c(L) = {tc_cv:.3f}" if tc_cv is not None else ""
+    verdict = (
+        f"{'✓' if passed else '~'} χ-peak T_c(L) = {tc_fit:.3f} vs MC benchmark "
+        f"{tc_bench:.4f} (rel. err {err_str}){cv_str}. "
+        + ("The transition is in the right place — the lab reproduces the 3D "
+           "benchmark, calibrating Phase 2. (Small-L finite-size effects push the "
+           "pseudo-critical peak slightly above the infinite-volume T_c; an "
+           "L-extrapolation would sharpen the number — see BACKLOG.)"
+           if passed else
+           "The transition is off — kept honestly as a null, not a discovery.")
+    )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M06_HTML_TEMPLATE.format(
+        date=date,
+        sentence=sentence,
+        verdict=verdict,
+        chi_png=_plot_m06_chi(report),
+        mag_png=_plot_m06_mag_cv(report),
+        json_dump=json_dump,
+    )
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    _commit_report(date, slug, html, json_dump)
+    return out

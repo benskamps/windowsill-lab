@@ -55,3 +55,51 @@ def test_m03_command_routes_to_runner_and_renderer(monkeypatch, capsys):
     assert calls["render"]["experiment"] == "M03-data-collapse"
     out = capsys.readouterr().out
     assert "M03 data collapse" in out
+
+
+def test_help_lists_m06(capsys):
+    rc = cli.main(["help"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "lab m06" in out
+    assert "3D" in out and "4.5115" in out
+
+
+def test_m06_command_routes_to_runner_and_renderer(monkeypatch, capsys):
+    """`lab m06 --L 8 --sweeps 200` parses flags, runs M06, renders, publishes —
+    the runner + renderer are stubbed so no Monte-Carlo sweep runs in the test."""
+    calls = {}
+
+    class _FakeResult:
+        tc_chi_refined = 4.504
+        tc_benchmark = 4.5115
+        rel_error = 0.0017
+        wall_seconds = 28.0
+
+    def fake_run_m06(**kwargs):
+        calls["run"] = kwargs
+        return _FakeResult()
+
+    def fake_to_report(result):
+        return {"experiment": "M06-3d-ising", "T": [], "chi": []}
+
+    def fake_render_m06(report, date=None):
+        calls["render"] = report
+        return "/tmp/fake-2026-06-16-m06.html"
+
+    from lab import m06 as m06_mod
+    from lab import render as render_mod
+    from lab import publish as publish_mod
+    monkeypatch.setattr(m06_mod, "run_m06", fake_run_m06)
+    monkeypatch.setattr(m06_mod, "to_report", fake_to_report)
+    monkeypatch.setattr(render_mod, "render_m06", fake_render_m06)
+    monkeypatch.setattr(publish_mod, "publish", lambda *a, **k: "/tmp/pot.json")
+
+    rc = cli.main(["m06", "--L", "8", "--sweeps", "200", "--n-temps", "11"])
+    assert rc == 0
+    assert calls["run"]["L"] == 8
+    assert calls["run"]["n_sweeps"] == 200
+    assert calls["run"]["n_temps"] == 11
+    assert calls["render"]["experiment"] == "M06-3d-ising"
+    out = capsys.readouterr().out
+    assert "M06 3D simple-cubic Ising" in out
