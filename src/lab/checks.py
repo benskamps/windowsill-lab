@@ -28,11 +28,18 @@ INV_NU = 1.0                # 1/ν
 
 
 def _reports_newest_first() -> list[Path]:
+    """Report JSONs newest-first, across the repo and ``~/.lab``.
+
+    Matches both legacy ``<date>.json`` dumps and the permanent
+    ``<date>-<slug>.json`` files, and sorts by the *leading date* (the first 10
+    chars of the stem) so ``2026-06-15-m02`` and ``2026-06-15`` order by their
+    shared day rather than by the slug tail.
+    """
     paths: list[Path] = []
     for d in (REPORTS_DIR, LAB_HOME):
         if d.exists():
-            paths += d.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json")
-    return sorted(paths, key=lambda p: p.stem, reverse=True)
+            paths += d.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.json")
+    return sorted(paths, key=lambda p: p.stem[:10], reverse=True)
 
 
 def check_m01(report: dict) -> tuple[bool | None, str]:

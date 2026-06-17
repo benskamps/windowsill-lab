@@ -83,7 +83,10 @@ mkdir -p "$(dirname "$LOG")"
   echo "── $(date -u +%FT%TZ) nightly start"
   # Run today's experiment (best-effort); always leave the feed fresh.
   "{PY}" -m lab.cli run || "{PY}" -m lab.cli publish
-  git add pot.json reports/ 2>/dev/null || true
+  # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
+  # per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.
+  git add pot.json 2>/dev/null || true
+  git add -A reports/ 2>/dev/null || true
   if git diff --cached --quiet; then
     echo "nothing changed"
   else
@@ -146,7 +149,10 @@ Log "-- $((Get-Date).ToUniversalTime().ToString('s'))Z nightly start"
 # Run today's experiment (best-effort); always leave the feed fresh.
 & '__PY__' -m lab.cli run 2>&1 | LogCmd
 if ($LASTEXITCODE -ne 0) { & '__PY__' -m lab.cli publish 2>&1 | LogCmd }
-git add pot.json reports/ 2>&1 | LogCmd
+# Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
+# per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.
+git add pot.json 2>&1 | LogCmd
+git add -A reports/ 2>&1 | LogCmd
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
     git commit -m "nightly: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd'))" 2>&1 | LogCmd

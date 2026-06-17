@@ -16,12 +16,17 @@ Usage:
   lab                 run today's experiment and open the report
   lab run             run only — don't open the browser
   lab m02             run M02: finite-size scaling across lattice sizes
+  lab m03             run M03: critical-exponent β via magnetization data-collapse
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
+  lab backfill        copy ~/.lab history into reports/ under permanent names
   lab verify [IDs]    re-derive verified milestones from their reports (CI gate)
   lab setup           install the nightly job (run → publish → push)
   lab help            show this message
+
+Backfill options (only with `backfill`):
+  --dry-run           list what would be written, write nothing
 
 Setup options (only with `setup`):
   --check             pre-flight health check only — install nothing
@@ -75,6 +80,24 @@ def _parse_m02(args):
     return p.parse_args(args)
 
 
+def _parse_m03(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--L", type=str, default=None,
+                   help="comma-separated lattice sizes, e.g. 16,24,32,48")
+    p.add_argument("--quick", action="store_true",
+                   help="cap at L=32 for a faster pass")
+    p.add_argument("--t-min", type=float, default=2.24)
+    p.add_argument("--t-max", type=float, default=2.30)
+    p.add_argument("--n-temps", type=int, default=24)
+    p.add_argument("--sweeps", type=int, default=20000)
+    p.add_argument("--burnin", type=int, default=4000)
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--updater", default="wolff",
+                   help="'wolff' (cluster, near-T_c) or 'metropolis'")
+    return p.parse_args(args)
+
+
 def main(argv=None):
     # Windows consoles default to the cp1252 codec, which can't encode the
     # unicode the CLI prints (→ ✓ · 🌱) or the reports carry — without this,
@@ -115,6 +138,17 @@ def main(argv=None):
             gist = args[i + 1] if i + 1 < len(args) else None
         path = publish_mod.publish(gist_id=gist)
         print(f"  ✓ snapshot: {path}")
+        return 0
+
+    if cmd == "backfill":
+        from . import publish as publish_mod
+        dry = "--dry-run" in args
+        paths = publish_mod.backfill(dry_run=dry)
+        verb = "would write" if dry else "wrote"
+        for p in paths:
+            print(f"  {verb}: {p}")
+        print(f"\n{verb} {len(paths)} file(s) into reports/."
+              + (" (dry run — nothing written)" if dry else ""))
         return 0
 
     if cmd == "verify":
@@ -178,6 +212,42 @@ def main(argv=None):
         print(f"  → χ_max ∝ L^{result.slope:.3f}  (theory γ/ν = 7/4 = 1.75, "
               f"R²={result.r2:.4f})  ·  {result.wall_seconds:.0f}s total")
         path = render_mod.render_fss(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m03":
+        ns = _parse_m03(args[1:])
+        from . import m03
+        from . import render as render_mod
+        if ns.L:
+            L_values = tuple(int(x) for x in ns.L.split(","))
+        elif ns.quick:
+            L_values = (16, 24, 32)
+        else:
+            L_values = m03.DEFAULT_L
+        print(f"M03 data collapse · L = {', '.join(map(str, L_values))} · "
+              f"{ns.n_temps} temps in [{ns.t_min}, {ns.t_max}] · {ns.sweeps:,} sweeps "
+              f"· {ns.updater}")
+
+        def _progress(L, curve):
+            print(f"  ✓ L={L:<4} {len(curve.T)} temps  ({curve.wall_seconds:.1f}s)")
+
+        result = m03.run_m03(
+            L_values=L_values, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
+            n_sweeps=ns.sweeps, n_burnin=ns.burnin, seed=ns.seed, device=ns.device,
+            updater=ns.updater, progress=_progress,
+        )
+        report = m03.to_report(result)
+        print(f"  → β/ν = {result.beta_over_nu_fit:.3f}  (theory 1/8 = "
+              f"{m03.BETA_OVER_NU:.3f}, residual={result.collapse_quality:.1e})"
+              f"  ·  {result.wall_seconds:.0f}s total")
+        path = render_mod.render_m03(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod

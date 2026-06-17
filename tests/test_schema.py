@@ -91,3 +91,63 @@ def test_non_http_url_is_rejected():
 def test_schema_is_self_consistent():
     ms = SCHEMA["definitions"]["milestone"]
     assert set(ms["required"]) <= set(ms["properties"])
+
+
+# ── Permanence refactor: the reports[] array contract ───────────────────────
+# pot.json gains a newest-first reports[] list so the page can deep-link every
+# run (a node on the seedling stem) including honest nulls (folded grey leaves).
+# All fields optional + additive, so a v2 pot with no reports key still validates.
+
+VALID_REPORT = {
+    "date": "2026-06-15",
+    "milestone": "M02",
+    "experiment": "M02-finite-size-scaling",
+    "headline": "χ_max ∝ L^1.74",
+    "peak_t": 2.30,
+    "wall_s": 120.0,
+    "url": "https://htmlpreview.github.io/?https://example/reports/2026-06-15-m02.html",
+    "code_sha": "abc1234",
+    "status": "verified",
+}
+
+
+def test_snapshot_with_reports_array_conforms():
+    null_run = dict(VALID_REPORT, milestone="M03", status="null")
+    snap = build_snapshot(
+        parse_milestones(SAMPLE), "2026-06-08T00:00:00+00:00", 3, 47.0,
+        reports=[VALID_REPORT, null_run],
+    )
+    assert validate(snap, SCHEMA) == []
+
+
+def test_report_bad_status_is_rejected():
+    bad = {"reports": [dict(VALID_REPORT, status="sideways")]}
+    assert validate(bad, SCHEMA)
+
+
+def test_report_non_http_url_is_rejected():
+    bad = {"reports": [dict(VALID_REPORT, url="javascript:alert(1)")]}
+    assert validate(bad, SCHEMA)
+
+
+def test_v2_pot_without_reports_still_validates():
+    # A snapshot with NO reports key (legacy v2 shape) degrades gracefully.
+    snap = build_snapshot(parse_milestones(SAMPLE), "x", 1, 47.0)
+    assert "reports" not in snap or snap["reports"] == []
+    assert validate(snap, SCHEMA) == []
+
+
+def test_report_definition_is_self_consistent():
+    rep = SCHEMA["definitions"]["report"]
+    assert set(rep.get("required", [])) <= set(rep["properties"])
+
+
+def test_report_status_enum_allows_unscored():
+    """FIX 1: _run_record's honest fallback emits status="unscored"; the schema's
+    report.status enum must accept it, or a truthful snapshot would fail to
+    validate. A run claiming no verification it didn't perform is the whole point.
+    """
+    enum = SCHEMA["definitions"]["report"]["properties"]["status"]["enum"]
+    assert "unscored" in enum
+    ok = dict(VALID_REPORT, status="unscored")
+    assert validate({"reports": [ok]}, SCHEMA) == []

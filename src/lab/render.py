@@ -17,14 +17,49 @@ from .onsager import onsager_magnetization, T_C
 
 
 LAB_HOME = Path.home() / ".lab"
-# The newest full report is also committed here so the windowsill page can
-# deep-link it; the nightly commits reports/ on every run.
+# Permanent per-run reports are committed here so the windowsill page can
+# deep-link every node on the seedling stem; the nightly commits the whole
+# reports/ tree on every run.
 REPO_REPORTS = Path(__file__).resolve().parents[2] / "reports"
 
 
 def _ensure_home() -> Path:
     LAB_HOME.mkdir(parents=True, exist_ok=True)
     return LAB_HOME
+
+
+def _slug_for(report: dict) -> str:
+    """Permanent-report slug for a run — see ``publish._slug_for`` (the canon).
+
+    Re-exported here so renderers can name their committed files without
+    importing the heavier publish surface at module load; both call the same
+    single source-of-truth rule, so they can never drift.
+    """
+    from .publish import _slug_for as _impl
+    return _impl(report)
+
+
+def _commit_report(date: str, slug: str, html: str, json_dump: str) -> Path:
+    """Write the permanent, never-overwritten report pair into the repo.
+
+    Produces ``reports/<date>-<slug>.html`` + ``reports/<date>-<slug>.json`` and
+    refreshes ``reports/latest.html`` as a *copy* of this html — a back-compat
+    pointer, never the archive slot. Returns the committed ``.html`` path.
+
+    One milestone gets one canonical report per day: a same-day re-run of the
+    same milestone deliberately overwrites its own ``<date>-<slug>.*`` (the
+    content is regenerated from the same kind of run, so this is idempotent
+    rather than lossy). Distinct dates and distinct slugs never collide — which
+    is the whole fix: the old single ``latest.html`` buried every prior run.
+    """
+    REPO_REPORTS.mkdir(parents=True, exist_ok=True)
+    html_path = REPO_REPORTS / f"{date}-{slug}.html"
+    json_path = REPO_REPORTS / f"{date}-{slug}.json"
+    html_path.write_text(html, encoding="utf-8")
+    json_path.write_text(json_dump, encoding="utf-8")
+    # Back-compat pointer: a copy of the newest, not an archive that gets clobbered.
+    (REPO_REPORTS / "latest.html").write_text(html, encoding="utf-8")
+    return html_path
 
 
 def _fig_to_b64(fig) -> str:
@@ -156,10 +191,13 @@ def render(result: RunResult, date: str | None = None) -> Path:
     from .publish import today_local
     date = date or today_local()   # local day, not UTC — see today_local()
     _ensure_home()
-    out = LAB_HOME / f"{date}.html"
 
     T_peak, sentence = _tc_estimate(result)
     report = result.to_json()
+    # Tag the experiment explicitly so discovery/checks discriminate by field
+    # rather than only by structure (check_m01's T/chi path is unaffected — it
+    # never reads `experiment`). This is the implicit single-lattice Ising run.
+    report["experiment"] = "M01-ising-verification"
     # A compact headline the windowsill page shows under the seedling.
     report["headline"] = (
         f"χ peaked at T≈{T_peak:.3f} vs Onsager {T_C:.4f}"
@@ -175,18 +213,21 @@ def render(result: RunResult, date: str | None = None) -> Path:
         snap_png=_plot_snapshots(result),
         json_dump=json_dump,
     )
+    # The ~/.lab dated cache is SLUG-KEYED (``<date>-<slug>.html``/``.json``), so
+    # two different milestones run on the same day don't clobber each other in the
+    # local cache the way the old bare ``<date>.*`` names did. (The committed
+    # reports/ tree is already slug-keyed via _commit_report.)
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
     out.write_text(html, encoding="utf-8")
-
-    # Also drop the raw JSON next to the HTML so it's easy to grep
-    (LAB_HOME / f"{date}.json").write_text(json_dump, encoding="utf-8")
-    # And update the latest pointer
+    # The raw JSON next to it (same slug-keyed name) so it's easy to grep.
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    # Update the local ~/.lab latest pointer (cache, untouched by the repo).
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
 
-    # Publish the newest full report into the repo so the windowsill page can
-    # deep-link it (the nightly commits reports/). One overwritten file — the
-    # dated archive stays local in ~/.lab.
-    REPO_REPORTS.mkdir(parents=True, exist_ok=True)
-    (REPO_REPORTS / "latest.html").write_text(html, encoding="utf-8")
+    # Commit the permanent per-run report into the repo so the windowsill page
+    # can deep-link this exact run — never clobbering an earlier one.
+    _commit_report(date, slug, html, json_dump)
     return out
 
 
@@ -311,17 +352,191 @@ FSS_HTML_TEMPLATE = """<!doctype html>
 """
 
 
+# ── M03: critical-exponent β data-collapse report ───────────────────────────
+def _plot_mag_family(curves: list[dict]) -> str:
+    """M(T) for each lattice size — the order parameter softening near T_c.
+
+    Mirrors ``_plot_chi_family`` (M02), but for the magnetization: at finite L
+    the sharp Onsager step is rounded, and ``M`` shrinks with ``L`` inside the
+    critical window (the +β/ν scaling M03 collapses).
+    """
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    for c, col in zip(curves, _l_colors(len(curves))):
+        ax.plot(c["T"], c["M"], "o-", color=col, markersize=3.5,
+                linewidth=1.4, label=f"L={c['L']}")
+    ax.axvline(T_C, linestyle="--", color="#c89878", alpha=0.7, label=f"T_c = {T_C:.4f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("|M|  (per spin)")
+    ax.set_title("Magnetization vs Temperature (all L)")
+    ax.legend(frameon=False, fontsize=9)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_mag_collapse(curves: list[dict], tc: float, beta_over_nu: float) -> str:
+    """The β data collapse: M·L^(β/ν) vs (T−T_c)·L^(1/ν) overlays every L.
+
+    Note the SIGN relative to M02's χ collapse — the y-rescale exponent is
+    **+β/ν** (M *shrinks* with L), using ``m03.collapse_coords`` so the plot and
+    the analysis share one rule.
+    """
+    from .m03 import collapse_coords
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    for c, col in zip(curves, _l_colors(len(curves))):
+        x, y = collapse_coords(c["L"], c["T"], c["M"], tc=tc, beta_over_nu=beta_over_nu)
+        ax.plot(x, y, "o-", color=col, markersize=3.5, linewidth=1.2, label=f"L={c['L']}")
+    ax.set_xlabel("(T − T_c) · L^(1/ν)")
+    ax.set_ylabel("M · L^(+β/ν)")
+    ax.set_title("Magnetization data collapse onto one master curve")
+    ax.legend(frameon=False, fontsize=9)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M03_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab · {date} · data collapse</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab · phase 1</h1>
+  <div class="date">{date} · M03 — critical exponent β (data collapse)</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+
+  <h2>Magnetization vs Temperature (all L)</h2>
+  <figure><img src="data:image/png;base64,{family_png}" alt="magnetization family"></figure>
+
+  <h2>Data collapse — M·L^(β/ν) vs (T−T_c)·L^(1/ν)</h2>
+  <figure><img src="data:image/png;base64,{collapse_png}" alt="magnetization data collapse"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def render_m03(report: dict, date: str | None = None) -> Path:
+    """Render an M03 critical-exponent β data-collapse report (HTML + plots + JSON).
+
+    Mirrors ``render_fss``: a magnetization-family plot M(T) for each L, the β
+    data-collapse plot (M·L^(β/ν) vs (T−T_c)·L^(1/ν), via ``m03.collapse_coords``),
+    an honest verdict — a **pass** only when the recovered β/ν sits within ±0.03
+    of the exact 2D Ising 1/8, otherwise the run is kept as a null (a folded grey
+    leaf with its real numbers, never relabeled a discovery). Persists the same
+    way every renderer does: a slug-keyed ``~/.lab`` dated cache + ``latest.html``
+    pointer, AND a *permanent* committed pair in the repo
+    (``reports/<date>-m03.html`` + ``.json``) plus the back-compat
+    ``reports/latest.html`` copy — so the M03 milestone can finally be archived.
+    """
+    from .publish import today_local
+    from .m03 import BETA_OVER_NU
+    date = date or today_local()
+    _ensure_home()
+
+    curves = report["curves"]
+    tc = report.get("tc", T_C)
+    beta_over_nu_theory = report.get("beta_over_nu_theory", BETA_OVER_NU)
+    bon_fit = report.get("beta_over_nu_fit")
+    quality = report.get("collapse_quality")
+    invnu_fit = report.get("inv_nu_fit")
+
+    Ls = ", ".join(str(c["L"]) for c in curves)
+    sentence = (
+        f"I ran 2D Ising at L = {Ls} across a tight window straddling T_c and "
+        f"rescaled the magnetization by the finite-size-scaling form "
+        f"M·L^(β/ν) = F((T−T_c)·L^(1/ν)). For the 2D Ising universality class the "
+        f"exponents are exact: β = 1/8, ν = 1, so β/ν = {beta_over_nu_theory:.3f} is "
+        f"a number with no free parameters. "
+        f"Wall time on the GPU: {report.get('wall_seconds', 0):.0f}s."
+    )
+    # Honest verdict: pass only when β/ν lands within ±0.03 of the exact 1/8.
+    passed = bon_fit is not None and abs(bon_fit - beta_over_nu_theory) <= 0.03
+    bon_str = f"{bon_fit:.3f}" if bon_fit is not None else "—"
+    extra = ""
+    if quality is not None:
+        extra += f", residual = {quality:.1e}"
+    if invnu_fit is not None:
+        extra += f", joint 1/ν = {invnu_fit:.3f}"
+    verdict = (
+        f"{'✓' if passed else '~'} Recovered β/ν = {bon_str} "
+        f"(theory {beta_over_nu_theory:.3f}{extra}). "
+        + ("Every curve falls onto one master curve at the exact exponent — calibrated."
+           if passed else
+           "The collapse is off — kept honestly as a null, not a discovery.")
+    )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M03_HTML_TEMPLATE.format(
+        date=date,
+        sentence=sentence,
+        verdict=verdict,
+        family_png=_plot_mag_family(curves),
+        collapse_png=_plot_mag_collapse(curves, tc, beta_over_nu_theory),
+        json_dump=json_dump,
+    )
+    # Slug-keyed ~/.lab cache (no same-day clobber) + local latest pointer.
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    # Commit the permanent per-run report (reports/<date>-m03.html/.json) so this
+    # data-collapse run is preserved and the milestone can be archived.
+    _commit_report(date, slug, html, json_dump)
+    return out
+
+
 def render_fss(report: dict, date: str | None = None) -> Path:
     """Render an M02 finite-size-scaling report (HTML + plots + JSON sidecar).
 
-    Mirrors ``render()``'s persistence: dated HTML/JSON in ``~/.lab``, a
-    ``latest.html`` pointer, and the overwritten copy in the repo's ``reports/``.
+    Mirrors ``render()``'s persistence: a slug-keyed dated HTML/JSON cache in
+    ``~/.lab`` (``<date>-<slug>.*``, so same-day milestones don't clobber locally)
+    + a local ``latest.html`` pointer, and a *permanent* committed pair in the
+    repo (``reports/<date>-m02.html`` + ``.json``) plus the back-compat
+    ``reports/latest.html`` copy — so each milestone run is preserved, never
+    buried by the next.
     """
     from .publish import today_local
     from .fss import fit_gamma_over_nu, GAMMA_OVER_NU
     date = date or today_local()
     _ensure_home()
-    out = LAB_HOME / f"{date}.html"
 
     curves = report["curves"]
     slope = report["gamma_over_nu_fit"]
@@ -355,9 +570,14 @@ def render_fss(report: dict, date: str | None = None) -> Path:
         collapse_png=_plot_collapse(curves, tc),
         json_dump=json_dump,
     )
+    # Slug-keyed ~/.lab cache so a same-day M01/M02/M03 run doesn't clobber this
+    # one locally (the committed reports/ tree is already slug-keyed).
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
     out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
-    REPO_REPORTS.mkdir(parents=True, exist_ok=True)
-    (REPO_REPORTS / "latest.html").write_text(html, encoding="utf-8")
+    # Commit the permanent per-run report (e.g. reports/<date>-m02.html/.json)
+    # so this finite-size-scaling run is preserved, not buried by the next run.
+    _commit_report(date, slug, html, json_dump)
     return out
