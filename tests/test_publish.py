@@ -1,6 +1,7 @@
 """Tests for the seed-in-a-pot snapshot builder (stdlib-only, no torch)."""
 import json
 import os
+import pytest
 from datetime import date, datetime, timezone
 
 from lab import publish
@@ -418,6 +419,7 @@ def test_backfill_is_idempotent(tmp_path, monkeypatch):
     monkeypatch.setattr(publish, "REPORTS_DIR", reports)
     monkeypatch.setattr(publish, "LAB_HOME", lab_home)
     # discover_runs uses render dirs too for the URL; keep render writing to tmp.
+    pytest.importorskip("matplotlib")  # render (HTML) needs it; CI's lean job skips
     from lab import render
     monkeypatch.setattr(render, "REPO_REPORTS", reports)
     monkeypatch.setattr(render, "LAB_HOME", lab_home)
@@ -446,12 +448,13 @@ def test_backfill_renders_m03_reports(tmp_path, monkeypatch):
     lab_home = tmp_path / "lab"
     monkeypatch.setattr(publish, "REPORTS_DIR", reports)
     monkeypatch.setattr(publish, "LAB_HOME", lab_home)
+    pytest.importorskip("matplotlib")  # render (HTML) needs it; CI's lean job skips
     from lab import render
     monkeypatch.setattr(render, "REPO_REPORTS", reports)
     monkeypatch.setattr(render, "LAB_HOME", lab_home)
 
     # An M03 report cached in ~/.lab with NO sibling HTML — backfill must render it.
-    import numpy as np
+    np = pytest.importorskip("numpy")
     from lab.m03 import to_report as m03_to_report, M03Result, M03Curve, T_C, BETA_OVER_NU, INV_NU, NU
     Ls = (16, 24, 32, 48)
     xs = np.linspace(-2.0, 2.0, 24)
