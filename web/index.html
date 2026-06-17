@@ -24,7 +24,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>windowsill — live | Broken Branch Studios</title>
+  <title>windowsill — live | Broken Branch</title>
   <meta name="description" content="A live-ish windowsill wired to the lab's passive citizen science: each verified windowsill-lab milestone grows the seedling, overnight runs water the soil, CPU heat sets the season, and the light follows your local clock. The calmer sibling of the aquarium.">
   <meta name="author" content="Ben Schippers">
   <meta name="theme-color" content="#0d0c0a">
@@ -32,7 +32,7 @@
   <meta property="og:url" content="https://www.brokenbranch.dev/windowsill/">
   <meta property="og:title" content="windowsill — a live readout of the lab">
   <meta property="og:description" content="A live windowsill growing on real science: each verified windowsill-lab milestone is a node on the stem, overnight runs water the soil, and AI visitors leave pebbles that fade within a day.">
-  <meta property="og:site_name" content="Broken Branch Studios">
+  <meta property="og:site_name" content="Broken Branch">
   <meta property="og:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <link rel="canonical" href="https://www.brokenbranch.dev/windowsill/">
   <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
@@ -117,7 +117,7 @@
     }
     .label {
       font-family:var(--font-mono); font-weight:700; font-size:1.05rem;
-      letter-spacing:-0.01em; color:var(--text);
+      letter-spacing:-0.01em; color:var(--text); margin:0;
     }
     .label .sky { color:var(--clay); margin-right:0.4rem; }
     .phase-mood { font-family:var(--font-mono); font-size:0.85rem; color:var(--text-secondary); }
@@ -285,12 +285,12 @@
   </style>
 </head>
 <body data-phase="day">
-  <div class="wrap">
+  <main class="wrap" id="main-content">
     <a class="home" href="/lab/">← the lab</a>
     <a class="home" href="/" style="margin-left:14px">broken branch</a>
 
     <div class="topbar">
-      <div class="label"><span class="sky" id="sky">☀</span>windowsill</div>
+      <h1 class="label"><span class="sky" id="sky">☀</span>windowsill</h1>
       <div class="phase-mood"><span id="phase">day</span> · <span id="season">spring</span> · feels <span class="mood" id="mood">—</span></div>
     </div>
     <div class="tagline">A live-ish windowsill wired to the lab's patient citizen science. Each verified <a href="https://github.com/benskamps/windowsill-lab" style="color:var(--text-secondary)">windowsill-lab</a> milestone grows the stem; overnight runs water the soil; CPU heat sets the season; the light follows <em>your</em> local clock. The calm sibling of the <a href="/aquarium/" style="color:var(--text-secondary)">aquarium</a>.</div>
@@ -464,12 +464,12 @@
       </svg>
     </div>
 
-    <div class="legend" id="legend" aria-label="what the windowsill is showing">
+    <section class="legend" id="legend" aria-label="what the windowsill is showing">
       <span><b>milestones</b> <span class="v" id="m-growth">—</span></span>
       <span><b>watered</b> <span class="v" id="m-watered">—</span></span>
       <span><b>runs</b> <span class="v" id="m-runs">—</span></span>
       <span><b>offerings</b> <span class="v" id="m-offerings">0</span></span>
-    </div>
+    </section>
 
     <div class="report" id="report" hidden>
       <span class="report-tag">last night</span>
@@ -507,7 +507,7 @@
       <span>windowsill · part of the Brokenbranch Lab</span>
       <a href="/lab/">the lab ↗</a>
     </div>
-  </div>
+  </main>
 
   <script>
   (function () {
