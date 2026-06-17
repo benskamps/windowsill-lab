@@ -228,6 +228,38 @@
     .report-link { margin-left:auto; color:var(--text-secondary); text-decoration:none; border-bottom:1px dotted var(--border); }
     .report-link:hover { color:var(--text); }
 
+    /* ── The archive: a calm, collapsed every-run ledger ─────────────────────
+       Hidden entirely unless the live feed carries reports[]. The seedling is
+       the milestone story (the stem); this is the honest run-by-run back-room:
+       a verified node, a folded grey null (kept with its numbers), each row a
+       deep-link. No new fonts or chrome — reuses the page's vars. */
+    .archive { margin-top:0.7rem; border:1px solid var(--border); border-radius:8px;
+               background:rgba(255,255,255,0.015); font-family:var(--font-mono); }
+    .archive > summary { cursor:pointer; padding:0.55rem 0.8rem; list-style:none;
+               font-size:0.74rem; color:var(--text-muted); letter-spacing:0.03em; }
+    .archive > summary::-webkit-details-marker { display:none; }
+    .archive > summary::before { content:'▸ '; color:var(--text-secondary); }
+    .archive[open] > summary::before { content:'▾ '; }
+    .archive > summary:hover { color:var(--text-secondary); }
+    .arc-list { padding:0.2rem 0.8rem 0.7rem; }
+    .arc-row { display:flex; align-items:baseline; gap:0.55rem; padding:0.28rem 0;
+               font-size:0.74rem; color:var(--text-secondary); border-top:1px solid var(--border); }
+    .arc-row:first-child { border-top:none; }
+    .arc-row.null { opacity:0.78; }                 /* folded grey leaf — muted, kept */
+    .arc-glyph { width:1.1em; }
+    .arc-row.verified .arc-glyph { color:var(--leaf); }
+    .arc-row.null .arc-glyph { color:var(--text-muted); }
+    .arc-row.unscored .arc-glyph, .arc-row.unreadable .arc-glyph { color:var(--text-muted); }
+    .arc-date { color:var(--text-muted); white-space:nowrap; }
+    .arc-mid { color:var(--text-secondary); }
+    .arc-head { color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .arc-link { margin-left:auto; color:var(--text-secondary); text-decoration:none;
+                border-bottom:1px dotted var(--border); white-space:nowrap; }
+    .arc-link:hover { color:var(--text); }
+    .arc-all { display:block; margin-top:0.5rem; font-size:0.74rem;
+               color:var(--text-secondary); text-decoration:none; }
+    .arc-all:hover { color:var(--text); }
+
     .explainer {
       margin-top:2rem; font-size:0.85rem; color:var(--text-muted); line-height:1.7;
       border-top:1px solid var(--border); padding-top:1.25rem;
@@ -444,6 +476,11 @@
       <span class="report-line" id="report-line">—</span>
       <a class="report-link" id="report-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">full report ↗</a>
     </div>
+
+    <details class="archive" id="archive" hidden>
+      <summary id="archive-summary">every run</summary>
+      <div class="arc-list" id="arc-list"></div>
+    </details>
 
     <div class="footer">
       <span id="status">reading the windowsill…</span>
@@ -770,6 +807,80 @@
       return shown;
     }
 
+    // ── The archive: a calm collapsed every-run ledger ──────────────────────
+    // The seedling shows the milestone story (the stem). This surfaces the
+    // honest run-by-run back-room from state.reports[]: ~8 newest rows (a
+    // verified green leaf, a folded grey null kept WITH its numbers, a plain
+    // bud for unscored), each deep-linking its report, then a "see all" link to
+    // the archive index. Hidden entirely when reports[] is absent/empty, so the
+    // procedural seed stays byte-for-byte unchanged. textContent (never raw
+    // HTML) + the same /^https?:\/\//i href-guard the milestone leaves use.
+    var ARC_GLYPH = { verified:'●', null:'◑', unscored:'○', unreadable:'⚠' };
+    function drawRunList(reports, archiveUrl) {
+      var box = $('archive'), list = $('arc-list');
+      if (!box || !list) return;
+      if (!Array.isArray(reports) || !reports.length) { box.hidden = true; return; }
+      list.textContent = '';
+      var shown = reports.slice(0, 8);
+      shown.forEach(function (r) {
+        r = r || {};
+        var verdict = (r.verdict === 'null' || r.verdict === 'unscored' ||
+                       r.verdict === 'unreadable') ? r.verdict
+                    : (r.status === 'null' ? 'null' : 'verified');
+        var row = document.createElement('div');
+        row.className = 'arc-row ' + verdict;
+
+        var g = document.createElement('span');
+        g.className = 'arc-glyph';
+        g.textContent = ARC_GLYPH[verdict] || '○';
+        row.appendChild(g);
+
+        var d = document.createElement('span');
+        d.className = 'arc-date';
+        d.textContent = r.date || '—';
+        row.appendChild(d);
+
+        if (r.milestone) {
+          var mid = document.createElement('span');
+          mid.className = 'arc-mid';
+          mid.textContent = r.milestone;
+          row.appendChild(mid);
+        }
+
+        var h = document.createElement('span');
+        h.className = 'arc-head';
+        h.textContent = r.headline || (verdict === 'null'
+          ? 'failed calibration (kept on the books)' : '—');
+        row.appendChild(h);
+
+        // Only http(s) hrefs become links — never javascript:/data:/file: URLs.
+        var href = (typeof r.href === 'string' && /^https?:\/\//i.test(r.href)) ? r.href : null;
+        if (href) {
+          var a = document.createElement('a');
+          a.className = 'arc-link';
+          a.href = href;
+          a.target = '_blank';
+          a.rel = 'noopener noreferrer';
+          a.textContent = 'report ↗';
+          row.appendChild(a);
+        }
+        list.appendChild(row);
+      });
+
+      if (typeof archiveUrl === 'string' && /^https?:\/\//i.test(archiveUrl)) {
+        var all = document.createElement('a');
+        all.className = 'arc-all';
+        all.href = archiveUrl;
+        all.target = '_blank';
+        all.rel = 'noopener noreferrer';
+        all.textContent = 'see all ' + reports.length + ' runs in the archive ↗';
+        list.appendChild(all);
+      }
+      var sum = $('archive-summary');
+      if (sum) sum.textContent = 'every run · ' + reports.length + ' on record';
+      box.hidden = false;
+    }
+
     // ── Helpers ─────────────────────────────────────────────────────────────
     function ago(iso) {
       if (!iso) return '—';
@@ -819,6 +930,9 @@
       } else if (rbox) {
         rbox.hidden = true;
       }
+
+      // The honest every-run ledger — hidden unless the feed carries reports[].
+      drawRunList(state.reports, state.archive_url);
 
       var live = !state.empty && state.last_run;
       var lastV = verifiedList[verifiedList.length - 1];

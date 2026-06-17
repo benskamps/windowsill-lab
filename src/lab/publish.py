@@ -30,7 +30,10 @@ POT_JSON = REPO_ROOT / "pot.json"   # committed live feed the windowsill reads
 
 # Bump when the snapshot contract changes in a way consumers must adapt to. The
 # /windowsill/ page and schema/pot.schema.json track this number.
-SCHEMA_VERSION = 2
+# v3: pot.json gains a newest-first ``reports`` array (every run, incl. honest
+# nulls) so the page can deep-link each node on the seedling stem; the single
+# ``latest_report`` stays as ``reports[0]`` for back-compat.
+SCHEMA_VERSION = 3
 
 # Onsager's exact 2D Ising critical temperature, 1944 — the lab's calibration target.
 ONSAGER_TC = 2.0 / math.log(1.0 + math.sqrt(2.0))   # ≈ 2.2692
@@ -38,10 +41,20 @@ ONSAGER_TC = 2.0 / math.log(1.0 + math.sqrt(2.0))   # ≈ 2.2692
 # A rendered "full report" the page deep-links. The nightly commits
 # reports/latest.html every run, so this always resolves to the newest one
 # (htmlpreview renders committed HTML straight from GitHub — no extra hosting).
-REPORT_URL = (
+# Prefix for the *permanent* per-run reports: each run's deep-link is
+# ``REPORT_URL_BASE + "<date>-<slug>.html"``. htmlpreview renders committed HTML
+# straight from GitHub raw — so a per-run link only resolves once the nightly
+# has committed + pushed that file (same constraint latest.html already has).
+REPORT_URL_BASE = (
     "https://htmlpreview.github.io/?"
-    "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html"
+    "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/"
 )
+REPORT_URL = REPORT_URL_BASE + "latest.html"
+
+# The committed archive index — the honest every-run ledger page. A sibling of
+# REPORT_URL (htmlpreview over the committed reports/index.html), so the
+# windowsill page's "see all N runs" link resolves with no extra hosting.
+ARCHIVE_URL = REPORT_URL_BASE + "index.html"
 
 # A checklist line: "- [x] **M01** — 2D Ising verification. ..."
 # IDs are letter-prefixed by track: M=physics, C=compute/number-theory,
@@ -219,13 +232,33 @@ def today_local() -> str:
     return datetime.now().date().isoformat()
 
 
+# A report JSON is named either ``<date>.json`` (legacy bare-date dump) or
+# ``<date>-<slug>.json`` (the permanent per-run file). Both start with the date.
+_DATE_GLOB = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+
+
 def _report_jsons() -> list[Path]:
-    """Every daily report JSON on record, across the repo and ``~/.lab``."""
+    """Every daily report JSON on record, across the repo and ``~/.lab``.
+
+    Matches both the legacy ``<date>.json`` dumps and the permanent
+    ``<date>-<slug>.json`` files (so run cadence keeps counting after the
+    permanence refactor). ``<date>.html``/``-<slug>.html`` are excluded.
+    """
+    seen: set = set()
     paths: list[Path] = []
     for directory in (REPORTS_DIR, LAB_HOME):
-        if directory.exists():
-            paths += directory.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9].json")
+        if not directory.exists():
+            continue
+        for p in directory.glob(f"{_DATE_GLOB}*.json"):
+            if p not in seen:
+                seen.add(p)
+                paths.append(p)
     return paths
+
+
+def _date_of(path: Path) -> str:
+    """The leading ``YYYY-MM-DD`` of a report filename (handles ``-slug`` tails)."""
+    return path.stem[:10]
 
 
 def run_cadence() -> tuple[str | None, int]:
@@ -235,14 +268,21 @@ def run_cadence() -> tuple[str | None, int]:
     ``~/.lab``) counts as one patient overnight run. "Last run" is the report
     written most recently — keyed off file mtime, not the highest date string —
     so a stale future-dated artifact (or a backfilled date) can't masquerade as
-    the latest. ``total`` is the number of *distinct* days observed.
+    the latest. The leading date stem breaks an mtime tie, so a fresh git clone
+    (which resets every mtime identically) still orders stably. ``total`` is the
+    number of *distinct* days observed.
     """
     paths = _report_jsons()
     if not paths:
         return None, 0
-    last_path = max(paths, key=lambda p: p.stat().st_mtime)
+    # Order by (mtime, date_stem): the leading date breaks an mtime tie so a
+    # fresh git clone — which resets every mtime to the same value — still picks
+    # the run with the latest date, not an arbitrary one (mirrors scan_runs).
+    last_path = max(paths, key=lambda p: (p.stat().st_mtime, _date_of(p)))
     last_iso = datetime.fromtimestamp(last_path.stat().st_mtime, timezone.utc).isoformat()
-    total = len({p.stem for p in paths})
+    # Distinct *days*, not files: a permanent ``<date>-<slug>.json`` and a legacy
+    # ``<date>.json`` for the same day count once.
+    total = len({_date_of(p) for p in paths})
     return last_iso, total
 
 
@@ -302,17 +342,21 @@ def _newest_report() -> dict | None:
     """The newest daily report JSON (repo ``reports/`` or ``~/.lab``).
 
     "Newest" = most recently written (mtime), not the highest date string. The
-    page shows whatever ran last; a leftover future-dated file must not win.
+    page shows whatever ran last; a leftover future-dated file must not win. The
+    leading date stem breaks an mtime tie so a fresh clone (all mtimes equal)
+    still picks the latest-dated run rather than an arbitrary one.
     """
     paths = _report_jsons()
     if not paths:
         return None
-    newest = max(paths, key=lambda p: p.stat().st_mtime)
+    # (mtime, date_stem): the date breaks an mtime tie so a fresh clone (all
+    # mtimes equal) still picks the latest-dated run, not an arbitrary one.
+    newest = max(paths, key=lambda p: (p.stat().st_mtime, _date_of(p)))
     try:
         data = json.loads(newest.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
-    data["_date"] = newest.stem
+    data["_date"] = _date_of(newest)
     return data
 
 
@@ -343,9 +387,129 @@ def latest_report() -> dict | None:
     }
 
 
-def build_snapshot(milestones, last_run, runs, temp_c, report=None) -> dict:
-    """Assemble the sanitized snapshot the /windowsill/ page consumes."""
+def _slug_for(report: dict) -> str:
+    """The permanent-report slug for a run — the single source-of-truth rule.
+
+    ``{"experiment": "M02-finite-size-scaling"}`` → ``"m02"`` (the milestone id,
+    lowercased). A legacy M01 dump carries no ``experiment`` field but has the
+    Ising ``T``+``chi`` arrays → ``"m01"``. Anything else → ``"run"``.
+
+    ``render._slug_for`` is an alias of this function so the two never drift.
+    """
+    exp = report.get("experiment")
+    if exp:
+        m = re.match(r"[A-Z]{1,3}\d+", exp)
+        if m:
+            return m.group(0).lower()
+    if report.get("T") and report.get("chi"):
+        return "m01"
+    return "run"
+
+
+def _milestone_for(report: dict) -> str | None:
+    """The milestone id (``M01``/``M02``/…) inferred from a report, or ``None``."""
+    slug = _slug_for(report)
+    return slug.upper() if slug != "run" else None
+
+
+def _peak_t(report: dict) -> float | None:
+    """T at max(χ) for an Ising χ-sweep, else ``None`` (e.g. M02/M03 reports)."""
+    T, chi = report.get("T"), report.get("chi")
+    if T and chi and len(T) == len(chi):
+        return round(T[max(range(len(chi)), key=lambda i: chi[i])], 3)
+    return None
+
+
+def _run_record(path: Path, data: dict) -> dict:
+    """A compact, sanitized record of one run for the ``reports`` array.
+
+    ``status`` is the run's honest verdict. This is the FALLBACK record (used when
+    the verdict-graded ``archive.run_ledger()`` raises), so it must never claim a
+    verification it didn't perform:
+
+    * an explicit failed-calibration marker (``"status": "null"`` in the JSON) →
+      ``"null"`` — a folded grey leaf on the windowsill;
+    * anything else → ``"unscored"`` — a plain node, NOT ``"verified"``. A bare
+      structural record can't know a run passed, and a FAILED run must never ride
+      out as a green leaf. Only the archive's check-graded ledger may emit
+      ``"verified"`` (it re-derives the headline number through the checks
+      registry); this fallback claims nothing it didn't grade.
+
+    ``url`` deep-links the committed permanent report when the file lives in the
+    repo ``reports/`` tree; otherwise it points at the local cached path so the
+    record is still traceable before a backfill.
+    """
+    date = _date_of(path)
+    slug = _slug_for(data)
+    # Always the committed permanent deep-link: REPORT_URL_BASE + "<date>-<slug>.html".
+    # It resolves through htmlpreview once the nightly commits + pushes that file
+    # — the same "only after a push" constraint latest.html already carries. A
+    # local ~/.lab copy maps to the same canonical URL it'll have once backfilled,
+    # so the record stays an http link (page link-guard + schema both want http).
+    url = REPORT_URL_BASE + f"{date}-{slug}.html"
+    status = "null" if str(data.get("status", "")).lower() == "null" else "unscored"
     return {
+        "date": date,
+        "milestone": _milestone_for(data),
+        "experiment": data.get("experiment"),
+        "headline": data.get("headline"),
+        "peak_t": _peak_t(data),
+        "wall_s": data.get("wall_seconds"),
+        "url": url,
+        "code_sha": data.get("code_sha"),
+        "status": status,
+    }
+
+
+def discover_runs() -> list[dict]:
+    """Every run on record across the repo ``reports/`` and ``~/.lab``.
+
+    Walks both trees, parses each report JSON into a compact ``_run_record``,
+    dedupes by ``(date, slug)`` with the committed repo copy winning over the
+    local ``~/.lab`` cache, and sorts newest-first by file mtime. This is the
+    list that becomes ``pot.json``'s ``reports`` array, so the windowsill page
+    can deep-link every node on the seedling stem — including the honest nulls.
+    """
+    # Per (date, slug): prefer the repo copy; among same-priority files keep the
+    # most recently written. Each entry is (mtime, record, is_repo).
+    by_key: dict[tuple[str, str], tuple[float, dict, bool]] = {}
+    for directory in (REPORTS_DIR, LAB_HOME):
+        if not directory.exists():
+            continue
+        is_repo = directory.resolve() == REPORTS_DIR.resolve()
+        for p in directory.glob(f"{_DATE_GLOB}*.json"):
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            key = (_date_of(p), _slug_for(data))
+            mtime = p.stat().st_mtime
+            cur = by_key.get(key)
+            if cur is None:
+                by_key[key] = (mtime, _run_record(p, data), is_repo)
+                continue
+            cur_mtime, _, cur_repo = cur
+            # Repo always beats ~/.lab; within the same priority, newest mtime wins.
+            if (is_repo and not cur_repo) or (is_repo == cur_repo and mtime > cur_mtime):
+                by_key[key] = (mtime, _run_record(p, data), is_repo)
+    records = sorted(by_key.values(), key=lambda v: v[0], reverse=True)
+    return [rec for _, rec, _ in records]
+
+
+def build_snapshot(milestones, last_run, runs, temp_c, report=None,
+                   reports=None, reports_ledger=None) -> dict:
+    """Assemble the sanitized snapshot the /windowsill/ page consumes.
+
+    ``reports_ledger`` (new) is the archive's sanitized every-run ledger
+    (``archive.run_ledger()`` — rows of ``{date, milestone, verdict, headline,
+    href}``). ``reports`` is the legacy compact run-record list. Either fills
+    the ``reports`` array; ``reports_ledger`` wins when both are given. When a
+    ``reports`` array is present, ``latest_report`` is its first (headline) row;
+    otherwise the legacy single ``report`` argument fills it — so old callers and
+    old consumers degrade cleanly. ``archive_url`` deep-links the index page.
+    """
+    rows = reports_ledger if reports_ledger is not None else reports
+    snap = {
         "schema_version": SCHEMA_VERSION,
         "source": "windowsill-lab",
         "milestones": milestones,
@@ -353,17 +517,105 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None) -> dict:
         "last_run": last_run,
         "runs": runs,
         "temp_c": temp_c,
-        "latest_report": report,
+        "latest_report": (rows[0] if rows else report),
+        "archive_url": ARCHIVE_URL,
         "updated": datetime.now(timezone.utc).isoformat(),
         "provenance": provenance(),
     }
+    if rows is not None:
+        snap["reports"] = rows
+    return snap
 
 
 def collect() -> dict:
-    """Build the snapshot from the repo's milestone ladder + local run history."""
+    """Build the snapshot from the repo's milestone ladder + local run history.
+
+    The ``reports`` array is the archive's verdict-graded ledger
+    (``archive.run_ledger()`` — each run carries an honest verified/null/unscored
+    verdict re-derived through the checks registry). Built best-effort, with the
+    same guard the gist push uses: if the archive layer raises, fall back to the
+    structural ``discover_runs()`` records so the feed is never broken by it.
+    """
     text = MILESTONES_MD.read_text(encoding="utf-8") if MILESTONES_MD.exists() else ""
     last_run, runs = run_cadence()
-    return build_snapshot(parse_milestones(text), last_run, runs, cpu_temp_c(), latest_report())
+    try:
+        from . import archive
+        ledger = archive.run_ledger()
+    except Exception:  # noqa: BLE001 — provenance is never allowed to break the feed
+        ledger = None
+    if ledger is not None:
+        return build_snapshot(
+            parse_milestones(text), last_run, runs, cpu_temp_c(),
+            reports_ledger=ledger,
+        )
+    return build_snapshot(
+        parse_milestones(text), last_run, runs, cpu_temp_c(),
+        reports=discover_runs(),
+    )
+
+
+def backfill(dry_run: bool = False) -> list[Path]:
+    """Render/copy every ``~/.lab`` dated report into the repo ``reports/`` tree.
+
+    Idempotent: a run already present as ``reports/<date>-<slug>.json`` is
+    skipped. The JSON sidecar is always *copied* (never moved — the ``~/.lab``
+    history is preserved); the HTML is re-rendered from the existing JSON when
+    matplotlib + the renderer are importable, and quietly skipped otherwise so a
+    headless/torch-free box still backfills the machine-readable feed. Returns
+    the paths written (the planned paths on ``dry_run``); a human runs this once
+    via ``lab backfill`` after the refactor lands. Never runs a simulation.
+    """
+    written: list[Path] = []
+    if not LAB_HOME.exists():
+        return written
+
+    # What's already committed, so we skip it (idempotency).
+    existing = {p.name for p in REPORTS_DIR.glob(f"{_DATE_GLOB}*.json")} if REPORTS_DIR.exists() else set()
+
+    for src in sorted(LAB_HOME.glob(f"{_DATE_GLOB}*.json")):
+        try:
+            data = json.loads(src.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        date = _date_of(src)
+        slug = _slug_for(data)
+        json_name = f"{date}-{slug}.json"
+        if json_name in existing:
+            continue   # already backfilled — idempotent
+        json_dest = REPORTS_DIR / json_name
+        html_dest = REPORTS_DIR / f"{date}-{slug}.html"
+        if dry_run:
+            written.append(json_dest)
+            continue
+
+        REPORTS_DIR.mkdir(parents=True, exist_ok=True)
+        # Copy the machine-readable report verbatim (never move — keep ~/.lab).
+        json_dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        written.append(json_dest)
+
+        # Re-render the HTML from the EXISTING JSON. Lazy import so the JSON
+        # path works even where matplotlib/torch aren't installed.
+        src_html = src.with_suffix(".html")
+        try:
+            if src_html.exists():
+                html_dest.write_text(src_html.read_text(encoding="utf-8"), encoding="utf-8")
+                written.append(html_dest)
+            else:
+                exp = str(data.get("experiment", ""))
+                renderer = None
+                if exp.startswith("M02"):
+                    renderer = "render_fss"
+                elif exp.startswith("M03"):
+                    renderer = "render_m03"
+                if renderer is not None:
+                    from . import render as render_mod  # noqa: PLC0415 — heavy, lazy
+                    getattr(render_mod, renderer)(data, date=date)
+                    if html_dest.exists():
+                        written.append(html_dest)
+        except Exception:  # noqa: BLE001 — HTML is best-effort; JSON already landed
+            pass
+        existing.add(json_name)
+    return written
 
 
 def _push_gist(gist_id: str, content: str) -> None:
@@ -389,6 +641,15 @@ def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
     LAB_HOME.mkdir(parents=True, exist_ok=True)
     out = LAB_HOME / "pot.json"
     out.write_text(content, encoding="utf-8")
+
+    # Refresh the committed archive index (reports/index.html) so the every-run
+    # ledger page tracks the feed. Best-effort — same guard as the gist push;
+    # the nightly's `git add -A reports/` commits it.
+    try:
+        from . import archive
+        archive.write_index()
+    except Exception:  # noqa: BLE001 — the index is never allowed to break publish
+        pass
 
     gist_id = gist_id or os.environ.get("POT_GIST_ID")
     if gist_id:

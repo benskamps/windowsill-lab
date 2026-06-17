@@ -12,6 +12,8 @@ def test_nightly_script_is_runnable_and_self_contained():
     assert "lab.cli run" in sh and "lab.cli publish" in sh
     assert "git push" in sh                        # it pushes the feed
     assert "git diff --cached --quiet" in sh       # commits only on change
+    # The whole reports/ tree is staged so every permanent per-run report lands.
+    assert "reports/" in sh
 
 
 def test_units_reference_the_nightly_script_and_schedule():
@@ -49,6 +51,7 @@ def test_nightly_ps1_is_runnable_and_self_contained():
     assert "lab.cli run" in ps and "lab.cli publish" in ps
     assert "git push" in ps                            # it pushes the feed
     assert "git diff --cached --quiet" in ps           # commits only on change
+    assert "reports/" in ps                            # stages the whole reports/ tree
 
 
 def test_task_xml_is_wellformed_and_runs_the_nightly():
