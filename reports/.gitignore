@@ -1,0 +1,15 @@
+# Dated per-run report renders are large (~50K-line HTML/JSON) and accrete one
+# pair per nightly run, bloating git history. They are deep-linked from htmlpreview
+# via raw.githubusercontent.com, so they DO get committed deliberately when a run
+# is published — but they are not auto-tracked here.
+#
+# Pattern: every dated render starts with a 4-digit year (YYYY-MM-DD...), covering
+# both the legacy bare-date form (<date>.html/.json) and the permanent slugged form
+# (<date>-<slug>.html/.json, e.g. 2026-06-17-m01.html). See src/lab/publish.py
+# (_DATE_GLOB) and src/lab/render.py (_commit_report).
+#
+# KEPT tracked (they don't start with a digit, so the rule below can't match them):
+#   - latest.html  : back-compat pointer, a copy of the newest render (report-under-visual)
+#   - index.html   : the committed every-run archive ledger
+20*-*.html
+20*-*.json
