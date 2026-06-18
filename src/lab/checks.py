@@ -25,6 +25,8 @@ GAMMA_OVER_NU = 7.0 / 4.0   # = 1.75
 # Exact 2D Ising magnetization scaling dimension (M03 data collapse): β=1/8, ν=1.
 BETA_OVER_NU = 1.0 / 8.0    # = 0.125
 INV_NU = 1.0                # 1/ν
+# 3D simple-cubic Ising critical temperature — the MC/series benchmark (M06).
+TC_3D = 4.5115
 
 
 def _reports_newest_first() -> list[Path]:
@@ -50,6 +52,13 @@ def check_m01(report: dict) -> tuple[bool | None, str]:
     — a generous tolerance, since this catches a broken simulation, not a
     high-precision exponent claim.
     """
+    # M06 (3D Ising) also carries top-level T+chi but a different experiment tag
+    # and a different T_c — it has its own check; don't grade it against Onsager.
+    # Legacy M01 dumps carry no experiment field; the rendered ones tag
+    # "M01-ising-verification". Anything else with a tag belongs to another check.
+    exp = report.get("experiment")
+    if exp and not exp.startswith("M01"):
+        return None, "not the 2D Ising χ-sweep"
     T, chi = report.get("T"), report.get("chi")
     if not T or not chi or len(T) != len(chi):
         return None, "not an Ising χ-sweep"
@@ -207,9 +216,39 @@ def check_m03(report: dict) -> tuple[bool | None, str]:
     )
 
 
+def check_m06(report: dict) -> tuple[bool | None, str]:
+    """3D simple-cubic Ising: the χ peak locates T_c near the MC benchmark 4.5115.
+
+    Returns ``None`` unless this is an M06 report. Otherwise re-derives the
+    critical temperature *independently* from the per-T (T, χ) arrays — a coarse
+    argmax refined by a 3-point parabola through the peak — and asserts it sits
+    near the Monte-Carlo benchmark T_c ≈ 4.5115. The tolerance is deliberately
+    generous (±0.15): on a small finite lattice the χ peak sits at a
+    pseudo-critical T_c(L) shifted *above* the infinite-volume value, so this
+    catches a broken 3D simulation, not a precision-T_c claim. A receipt that
+    re-computes the number rather than echoing the reported one.
+    """
+    if report.get("experiment") != "M06-3d-ising":
+        return None, "not a 3D-Ising report"
+    T, chi = report.get("T"), report.get("chi")
+    if not T or not chi or len(T) != len(chi) or len(T) < 3:
+        return None, "3D-Ising report missing (T, χ) arrays"
+    i = max(range(len(chi)), key=lambda k: chi[k])
+    # 3-point parabola refinement of the peak (stdlib port of m06.refine_peak).
+    if 0 < i < len(T) - 1:
+        y0, y1, y2 = chi[i - 1], chi[i], chi[i + 1]
+        denom = y0 - 2.0 * y1 + y2
+        peak_T = T[i] if denom == 0 else T[i] + 0.5 * (y0 - y2) / denom * (T[i] - T[i - 1])
+    else:
+        peak_T = T[i]
+    tol = 0.15
+    ok = abs(peak_T - TC_3D) <= tol
+    return ok, f"3D χ peak at T={peak_T:.3f} vs MC benchmark {TC_3D:.4f} (tol ±{tol})"
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
-CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03}
+CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03, "M06": check_m06}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:

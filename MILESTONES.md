@@ -16,7 +16,7 @@ into `reports/`.
 
 ## Phase 2 — map known territory
 
-- [ ] **M06** — 3D simple cubic Ising. Verify T_c ≈ 4.5115 (Monte Carlo benchmark). Different exponents (γ = 1.237, β = 0.326).
+- [x] **M06** — 3D simple cubic Ising. Verify T_c ≈ 4.5115 (Monte Carlo benchmark). Different exponents (γ = 1.237, β = 0.326). (done 2026-06-16 — χ-peak T_c(L=12) = 4.504 vs MC benchmark 4.5115, rel. err 0.17%; specific-heat peak independently at T_c ≈ 4.42. CPU NumPy engine, 21 temps in [4.1, 4.9], 16k sweeps, 28s. Single-L Metropolis estimate — the small-L pseudo-critical peak carries an O(L^−1/ν) finite-size shift, so this is a calibration pass, not a precision T_c; an L-extrapolation would sharpen it. See BACKLOG.)
 - [ ] **M07** — Potts model (q-state). Run q = 3, 4, 5, 6. Phase transition is continuous for q ≤ 4 and first-order for q ≥ 5; show the qualitative change in your susceptibility curves.
 - [ ] **M08** — 2D XY model. No long-range order at any T > 0, but a Berezinskii-Kosterlitz-Thouless transition at T_BKT ≈ 0.893. Measure the helicity modulus jump.
 - [ ] **M09** — 2D Heisenberg (continuous spins). Confirm no phase transition in 2D (Mermin-Wagner).

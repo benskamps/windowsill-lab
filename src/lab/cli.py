@@ -17,6 +17,7 @@ Usage:
   lab run             run only — don't open the browser
   lab m02             run M02: finite-size scaling across lattice sizes
   lab m03             run M03: critical-exponent β via magnetization data-collapse
+  lab m06             run M06: 3D simple-cubic Ising — verify T_c ≈ 4.5115 (Phase 2)
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -95,6 +96,21 @@ def _parse_m03(args):
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--updater", default="wolff",
                    help="'wolff' (cluster, near-T_c) or 'metropolis'")
+    return p.parse_args(args)
+
+
+def _parse_m06(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--L", type=int, default=10,
+                   help="lattice side (even; default 10)")
+    p.add_argument("--quick", action="store_true",
+                   help="L=6, short sweep for a fast sanity pass")
+    p.add_argument("--t-min", type=float, default=4.1)
+    p.add_argument("--t-max", type=float, default=4.9)
+    p.add_argument("--n-temps", type=int, default=21)
+    p.add_argument("--sweeps", type=int, default=8000)
+    p.add_argument("--burnin", type=int, default=3000)
+    p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
 
 
@@ -248,6 +264,37 @@ def main(argv=None):
               f"{m03.BETA_OVER_NU:.3f}, residual={result.collapse_quality:.1e})"
               f"  ·  {result.wall_seconds:.0f}s total")
         path = render_mod.render_m03(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m06":
+        ns = _parse_m06(args[1:])
+        from . import m06
+        from . import render as render_mod
+        L = 6 if ns.quick else ns.L
+        sweeps = 1500 if ns.quick else ns.sweeps
+        burnin = 800 if ns.quick else ns.burnin
+        print(f"M06 3D simple-cubic Ising · L={L} · {ns.n_temps} temps in "
+              f"[{ns.t_min}, {ns.t_max}] · {sweeps:,} sweeps (CPU)")
+
+        def _progress(result):
+            print(f"  ✓ swept {len(result.T)} temps  ({result.wall_seconds:.1f}s)")
+
+        result = m06.run_m06(
+            L=L, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
+            n_sweeps=sweeps, n_burnin=burnin, seed=ns.seed, progress=_progress,
+        )
+        report = m06.to_report(result)
+        print(f"  → χ-peak T_c = {result.tc_chi_refined:.3f}  (MC benchmark "
+              f"{result.tc_benchmark:.4f}, rel. err {result.rel_error*100:.1f}%)"
+              f"  ·  {result.wall_seconds:.0f}s total")
+        path = render_mod.render_m06(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod
