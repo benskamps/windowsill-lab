@@ -204,20 +204,20 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-06-17T07:00:35.966911+00:00",
-  "runs": 5,
+  "last_run": "2026-06-19T07:00:38.977538+00:00",
+  "runs": 6,
   "temp_c": null,
   "latest_report": {
-    "date": "2026-06-17",
+    "date": "2026-06-19",
     "milestone": "M01",
     "verdict": "verified",
     "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-    "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-17-m01.html"
+    "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-19-m01.html"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-06-17T07:00:40.048451+00:00",
+  "updated": "2026-06-19T07:00:43.108346+00:00",
   "provenance": {
-    "code_sha": "2e38b75",
+    "code_sha": "8efb908",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -227,53 +227,60 @@
   },
   "reports": [
     {
+      "date": "2026-06-19",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-19-m01.html"
+    },
+    {
+      "date": "2026-06-18",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
+      "href": null
+    },
+    {
       "date": "2026-06-17",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-17-m01.html"
+      "href": null
     },
     {
       "date": "2026-06-16",
       "milestone": "M06",
       "verdict": "verified",
       "headline": "3D simple-cubic Ising (L=12): \u03c7 peaks at T_c=4.504 vs MC benchmark 4.5115 (rel. err 0.2%) \u00b7 28s on CPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-16-m06.html"
+      "href": null
     },
     {
       "date": "2026-06-16",
       "milestone": "M03",
       "verdict": "verified",
       "headline": "data collapse: M\u00b7L^(\u03b2/\u03bd) onto one master curve at \u03b2/\u03bd=0.131 (2D Ising \u03b2=1/8 \u2192 \u03b2/\u03bd=0.125, loss=8.2e-03) \u00b7 711s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-16-m03.html"
+      "href": null
     },
     {
       "date": "2026-06-16",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 37s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-16-m01.html"
+      "href": null
     },
     {
       "date": "2026-06-15",
       "milestone": "M02",
       "verdict": "verified",
       "headline": "finite-size scaling: \u03c7_max \u221d L^1.816 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 315s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-15-m02.html"
+      "href": null
     },
     {
       "date": "2026-06-14",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 37s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-14-m01.html"
-    },
-    {
-      "date": "2026-06-08",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": null,
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-08-m01.html"
+      "href": null
     }
   ]
 }
