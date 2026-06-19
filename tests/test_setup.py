@@ -14,6 +14,11 @@ def test_nightly_script_is_runnable_and_self_contained():
     assert "git diff --cached --quiet" in sh       # commits only on change
     # The whole reports/ tree is staged so every permanent per-run report lands.
     assert "reports/" in sh
+    # Guard: nightly publishes ONLY from main. If the clone is left on a feature
+    # branch, it must refuse — otherwise the public feed gets stranded.
+    assert 'abbrev-ref HEAD' in sh
+    assert '!= "main"' in sh
+    assert "REFUSING" in sh
 
 
 def test_units_reference_the_nightly_script_and_schedule():
@@ -52,6 +57,10 @@ def test_nightly_ps1_is_runnable_and_self_contained():
     assert "git push" in ps                            # it pushes the feed
     assert "git diff --cached --quiet" in ps           # commits only on change
     assert "reports/" in ps                            # stages the whole reports/ tree
+    # Guard: nightly publishes ONLY from main (same as the bash analog).
+    assert "abbrev-ref HEAD" in ps
+    assert "-ne 'main'" in ps
+    assert "REFUSING" in ps
 
 
 def test_task_xml_is_wellformed_and_runs_the_nightly():

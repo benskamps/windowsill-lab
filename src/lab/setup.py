@@ -81,6 +81,15 @@ LOG="${{LAB_NIGHTLY_LOG:-$HOME/.lab/nightly.log}}"
 mkdir -p "$(dirname "$LOG")"
 {{
   echo "── $(date -u +%FT%TZ) nightly start"
+  # Guard: only the published trunk feeds brokenbranch.dev. If the clone was
+  # left on a feature branch, a nightly commit/push would strand the feed (and
+  # the mirror never updates). Refuse rather than publish to the wrong branch.
+  branch="$(git rev-parse --abbrev-ref HEAD)"
+  if [ "$branch" != "main" ]; then
+    echo "REFUSING: on branch '$branch', not main — nightly publishes only from main. Skipping."
+    echo "── done (skipped: not on main)"
+    exit 0
+  fi
   # Run today's experiment (best-effort); always leave the feed fresh.
   "{PY}" -m lab.cli run || "{PY}" -m lab.cli publish
   # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
@@ -146,6 +155,15 @@ New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
 function Log($m) { Add-Content -LiteralPath $log -Value $m -Encoding utf8 }
 filter LogCmd { Log "$_" }
 Log "-- $((Get-Date).ToUniversalTime().ToString('s'))Z nightly start"
+# Guard: only the published trunk feeds brokenbranch.dev. If the clone was left
+# on a feature branch, a nightly commit/push would strand the feed (and the
+# mirror never updates). Refuse rather than publish to the wrong branch.
+$branch = (git rev-parse --abbrev-ref HEAD 2>&1 | Select-Object -First 1).Trim()
+if ($branch -ne 'main') {
+    Log "REFUSING: on branch '$branch', not main -- nightly publishes only from main. Skipping."
+    Log "-- done (skipped: not on main)"
+    exit 0
+}
 # Run today's experiment (best-effort); always leave the feed fresh.
 & '__PY__' -m lab.cli run 2>&1 | LogCmd
 if ($LASTEXITCODE -ne 0) { & '__PY__' -m lab.cli publish 2>&1 | LogCmd }
