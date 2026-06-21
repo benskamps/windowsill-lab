@@ -93,6 +93,22 @@ def test_schema_is_self_consistent():
     assert set(ms["required"]) <= set(ms["properties"])
 
 
+def test_growth_form_in_snapshot_conforms_and_enum_is_enforced():
+    """The derived `growth_form` on every milestone validates against the schema's
+    enum, and a bogus form is rejected — the producer's mapping and the contract
+    can't silently drift."""
+    snap = build_snapshot(parse_milestones(SAMPLE), "2026-06-08T00:00:00+00:00", 3, 47.0)
+    assert validate(snap, SCHEMA) == []
+    assert all("growth_form" in m for m in snap["milestones"])
+    # A form outside the enum is rejected (mirrors the page's contract).
+    bad = {"milestones": [{"id": "M01", "status": "verified", "growth_form": "cactus"}]}
+    assert validate(bad, SCHEMA)
+    # Every form the producer can emit is in the schema enum (no producer/contract drift).
+    from lab.publish import GROWTH_FORMS
+    enum = set(SCHEMA["definitions"]["milestone"]["properties"]["growth_form"]["enum"])
+    assert set(GROWTH_FORMS.values()) <= enum
+
+
 # ── Permanence refactor: the reports[] array contract ───────────────────────
 # pot.json gains a newest-first reports[] list so the page can deep-link every
 # run (a node on the seedling stem) including honest nulls (folded grey leaves).
