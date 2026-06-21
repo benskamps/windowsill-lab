@@ -92,6 +92,60 @@ def test_track_is_derived_from_prefix():
     assert ms["I02"]["track"] == "instrument"
 
 
+# ── Growth forms: the feed contract's render-strategy hint (BACKLOG §Growth forms) ─
+# Each milestone carries a `growth_form` *derived from its track*, so the kind of
+# science is legible at a glance (a physics convergence sweep ≠ a long astronomy
+# time-series ≠ an instrument calibration ≠ a distributed-compute contribution)
+# while the rest of the contract stays homogeneous. Derived — not a new field a
+# milestone has to set — so existing MILESTONES.md lines gain it for free.
+
+from lab.publish import growth_form_for, GROWTH_FORMS, DEFAULT_GROWTH_FORM
+
+
+def test_growth_form_for_maps_every_known_track():
+    assert growth_form_for("physics") == "fern"
+    assert growth_form_for("compute") == "vine"
+    assert growth_form_for("astronomy") == "creeper"
+    assert growth_form_for("instrument") == "succulent"
+    assert growth_form_for("boinc") == "moss"
+    assert growth_form_for("misc") == "sprout"
+
+
+def test_growth_form_for_unknown_or_absent_falls_back_to_default():
+    # An unknown track, and an absent (None) one, both degrade to the homogeneous
+    # default seedling — the page never has to special-case a form it doesn't know.
+    assert growth_form_for("chemistry") == DEFAULT_GROWTH_FORM
+    assert growth_form_for(None) == DEFAULT_GROWTH_FORM
+    assert DEFAULT_GROWTH_FORM == "sprout"
+
+
+def test_growth_form_is_derived_from_track_in_parse():
+    ms = {m["id"]: m for m in parse_milestones(CITIZEN)}
+    # The track→form derivation flows straight through parse_milestones.
+    assert ms["M01"]["growth_form"] == "fern"        # physics
+    assert ms["C03"]["growth_form"] == "vine"        # compute
+    assert ms["A02"]["growth_form"] == "creeper"     # astronomy
+    assert ms["I02"]["growth_form"] == "succulent"   # instrument
+
+
+def test_growth_form_present_on_every_milestone():
+    # Every parsed milestone gets a growth_form — none is left without one, so the
+    # consumer can rely on the field always being present.
+    ms = parse_milestones(CITIZEN)
+    assert all("growth_form" in m for m in ms)
+    # And it agrees with the single source-of-truth derivation rule.
+    assert all(m["growth_form"] == growth_form_for(m["track"]) for m in ms)
+
+
+def test_growth_forms_cover_every_track_value():
+    """Homogeneity guard: every track the producer can emit (the TRACKS values
+    plus the 'misc' fallback) has a growth form, so no milestone ever falls
+    through to a bare default by accident."""
+    from lab.publish import TRACKS
+    for track in set(TRACKS.values()) | {"misc"}:
+        assert track in GROWTH_FORMS, f"track {track!r} has no growth form"
+
+
 def test_record_tags_are_parsed():
     ms = {m["id"]: m for m in parse_milestones(CITIZEN)}
     assert ms["C03"]["venue"] == "OEIS"

@@ -66,10 +66,40 @@ _MILESTONE_RE = re.compile(
 _TAG_RE = re.compile(r"\{([^}]*)\}\s*$")
 TRACKS = {"M": "physics", "C": "compute", "A": "astronomy", "I": "instrument", "B": "boinc"}
 
+# Growth forms — the feed contract's render-strategy hint (see BACKLOG.md §"Growth
+# forms"). The hard constraint is *homogeneous*: same clay pot, same palette, same
+# light-follows-your-clock soul, same pot.json contract — only the *form* of the
+# green thing changes, so the windowsill page can make the *kind* of science
+# legible at a glance (a physics convergence sweep ≠ a long astronomy time-series
+# ≠ an instrument calibration ≠ a distributed-compute contribution) while a wall
+# of windowsills still reads as one garden. The form is *derived* from a
+# milestone's track — not a new field a milestone has to set — so existing
+# MILESTONES.md lines gain it for free and the producer stays the single source
+# of truth. ``misc`` (and any unknown track) falls back to the homogeneous
+# seedling, so the page degrades cleanly.
+GROWTH_FORMS = {
+    "physics": "fern",        # the core convergence ladder — fronds unfurl rung by rung
+    "compute": "vine",        # climbing integer sequences (e.g. OEIS extensions)
+    "astronomy": "creeper",   # a long time-series that trails across the seasons
+    "instrument": "succulent",  # a calibration: compact, slow, precise
+    "boinc": "moss",          # a distributed, mat-forming (BOINC-style) contribution
+    "misc": "sprout",         # the homogeneous default seedling
+}
+DEFAULT_GROWTH_FORM = "sprout"
+
 
 def _track_for(mid: str) -> str:
     prefix = re.match(r"[A-Z]+", mid)
     return TRACKS.get(prefix.group()[0], "misc") if prefix else "misc"
+
+
+def growth_form_for(track: str | None) -> str:
+    """The growth form derived from a milestone's ``track`` — the feed contract's
+    render-strategy hint. An unknown/absent track falls back to the homogeneous
+    default seedling (``sprout``), so the windowsill page never has to special-case
+    a form it doesn't recognise. The single source-of-truth rule both the producer
+    (``parse_milestones``) and any consumer should use, so the two never drift."""
+    return GROWTH_FORMS.get(track or "misc", DEFAULT_GROWTH_FORM)
 
 
 def _parse_tags(body: str) -> tuple[str, dict]:
@@ -94,9 +124,10 @@ def parse_milestones(text: str) -> list[dict]:
     books), ``[>]`` → the explicitly-open experiment (any track), ``[ ]`` →
     pending. If nothing is marked ``[>]``, the first pending milestone is
     promoted to ``open`` — the experiment running now / next on the bench. Each
-    milestone carries its ``track`` (from the id prefix), an optional
-    ``progress`` (0–1), and any ``venue``/``url``/``doi`` linking a verified
-    contribution to its official record.
+    milestone carries its ``track`` (from the id prefix), its ``growth_form``
+    (derived from the track — the feed contract's render-strategy hint), an
+    optional ``progress`` (0–1), and any ``venue``/``url``/``doi`` linking a
+    verified contribution to its official record.
     """
     out: list[dict] = []
     for line in text.splitlines():
@@ -117,7 +148,9 @@ def parse_milestones(text: str) -> list[dict]:
             status = "pending"
 
         mid = m.group("id")
-        ms = {"id": mid, "title": title, "status": status, "track": _track_for(mid)}
+        track = _track_for(mid)
+        ms = {"id": mid, "title": title, "status": status, "track": track,
+              "growth_form": growth_form_for(track)}
 
         if status == "verified":
             # Lift the "(done <date> — <result>)" parenthetical. Prose can carry
