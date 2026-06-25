@@ -4,7 +4,7 @@ import math
 from lab.checks import (
     BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT, TC_3D, TC_TRI,
     TWO_OVER_PI, _grade, check_m01, check_m02, check_m03, check_m04, check_m05,
-    check_m06, check_m07, check_m08, verify,
+    check_m06, check_m07, check_m08, check_m09, verify,
 )
 
 
@@ -412,3 +412,77 @@ def test_other_checks_skip_an_m08_report():
     assert check_m05(rep)[0] is None
     assert check_m06(rep)[0] is None
     assert check_m07(rep)[0] is None
+
+
+# ── M09: 2D Heisenberg / Mermin–Wagner (⟨|m|⟩ drift) check ────────────────────
+def _m09_report(abs_mag=(0.48, 0.29, 0.14), Ls=(16, 32, 64), err=0.005):
+    """A toy M09 report with a per-L ⟨|m|⟩ sequence (drifting down by default).
+
+    The check re-derives the monotone-decrease + positive 1/L slope from the
+    (L_values, abs_mag) arrays, so overriding ``abs_mag`` models a broken run (a
+    flat or rising sequence = a fake finite-T transition / a lattice that orders).
+    """
+    return {
+        "experiment": "M09-heisenberg",
+        "L_values": list(Ls),
+        "abs_mag": list(abs_mag),
+        "abs_mag_err": [err] * len(Ls),
+        "T": 0.7,
+    }
+
+
+def test_m09_passes_when_abs_mag_drifts_down():
+    # The Mermin–Wagner signature: ⟨|m|⟩ falls toward 0 as L grows → absence of
+    # order reproduced. This is the rare milestone whose PASS is a negative result.
+    ok, detail = check_m09(_m09_report((0.48, 0.29, 0.14)))
+    assert ok, detail
+    assert "Mermin" in detail or "drifts toward 0" in detail
+
+
+def test_m09_fails_when_abs_mag_is_flat():
+    # A plateau — ⟨|m|⟩ NOT decreasing with L — is what spontaneous order would
+    # look like (a fake finite-T transition); the absence is NOT reproduced → fail.
+    ok, _ = check_m09(_m09_report((0.30, 0.30, 0.30)))
+    assert ok is False
+
+
+def test_m09_fails_when_abs_mag_rises():
+    # ⟨|m|⟩ growing with L is the strongest possible false positive (the #1 way
+    # M09 ships wrong — a single-L read mistaken for order); it must be caught.
+    ok, _ = check_m09(_m09_report((0.14, 0.29, 0.48)))
+    assert ok is False
+
+
+def test_m09_noise_floor_blocks_a_statistical_tie():
+    # A "decrease" smaller than the Monte-Carlo noise floor (1.5·SEM) is not a real
+    # drift; with large error bars a barely-lower point must NOT pass as order's absence.
+    ok, _ = check_m09(_m09_report((0.300, 0.299, 0.298), err=0.05))
+    assert ok is False
+
+
+def test_m09_needs_enough_sizes():
+    ok, _ = check_m09(_m09_report((0.4, 0.2), Ls=(16, 32)))
+    assert ok is None   # fewer than 3 sizes → not gradable
+
+
+def test_m09_not_applicable_to_an_m08_report():
+    ok, detail = check_m09(_m08_report(T_BKT))
+    assert ok is None and "not an M09" in detail
+
+
+def test_m09_skips_a_bare_ising_report():
+    # An M01-shaped report (top-level T/chi, no L_values/abs_mag family) is not M09.
+    ok, _ = check_m09(_ising_report(2.3))
+    assert ok is None
+
+
+def test_other_checks_skip_an_m09_report():
+    # M09 carries (L_values, abs_mag) but NO χ-vs-T / helicity / per_q, and its tag
+    # is M09-heisenberg — so none of the transition-locating checks should claim it.
+    rep = _m09_report()
+    assert check_m01(rep)[0] is None
+    assert check_m04(rep)[0] is None
+    assert check_m05(rep)[0] is None
+    assert check_m06(rep)[0] is None
+    assert check_m07(rep)[0] is None
+    assert check_m08(rep)[0] is None

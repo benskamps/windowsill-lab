@@ -22,6 +22,7 @@ Usage:
   lab m06             run M06: 3D simple-cubic Ising — verify T_c ≈ 4.5115 (Phase 2)
   lab m07             run M07: q-state Potts (q=3..6) — continuous→first-order transition
   lab m08             run M08: 2D XY model — BKT transition via the helicity-modulus jump
+  lab m09             run M09: 2D Heisenberg — verify NO finite-T order (Mermin–Wagner)
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -202,6 +203,33 @@ def _parse_m08(args):
     p.add_argument("--sweeps", type=int, default=40000)
     p.add_argument("--burnin", type=int, default=8000)
     p.add_argument("--over-relax", type=int, default=1,
+                   help="microcanonical over-relaxation sweeps per Metropolis sweep")
+    p.add_argument("--updater", default="metropolis",
+                   help="'metropolis' (+ over-relaxation; default) or 'wolff'")
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m09(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M09 sweeps a *family* of L at a single fixed T and shows the Mermin–Wagner
+    # drift ⟨|m|⟩(L) → 0 — there is NO transition and NO T-sweep. L defaults to the
+    # {16,32,64} family (already resolves the monotone drift); T=0.7 is moderate
+    # (cold enough that small L carries an appreciable, falsifiable ⟨|m|⟩, warm
+    # enough that ξ(T) ≪ 64 so the drift is visible without needing L=128+). The
+    # default Metropolis-plus-over-relaxation updater (over-relaxation cures the
+    # spin-wave critical slowing at the low-T, large-ξ points); --updater wolff
+    # uses the embedded-Ising single-cluster move.
+    p.add_argument("--L", type=str, default=None,
+                   help="comma-separated lattice sizes (default 16,32,64)")
+    p.add_argument("--quick", action="store_true",
+                   help="L=8,12,16, short sweep for a fast sanity pass")
+    p.add_argument("--T", type=float, default=None,
+                   help="fixed temperature for the L-family (default 0.7)")
+    p.add_argument("--sweeps", type=int, default=20000)
+    p.add_argument("--burnin", type=int, default=8000)
+    p.add_argument("--over-relax", type=int, default=3,
                    help="microcanonical over-relaxation sweeps per Metropolis sweep")
     p.add_argument("--updater", default="metropolis",
                    help="'metropolis' (+ over-relaxation; default) or 'wolff'")
@@ -534,6 +562,48 @@ def main(argv=None):
             print(f"  → no crossing of Υ(T) with the (2/π)T jump line on this window "
                   f"(un-equilibrated or window mis-placed)  ·  {result.wall_seconds:.0f}s")
         path = render_mod.render_m08(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m09":
+        ns = _parse_m09(args[1:])
+        from . import m09
+        from . import render as render_mod
+        if ns.L:
+            L_values = tuple(int(x) for x in ns.L.split(","))
+        elif ns.quick:
+            L_values = (8, 12, 16)
+        else:
+            L_values = m09.DEFAULT_L
+        T = ns.T if ns.T is not None else m09.DEFAULT_T
+        sweeps = 2000 if ns.quick else ns.sweeps
+        burnin = 800 if ns.quick else ns.burnin
+        print(f"M09 2D Heisenberg (Mermin–Wagner) · L = {', '.join(map(str, L_values))} "
+              f"at T={T} · {sweeps:,} sweeps · {ns.updater} on {ns.device}")
+
+        def _progress_m09(L, r):
+            print(f"  ✓ L={L:<4} ⟨|m|⟩={r.abs_mag[0]:.4f} ± {r.abs_mag_err[0]:.4f}  "
+                  f"E={r.energy[0]:.3f}  accept={r.acceptance[0]:.3f}  ({r.wall_seconds:.1f}s)")
+
+        result = m09.run_m09(
+            L_values=L_values, T=T, n_sweeps=sweeps, n_burnin=burnin,
+            over_relax=ns.over_relax, seed=ns.seed, device=ns.device,
+            updater=ns.updater, progress=_progress_m09,
+        )
+        report = m09.to_report(result)
+        ratio_str = " → ".join(f"{r:.3f}" for r in result.ratios) or "—"
+        verdict = ("Mermin–Wagner confirmed (no finite-T order)"
+                   if result.monotone_decreasing else "absence NOT reproduced")
+        print(f"  → ⟨|m|⟩ drifts {', '.join(f'{m:.3f}' for m in result.abs_mag)} "
+              f"(ratios {ratio_str}, slope vs 1/L = {result.slope_vs_inv_L:+.3f}) — "
+              f"{verdict}  ·  {result.wall_seconds:.0f}s total")
+        path = render_mod.render_m09(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod
