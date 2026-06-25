@@ -67,6 +67,7 @@ def test_slug_for_maps_known_experiments():
     assert _slug_for({"experiment": "M03-data-collapse"}) == "m03"
     assert _slug_for({"experiment": "M01-ising-verification"}) == "m01"
     assert _slug_for({"experiment": "M08-xy-bkt"}) == "m08"
+    assert _slug_for({"experiment": "M10-afm-ising"}) == "m10"
 
 
 def test_slug_for_infers_m01_from_structure():
@@ -476,3 +477,87 @@ def test_render_m09_appears_in_discovery_and_ledger(tmp_path, monkeypatch):
 
 def test_slug_for_maps_m09_report():
     assert _slug_for(_m09_fixture_report()) == "m09"
+
+
+# ── M10: antiferromagnetic Ising render path ─────────────────────────────────
+def _m10_fixture_report(peak_at=2.27, max_unif=0.02):
+    """A synthetic M10 ``to_report``-shaped dict (no GPU).
+
+    Staggered χ_s peaks at ``peak_at``; ``max_unif`` is the flat uniform ⟨|m|⟩
+    level (≈0 = the real AFM; large = the silent-FM-revert masquerade → null).
+    """
+    from lab.m10 import TC_AFM
+    T = [round(2.0 + 0.025 * i, 4) for i in range(25)]
+    chi = [1.0 / (abs(t - peak_at) + 0.02) for t in T]
+    ms = [0.95 if t < peak_at else 0.1 for t in T]   # staggered order melts at peak
+    rel = abs(peak_at - TC_AFM) / TC_AFM
+    return {
+        "experiment": "M10-afm-ising", "headline": "M10 test", "L": 128,
+        "T": T, "chi_staggered": chi, "stag_mag": ms,
+        "stag_mag_err": [0.01] * len(T),
+        "abs_mag": [max_unif] * len(T),
+        "energy": [-1.5] * len(T), "specific_heat": [0.5] * len(T),
+        "tc_chi": peak_at, "tc_chi_refined": peak_at, "tc_cv_refined": peak_at,
+        "tc_benchmark": TC_AFM, "rel_error": rel, "max_abs_mag": max_unif,
+        "wall_seconds": 40.0, "config": {"seed": 42, "J": -1.0},
+    }
+
+
+def test_render_m10_writes_permanent_report_pair(tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    out = render.render_m10(_m10_fixture_report(), date="2026-06-25")
+    html_file = reports / "2026-06-25-m10.html"
+    json_file = reports / "2026-06-25-m10.json"
+    assert html_file.exists() and json_file.exists()
+    html = html_file.read_text(encoding="utf-8")
+    assert "M10" in html and "antiferromagnetic" in html.lower() and "staggered" in html.lower()
+    assert json.loads(json_file.read_text(encoding="utf-8"))["experiment"] == "M10-afm-ising"
+
+
+def test_render_m10_verdict_passes_near_benchmark(tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m10(_m10_fixture_report(peak_at=2.27), date="2026-06-25")
+    html = (reports / "2026-06-25-m10.html").read_text(encoding="utf-8")
+    assert "✓" in html
+    # Names the framework-sanity point (negative J) and the uniform-stays-zero trap.
+    assert "negative coupling" in html.lower() and "uniform" in html.lower()
+
+
+def test_render_m10_verdict_is_honest_null_when_peak_off(tmp_path, monkeypatch):
+    """A staggered χ_s peak outside the ±0.1 window is kept as a null, never a pass."""
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m10(_m10_fixture_report(peak_at=2.5), date="2026-06-25")
+    html = (reports / "2026-06-25-m10.html").read_text(encoding="utf-8")
+    assert "✓" not in html
+    assert "null" in html.lower()
+
+
+def test_render_m10_verdict_is_honest_null_when_uniform_orders(tmp_path, monkeypatch):
+    """A large uniform moment (the silent FM-revert) is a null even if χ_s peaks right."""
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m10(_m10_fixture_report(peak_at=2.27, max_unif=0.9), date="2026-06-25")
+    html = (reports / "2026-06-25-m10.html").read_text(encoding="utf-8")
+    assert "✓" not in html
+    assert "null" in html.lower()
+
+
+def test_render_m10_appears_in_discovery_and_ledger(tmp_path, monkeypatch):
+    """The rendered M10 report is discoverable as a run and rides the ledger as a
+    verified green leaf (the exact-peak fixture passes check_m10)."""
+    reports, lab_home = _patch_dirs(tmp_path, monkeypatch)
+    from lab import publish, archive
+    monkeypatch.setattr(publish, "REPORTS_DIR", reports)
+    monkeypatch.setattr(publish, "LAB_HOME", lab_home)
+    monkeypatch.setattr(archive, "REPORTS_DIR", reports)
+    monkeypatch.setattr(archive, "LAB_HOME", lab_home)
+
+    render.render_m10(_m10_fixture_report(), date="2026-06-25")
+    runs = publish.discover_runs()
+    assert any(r["milestone"] == "M10" for r in runs)
+    ledger = archive.run_ledger()
+    m10_rows = [r for r in ledger if r["milestone"] == "M10"]
+    assert m10_rows and m10_rows[0]["verdict"] == "verified"   # exact fixture → green leaf
+
+
+def test_slug_for_maps_m10_report():
+    assert _slug_for(_m10_fixture_report()) == "m10"

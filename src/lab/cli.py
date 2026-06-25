@@ -23,6 +23,7 @@ Usage:
   lab m07             run M07: q-state Potts (q=3..6) — continuous→first-order transition
   lab m08             run M08: 2D XY model — BKT transition via the helicity-modulus jump
   lab m09             run M09: 2D Heisenberg — verify NO finite-T order (Mermin–Wagner)
+  lab m10             run M10: antiferromagnetic Ising — T_N = Onsager 2.2692 on staggered m_s
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -233,6 +234,25 @@ def _parse_m09(args):
                    help="microcanonical over-relaxation sweeps per Metropolis sweep")
     p.add_argument("--updater", default="metropolis",
                    help="'metropolis' (+ over-relaxation; default) or 'wolff'")
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m10(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M10 reuses M01/M04's setup — J = −1 (antiferromagnetic) and the STAGGERED
+    # order parameter — over a window straddling the Néel point T_N = Onsager's
+    # exact 2.2692 (the bipartite gauge duality makes the AFM the FM in disguise).
+    p.add_argument("--L", type=int, default=128,
+                   help="lattice side (default 128)")
+    p.add_argument("--quick", action="store_true",
+                   help="L=48, short sweep for a fast sanity pass")
+    p.add_argument("--t-min", type=float, default=2.0)
+    p.add_argument("--t-max", type=float, default=2.6)
+    p.add_argument("--n-temps", type=int, default=25)
+    p.add_argument("--sweeps", type=int, default=40000)
+    p.add_argument("--burnin", type=int, default=8000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
@@ -604,6 +624,39 @@ def main(argv=None):
               f"(ratios {ratio_str}, slope vs 1/L = {result.slope_vs_inv_L:+.3f}) — "
               f"{verdict}  ·  {result.wall_seconds:.0f}s total")
         path = render_mod.render_m09(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m10":
+        ns = _parse_m10(args[1:])
+        from . import m10
+        from . import render as render_mod
+        L = 48 if ns.quick else ns.L
+        sweeps = 4000 if ns.quick else ns.sweeps
+        burnin = 1500 if ns.quick else ns.burnin
+        print(f"M10 antiferromagnetic Ising (J=−1) · L={L} · {ns.n_temps} temps in "
+              f"[{ns.t_min}, {ns.t_max}] · {sweeps:,} sweeps on {ns.device}")
+
+        def _progress_m10(result):
+            print(f"  ✓ swept {len(result.T)} temps  ({result.wall_seconds:.1f}s)")
+
+        result = m10.run_m10(
+            L=L, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
+            n_sweeps=sweeps, n_burnin=burnin, seed=ns.seed, device=ns.device,
+            progress=_progress_m10,
+        )
+        report = m10.to_report(result)
+        print(f"  → staggered χ_s-peak T_N = {result.tc_chi_refined:.3f}  (Onsager exact "
+              f"{result.tc_benchmark:.4f}, rel. err {result.rel_error*100:.1f}%)  ·  "
+              f"C cross-check {result.tc_cv_refined:.3f}  ·  uniform ⟨|m|⟩ ≤ "
+              f"{result.max_abs_mag:.3f}  ·  {result.wall_seconds:.0f}s")
+        path = render_mod.render_m10(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod

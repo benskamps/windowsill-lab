@@ -1767,3 +1767,202 @@ def render_m09(report: dict, date: str | None = None) -> Path:
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
+
+
+# ── M10 — antiferromagnetic Ising · the staggered order parameter ─────────────
+
+def _plot_m10_chi(report: dict) -> str:
+    """χ_s(T) with the located T_N vs the exact Onsager benchmark — M10's headline.
+
+    The staggered susceptibility, not the uniform one — its peak is the Néel
+    temperature, which by the bipartite gauge duality equals Onsager's exact T_c.
+    """
+    T = report["T"]
+    chi = report["chi_staggered"]
+    tc_fit = report.get("tc_chi_refined", report.get("tc_chi"))
+    tc_bench = report.get("tc_benchmark", 2.0 / np.log(1.0 + np.sqrt(2.0)))
+    tc_cv = report.get("tc_cv_refined")
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.plot(T, chi, "o-", color="#7a4e2f", markersize=4, linewidth=1.5,
+            label=f"Measured χ_s  (staggered, L={report.get('L')})")
+    ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.85,
+               label=f"Onsager exact T_N = {tc_bench:.4f}")
+    if tc_fit is not None:
+        ax.axvline(tc_fit, linestyle=":", color="#3a2e21", alpha=0.8,
+                   label=f"χ_s-peak T_N(L) = {tc_fit:.3f}")
+    if tc_cv is not None:
+        ax.axvline(tc_cv, linestyle=":", color="#3a6ea5", alpha=0.55,
+                   label=f"C-peak cross-check = {tc_cv:.3f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("χ_s  (staggered susceptibility)")
+    ax.set_title("Antiferromagnet: the STAGGERED susceptibility peaks at T_N")
+    ax.legend(frameon=False, fontsize=8.5)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_m10_order(report: dict) -> str:
+    """Staggered ⟨|m_s|⟩ melting WITH the uniform ⟨|m|⟩ pinned at ≈0 — the AFM punchline.
+
+    The whole milestone in one plot: the staggered order parameter melts from 1 to
+    0 across T_N (the real transition), while the *uniform* magnetization — what a
+    naive reader would measure — stays flat at ≈0 at every temperature, ordered
+    phase included. Reading uniform m would show nothing and look broken; the AFM's
+    order is hidden in the staggered (Néel) sublattice structure.
+    """
+    T = report["T"]
+    ms = report.get("stag_mag") or [0.0] * len(T)
+    ms_err = report.get("stag_mag_err") or [0.0] * len(T)
+    mu = report.get("abs_mag") or [0.0] * len(T)
+    tc_bench = report.get("tc_benchmark", 2.0 / np.log(1.0 + np.sqrt(2.0)))
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.errorbar(T, ms, yerr=ms_err, fmt="o-", color="#3a2e21", markersize=4,
+                capsize=2, linewidth=1.4, label="⟨|m_s|⟩  staggered (the order parameter)")
+    ax.plot(T, mu, "s--", color="#b06a45", markersize=3.5, linewidth=1.3, alpha=0.85,
+            label="⟨|m|⟩  uniform (≈0 — reading this looks broken)")
+    ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.85,
+               label=f"Onsager exact T_N = {tc_bench:.4f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("order parameter  (per spin)")
+    ax.set_ylim(-0.02, 1.05)
+    ax.set_title("Staggered order melts at T_N; uniform magnetization stays ≈0")
+    ax.legend(frameon=False, fontsize=8.5)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M10_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab · {date} · antiferromagnetic Ising</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab · phase 2</h1>
+  <div class="date">{date} · M10 — antiferromagnetic Ising</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+
+  <h2>Staggered susceptibility — the peak is T_N</h2>
+  <figure><img src="data:image/png;base64,{chi_png}" alt="antiferromagnetic Ising staggered susceptibility"></figure>
+
+  <h2>Staggered order melts; uniform magnetization stays ≈0</h2>
+  <figure><img src="data:image/png;base64,{order_png}" alt="staggered vs uniform magnetization"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def render_m10(report: dict, date: str | None = None) -> Path:
+    """Render an M10 antiferromagnetic-Ising report (HTML + plots + JSON sidecar).
+
+    Mirrors ``render_m05``/``render_m08``: a slug-keyed ``~/.lab`` dated cache +
+    ``latest.html`` pointer AND a permanent committed pair
+    (``reports/<date>-m10.html`` + ``.json``). The verdict is an honest **pass**
+    only when the *staggered* χ_s peak lands within ±0.1 of Onsager's exact
+    T_N ≈ 2.2692 AND the uniform ⟨|m|⟩ stayed ≈0 (the AFM signature — a silent
+    sign-flip to the FM would peak on the uniform moment instead). It names the
+    FM↔AFM gauge duality (flipping J on a bipartite lattice is the ferromagnet in
+    disguise, so the Néel point is Onsager's same number). A miss stays a folded
+    grey leaf with its real numbers intact, never relabelled a discovery.
+    """
+    from .publish import today_local
+    date = date or today_local()
+    _ensure_home()
+
+    L = report.get("L")
+    tc_fit = report.get("tc_chi_refined", report.get("tc_chi"))
+    tc_cv = report.get("tc_cv_refined")
+    tc_bench = report.get("tc_benchmark", 2.0 / np.log(1.0 + np.sqrt(2.0)))
+    rel_err = report.get("rel_error")
+    max_unif = report.get("max_abs_mag")
+
+    sentence = (
+        f"I ran the *antiferromagnetic* 2D Ising model (J = −1) on an L={L} square "
+        f"lattice across a window straddling the transition. Flipping the coupling "
+        f"sign favours anti-aligned neighbours — the ground state is the "
+        f"checkerboard Néel state, not the aligned ferromagnet. On a bipartite "
+        f"lattice the sublattice gauge flip s_i → −s_i (on one colour) turns the "
+        f"antiferromagnet exactly into the ferromagnet, so the Néel temperature is "
+        f"Onsager's *same* exact T_c ≈ {tc_bench:.4f}. The order parameter is the "
+        f"*staggered* magnetization m_s = (1/N)Σ ε_i s_i (ε = (−1)^(x+y)); its "
+        f"susceptibility χ_s peaks at T_N(L) = {tc_fit:.3f}. The uniform ⟨|m|⟩ "
+        f"stays ≈0 throughout — reading it would show nothing and look broken. "
+        f"Wall time on the GPU: {report.get('wall_seconds', 0):.0f}s."
+    )
+    near = tc_fit is not None and abs(tc_fit - tc_bench) <= 0.1
+    unif_ok = max_unif is None or max_unif <= 0.3
+    passed = near and unif_ok
+    err_str = f"{rel_err*100:.1f}%" if rel_err is not None else "—"
+    cv_str = (f", and the specific-heat peak from the same run independently gives "
+              f"T_N(L) = {tc_cv:.3f}") if tc_cv is not None else ""
+    unif_str = (f" The uniform magnetization stayed ≤ {max_unif:.3f} across the sweep "
+                f"(the AFM carries no net moment — the staggered order does all the "
+                f"work)." if max_unif is not None else "")
+    verdict = (
+        f"{'✓' if passed else '~'} Staggered χ_s-peak T_N(L) = {tc_fit:.3f} vs Onsager "
+        f"exact {tc_bench:.4f} (rel. err {err_str}){cv_str}. "
+        + ("Flipping J to −1 doesn't break the engine: the antiferromagnet lands on "
+           "Onsager's same critical temperature, read off the *staggered* order "
+           "parameter (the uniform magnetization stays ≈0, the deliberate trap). The "
+           "framework handles negative coupling cleanly — a calibration pass."
+           + unif_str +
+           " (Small-L finite-size effects push the pseudo-critical peak slightly "
+           "above the infinite-volume T_N; an L-extrapolation would sharpen it.)"
+           if passed else
+           "The antiferromagnet does not land on T_N on the staggered order "
+           "parameter (or the uniform moment failed to stay ≈0) — kept honestly as "
+           "a null, not a discovery." + unif_str)
+    )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M10_HTML_TEMPLATE.format(
+        date=date, sentence=sentence, verdict=verdict,
+        chi_png=_plot_m10_chi(report),
+        order_png=_plot_m10_order(report),
+        json_dump=json_dump,
+    )
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    _commit_report(date, slug, html, json_dump)
+    return out

@@ -1,5 +1,6 @@
 import math
 
+import numpy as np
 import pytest
 import torch
 
@@ -12,6 +13,8 @@ from lab.xy import XYRunConfig
 from lab.xy import run as run_xy
 from lab.heisenberg import HeisenbergRunConfig, _random_unit_vectors
 from lab.heisenberg import run as run_heis
+from lab.ising_afm import AFMRunConfig
+from lab.ising_afm import run as run_afm
 
 
 CUDA_AVAILABLE = torch.cuda.is_available()
@@ -412,6 +415,101 @@ def test_heisenberg_metropolis_and_wolff_both_run():
         assert r.energy.shape == (1,)
         assert r.energy[0] < -1.0, \
             f"{updater}: cold lattice should align (E<-1), got E={r.energy[0]:.3f}"
+
+
+# ── M10: antiferromagnetic Ising engine (ising_afm) — staggered order, J=-1 ───
+def test_afm_runconfig_defaults():
+    cfg = AFMRunConfig()
+    assert cfg.L == 128
+    assert cfg.J == -1.0          # antiferromagnetic by default
+    assert cfg.n_temps == 25
+    assert cfg.n_samples() == cfg.n_sweeps // cfg.sample_every
+
+
+def test_afm_cpu_run_smoke():
+    """A tiny CPU AFM run produces sensible-shaped, physically valid output.
+
+    The headline observable is the STAGGERED magnetization m_s — near 1 when the
+    Néel state orders, near 0 disordered — while the UNIFORM ⟨|m|⟩ stays ≈0 (the
+    AFM carries no net moment). Shapes, m_s/⟨|m|⟩ ∈ [0,1], non-negative variances,
+    and the energy range [-2, 0] are all asserted.
+    """
+    cfg = AFMRunConfig(L=16, n_temps=4, T_min=1.8, T_max=2.8,
+                       n_burnin=40, n_sweeps=120, sample_every=5, device="cpu")
+    r = run_afm(cfg)
+    assert r.T.shape == (4,)
+    assert r.stag_mag.shape == (4,)
+    assert r.stag_mag_err.shape == (4,) and (r.stag_mag_err >= 0).all()
+    assert r.chi_staggered.shape == (4,) and (r.chi_staggered >= -1e-6).all()
+    assert r.abs_mag.shape == (4,)
+    assert r.energy.shape == (4,) and r.specific_heat.shape == (4,)
+    # Staggered and uniform magnetizations are per-spin fractions in [0, 1].
+    assert (r.stag_mag >= -1e-6).all() and (r.stag_mag <= 1.0 + 1e-6).all()
+    assert (r.abs_mag >= -1e-6).all() and (r.abs_mag <= 1.0 + 1e-6).all()
+    assert (r.specific_heat >= -1e-6).all()
+    # Energy per spin e = +0.5·⟨Σ_4 s·s⟩ with J=-1 → Néel ground state at -2 ≤ e ≤ 0.
+    assert (r.energy >= -2.0001).all() and (r.energy <= 1e-6).all()
+    assert len(r.snapshots) == 3
+
+
+def test_afm_staggered_orders_uniform_does_not():
+    """The core AFM physics + the headline trap, in one test.
+
+    A cold antiferromagnet Néel-orders: the STAGGERED |m_s| → ~1, while the UNIFORM
+    ⟨|m|⟩ stays ≈0 at EVERY temperature (the ground state carries no net moment).
+    Reading uniform m would show nothing and look broken — so we assert the
+    staggered order parameter does the work and the uniform one never does. A wide
+    T window with a cold and a hot point pins both ends. CPU so it always runs.
+    """
+    tc = 2.0 / math.log(1.0 + math.sqrt(2.0))
+    cfg = AFMRunConfig(L=24, T_min=0.5 * tc, T_max=1.5 * tc, n_temps=6,
+                       n_burnin=500, n_sweeps=900, sample_every=10, device="cpu")
+    r = run_afm(cfg)
+    # Coldest: the staggered (Néel) order parameter is high.
+    assert r.stag_mag[0] > 0.8, f"cold AFM should Néel-order, got |m_s|={r.stag_mag[0]:.3f}"
+    # Hottest: staggered order melts.
+    assert r.stag_mag[-1] < 0.3, f"hot AFM should disorder, got |m_s|={r.stag_mag[-1]:.3f}"
+    # THE trap: the uniform magnetization stays ≈0 at ALL T — including the cold,
+    # ordered end. (A silent sign-flip to the FM would make this large at low T.)
+    assert (r.abs_mag < 0.15).all(), \
+        f"uniform ⟨|m|⟩ must stay ≈0 for the AFM, got {r.abs_mag}"
+    # Cold energy approaches the Néel ground state -2.
+    assert r.energy[0] < -1.5, f"cold AFM energy should near -2, got {r.energy[0]:.3f}"
+
+
+def test_afm_fm_gauge_duality():
+    """The strongest correctness guard: AFM-staggered == FM-uniform at the same |J|.
+
+    On a bipartite lattice the sublattice gauge flip turns the antiferromagnet
+    EXACTLY into the ferromagnet, so the AFM's staggered observables must equal an
+    FM run's uniform observables at the same parameters and seed. With identical
+    RNG streams the two even track configuration-by-configuration under the gauge
+    map, so they agree to well within Monte-Carlo noise. This catches a silent sign
+    error in ΔE that would secretly revert the model to the FM (which would still
+    peak at 2.2692, but on the wrong observable). CPU so it always runs.
+    """
+    common = dict(L=24, T_min=2.0, T_max=2.6, n_temps=7, n_burnin=600,
+                  n_sweeps=1000, sample_every=10, seed=7, device="cpu")
+    r_afm = run_afm(AFMRunConfig(J=-1.0, **common))
+    r_fm = run(RunConfig(**common))   # the untouched FM engine: uniform |m|, chi_abs
+    # Staggered AFM order parameter ≈ uniform FM order parameter, bond-for-bond.
+    dm = float(np.abs(np.asarray(r_afm.stag_mag) - np.asarray(r_fm.abs_mag)).max())
+    de = float(np.abs(np.asarray(r_afm.energy) - np.asarray(r_fm.energy)).max())
+    assert dm < 0.05, f"AFM staggered |m_s| must match FM uniform |m| (duality), max Δ={dm:.4f}"
+    assert de < 0.05, f"AFM energy must match FM energy (duality), max Δ={de:.4f}"
+
+
+@pytest.mark.skipif(not CUDA_AVAILABLE, reason="GPU not available")
+def test_afm_tiny_gpu_run_smoke():
+    """Smoke test: a tiny AFM GPU run produces sensible-shaped outputs."""
+    cfg = AFMRunConfig(L=16, n_temps=5, T_min=2.0, T_max=2.6,
+                       n_burnin=20, n_sweeps=40, sample_every=10, device="cuda")
+    r = run_afm(cfg)
+    assert r.T.shape == (5,)
+    assert r.stag_mag.shape == (5,) and (r.stag_mag <= 1.0 + 1e-6).all()
+    assert r.chi_staggered.shape == (5,) and (r.chi_staggered >= -1e-6).all()
+    assert r.abs_mag.shape == (5,) and (r.abs_mag <= 1.0 + 1e-6).all()
+    assert r.energy.shape == (5,) and (r.energy >= -2.0001).all()
 
 
 @pytest.mark.skipif(not CUDA_AVAILABLE, reason="GPU not available")
