@@ -90,6 +90,10 @@ mkdir -p "$(dirname "$LOG")"
     echo "── done (skipped: not on main)"
     exit 0
   fi
+  # Sync with remote BEFORE working: PRs and the page-mirror bot push to main on
+  # their own schedule, and a bare push from a stale main is rejected ("fetch
+  # first") — exactly how the feed stranded for days in June 2026. Rebase on top.
+  git pull --rebase --autostash 2>/dev/null || true
   # Run today's experiment (best-effort); always leave the feed fresh.
   "{PY}" -m lab.cli run || "{PY}" -m lab.cli publish
   # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
@@ -100,7 +104,9 @@ mkdir -p "$(dirname "$LOG")"
     echo "nothing changed"
   else
     git commit -m "nightly: $(date -u +%F)"
-    for i in 1 2 3 4; do git push && break || sleep $((2 ** i)); done
+    # On rejection, remote advanced under us: rebase and retry, don't hammer a
+    # push that can only be rejected again.
+    for i in 1 2 3 4; do git push && break || {{ git pull --rebase --autostash; sleep $((2 ** i)); }}; done
   fi
   echo "── done"
 }} >>"$LOG" 2>&1
@@ -164,6 +170,11 @@ if ($branch -ne 'main') {
     Log "-- done (skipped: not on main)"
     exit 0
 }
+# Sync with remote BEFORE working. PRs and the page-mirror bot push to main on
+# their own schedule; without this our nightly commit is based on a stale main and
+# the push below is rejected ("fetch first") -- exactly how the feed stranded for
+# days in June 2026. Rebase whatever we do on top of whatever has already landed.
+git pull --rebase --autostash 2>&1 | LogCmd
 # Run today's experiment (best-effort); always leave the feed fresh.
 & '__PY__' -m lab.cli run 2>&1 | LogCmd
 if ($LASTEXITCODE -ne 0) { & '__PY__' -m lab.cli publish 2>&1 | LogCmd }
@@ -177,6 +188,10 @@ if ($LASTEXITCODE -ne 0) {
     for ($i = 1; $i -le 4; $i++) {
         git push 2>&1 | LogCmd
         if ($LASTEXITCODE -eq 0) { break }
+        # Remote advanced between the sync above and now. Rebase onto it and retry,
+        # rather than hammering a push that can only be rejected again.
+        Log "push rejected; rebasing onto origin/main and retrying"
+        git pull --rebase --autostash 2>&1 | LogCmd
         Start-Sleep -Seconds ([math]::Pow(2, $i))
     }
 }
