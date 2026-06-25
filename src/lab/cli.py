@@ -24,6 +24,7 @@ Usage:
   lab m08             run M08: 2D XY model — BKT transition via the helicity-modulus jump
   lab m09             run M09: 2D Heisenberg — verify NO finite-T order (Mermin–Wagner)
   lab m10             run M10: antiferromagnetic Ising — T_N = Onsager 2.2692 on staggered m_s
+  lab m11             run M11: 2D Edwards–Anderson spin glass — P(q) broadens toward T_c=0
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -253,6 +254,34 @@ def _parse_m10(args):
     p.add_argument("--n-temps", type=int, default=25)
     p.add_argument("--sweeps", type=int, default=40000)
     p.add_argument("--burnin", type=int, default=8000)
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m11(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M11 sweeps a T-window down toward T = 0 (the 2D EA glass orders only at T = 0
+    # — no finite-T transition) and shows the disorder-averaged P(q) broadening as T
+    # falls. It batches realizations × temperatures × 2 replicas in one GPU pass; the
+    # disorder average over MANY realizations is mandatory. L is modest (spin glasses
+    # are expensive and the overlap needs two replicas each). The default cold edge is
+    # T=0.6: below ≈0.5–0.6 single-spin Metropolis can't equilibrate the L=16 glass in
+    # tractable time (the coldest points fall into an under-equilibration dip — the
+    # reason parallel tempering exists), so the trustworthy window starts at the floor
+    # and the broadening trend toward T=0 is the claim, the un-equilibrable tail is not.
+    p.add_argument("--L", type=int, default=16,
+                   help="lattice side (default 16; spin glasses are expensive)")
+    p.add_argument("--quick", action="store_true",
+                   help="L=8, few realizations, short sweep for a fast sanity pass")
+    p.add_argument("--t-min", type=float, default=0.6,
+                   help="cold edge (default 0.6 — the single-spin-Metropolis equilibration floor)")
+    p.add_argument("--t-max", type=float, default=2.0)
+    p.add_argument("--n-temps", type=int, default=16)
+    p.add_argument("--realizations", type=int, default=64,
+                   help="quenched ±J disorder realizations to average P(q) over")
+    p.add_argument("--sweeps", type=int, default=60000)
+    p.add_argument("--burnin", type=int, default=30000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
@@ -657,6 +686,43 @@ def main(argv=None):
               f"C cross-check {result.tc_cv_refined:.3f}  ·  uniform ⟨|m|⟩ ≤ "
               f"{result.max_abs_mag:.3f}  ·  {result.wall_seconds:.0f}s")
         path = render_mod.render_m10(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m11":
+        ns = _parse_m11(args[1:])
+        from . import m11
+        from . import render as render_mod
+        L = 8 if ns.quick else ns.L
+        realizations = 8 if ns.quick else ns.realizations
+        sweeps = 2000 if ns.quick else ns.sweeps
+        burnin = 800 if ns.quick else ns.burnin
+        print(f"M11 2D Edwards–Anderson spin glass · L={L} · {ns.n_temps} temps in "
+              f"[{ns.t_min}, {ns.t_max}] · {realizations} disorder realizations × 2 "
+              f"replicas · {sweeps:,} sweeps on {ns.device}")
+
+        def _progress_m11(result):
+            print(f"  ✓ swept {len(result.T)} temps × {result.n_realizations} "
+                  f"realizations  ({result.wall_seconds:.1f}s)")
+
+        result = m11.run_m11(
+            L=L, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
+            n_realizations=realizations, n_sweeps=sweeps, n_burnin=burnin,
+            seed=ns.seed, device=ns.device, progress=_progress_m11,
+        )
+        report = m11.to_report(result)
+        verdict = ("P(q) broadens toward T=0" if result.monotone_broadening
+                   else "broadening NOT clean — see report")
+        print(f"  → ⟨q²⟩ grows {result.q2_hot:.3f} → {result.q2_cold:.3f} as T→0 "
+              f"({result.broadening_fraction*100:.0f}% of steps) · max|⟨q⟩|="
+              f"{result.max_abs_q_mean:.3f} · {verdict} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_m11(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod

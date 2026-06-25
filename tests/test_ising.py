@@ -15,6 +15,8 @@ from lab.heisenberg import HeisenbergRunConfig, _random_unit_vectors
 from lab.heisenberg import run as run_heis
 from lab.ising_afm import AFMRunConfig
 from lab.ising_afm import run as run_afm
+from lab.spin_glass import SpinGlassConfig, _weighted_neighbor_sum
+from lab.spin_glass import run as run_sg
 
 
 CUDA_AVAILABLE = torch.cuda.is_available()
@@ -522,3 +524,81 @@ def test_heisenberg_tiny_gpu_run_smoke():
     assert r.abs_mag.shape == (3,) and (r.abs_mag <= 1.0 + 1e-6).all()
     assert r.energy.shape == (3,) and (r.energy >= -2.0001).all()
     assert r.chi.shape == (3,) and (r.chi >= -1e-6).all()
+
+
+# ── M11: 2D Edwards–Anderson spin-glass engine (spin_glass) ───────────────────
+def test_sg_weighted_neighbor_sum_matches_brute_force():
+    """The J-weighted neighbour sum must equal a brute-force bond energy.
+
+    This is the load-bearing bookkeeping (the analogue of M05's 3|L seam): the
+    left/up bonds come from the *rolled* coupling tensors (the left site's right-bond,
+    the up site's down-bond), not from Jx/Jy at the site itself. A sign/roll slip here
+    silently corrupts every energy and every overlap. We verify E = -0.5·Σ s·(Jweighted
+    nbr) equals the explicit sum over right+down bonds, and that the single-site flip
+    ΔE = 2·s_i·field_i matches a brute-force re-evaluation.
+    """
+    torch.manual_seed(0)
+    L = 5
+    s = (torch.randint(0, 2, (1, L, L)) * 2 - 1).float()
+    Jx = (torch.randint(0, 2, (1, L, L)) * 2 - 1).float()   # right-bond of each site
+    Jy = (torch.randint(0, 2, (1, L, L)) * 2 - 1).float()   # down-bond of each site
+
+    # Brute-force total energy: sum over the right and down bonds of every site.
+    e_bf = 0.0
+    for i in range(L):
+        for j in range(L):
+            e_bf += -float(Jx[0, i, j]) * float(s[0, i, j]) * float(s[0, i, (j + 1) % L])
+            e_bf += -float(Jy[0, i, j]) * float(s[0, i, j]) * float(s[0, (i + 1) % L, j])
+
+    field = _weighted_neighbor_sum(s, Jx, Jy)
+    e_vec = float(-0.5 * (s * field).sum())
+    assert abs(e_bf - e_vec) < 1e-4, (e_bf, e_vec)
+
+    # Single-site flip ΔE = 2·s_i·field_i must match a brute-force re-evaluation.
+    def total_e(spins):
+        e = 0.0
+        for i in range(L):
+            for j in range(L):
+                e += -float(Jx[0, i, j]) * float(spins[0, i, j]) * float(spins[0, i, (j + 1) % L])
+                e += -float(Jy[0, i, j]) * float(spins[0, i, j]) * float(spins[0, (i + 1) % L, j])
+        return e
+    s2 = s.clone(); s2[0, 2, 3] *= -1
+    dE_bf = total_e(s2) - total_e(s)
+    dE_local = float(2.0 * s[0, 2, 3] * field[0, 2, 3])
+    assert abs(dE_bf - dE_local) < 1e-4, (dE_bf, dE_local)
+
+
+def test_sg_cpu_run_smoke():
+    """A tiny CPU EA run: sensible shapes, non-negative ⟨q²⟩, P(q) normalised, and
+    the broadening signature (⟨q²⟩ at the coldest T exceeds the hottest)."""
+    cfg = SpinGlassConfig(L=8, n_temps=6, T_min=0.3, T_max=2.5, n_realizations=8,
+                          n_burnin=300, n_sweeps=900, sample_every=10, device="cpu")
+    r = run_sg(cfg)
+    assert r.T.shape == (6,)
+    assert r.q2_mean.shape == (6,) and (r.q2_mean >= -1e-9).all()
+    assert r.q4_mean.shape == (6,) and (r.q4_mean >= -1e-9).all()
+    assert r.binder.shape == (6,) and np.isfinite(r.binder).all()
+    assert r.energy.shape == (6,)
+    assert r.pq.shape == (6, cfg.n_qbins)
+    # P(q) integrates to ~1 (a normalised density) at every temperature.
+    bin_w = float(r.q_bin_centers[1] - r.q_bin_centers[0])
+    integrals = (r.pq * bin_w).sum(axis=1)
+    assert np.allclose(integrals, 1.0, atol=1e-3), integrals
+    # Broadening: ⟨q²⟩ at the coldest T exceeds the hottest (P(q) widens as T → 0).
+    i_cold, i_hot = int(np.argmin(r.T)), int(np.argmax(r.T))
+    assert r.q2_mean[i_cold] > r.q2_mean[i_hot]
+    # ⟨q⟩ ≈ 0 at the HIGH-T end by the ±J symmetry (the equilibration diagnostic;
+    # the cold end may be under-equilibrated in this tiny run, which is expected).
+    assert abs(r.q_mean[i_hot]) < 0.1
+
+
+@pytest.mark.skipif(not CUDA_AVAILABLE, reason="GPU not available")
+def test_sg_tiny_gpu_run_smoke():
+    """Smoke test: a tiny EA GPU run produces sensible-shaped outputs."""
+    cfg = SpinGlassConfig(L=8, n_temps=5, T_min=0.3, T_max=2.0, n_realizations=8,
+                          n_burnin=40, n_sweeps=80, sample_every=10, device="cuda")
+    r = run_sg(cfg)
+    assert r.T.shape == (5,)
+    assert r.q2_mean.shape == (5,) and (r.q2_mean >= -1e-9).all()
+    assert r.pq.shape == (5, cfg.n_qbins)
+    assert np.isfinite(r.binder).all()
