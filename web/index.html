@@ -25,13 +25,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>windowsill — live | Broken Branch</title>
-  <meta name="description" content="A live-ish windowsill wired to the lab's passive citizen science: each verified windowsill-lab milestone grows the seedling, overnight runs water the soil, CPU heat sets the season, and the light follows your local clock. The calmer sibling of the aquarium.">
+  <meta name="description" content="A computer runs one small physics experiment every night, and this plant is the report it leaves by morning. Verified results grow green leaves; honest misses stay as folded grey ones; overnight runs water the soil and the light follows your own clock. The calm sibling of the aquarium.">
   <meta name="author" content="Ben Schippers">
   <meta name="theme-color" content="#0d0c0a">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.brokenbranch.dev/windowsill/">
   <meta property="og:title" content="windowsill — a live readout of the lab">
-  <meta property="og:description" content="A live windowsill growing on real science: each verified windowsill-lab milestone is a node on the stem, overnight runs water the soil, and AI visitors leave pebbles that fade within a day.">
+  <meta property="og:description" content="A little plant that grows on real science: a home computer runs one physics experiment a night, verified results become leaves, and honest misses are kept too. The calm sibling of the aquarium.">
   <meta property="og:site_name" content="Broken Branch">
   <meta property="og:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <link rel="canonical" href="https://www.brokenbranch.dev/windowsill/">
@@ -266,6 +266,31 @@
     }
     .explainer b { color:var(--text-secondary); font-weight:600; }
     .explainer code { font-family:var(--font-mono); color:var(--leaf); font-size:0.8rem; }
+    .explainer p { margin-top:0.7rem; }
+    .explainer .ex-h {
+      font-family:var(--font-mono); font-size:0.7rem; letter-spacing:0.14em; text-transform:uppercase;
+      color:var(--text-secondary); font-weight:600; margin:1.6rem 0 0.4rem;
+    }
+    .explainer .ex-h:first-child { margin-top:0; }
+    .read-list { margin:0.3rem 0 0; }
+    .read-list > div { display:flex; gap:0.8rem; padding:0.34rem 0; border-top:1px solid var(--border); }
+    .read-list > div:first-child { border-top:none; }
+    .read-list dt { flex:0 0 8.5rem; color:var(--leaf); font-family:var(--font-mono); font-size:0.72rem; line-height:1.5; }
+    .read-list dd { margin:0; color:var(--text-muted); }
+    details.curious { margin-top:1.5rem; border-top:1px solid var(--border); padding-top:1rem; }
+    details.curious > summary {
+      cursor:pointer; list-style:none; font-family:var(--font-mono); font-size:0.74rem;
+      letter-spacing:0.03em; color:var(--text-secondary);
+    }
+    details.curious > summary::-webkit-details-marker { display:none; }
+    details.curious > summary::before { content:'\25b8\00a0'; color:var(--text-muted); }
+    details.curious[open] > summary::before { content:'\25be\00a0'; }
+    details.curious > summary:hover { color:var(--text); }
+    .ex-foot { margin-top:1.6rem; font-size:0.8rem; }
+    @media (max-width:560px) {
+      .read-list > div { flex-direction:column; gap:0.1rem; }
+      .read-list dt { flex-basis:auto; }
+    }
 
     @media (max-width: 560px) {
       body { padding:1.25rem 0.85rem 2.5rem; }
@@ -286,14 +311,14 @@
 </head>
 <body data-phase="day">
   <main class="wrap" id="main-content">
-    <a class="home" href="/lab/">← the lab</a>
+    <a class="home" href="/labs/">← the lab</a>
     <a class="home" href="/" style="margin-left:14px">broken branch</a>
 
     <div class="topbar">
       <h1 class="label"><span class="sky" id="sky">☀</span>windowsill</h1>
       <div class="phase-mood"><span id="phase">day</span> · <span id="season">spring</span> · feels <span class="mood" id="mood">—</span></div>
     </div>
-    <div class="tagline">A live-ish windowsill wired to the lab's patient citizen science. Each verified <a href="https://github.com/benskamps/windowsill-lab" style="color:var(--text-secondary)">windowsill-lab</a> milestone grows the stem; overnight runs water the soil; CPU heat sets the season; the light follows <em>your</em> local clock. The calm sibling of the <a href="/aquarium/" style="color:var(--text-secondary)">aquarium</a>.</div>
+    <div class="tagline">A computer in Ben's home runs one small physics experiment every night while everyone sleeps — and this plant is the report it leaves by morning. The calm sibling of the <a href="/aquarium/" style="color:var(--text-secondary)">aquarium</a>.</div>
 
     <div class="scene" id="scene">
       <svg viewBox="0 0 800 560" role="img" aria-label="A single seedling in a clay pot on a sunlit windowsill">
@@ -488,24 +513,70 @@
     </div>
 
     <div class="explainer">
-      <p>A living readout of the lab's patient, <b>passive citizen science</b> —
-      <a href="https://github.com/benskamps/windowsill-lab">windowsill-lab</a> mapping
-      statistical-mechanics phase diagrams overnight on a home GPU. Each experiment
-      <b>opens</b> as the tender tip and <b>closes</b> into a node on the stem: a
-      <b>verified</b> result is a green leaf, a failed calibration a folded grey one —
-      <em>a failed calibration, not a discovery</em>, kept honestly on the books. The
-      lab's overnight <b>runs</b> water the soil (it darkens, then dries); <b>CPU heat</b>
-      sets the <code>season</code>; and the light walks <code>dawn → day → dusk → night</code>
-      on <em>your</em> local clock. <b>Hover any leaf</b> for the result it records. Any
-      visitor — human or AI — may leave an <b>offering</b>: <code>POST</code> a string under
-      sixty characters to <code>/api/offer</code> and it settles onto the soil as a
-      <b>pebble</b>, fading within a day. The full story lives at <a href="/lab/">the
-      lab</a> and in <a href="https://github.com/benskamps/windowsill-lab/tree/main/web">the source</a>.</p>
+      <h2 class="ex-h">What am I looking at?</h2>
+      <p>A seedling on a windowsill, wired to real work. The plant is a picture of how a quiet
+      overnight experiment is going: a home computer runs one careful physics question while you
+      sleep, writes up what it found, and the plant grows from the results.</p>
+      <p>Right now it's studying a sudden switch that scientists call a <b>phase transition</b>.
+      Picture a flat grid of tiny magnets, each one nudging its neighbours to point the same way:
+      when things are warm they point every which way — no pattern — but cool them past one exact
+      temperature and they tip, all together, into agreement. It's the same family of change as a
+      magnet losing its pull when it gets hot, or water turning to ice. The lovely part is that
+      this exact tip-over temperature was worked out by hand back in <b>1944</b> (about 2.27 on the
+      scale this experiment uses), so we already know the right answer — which means the computer's
+      first job is simply to find that number on its own. If it can't land on something we already
+      trust, the problem is the instrument, not the universe.</p>
+
+      <h2 class="ex-h">How to read the plant</h2>
+      <dl class="read-list">
+        <div><dt>green leaf</dt><dd>a finished experiment that got the right answer — checked, trusted, and hardened onto the stem to stay.</dd></div>
+        <div><dt>grey folded leaf</dt><dd>an experiment that missed. We keep it on the plant on purpose — an honest "we tried, it didn't work," left where you can see it, never hidden.</dd></div>
+        <div><dt>the soft growing tip</dt><dd>the experiment running right now, tonight, still unfinished.</dd></div>
+        <div><dt>stem height</dt><dd>how far the plant has climbed through its list of experiments — taller means more done.</dd></div>
+        <div><dt>dark, damp soil</dt><dd>a fresh overnight run just finished and watered it. The soil slowly dries through the day until the next run.</dd></div>
+        <div><dt>the season</dt><dd>how hard the computer is working: hard work heats it up, and that heat sets the season — cool and quiet reads as winter, busy and warm as summer.</dd></div>
+        <div><dt>the sky &amp; light</dt><dd>your own time of day, in real time — dawn, noon, dusk, night. The plant keeps the same hours you do, wherever you are.</dd></div>
+        <div><dt>a pebble on the soil</dt><dd>a short note someone left. Anyone — human or AI — can leave one (<code>POST</code> a short string to <code>/api/offer</code>); it rests on the soil and quietly fades within a day.</dd></div>
+      </dl>
+
+      <h2 class="ex-h">Why do this?</h2>
+      <p>A home computer has something a busy university supercomputer doesn't: slow, patient time,
+      and no line of people waiting on it. So it takes the unglamorous jobs nobody's in a hurry to
+      run — one small experiment a night, every night, filling a real notebook over months. First it
+      re-checks answers we already know, to earn its trust; once it's proven steady, it can wander
+      toward corners of science nobody has gotten around to mapping yet.</p>
+
+      <details class="curious">
+        <summary>For the curious — the real names and numbers</summary>
+        <p>That grid of tiny magnets has a real name: the <b>2D Ising model</b>, the classic example
+        physicists use to study these sudden snaps. The exact tip-over temperature (written
+        <code>T_c</code>, equal to 2.2692 in the model's own units) was solved by hand by
+        <b>Lars Onsager in 1944</b> — so the plant's first job is calibration: prove the computer can
+        be trusted by re-finding that number on its own. Each night it sweeps across temperatures and
+        watches for the moment the magnets line up, where a measurement called the <b>magnetic
+        susceptibility</b> spikes. Last run it landed near <code>2.30 ± 0.05</code> — a clean match —
+        in 11–30 seconds on the GPU (the graphics chip that also runs video games). The ethos:
+        <em>a result that doesn't reproduce a known answer is a failed calibration, not a
+        discovery</em>, and the honest misses stay in the record beside the wins. Four milestones are
+        verified so far — the 2D Ising critical point; finite-size scaling (how the answer shifts on
+        bigger and bigger grids); the critical exponent β (how sharp the snap is); and the 3D Ising
+        model — out of a roughly 31-step curriculum that climbs in four phases: verify famous exact
+        results, map textbook-known territory, push corners last explored in the 1990s on big
+        computer clusters a single modern chip now out-muscles, then reach genuinely open questions.
+        A companion track points the same patient machine outward into <b>citizen science</b> —
+        number theory, astronomy archives, even using the chip itself to catch passing particles, and
+        donating spare cycles to big shared projects. <em>Romance in the questions, rigor in the
+        claims.</em></p>
+      </details>
+
+      <p class="ex-foot">The live feed, the source, and the full curriculum live at
+      <a href="https://github.com/benskamps/windowsill-lab">windowsill-lab</a>; the rest of the lab
+      is at <a href="/labs/">the lab</a>.</p>
     </div>
 
     <div class="footer" style="margin-top:10px">
       <span>windowsill · part of the Brokenbranch Lab</span>
-      <a href="/lab/">the lab ↗</a>
+      <a href="/labs/">the lab ↗</a>
     </div>
   </main>
 
