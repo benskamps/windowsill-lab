@@ -19,6 +19,10 @@ def test_nightly_script_is_runnable_and_self_contained():
     assert 'abbrev-ref HEAD' in sh
     assert '!= "main"' in sh
     assert "REFUSING" in sh
+    # Sync before pushing: a bare push from a stale main is rejected the moment
+    # remote advances (a merged PR, the mirror bot), which stranded the feed for
+    # days in June 2026. The nightly must rebase onto remote, not just push.
+    assert "git pull --rebase" in sh
 
 
 def test_units_reference_the_nightly_script_and_schedule():
@@ -61,6 +65,8 @@ def test_nightly_ps1_is_runnable_and_self_contained():
     assert "abbrev-ref HEAD" in ps
     assert "-ne 'main'" in ps
     assert "REFUSING" in ps
+    # Same sync-before-push guard as the bash analog (the June 2026 stranding fix).
+    assert "git pull --rebase" in ps
 
 
 def test_task_xml_is_wellformed_and_runs_the_nightly():
