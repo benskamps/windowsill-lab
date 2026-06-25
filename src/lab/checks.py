@@ -308,10 +308,72 @@ def check_m05(report: dict) -> tuple[bool | None, str]:
     return ok, f"triangular χ peak at T={peak_T:.3f} vs exact 4/ln3 = {TC_TRI:.4f} (tol ±{tol})"
 
 
+def _refine_peak_stdlib(T, y) -> float:
+    """Sub-grid peak location via a 3-point parabola (stdlib port of m06.refine_peak).
+
+    The discrete argmax is only accurate to the grid spacing ΔT; fitting a
+    quadratic through the peak sample and its two neighbours recovers the vertex.
+    Falls back to the discrete argmax T when the peak is on an endpoint. Shared by
+    the per-q M07 check below so every q is graded the same way M04/M05/M06 grade
+    their single peak.
+    """
+    i = max(range(len(y)), key=lambda k: y[k])
+    if 0 < i < len(T) - 1:
+        y0, y1, y2 = y[i - 1], y[i], y[i + 1]
+        denom = y0 - 2.0 * y1 + y2
+        return T[i] if denom == 0 else T[i] + 0.5 * (y0 - y2) / denom * (T[i] - T[i - 1])
+    return T[i]
+
+
+def check_m07(report: dict) -> tuple[bool | None, str]:
+    """2D q-state Potts: each q's χ peak locates its exact T_c = 1/ln(1+√q).
+
+    Returns ``None`` unless this is an M07 report. Otherwise re-derives the
+    critical temperature *independently* for every q from its per-q (T, χ) arrays
+    — a coarse argmax refined by a 3-point parabola — and asserts each lands near
+    the exact Potts T_c. The transition is continuous for q ≤ 4 and **first-order**
+    for q ≥ 5; first-order transitions have stronger finite-size effects and
+    metastability, so the q ≥ 5 tolerance is widened (±0.15) relative to the
+    continuous q ≤ 4 tolerance (±0.1) — a physical allowance for the larger
+    pseudo-critical shift, not a fudge: a broken simulation (wrong T_c, wrong
+    order parameter, a non-ordering lattice) still fails by a wide margin. A
+    receipt that re-computes each number, not an echo.
+    """
+    if report.get("experiment") != "M07-potts":
+        return None, "not an M07 Potts report"
+    per_q = report.get("per_q")
+    if not per_q:
+        return None, "M07 report missing per-q arrays"
+
+    parts: list[str] = []
+    all_ok = True
+    graded = 0
+    for entry in per_q:
+        q = entry.get("q")
+        T, chi = entry.get("T"), entry.get("chi")
+        if not q or not T or not chi or len(T) != len(chi) or len(T) < 3:
+            continue
+        graded += 1
+        peak_T = _refine_peak_stdlib(T, chi)
+        tc_exact = 1.0 / math.log(1.0 + math.sqrt(q))
+        # Continuous (q≤4): ±0.1. First-order (q≥5): ±0.15 — stronger finite-size
+        # / metastability shift on a finite lattice (a documented physical effect,
+        # not a tolerance fudge; a broken run still misses by far more).
+        tol = 0.1 if q <= 4 else 0.15
+        ok = abs(peak_T - tc_exact) <= tol
+        all_ok = all_ok and ok
+        parts.append(f"q={q}: T={peak_T:.3f} vs {tc_exact:.3f} (±{tol}){'' if ok else ' ✗'}")
+
+    if graded == 0:
+        return None, "M07 report has no gradable (T, χ) per-q arrays"
+    return all_ok, "Potts χ peaks — " + "; ".join(parts)
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
-          "M04": check_m04, "M05": check_m05, "M06": check_m06}
+          "M04": check_m04, "M05": check_m05, "M06": check_m06,
+          "M07": check_m07}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:

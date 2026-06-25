@@ -1,9 +1,13 @@
+import math
+
 import pytest
 import torch
 
 from lab.ising import RunConfig, run
 from lab.ising_tri import TriRunConfig
 from lab.ising_tri import run as run_tri
+from lab.potts import PottsRunConfig
+from lab.potts import run as run_potts
 
 
 CUDA_AVAILABLE = torch.cuda.is_available()
@@ -95,3 +99,96 @@ def test_tri_tiny_gpu_run_smoke():
     assert r.chi_abs.shape == (5,) and (r.chi_abs >= 0).all()
     assert r.specific_heat.shape == (5,) and (r.specific_heat >= 0).all()
     assert (r.abs_mag >= 0).all() and (r.abs_mag <= 1).all()
+
+
+# ── M07: q-state Potts engine (potts) ────────────────────────────────────────
+def test_potts_runconfig_defaults():
+    cfg = PottsRunConfig()
+    assert cfg.q == 3 and cfg.L == 128
+    assert cfg.n_temps == 25
+    assert cfg.n_samples() == cfg.n_sweeps // cfg.sample_every
+
+
+def test_potts_requires_q_at_least_two():
+    """q < 2 is not a Potts model (q=2 is the Ising floor); the engine must raise."""
+    cfg = PottsRunConfig(q=1, L=8, n_temps=2, n_burnin=1, n_sweeps=2, device="cpu")
+    with pytest.raises(ValueError, match="q must be"):
+        run_potts(cfg)
+
+
+def test_potts_cpu_run_smoke():
+    """A tiny CPU Potts run produces sensible-shaped, physically valid output."""
+    cfg = PottsRunConfig(q=3, L=12, n_temps=4, T_min=0.5, T_max=1.5,
+                         n_burnin=20, n_sweeps=40, sample_every=5, device="cpu")
+    r = run_potts(cfg)
+    assert r.T.shape == (4,)
+    assert r.order.shape == (4,)
+    assert r.chi.shape == (4,)
+    assert r.energy.shape == (4,)
+    assert r.specific_heat.shape == (4,)
+    # The Potts order parameter m = (q·ρ_max−1)/(q−1) lives in [0, 1].
+    assert (r.order >= -1e-6).all() and (r.order <= 1.0 + 1e-6).all()
+    # Susceptibility and specific heat are variances → non-negative.
+    assert (r.chi >= 0).all()
+    assert (r.specific_heat >= 0).all()
+    # Energy per spin e = -0.5·⟨Σ_4 δ⟩ ∈ [-2, 0] (2N bonds, 0.5 de-double-counts).
+    assert (r.energy >= -2.0001).all() and (r.energy <= 1e-6).all()
+    # Three snapshots saved (cold / mid / hot).
+    assert len(r.snapshots) == 3
+
+
+def test_potts_low_T_orders_high_T_disorders():
+    """The core physics: a cold q=3 Potts lattice orders (m→1), a hot one melts.
+
+    This is the calibration the agreement-count must get right — a sign or
+    bool-overflow bug in ΔE leaves the lattice stuck disordered at all T (m≈0),
+    which this catches. CPU so it always runs (no GPU dependency).
+    """
+    q = 3
+    tc = 1.0 / math.log(1.0 + math.sqrt(q))
+    cfg = PottsRunConfig(q=q, L=24, T_min=0.4 * tc, T_max=1.8 * tc, n_temps=6,
+                         n_burnin=400, n_sweeps=600, sample_every=10, device="cpu")
+    r = run_potts(cfg)
+    # Coldest temperature: nearly fully ordered (one flavour dominates).
+    assert r.order[0] > 0.8, f"cold lattice should order, got m={r.order[0]:.3f}"
+    # Hottest temperature: essentially disordered (flavours equipartitioned).
+    assert r.order[-1] < 0.3, f"hot lattice should disorder, got m={r.order[-1]:.3f}"
+    # Cold energy approaches the ordered ground state -2; hot is well above it.
+    assert r.energy[0] < -1.5, f"cold energy should near -2, got {r.energy[0]:.3f}"
+    assert r.energy[-1] > r.energy[0]
+
+
+def test_potts_metropolis_path_runs():
+    """The kept single-spin Metropolis updater path is still valid (off-critical).
+
+    M07 drives the Wolff cluster updater; the Metropolis path is the independent
+    cross-check engine. This exercises it on CPU and checks the same physical
+    invariants (shapes, m∈[0,1], non-negative variances).
+    """
+    cfg = PottsRunConfig(q=3, L=12, n_temps=3, T_min=0.5, T_max=1.5,
+                         n_burnin=20, n_sweeps=40, sample_every=5,
+                         updater="metropolis", device="cpu")
+    r = run_potts(cfg)
+    assert r.order.shape == (3,)
+    assert (r.order >= -1e-6).all() and (r.order <= 1.0 + 1e-6).all()
+    assert (r.chi >= 0).all() and (r.specific_heat >= 0).all()
+
+
+def test_potts_rejects_unknown_updater():
+    cfg = PottsRunConfig(q=3, L=8, n_temps=2, n_burnin=1, n_sweeps=2,
+                         updater="banana", device="cpu")
+    with pytest.raises(ValueError, match="unknown updater"):
+        run_potts(cfg)
+
+
+@pytest.mark.skipif(not CUDA_AVAILABLE, reason="GPU not available")
+def test_potts_tiny_gpu_run_smoke():
+    """Smoke test: a tiny q=4 Potts GPU run produces sensible-shaped outputs."""
+    cfg = PottsRunConfig(q=4, L=16, n_temps=5, T_min=0.6, T_max=1.3,
+                         n_burnin=20, n_sweeps=40, sample_every=10, device="cuda")
+    r = run_potts(cfg)
+    assert r.T.shape == (5,)
+    assert r.order.shape == (5,)
+    assert (r.order >= -1e-6).all() and (r.order <= 1.0 + 1e-6).all()
+    assert r.chi.shape == (5,) and (r.chi >= 0).all()
+    assert r.specific_heat.shape == (5,) and (r.specific_heat >= 0).all()

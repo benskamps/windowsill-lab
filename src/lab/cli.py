@@ -20,6 +20,7 @@ Usage:
   lab m04             run M04: 2D Ising specific heat — the thermal cross-check of T_c
   lab m05             run M05: triangular-lattice 2D Ising — verify T_c = 4/ln3 ≈ 3.641
   lab m06             run M06: 3D simple-cubic Ising — verify T_c ≈ 4.5115 (Phase 2)
+  lab m07             run M07: q-state Potts (q=3..6) — continuous→first-order transition
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -145,6 +146,38 @@ def _parse_m05(args):
     p.add_argument("--n-temps", type=int, default=25)
     p.add_argument("--sweeps", type=int, default=40000)
     p.add_argument("--burnin", type=int, default=8000)
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m07(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M07 sweeps a per-q window straddling each exact T_c(q)=1/ln(1+√q), so the
+    # temperature bounds are derived per q (T_c ± half-window) rather than fixed.
+    # The default updater is Wolff (cluster) — single-spin Metropolis is
+    # metastably trapped through the Potts transition — so --sweeps/--burnin are
+    # counted in *cluster updates* (far fewer needed than Metropolis sweeps).
+    # L defaults to 64 (not the 128 of the Ising engines): the Wolff cluster
+    # flood costs O(L) BFS passes per update near T_c, so the 4-q sweep is only
+    # tractable at L=64 — which already locates every T_c within tolerance (the
+    # finite-L shift is absorbed by the per-q tolerances). Pass --L 128 for a
+    # sharper single-q run.
+    p.add_argument("--L", type=int, default=64,
+                   help="lattice side (default 64; Wolff BFS cost scales with L)")
+    p.add_argument("--quick", action="store_true",
+                   help="L=32, short sweep for a fast sanity pass")
+    p.add_argument("--q", type=str, default=None,
+                   help="comma-separated q values (default 3,4,5,6)")
+    p.add_argument("--half-window", type=float, default=0.12,
+                   help="half-width of the per-q T window around T_c (default 0.12)")
+    p.add_argument("--n-temps", type=int, default=25)
+    p.add_argument("--sweeps", type=int, default=4000,
+                   help="Wolff cluster updates per q (default 4000)")
+    p.add_argument("--burnin", type=int, default=1500,
+                   help="Wolff burn-in cluster updates (default 1500)")
+    p.add_argument("--updater", default="wolff",
+                   help="'wolff' (cluster, default) or 'metropolis' (cross-check)")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
@@ -395,6 +428,46 @@ def main(argv=None):
               f"{result.tc_benchmark:.4f}, rel. err {result.rel_error*100:.1f}%)"
               f"  ·  {result.wall_seconds:.0f}s total")
         path = render_mod.render_m06(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m07":
+        ns = _parse_m07(args[1:])
+        from . import m07
+        from . import render as render_mod
+        # Quick mode: small lattice + short Wolff burn — a fast sanity pass only.
+        L = 32 if ns.quick else ns.L
+        sweeps = 1000 if ns.quick else ns.sweeps
+        burnin = 400 if ns.quick else ns.burnin
+        q_values = (tuple(int(x) for x in ns.q.split(",")) if ns.q else m07.Q_VALUES)
+        unit = "cluster updates" if ns.updater == "wolff" else "sweeps"
+        print(f"M07 q-state Potts · L={L} · q={', '.join(map(str, q_values))} · "
+              f"{ns.n_temps} temps per q (T_c ± {ns.half_window}) · {sweeps:,} {unit} "
+              f"· {ns.updater} on {ns.device}")
+
+        def _progress_m07(qr):
+            kind = "1st-order" if qr.q >= 5 else "continuous"
+            print(f"  ✓ q={qr.q} ({kind:9}) χ-peak T_c={qr.tc_chi_refined:.3f} "
+                  f"(exact {qr.tc_exact:.3f}, rel. err {qr.rel_error*100:.1f}%)  "
+                  f"({qr.wall_seconds:.1f}s)")
+
+        result = m07.run_m07(
+            L=L, q_values=q_values, n_temps=ns.n_temps, n_sweeps=sweeps,
+            n_burnin=burnin, seed=ns.seed, device=ns.device,
+            half_window=ns.half_window, updater=ns.updater, progress=_progress_m07,
+        )
+        report = m07.to_report(result)
+        print(f"  → continuous (q≤4) → first-order (q≥5): "
+              f"mean χ_max {report['continuous_mean_chi_max']:.0f} (q≤4) "
+              f"vs {report['first_order_mean_chi_max']:.0f} (q≥5) — the taller "
+              f"first-order spike  ·  {result.wall_seconds:.0f}s total")
+        path = render_mod.render_m07(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod

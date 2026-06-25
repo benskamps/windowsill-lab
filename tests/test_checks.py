@@ -4,8 +4,12 @@ import math
 from lab.checks import (
     BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, TC_3D, TC_TRI,
     _grade, check_m01, check_m02, check_m03, check_m04, check_m05, check_m06,
-    verify,
+    check_m07, verify,
 )
+
+
+def _tc_potts(q):
+    return 1.0 / math.log(1.0 + math.sqrt(q))
 
 
 def _fss_report(slope=GAMMA_OVER_NU, A=0.4):
@@ -260,3 +264,82 @@ def test_m01_skips_an_m05_report():
     # 2D square 2.269.
     ok, detail = check_m01(_m05_report(TC_TRI))
     assert ok is None and "2D Ising" in detail
+
+
+# ── M07: q-state Potts check ─────────────────────────────────────────────────
+def _q_chi(peak_at, T):
+    """A χ(T) array with a sharp peak at temperature ``peak_at`` over grid ``T``."""
+    return [1.0 / (abs(t - peak_at) + 0.01) for t in T]
+
+
+def _m07_report(peaks=None):
+    """A toy M07 report whose per-q χ peaks at each q's exact T_c by default.
+
+    ``peaks`` optionally overrides the χ-peak location for a given q (to model a
+    broken run). The synthetic T grid for each q is centred on that q's actual
+    peak (T_c by default, or the override) so the χ array genuinely peaks where
+    intended — the check re-derives the peak from the array, so the grid has to
+    bracket it for the test to model what it claims.
+    """
+    peaks = peaks or {}
+    per_q = []
+    for q in (3, 4, 5, 6):
+        tc = _tc_potts(q)
+        peak_at = peaks.get(q, tc)
+        # Centre the grid on the peak so the χ array's argmax really is peak_at.
+        T = [round(peak_at - 0.12 + 0.01 * i, 4) for i in range(25)]
+        per_q.append({
+            "q": q,
+            "T": T,
+            "chi": _q_chi(peak_at, T),
+            "tc_chi_refined": peak_at,
+            "tc_exact": tc,
+            "rel_error": abs(peak_at - tc) / tc,
+            "transition": "continuous" if q <= 4 else "first-order",
+        })
+    return {"experiment": "M07-potts", "per_q": per_q}
+
+
+def test_m07_passes_when_every_q_locates_its_tc():
+    ok, detail = check_m07(_m07_report())
+    assert ok, detail
+    assert "q=3" in detail and "q=6" in detail   # grades all four q
+
+
+def test_m07_fails_when_a_q_peak_is_wrong():
+    # A q=5 transition placed far from its T_c (e.g. a non-ordering lattice or a
+    # wrong order parameter) is well beyond even the widened ±0.15 first-order
+    # tolerance and must be caught.
+    ok, _ = check_m07(_m07_report(peaks={5: _tc_potts(5) - 0.5}))
+    assert ok is False
+
+
+def test_m07_first_order_tolerance_is_wider_than_continuous():
+    # A q=5 (first-order) peak 0.12 off its T_c PASSES (±0.15), while the same
+    # 0.12 offset on q=3 (continuous, ±0.1) would FAIL — the documented physical
+    # allowance for stronger first-order finite-size effects, applied per q.
+    ok_first, _ = check_m07(_m07_report(peaks={5: _tc_potts(5) + 0.12}))
+    assert ok_first   # within the q≥5 ±0.15 band
+    ok_cont, _ = check_m07(_m07_report(peaks={3: _tc_potts(3) + 0.12}))
+    assert ok_cont is False   # outside the q≤4 ±0.1 band
+
+
+def test_m07_not_applicable_to_an_m05_report():
+    ok, detail = check_m07(_m05_report(TC_TRI))
+    assert ok is None and "not an M07" in detail
+
+
+def test_m07_skips_a_bare_ising_report():
+    # An M01-shaped report (top-level T/chi, no per_q) is not an M07 report.
+    ok, _ = check_m07(_ising_report(2.3))
+    assert ok is None
+
+
+def test_other_checks_skip_an_m07_report():
+    # M07's per-q structure carries no top-level T/chi, so none of the single-peak
+    # checks should claim it (they'd grade it against the wrong T_c otherwise).
+    rep = _m07_report()
+    assert check_m01(rep)[0] is None
+    assert check_m04(rep)[0] is None
+    assert check_m05(rep)[0] is None
+    assert check_m06(rep)[0] is None

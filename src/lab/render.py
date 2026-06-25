@@ -1111,3 +1111,223 @@ def render_m05(report: dict, date: str | None = None) -> Path:
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
+
+
+# ── M07 — 2D q-state Potts (continuous q≤4 → first-order q≥5) ─────────────────
+
+def _q_colors(qs: list[int]):
+    """A copper ramp keyed to q so q=3..6 read in a consistent warm order."""
+    n = len(qs)
+    return {q: _COPPER(0.15 + 0.7 * i / max(1, n - 1)) for i, q in enumerate(qs)}
+
+
+def _plot_m07_chi(report: dict) -> str:
+    """χ(T) for every q, each with its exact-T_c marker — M07's headline plot.
+
+    The continuous (q≤4) curves are drawn lighter, the first-order (q≥5) ones with
+    a heavier line, so the *qualitative* change — a taller, sharper susceptibility
+    spike for the first-order transitions — is legible at a glance.
+    """
+    per_q = report["per_q"]
+    qs = [e["q"] for e in per_q]
+    cols = _q_colors(qs)
+    fig, ax = plt.subplots(figsize=(7, 4.4))
+    for e in per_q:
+        q = e["q"]
+        first_order = q >= 5
+        ax.plot(e["T"], e["chi"], "o-", color=cols[q],
+                markersize=3.5, linewidth=2.0 if first_order else 1.3,
+                label=f"q={q} ({'1st-order' if first_order else 'continuous'})")
+        ax.axvline(e["tc_exact"], linestyle=":", color=cols[q], alpha=0.6, linewidth=1.2)
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("χ  (order-parameter susceptibility)")
+    ax.set_title("Potts susceptibility — the spike sharpens as q crosses 4")
+    ax.legend(frameon=False, fontsize=8.5)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_m07_order(report: dict) -> str:
+    """The Potts order parameter m(T) for every q — the melt steepens for q≥5.
+
+    Continuous transitions soften m gradually; the first-order (q≥5) ones drop it
+    much more steeply across T_c (a discontinuity in the L→∞ limit). Exact-T_c
+    markers per q let the eye line the drop up with the known critical point.
+    """
+    per_q = report["per_q"]
+    qs = [e["q"] for e in per_q]
+    cols = _q_colors(qs)
+    fig, ax = plt.subplots(figsize=(7, 4.4))
+    for e in per_q:
+        q = e["q"]
+        ax.plot(e["T"], e["order"], "o-", color=cols[q],
+                markersize=3.5, linewidth=2.0 if q >= 5 else 1.3, label=f"q={q}")
+        ax.axvline(e["tc_exact"], linestyle=":", color=cols[q], alpha=0.55, linewidth=1.2)
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("m = (q·ρ_max − 1)/(q − 1)")
+    ax.set_ylim(-0.02, 1.05)
+    ax.set_title("Order parameter melts — steeper for the first-order q≥5")
+    ax.legend(frameon=False, fontsize=8.5)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M07_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab · {date} · q-state Potts</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  table {{ width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }}
+  th, td {{ text-align: right; padding: 6px 10px; border-bottom: 1px solid #e3d6bd; }}
+  th:first-child, td:first-child {{ text-align: left; }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab · phase 2</h1>
+  <div class="date">{date} · M07 — 2D q-state Potts model</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+
+  <h2>Per-q critical temperatures</h2>
+  {table}
+
+  <h2>Susceptibility vs Temperature — the peak locates each T_c</h2>
+  <figure><img src="data:image/png;base64,{chi_png}" alt="Potts susceptibility for q=3..6"></figure>
+
+  <h2>Order parameter — the melt steepens for q≥5</h2>
+  <figure><img src="data:image/png;base64,{order_png}" alt="Potts order parameter for q=3..6"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def _m07_table(per_q: list[dict]) -> str:
+    """A small per-q results table: q, kind, measured T_c, exact T_c, rel. err."""
+    rows = [
+        "<tr><th>q</th><th>transition</th><th>T_c (measured)</th>"
+        "<th>T_c (exact)</th><th>rel. err</th></tr>"
+    ]
+    for e in per_q:
+        rows.append(
+            f"<tr><td>{e['q']}</td><td>{e.get('transition', '')}</td>"
+            f"<td>{e['tc_chi_refined']:.4f}</td><td>{e['tc_exact']:.4f}</td>"
+            f"<td>{e['rel_error']*100:.1f}%</td></tr>"
+        )
+    return "<table>" + "".join(rows) + "</table>"
+
+
+def render_m07(report: dict, date: str | None = None) -> Path:
+    """Render an M07 q-state-Potts report (HTML + plots + JSON sidecar).
+
+    Mirrors ``render_m05``/``render_m06``: a slug-keyed ``~/.lab`` dated cache +
+    ``latest.html`` pointer AND a permanent committed pair
+    (``reports/<date>-m07.html`` + ``.json``). The verdict is an honest **pass**
+    only when *every* q's χ-peak T_c lands within its finite-L tolerance of the
+    exact Potts T_c = 1/ln(1+√q) — ±0.1 for the continuous q ≤ 4, ±0.15 for the
+    first-order q ≥ 5 (stronger finite-size / metastability shift). It always
+    names the qualitative continuous→first-order change (the sharper, taller
+    susceptibility spike and steeper order-parameter drop for q ≥ 5). A miss on
+    any q stays a folded grey leaf with its real numbers intact, never relabelled.
+    """
+    from .publish import today_local
+    date = date or today_local()
+    _ensure_home()
+
+    per_q = report["per_q"]
+    L = report.get("L")
+    cont_drop = report.get("continuous_mean_order_drop")
+    first_drop = report.get("first_order_mean_order_drop")
+    cont_chimax = report.get("continuous_mean_chi_max")
+    first_chimax = report.get("first_order_mean_chi_max")
+
+    sentence = (
+        f"I ran the 2D q-state Potts model on an L={L} square lattice for "
+        f"q = {', '.join(str(e['q']) for e in per_q)}, each over a window "
+        f"straddling its exact critical temperature T_c(q) = 1/ln(1+√q). The Potts "
+        f"spin carries one of q flavours and a bond costs energy only when its two "
+        f"sites agree; the order parameter m = (q·ρ_max − 1)/(q − 1) melts from 1 "
+        f"(ordered) to 0 (disordered) as T rises, and its susceptibility peaks at "
+        f"T_c. The point of M07 is the *kind* of transition: continuous for q ≤ 4, "
+        f"first-order for q ≥ 5. Wall time on the GPU: {report.get('wall_seconds', 0):.0f}s."
+    )
+
+    def _ok(e):
+        tol = 0.1 if e["q"] <= 4 else 0.15
+        return abs(e["tc_chi_refined"] - e["tc_exact"]) <= tol
+    passed = all(_ok(e) for e in per_q)
+    misses = [e["q"] for e in per_q if not _ok(e)]
+
+    sharper = ""
+    if cont_chimax is not None and first_chimax is not None:
+        sharper = (
+            f" The susceptibility peak climbs sharply across the boundary — mean "
+            f"χ_max ≈ {first_chimax:.0f} for the first-order q≥5 vs ≈ {cont_chimax:.0f} "
+            f"for the continuous q≤4 — the taller, sharper spike that marks a "
+            f"discontinuous transition."
+        )
+    verdict = (
+        f"{'✓' if passed else '~'} "
+        + (
+            "Every q's susceptibility peak lands on its exact Potts T_c "
+            "(±0.1 for the continuous q≤4, ±0.15 for the first-order q≥5, whose "
+            "stronger finite-size effects shift the pseudo-critical peak further). "
+            if passed else
+            f"q={', '.join(map(str, misses))} miss the finite-L tolerance and stay "
+            "honest nulls, not discoveries. "
+        )
+        + "The qualitative change M07 asks for is clear: the q≥5 susceptibility "
+        "spikes are taller and sharper than the q≤4 peaks — the continuous (q≤4) → "
+        "first-order (q≥5) crossover." + sharper
+    )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M07_HTML_TEMPLATE.format(
+        date=date, sentence=sentence, verdict=verdict,
+        table=_m07_table(per_q),
+        chi_png=_plot_m07_chi(report),
+        order_png=_plot_m07_order(report),
+        json_dump=json_dump,
+    )
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    _commit_report(date, slug, html, json_dump)
+    return out
