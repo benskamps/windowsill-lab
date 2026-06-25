@@ -1331,3 +1331,208 @@ def render_m07(report: dict, date: str | None = None) -> Path:
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
+
+
+# ── M08 — 2D XY model · the Berezinskii–Kosterlitz–Thouless transition ────────
+
+def _plot_m08_helicity(report: dict) -> str:
+    """Υ(T) with the universal-jump line (2/π)T and the crossing — M08's headline.
+
+    The BKT signature is the CROSSING of the measured helicity modulus Υ(T) with
+    the straight line y = (2/π)·T (the Nelson–Kosterlitz universal jump), not a
+    peak. We draw both, mark the interpolated crossing (the finite-L T_BKT(L)) and
+    the benchmark 0.8929, and carry Υ's error bars so the smoothness of the curve
+    — the thing a jagged, un-equilibrated run would betray — is legible.
+    """
+    T = np.asarray(report["T"], dtype=float)
+    Y = np.asarray(report["helicity_modulus"], dtype=float)
+    Y_err = report.get("helicity_err") or [0.0] * len(T)
+    two_over_pi = report.get("two_over_pi", 2.0 / np.pi)
+    tc_cross = report.get("tc_crossing")
+    tc_bench = report.get("tc_benchmark", 0.8929)
+    fig, ax = plt.subplots(figsize=(7, 4.4))
+    ax.errorbar(T, Y, yerr=Y_err, fmt="o-", color="#3a2e21", markersize=4,
+                capsize=2, linewidth=1.5, label=f"Measured Υ (L={report.get('L')})")
+    line = two_over_pi * T
+    ax.plot(T, line, "--", color="#9b6b3e", linewidth=1.8,
+            label="universal jump  Υ = (2/π)·T")
+    ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.8,
+               label=f"benchmark T_BKT = {tc_bench:.4f}")
+    if tc_cross is not None:
+        ax.axvline(tc_cross, linestyle=":", color="#5f7a3e", alpha=0.85,
+                   label=f"crossing T_BKT(L) = {tc_cross:.3f}")
+        ax.plot([tc_cross], [two_over_pi * tc_cross], "o", color="#5f7a3e",
+                markersize=8, zorder=5)
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("Υ  (helicity modulus / spin stiffness)")
+    ax.set_ylim(bottom=min(-0.05, float(Y.min()) - 0.05))
+    ax.set_title("Helicity modulus crosses the (2/π)T jump line at T_BKT")
+    ax.legend(frameon=False, fontsize=8.5)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_m08_energy_mag(report: dict) -> str:
+    """⟨E⟩(T) (smooth, no peak) with ⟨|m|⟩ overlaid — the "no order parameter" plot.
+
+    A deliberate contrast to M01–M07: there is NO sharp feature. The energy rises
+    smoothly through T_BKT (BKT is an infinite-order transition — no latent heat,
+    no specific-heat divergence at T_BKT), and ⟨|m|⟩ has no kink either: it is a
+    finite-size artifact, not an order parameter (→0 as L grows at all T>0). Shown
+    so the page makes visible *why* M08 needs the helicity jump, not a peak.
+    """
+    T = np.asarray(report["T"], dtype=float)
+    e = report.get("energy") or [0.0] * len(T)
+    m = report.get("abs_mag") or [0.0] * len(T)
+    tc_bench = report.get("tc_benchmark", 0.8929)
+    fig, ax = plt.subplots(figsize=(7, 4.0))
+    ax.plot(T, e, "o-", color="#3a2e21", markersize=4, linewidth=1.4,
+            label="⟨E⟩  (energy per spin)")
+    ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.85,
+               label=f"benchmark T_BKT = {tc_bench:.4f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("E  (per spin)")
+    ax2 = ax.twinx()
+    ax2.plot(T, m, "s-", color="#7a9b56", markersize=3, linewidth=1.2, alpha=0.85,
+             label="⟨|m|⟩  (finite-size artifact, NOT an order parameter)")
+    ax2.set_ylabel("|m|  (per spin)")
+    ax2.set_ylim(0, 1.05)
+    ax.set_title("Energy is smooth through T_BKT — there is no order-parameter peak")
+    lines1, lab1 = ax.get_legend_handles_labels()
+    lines2, lab2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, lab1 + lab2, frameon=False, fontsize=8, loc="upper left")
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M08_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab · {date} · 2D XY BKT</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab · phase 2</h1>
+  <div class="date">{date} · M08 — 2D XY model · BKT transition</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+
+  <h2>Helicity modulus &amp; the universal jump — the crossing is T_BKT</h2>
+  <figure><img src="data:image/png;base64,{helicity_png}" alt="XY helicity modulus vs temperature with the (2/pi)T jump line"></figure>
+
+  <h2>Energy &amp; magnetization — there is no order-parameter peak</h2>
+  <figure><img src="data:image/png;base64,{energy_png}" alt="XY energy and magnetization vs temperature"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def render_m08(report: dict, date: str | None = None) -> Path:
+    """Render an M08 2D-XY-BKT report (HTML + plots + JSON sidecar).
+
+    Mirrors ``render_m05``/``render_m07``: a slug-keyed ``~/.lab`` dated cache +
+    ``latest.html`` pointer AND a permanent committed pair
+    (``reports/<date>-m08.html`` + ``.json``). The verdict is an honest **pass**
+    only when the helicity-jump crossing lands within ±0.07 of the BKT benchmark
+    T_BKT ≈ 0.8929 — a log-correction-tolerant finite-L window (BKT has notoriously
+    strong log corrections and the single-L crossing typically sits a little
+    *above* 0.8929); a miss (or a curve that never crosses the jump line) stays a
+    folded grey leaf with its real numbers intact, never relabelled a discovery.
+    """
+    from .publish import today_local
+    date = date or today_local()
+    _ensure_home()
+
+    L = report.get("L")
+    tc_cross = report.get("tc_crossing")
+    tc_bench = report.get("tc_benchmark", 0.8929)
+    rel_err = report.get("rel_error")
+
+    cross_str = f"{tc_cross:.3f}" if tc_cross is not None else "—"
+    sentence = (
+        f"I ran the 2D XY model — continuous angle spins θ ∈ [0, 2π), "
+        f"E = −J·Σ cos(θ_i − θ_j) — on an L={L} square lattice across a window "
+        f"straddling the transition. The XY model has NO long-range order at any "
+        f"T &gt; 0 (Mermin–Wagner), so ⟨|m|⟩ is not an order parameter; its "
+        f"transition is the topological Berezinskii–Kosterlitz–Thouless "
+        f"vortex-unbinding at T_BKT ≈ {tc_bench:.4f}. The clean signature is the "
+        f"helicity modulus Υ(T) and its universal jump: where Υ(T) crosses the "
+        f"line (2/π)·T marks T_BKT. The crossing sits at T_BKT(L) = {cross_str}. "
+        f"Wall time on the GPU: {report.get('wall_seconds', 0):.0f}s."
+    )
+    passed = tc_cross is not None and abs(tc_cross - tc_bench) <= 0.07
+    err_str = f"{rel_err*100:.1f}%" if rel_err is not None else "—"
+    if tc_cross is None:
+        verdict = (
+            "~ The helicity modulus never crosses the (2/π)·T jump line on the "
+            "swept window — no BKT crossing was bracketed. Kept honestly as a null, "
+            "not a discovery: the window is mis-placed or the run is un-equilibrated."
+        )
+    else:
+        verdict = (
+            f"{'✓' if passed else '~'} Helicity-jump crossing T_BKT(L) = {tc_cross:.3f} "
+            f"vs benchmark {tc_bench:.4f} (rel. err {err_str}). "
+            + ("The helicity modulus — finite below the transition, dropping toward "
+               "zero above it — crosses the Nelson–Kosterlitz universal-jump line "
+               "(2/π)·T right where the BKT transition is known to sit. No "
+               "order-parameter peak exists for this transition; the helicity jump "
+               "is the calibrated signature. (BKT has strong logarithmic finite-size "
+               "corrections, so the single-L crossing carries a wider, "
+               "physically-justified ±0.07 window and typically sits a touch above "
+               "the infinite-volume 0.8929 — an L-extrapolation would sharpen it.)"
+               if passed else
+               "The crossing is outside the finite-L window — kept honestly as a "
+               "null, not a discovery.")
+        )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M08_HTML_TEMPLATE.format(
+        date=date, sentence=sentence, verdict=verdict,
+        helicity_png=_plot_m08_helicity(report),
+        energy_png=_plot_m08_energy_mag(report),
+        json_dump=json_dump,
+    )
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    _commit_report(date, slug, html, json_dump)
+    return out

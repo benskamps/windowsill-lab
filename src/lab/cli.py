@@ -21,6 +21,7 @@ Usage:
   lab m05             run M05: triangular-lattice 2D Ising — verify T_c = 4/ln3 ≈ 3.641
   lab m06             run M06: 3D simple-cubic Ising — verify T_c ≈ 4.5115 (Phase 2)
   lab m07             run M07: q-state Potts (q=3..6) — continuous→first-order transition
+  lab m08             run M08: 2D XY model — BKT transition via the helicity-modulus jump
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -178,6 +179,32 @@ def _parse_m07(args):
                    help="Wolff burn-in cluster updates (default 1500)")
     p.add_argument("--updater", default="wolff",
                    help="'wolff' (cluster, default) or 'metropolis' (cross-check)")
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m08(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M08 sweeps a window straddling the BKT benchmark T_BKT ≈ 0.8929 and locates
+    # it from the helicity-modulus jump crossing Υ(T)=(2/π)T — there is NO χ/C peak
+    # for this transition. L defaults to 64 (the XY engine is float-angle and uses
+    # over-relaxation; L=64 already brackets the crossing within the documented
+    # ±0.07 finite-L window). The default Metropolis-plus-over-relaxation updater
+    # gives a smooth Υ(T); pass --updater wolff for the hardest near-T_BKT points.
+    p.add_argument("--L", type=int, default=64,
+                   help="lattice side (default 64)")
+    p.add_argument("--quick", action="store_true",
+                   help="L=32, short sweep for a fast sanity pass")
+    p.add_argument("--t-min", type=float, default=0.6)
+    p.add_argument("--t-max", type=float, default=1.1)
+    p.add_argument("--n-temps", type=int, default=26)
+    p.add_argument("--sweeps", type=int, default=40000)
+    p.add_argument("--burnin", type=int, default=8000)
+    p.add_argument("--over-relax", type=int, default=1,
+                   help="microcanonical over-relaxation sweeps per Metropolis sweep")
+    p.add_argument("--updater", default="metropolis",
+                   help="'metropolis' (+ over-relaxation; default) or 'wolff'")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
@@ -468,6 +495,45 @@ def main(argv=None):
               f"vs {report['first_order_mean_chi_max']:.0f} (q≥5) — the taller "
               f"first-order spike  ·  {result.wall_seconds:.0f}s total")
         path = render_mod.render_m07(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m08":
+        ns = _parse_m08(args[1:])
+        from . import m08
+        from . import render as render_mod
+        # Quick mode: small lattice + short sweep — a fast sanity pass only.
+        L = 32 if ns.quick else ns.L
+        sweeps = 4000 if ns.quick else ns.sweeps
+        burnin = 1500 if ns.quick else ns.burnin
+        unit = "cluster updates" if ns.updater == "wolff" else "sweeps"
+        print(f"M08 2D XY model (BKT) · L={L} · {ns.n_temps} temps in "
+              f"[{ns.t_min}, {ns.t_max}] · {sweeps:,} {unit} · {ns.updater} on {ns.device}")
+
+        def _progress_m08(result):
+            print(f"  ✓ swept {len(result.T)} temps  ({result.wall_seconds:.1f}s)")
+
+        result = m08.run_m08(
+            L=L, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
+            n_sweeps=sweeps, n_burnin=burnin, over_relax=ns.over_relax,
+            seed=ns.seed, device=ns.device, updater=ns.updater,
+            progress=_progress_m08,
+        )
+        report = m08.to_report(result)
+        if result.tc_crossing is not None:
+            print(f"  → Υ(T)=(2/π)T crossing T_BKT = {result.tc_crossing:.3f}  "
+                  f"(benchmark {result.tc_benchmark:.4f}, rel. err "
+                  f"{result.rel_error*100:.1f}%)  ·  {result.wall_seconds:.0f}s")
+        else:
+            print(f"  → no crossing of Υ(T) with the (2/π)T jump line on this window "
+                  f"(un-equilibrated or window mis-placed)  ·  {result.wall_seconds:.0f}s")
+        path = render_mod.render_m08(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod

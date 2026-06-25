@@ -66,6 +66,7 @@ def test_slug_for_maps_known_experiments():
     assert _slug_for({"experiment": "M02-finite-size-scaling"}) == "m02"
     assert _slug_for({"experiment": "M03-data-collapse"}) == "m03"
     assert _slug_for({"experiment": "M01-ising-verification"}) == "m01"
+    assert _slug_for({"experiment": "M08-xy-bkt"}) == "m08"
 
 
 def test_slug_for_infers_m01_from_structure():
@@ -306,3 +307,93 @@ def test_render_m07_verdict_is_honest_null_when_a_q_is_off(tmp_path, monkeypatch
     html = (reports / "2026-06-25-m07.html").read_text(encoding="utf-8")
     assert "✓" not in html
     assert "null" in html.lower()
+
+
+# ── M08: 2D XY BKT render path ───────────────────────────────────────────────
+def _m08_fixture_report(crossing_at=0.913, with_crossing=True):
+    """A synthetic M08 ``to_report``-shaped dict (no GPU).
+
+    Builds a smooth Υ(T) that crosses the (2/π)·T jump line at ``crossing_at`` (a
+    straight line of negative slope through that point — a clean single downward
+    root). ``with_crossing=False`` pins Υ above the line everywhere (no crossing →
+    honest null). The crossing the renderer reports is computed the same way the
+    real run does, via ``m08.helicity_crossing``.
+    """
+    from lab.m08 import TWO_OVER_PI, T_BKT, helicity_crossing
+    T = [round(0.6 + 0.02 * i, 4) for i in range(26)]
+    if with_crossing:
+        Y = [TWO_OVER_PI * crossing_at - 2.5 * (t - crossing_at) for t in T]
+    else:
+        Y = [5.0] * len(T)   # always above the jump line → no crossing
+    cross = helicity_crossing(T, Y)
+    rel = abs(cross - T_BKT) / T_BKT if cross is not None else None
+    return {
+        "experiment": "M08-xy-bkt", "headline": "M08 test", "L": 64,
+        "T": T, "helicity_modulus": Y,
+        "helicity_err": [0.01] * len(T),
+        "energy": [-1.5] * len(T), "abs_mag": [0.1] * len(T),
+        "acceptance": [0.4] * len(T),
+        "tc_crossing": cross, "tc_benchmark": T_BKT, "rel_error": rel,
+        "two_over_pi": TWO_OVER_PI, "updater": "metropolis",
+        "wall_seconds": 94.0, "config": {"seed": 42, "model": "xy"},
+    }
+
+
+def test_render_m08_writes_permanent_report_pair(tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    out = render.render_m08(_m08_fixture_report(), date="2026-06-25")
+    html_file = reports / "2026-06-25-m08.html"
+    json_file = reports / "2026-06-25-m08.json"
+    assert html_file.exists() and json_file.exists()
+    html = html_file.read_text(encoding="utf-8")
+    assert "M08" in html and "XY" in html and "helicity" in html.lower()
+    assert json.loads(json_file.read_text(encoding="utf-8"))["experiment"] == "M08-xy-bkt"
+
+
+def test_render_m08_verdict_passes_near_benchmark(tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m08(_m08_fixture_report(crossing_at=0.913), date="2026-06-25")
+    html = (reports / "2026-06-25-m08.html").read_text(encoding="utf-8")
+    assert "✓" in html
+    # Names the BKT signature: the universal jump / helicity crossing.
+    assert "jump" in html.lower() and "crossing" in html.lower()
+
+
+def test_render_m08_verdict_is_honest_null_when_crossing_off(tmp_path, monkeypatch):
+    """A crossing outside the ±0.07 window is kept as a null, never a pass."""
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m08(_m08_fixture_report(crossing_at=0.70), date="2026-06-25")
+    html = (reports / "2026-06-25-m08.html").read_text(encoding="utf-8")
+    assert "✓" not in html
+    assert "null" in html.lower()
+
+
+def test_render_m08_verdict_is_honest_null_when_no_crossing(tmp_path, monkeypatch):
+    """A Υ(T) that never crosses the jump line is an honest null, not a discovery."""
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m08(_m08_fixture_report(with_crossing=False), date="2026-06-25")
+    html = (reports / "2026-06-25-m08.html").read_text(encoding="utf-8")
+    assert "✓" not in html
+    assert "null" in html.lower()
+
+
+def test_render_m08_appears_in_discovery_and_ledger(tmp_path, monkeypatch):
+    """The rendered M08 report is discoverable as a run and rides the ledger as a
+    verified green leaf (the exact-crossing fixture passes check_m08)."""
+    reports, lab_home = _patch_dirs(tmp_path, monkeypatch)
+    from lab import publish, archive
+    monkeypatch.setattr(publish, "REPORTS_DIR", reports)
+    monkeypatch.setattr(publish, "LAB_HOME", lab_home)
+    monkeypatch.setattr(archive, "REPORTS_DIR", reports)
+    monkeypatch.setattr(archive, "LAB_HOME", lab_home)
+
+    render.render_m08(_m08_fixture_report(), date="2026-06-25")
+    runs = publish.discover_runs()
+    assert any(r["milestone"] == "M08" for r in runs)
+    ledger = archive.run_ledger()
+    m08_rows = [r for r in ledger if r["milestone"] == "M08"]
+    assert m08_rows and m08_rows[0]["verdict"] == "verified"   # exact fixture → green leaf
+
+
+def test_slug_for_maps_m08_report():
+    assert _slug_for(_m08_fixture_report()) == "m08"

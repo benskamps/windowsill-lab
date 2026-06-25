@@ -61,14 +61,15 @@
     {
       "id": "M08",
       "title": "2D XY model",
-      "status": "open",
+      "status": "verified",
       "track": "physics",
-      "growth_form": "fern"
+      "growth_form": "fern",
+      "result": "helicity-modulus jump crossing T_BKT(L=64"
     },
     {
       "id": "M09",
       "title": "2D Heisenberg (continuous spins)",
-      "status": "pending",
+      "status": "open",
       "track": "physics",
       "growth_form": "fern"
     },
@@ -238,20 +239,20 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-06-25T04:23:40.532775+00:00",
+  "last_run": "2026-06-25T04:49:52.905956+00:00",
   "runs": 12,
   "temp_c": null,
   "latest_report": {
     "date": "2026-06-25",
-    "milestone": "M07",
+    "milestone": "M08",
     "verdict": "verified",
-    "headline": "2D q-state Potts (L=64): q=3 T_c=1.002(exact 0.995), q=4 T_c=0.907(exact 0.910), q=5 T_c=0.822(exact 0.852), q=6 T_c=0.749(exact 0.808) \u00b7 worst rel. err 7.2% (q=6) \u00b7 471s on GPU",
+    "headline": "2D XY BKT (L=64): helicity \u03a5(T) crosses the (2/\u03c0)T jump line at T_BKT=0.9128 vs benchmark 0.8929 (rel. err 2.2%) \u00b7 94s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-06-25T04:24:13.496132+00:00",
+  "updated": "2026-06-25T04:50:48.084263+00:00",
   "provenance": {
-    "code_sha": "fe4fc38-dirty",
+    "code_sha": "3128562-dirty",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -260,6 +261,13 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-06-25",
+      "milestone": "M08",
+      "verdict": "verified",
+      "headline": "2D XY BKT (L=64): helicity \u03a5(T) crosses the (2/\u03c0)T jump line at T_BKT=0.9128 vs benchmark 0.8929 (rel. err 2.2%) \u00b7 94s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
     {
       "date": "2026-06-25",
       "milestone": "M07",
