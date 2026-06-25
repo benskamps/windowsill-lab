@@ -77,14 +77,15 @@
     {
       "id": "M10",
       "title": "Antiferromagnetic Ising on a bipartite lattice (same as ferromagnetic by sign-flip \u2014 sanity check the framework handles negative J cleanly)",
-      "status": "open",
+      "status": "verified",
       "track": "physics",
-      "growth_form": "fern"
+      "growth_form": "fern",
+      "result": "staggered \u03c7_s-peak T_N(L=128"
     },
     {
       "id": "M11",
       "title": "Edwards-Anderson spin glass on a 2D square lattice",
-      "status": "pending",
+      "status": "open",
       "track": "physics",
       "growth_form": "fern"
     },
@@ -240,20 +241,20 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-06-25T05:17:15.958191+00:00",
+  "last_run": "2026-06-25T05:35:54.676161+00:00",
   "runs": 12,
   "temp_c": null,
   "latest_report": {
     "date": "2026-06-25",
-    "milestone": "M09",
+    "milestone": "M10",
     "verdict": "verified",
-    "headline": "2D Heisenberg (T=0.7): \u27e8|m|\u27e9 drifts 0.478, 0.282, 0.142 across L=16, 32, 64 (ratios 0.590 \u2192 0.502) \u2014 Mermin\u2013Wagner confirmed: no finite-T order \u00b7 250s on GPU",
+    "headline": "Antiferromagnetic Ising (L=128): staggered \u03c7_s peaks at T_N=2.282 vs Onsager exact 2.2692 (rel. err 0.5%); C-peak cross-check 2.276; uniform \u27e8|m|\u27e9 stays \u22640.003 \u00b7 30s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-06-25T05:18:11.675776+00:00",
+  "updated": "2026-06-25T05:37:11.996931+00:00",
   "provenance": {
-    "code_sha": "055df9d-dirty",
+    "code_sha": "966934a-dirty",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -262,6 +263,13 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-06-25",
+      "milestone": "M10",
+      "verdict": "verified",
+      "headline": "Antiferromagnetic Ising (L=128): staggered \u03c7_s peaks at T_N=2.282 vs Onsager exact 2.2692 (rel. err 0.5%); C-peak cross-check 2.276; uniform \u27e8|m|\u27e9 stays \u22640.003 \u00b7 30s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
     {
       "date": "2026-06-25",
       "milestone": "M09",

@@ -4,7 +4,7 @@ import math
 from lab.checks import (
     BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT, TC_3D, TC_TRI,
     TWO_OVER_PI, _grade, check_m01, check_m02, check_m03, check_m04, check_m05,
-    check_m06, check_m07, check_m08, check_m09, verify,
+    check_m06, check_m07, check_m08, check_m09, check_m10, verify,
 )
 
 
@@ -486,3 +486,66 @@ def test_other_checks_skip_an_m09_report():
     assert check_m06(rep)[0] is None
     assert check_m07(rep)[0] is None
     assert check_m08(rep)[0] is None
+
+
+# ── M10: antiferromagnetic Ising (staggered-χ peak) check ────────────────────
+def _m10_report(peak_at=ONSAGER_TC, max_unif=0.02):
+    """A toy M10 report whose STAGGERED χ_s peaks at ``peak_at``.
+
+    ``max_unif`` sets the (flat) uniform ⟨|m|⟩ level — ≈0 models the real AFM (no
+    net moment); a large value models the silent-sign-error masquerade where the
+    model secretly reverted to the ferromagnet and the uniform moment ordered.
+    """
+    T = [round(2.0 + 0.025 * i, 4) for i in range(25)]          # 2.0 … 2.6
+    chi = [1.0 / (abs(t - peak_at) + 0.02) for t in T]          # sharp staggered peak
+    return {
+        "experiment": "M10-afm-ising", "T": T, "chi_staggered": chi,
+        "abs_mag": [max_unif] * len(T),
+    }
+
+
+def test_m10_passes_near_tn():
+    ok, detail = check_m10(_m10_report(ONSAGER_TC))
+    assert ok, detail
+    assert "2.269" in detail   # cites Onsager's exact 2D T_c (= T_N)
+
+
+def test_m10_fails_when_peak_is_wrong():
+    # A staggered-χ peak well off T_N (e.g. a broken AFM that never Néel-orders)
+    # is beyond the ±0.1 finite-L tolerance and must be caught.
+    ok, _ = check_m10(_m10_report(2.5))
+    assert ok is False
+
+
+def test_m10_fails_when_uniform_moment_is_large():
+    # THE headline AFM guard: a silent sign-flip that reverts the model to the FM
+    # would still peak at 2.2692 — but on the UNIFORM moment (⟨|m|⟩ large at low T).
+    # The staggered peak landing right but the uniform moment ordering must FAIL.
+    ok, detail = check_m10(_m10_report(ONSAGER_TC, max_unif=0.9))
+    assert ok is False
+    assert "FM" in detail or "uniform moment too large" in detail
+
+
+def test_m10_not_applicable_to_an_m05_report():
+    ok, detail = check_m10(_m05_report(TC_TRI))
+    assert ok is None and "not an M10" in detail
+
+
+def test_m10_skips_a_bare_ising_report():
+    # An M01-shaped report carries top-level T/chi, not chi_staggered → not M10.
+    ok, _ = check_m10(_ising_report(2.3))
+    assert ok is None
+
+
+def test_other_checks_skip_an_m10_report():
+    # M10 carries (T, chi_staggered) but NO top-level chi/specific_heat/per_q, and
+    # its tag is M10-afm-ising — so none of the other checks should claim it. In
+    # particular check_m01 (reads top-level `chi`) is not-applicable by structure.
+    rep = _m10_report()
+    assert check_m01(rep)[0] is None
+    assert check_m04(rep)[0] is None
+    assert check_m05(rep)[0] is None
+    assert check_m06(rep)[0] is None
+    assert check_m07(rep)[0] is None
+    assert check_m08(rep)[0] is None
+    assert check_m09(rep)[0] is None

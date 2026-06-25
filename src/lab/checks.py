@@ -476,11 +476,55 @@ def check_m09(report: dict) -> tuple[bool | None, str]:
     )
 
 
+def check_m10(report: dict) -> tuple[bool | None, str]:
+    """AFM Ising: the STAGGERED-χ peak locates T_N near Onsager's exact 2.2692.
+
+    Returns ``None`` unless this is an M10 report. Otherwise re-derives the Néel
+    temperature *independently* from the per-T (T, chi_staggered) arrays — a coarse
+    argmax refined by a 3-point parabola through the peak — and asserts it sits near
+    the exact 2D T_c (= T_N, by the bipartite gauge duality). The tolerance (±0.1)
+    absorbs the finite-L shift, exactly as ``check_m04`` does on the same number; on
+    a finite lattice the peak sits a little above the infinite-volume value, so this
+    catches a broken AFM simulation, not a precision-T_N claim.
+
+    A SECOND guard makes this milestone meaningful: it confirms the UNIFORM ⟨|m|⟩
+    stayed small (≤ 0.3 across the sweep). The headline AFM bug is a silent sign
+    error that reverts the model to the *ferromagnet* — which would still peak at
+    2.2692, but on the *uniform* magnetization, with χ_staggered ≈ 0 and a large
+    uniform ⟨|m|⟩ at low T. Requiring the staggered peak to be the real signal AND
+    the uniform moment to stay ≈ 0 catches that masquerade. A receipt that
+    re-computes the number, not an echo.
+    """
+    if report.get("experiment") != "M10-afm-ising":
+        return None, "not an M10 AFM-Ising report"
+    T, chi = report.get("T"), report.get("chi_staggered")
+    if not T or not chi or len(T) != len(chi) or len(T) < 3:
+        return None, "M10 report missing (T, chi_staggered) arrays"
+    peak_T = _refine_peak_stdlib(T, chi)
+    tol = 0.1
+    near_tn = abs(peak_T - ONSAGER_TC) <= tol
+    # The AFM signature: the uniform magnetization never orders (≈0 throughout). A
+    # silent sign-flip to the FM would make this large — so it must stay small for
+    # a PASS, not just the staggered peak landing on T_N.
+    abs_mag = report.get("abs_mag") or []
+    max_unif = max((abs(v) for v in abs_mag), default=0.0)
+    unif_small = max_unif <= 0.3
+    ok = near_tn and unif_small
+    detail = (
+        f"staggered χ_s peak at T={peak_T:.3f} vs Onsager exact {ONSAGER_TC:.4f} "
+        f"(tol ±{tol}); uniform ⟨|m|⟩ ≤ {max_unif:.3f}"
+    )
+    if not unif_small:
+        detail += " ✗ (uniform moment too large — looks like the FM, not the AFM)"
+    return ok, detail
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
-          "M07": check_m07, "M08": check_m08, "M09": check_m09}
+          "M07": check_m07, "M08": check_m08, "M09": check_m09,
+          "M10": check_m10}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:
