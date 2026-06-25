@@ -159,15 +159,18 @@ def test_scan_runs_keeps_corrupt_json_as_honest_unreadable_gap(tmp_path, monkeyp
     assert by_date["2026-06-14"]["verdict"] == "unreadable"
 
 
-def test_scan_runs_sets_report_href_dated_html_when_present(tmp_path, monkeypatch):
+def test_scan_runs_committed_run_links_to_archive_index(tmp_path, monkeypatch):
     reports, lab_home = _patch(tmp_path, monkeypatch)
     _write_report(reports, "2026-06-15-m01", mtime=1000)
     (reports / "2026-06-15-m01.html").write_text("<html>r</html>", encoding="utf-8")
     runs = scan_runs()
     r = runs[0]
     assert r["has_dated_html"] is True
-    # Deep-links the dated committed HTML report.
-    assert "2026-06-15-m01.html" in r["report_href"]
+    # Dated per-run renders are gitignored (never on GitHub), so a committed run
+    # deep-links to the one committed, htmlpreview-able surface — the archive
+    # index — not its own uncommitted dated render, which would 400.
+    assert r["report_href"] == publish.ARCHIVE_URL
+    assert "2026-06-15-m01.html" not in r["report_href"]
 
 
 def test_scan_runs_local_only_links_to_dated_json(tmp_path, monkeypatch):
@@ -241,15 +244,17 @@ def test_render_index_null_keeps_numbers_and_folded_grey_marker(tmp_path, monkey
     assert "null" in html.lower() or "folded" in html.lower()
 
 
-def test_render_index_links_each_run_to_its_report(tmp_path, monkeypatch):
+def test_render_index_links_committed_run_to_archive(tmp_path, monkeypatch):
     reports, lab_home = _patch(tmp_path, monkeypatch)
     _write_report(reports, "2026-06-15-m01", mtime=1000)
     (reports / "2026-06-15-m01.html").write_text("<html>r</html>", encoding="utf-8")
     _write_report(lab_home, "2026-06-08-m01", mtime=500)   # local-only, json only
     html = render_index()
-    # A committed run links to its dated HTML report ...
-    assert "2026-06-15-m01.html" in html
-    # ... and a local-only run links to its dated JSON.
+    # A committed run links to the committed archive index (its dated render is
+    # gitignored), never to the uncommitted dated file that would 400.
+    assert "reports/index.html" in html
+    assert "2026-06-15-m01.html" not in html
+    # ... and a local-only run still carries its dated JSON path for traceability.
     assert "2026-06-08" in html and ".json" in html
 
 

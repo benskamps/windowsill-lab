@@ -31,7 +31,7 @@ import re
 from pathlib import Path
 
 from .publish import (
-    LAB_HOME, REPORTS_DIR, REPORT_URL_BASE, _DATE_GLOB, _date_of,
+    ARCHIVE_URL, LAB_HOME, REPORTS_DIR, REPORT_URL_BASE, _DATE_GLOB, _date_of,
     _milestone_for, _peak_t, _slug_for, today_local,
 )
 
@@ -150,16 +150,18 @@ def _href_for(date: str, slug: str, is_repo: bool, has_dated_html: bool,
               local_path: Path) -> str:
     """The report deep-link for a run.
 
-    A committed run with a dated HTML → its htmlpreview HTML deep-link. A
-    committed run with only the JSON sidecar → the JSON deep-link. A local-only
-    (~/.lab) run → the local dated JSON path so it's still traceable before a
-    backfill (the page link-guard will keep non-http hrefs out of the public
-    ledger; the index page itself can still link the local file).
+    Dated per-run renders are gitignored (too large to accrete in git history —
+    see ``reports/.gitignore``), so they NEVER resolve through htmlpreview even
+    when a copy sits in ``reports/`` locally — a dated deep-link 400s on GitHub.
+    The only committed, htmlpreview-able report surfaces are
+    ``reports/latest.html`` (the newest run — linked as the page's main "full
+    report") and ``reports/index.html`` (this committed every-run ledger). So a
+    committed run deep-links to the archive index; a local-only (~/.lab) run keeps
+    its dated JSON path for traceability before a backfill (the page link-guard
+    keeps non-http hrefs out of the public ledger).
     """
-    if is_repo and has_dated_html:
-        return REPORT_URL_BASE + f"{date}-{slug}.html"
     if is_repo:
-        return REPORT_URL_BASE + f"{date}-{slug}.json"
+        return ARCHIVE_URL
     # Local-only: a file path to the dated JSON cache. Not an http link.
     return local_path.as_uri() if local_path.exists() else str(local_path)
 
