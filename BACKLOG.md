@@ -43,9 +43,19 @@ green thing changes (vine, fern, succulent, moss…). A growth form is a render
 strategy, not a new page. Pick the form from a milestone's `track`, keep every
 other rule identical, and a wall of windowsills should still read as one garden.
 
-- [ ] Define a `growth_form` (or derive it from `track`) in the feed contract.
-- [ ] Refactor `web/index.html`'s render into pluggable forms behind one
+- [x] Define a `growth_form` (or derive it from `track`) in the feed contract.
+      (done 2026-06-23 — `publish.GROWTH_FORMS` + `growth_form_for(track)`; every
+      milestone is stamped, schema enum added.)
+- [x] Refactor `web/index.html`'s render into pluggable forms behind one
       interface; ship 2–3 forms; prove they're visually homogeneous side by side.
+      (done 2026-06-24 — `web/growth-forms.js`: a registry where each form is
+      `build(ctx) -> {stem, nodes, tip}`. Shipped **fern** (physics/default),
+      **vine** (compute, a coiling climb), **succulent** (instrument, a compact
+      rosette). Homogeneity is enforced by the interface — every form roots at the
+      pot center and reaches the *same* tip height for a given progress; only the
+      path and node layout change. Inlined into `index.html` for the single-file
+      mirror, kept in sync by `tests/test_web_growth_forms.py`; behaviour proved by
+      `web/growth-forms.test.mjs` (`node --test`).)
 
 ## Lineage — origination points (backlogged, not rebuilt)
 
