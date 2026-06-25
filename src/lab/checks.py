@@ -29,6 +29,11 @@ INV_NU = 1.0                # 1/ν
 TC_3D = 4.5115
 # Exact triangular-lattice 2D Ising critical temperature (M05): T_c = 4/ln 3.
 TC_TRI = 4.0 / math.log(3.0)   # ≈ 3.6410
+# 2D XY BKT transition temperature (M08) — the square-lattice MC/RG benchmark
+# (0.89290(5)); no closed form. Located via the helicity-modulus jump crossing.
+T_BKT = 0.8929
+# The universal-jump slope: at the crossing Υ/T = 2/π, i.e. Υ(T_BKT) = (2/π)·T_BKT.
+TWO_OVER_PI = 2.0 / math.pi
 
 
 def _reports_newest_first() -> list[Path]:
@@ -369,11 +374,59 @@ def check_m07(report: dict) -> tuple[bool | None, str]:
     return all_ok, "Potts χ peaks — " + "; ".join(parts)
 
 
+def check_m08(report: dict) -> tuple[bool | None, str]:
+    """2D XY BKT: the helicity-modulus jump crossing locates T_BKT near 0.8929.
+
+    Returns ``None`` unless this is an M08 report. Otherwise re-derives the
+    transition temperature *independently* from the per-T (T, helicity) arrays —
+    the crossing of Υ(T) with the universal-jump line (2/π)·T, found by linear
+    interpolation across the first downward sign change of g(T) = Υ(T) − (2/π)·T —
+    and asserts it sits near the MC/RG benchmark T_BKT ≈ 0.8929.
+
+    The tolerance is deliberately generous (**±0.07**), wider than the sharp-peak
+    checks (M04's ±0.1 is on a *much* larger T_c, so 0.07 here is the looser
+    *relative* window). BKT has **no order-parameter peak** and notoriously strong
+    **logarithmic finite-size corrections**, so a single-L crossing is honestly a
+    coarse estimate that typically sits a little *above* 0.8929 (the same finite-L
+    honesty M05/M06 carry). ±0.07 absorbs that log-correction drift while still
+    catching a broken simulation — a wrong helicity estimator (e.g. the dropped
+    1/T fluctuation term, the #1 XY failure mode) or an un-equilibrated run misses
+    by far more, or fails to cross at all. A receipt that re-computes the number,
+    not an echo.
+    """
+    if report.get("experiment") != "M08-xy-bkt":
+        return None, "not an M08 XY-BKT report"
+    T, Y = report.get("T"), report.get("helicity_modulus")
+    if not T or not Y or len(T) != len(Y) or len(T) < 3:
+        return None, "M08 report missing (T, helicity_modulus) arrays"
+
+    # Re-derive the crossing of Υ(T) with (2/π)·T (a receipt, not an echo of the
+    # reported tc_crossing): the first downward root of g = Υ − (2/π)·T.
+    g = [Y[i] - TWO_OVER_PI * T[i] for i in range(len(T))]
+    crossing = None
+    for i in range(len(T) - 1):
+        if g[i] >= 0.0 and g[i + 1] < 0.0:
+            frac = g[i] / (g[i] - g[i + 1])
+            crossing = T[i] + frac * (T[i + 1] - T[i])
+            break
+    if crossing is None:
+        return False, (
+            f"Υ(T) never crosses the (2/π)T jump line on [{T[0]:.3f}, {T[-1]:.3f}] "
+            f"— no BKT crossing bracketed (window mis-placed or run un-equilibrated)"
+        )
+    tol = 0.07
+    ok = abs(crossing - T_BKT) <= tol
+    return ok, (
+        f"XY helicity-jump crossing at T_BKT={crossing:.3f} vs benchmark "
+        f"{T_BKT:.4f} (tol ±{tol})"
+    )
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
-          "M07": check_m07}
+          "M07": check_m07, "M08": check_m08}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:

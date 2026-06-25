@@ -2,9 +2,9 @@
 import math
 
 from lab.checks import (
-    BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, TC_3D, TC_TRI,
-    _grade, check_m01, check_m02, check_m03, check_m04, check_m05, check_m06,
-    check_m07, verify,
+    BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT, TC_3D, TC_TRI,
+    TWO_OVER_PI, _grade, check_m01, check_m02, check_m03, check_m04, check_m05,
+    check_m06, check_m07, check_m08, verify,
 )
 
 
@@ -343,3 +343,72 @@ def test_other_checks_skip_an_m07_report():
     assert check_m04(rep)[0] is None
     assert check_m05(rep)[0] is None
     assert check_m06(rep)[0] is None
+
+
+# ── M08: 2D XY BKT (helicity-modulus jump) check ─────────────────────────────
+def _m08_report(crossing_at=T_BKT, slope=2.5):
+    """A toy M08 report whose Υ(T) crosses the (2/π)·T jump line at ``crossing_at``.
+
+    Builds a smooth, monotonically-decreasing Υ(T) that starts above the jump line
+    (2/π)·T at low T and drops below it, engineered so g(T) = Υ(T) − (2/π)·T has a
+    single downward root exactly at ``crossing_at``. We use a straight line of
+    negative ``slope`` through the point (crossing_at, (2/π)·crossing_at): then
+    g(T) = (2/π)·crossing_at − slope·(T − crossing_at) − (2/π)·T, which is zero at
+    T = crossing_at and decreasing — a clean single crossing the check re-derives.
+    The grid straddles ``crossing_at`` so the crossing is bracketed.
+    """
+    T = [round(0.6 + 0.02 * i, 4) for i in range(26)]            # 0.6 … 1.1
+    Y = [TWO_OVER_PI * crossing_at - slope * (t - crossing_at) for t in T]
+    return {"experiment": "M08-xy-bkt", "T": T, "helicity_modulus": Y}
+
+
+def test_m08_passes_near_benchmark():
+    ok, detail = check_m08(_m08_report(T_BKT))
+    assert ok, detail
+    assert "0.8929" in detail   # cites the BKT benchmark
+
+
+def test_m08_fails_when_crossing_is_wrong():
+    # A crossing well off T_BKT (beyond ±0.07) — e.g. the dropped 1/T fluctuation
+    # term in the helicity estimator, the #1 XY failure mode — must be caught.
+    ok, _ = check_m08(_m08_report(0.6))
+    assert ok is False
+
+
+def test_m08_fails_when_no_crossing():
+    # A Υ(T) that never crosses the jump line (e.g. an un-equilibrated run that
+    # stays frozen-high) is not a BKT signature and must fail, not silently pass.
+    T = [round(0.6 + 0.02 * i, 4) for i in range(26)]
+    # Υ pinned at 5.0 — always above (2/π)·T over [0.6,1.1], so g never goes negative.
+    rep = {"experiment": "M08-xy-bkt", "T": T, "helicity_modulus": [5.0] * len(T)}
+    ok, detail = check_m08(rep)
+    assert ok is False and "never crosses" in detail
+
+
+def test_m08_first_order_tolerance_band():
+    # A crossing 0.05 above T_BKT PASSES (within ±0.07 — the documented
+    # log-correction window), while 0.1 above FAILS.
+    assert check_m08(_m08_report(T_BKT + 0.05))[0] is True
+    assert check_m08(_m08_report(T_BKT + 0.10))[0] is False
+
+
+def test_m08_not_applicable_to_an_m05_report():
+    ok, detail = check_m08(_m05_report(TC_TRI))
+    assert ok is None and "not an M08" in detail
+
+
+def test_m08_skips_a_bare_ising_report():
+    # An M01-shaped report (top-level T/chi, no helicity_modulus) is not M08.
+    ok, _ = check_m08(_ising_report(2.3))
+    assert ok is None
+
+
+def test_other_checks_skip_an_m08_report():
+    # M08 carries (T, helicity_modulus) but NO χ/specific_heat/per_q, and its tag
+    # is M08-xy-bkt — so none of the single-peak / Potts checks should claim it.
+    rep = _m08_report()
+    assert check_m01(rep)[0] is None
+    assert check_m04(rep)[0] is None
+    assert check_m05(rep)[0] is None
+    assert check_m06(rep)[0] is None
+    assert check_m07(rep)[0] is None
