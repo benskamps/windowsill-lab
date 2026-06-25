@@ -246,9 +246,39 @@ def check_m06(report: dict) -> tuple[bool | None, str]:
     return ok, f"3D χ peak at T={peak_T:.3f} vs MC benchmark {TC_3D:.4f} (tol ±{tol})"
 
 
+def check_m04(report: dict) -> tuple[bool | None, str]:
+    """2D Ising specific heat: the C(T) peak locates T_c near Onsager's exact 2.2692.
+
+    Returns ``None`` unless this is an M04 report. Otherwise re-derives the
+    critical temperature *independently* from the per-T (T, specific_heat) arrays
+    — a coarse argmax refined by a 3-point parabola through the peak — and asserts
+    the specific-heat peak sits near the exact 2D T_c. The tolerance (±0.1)
+    absorbs the finite-L shift: on a finite lattice the C peak sits a little above
+    the infinite-volume value, so this catches a broken thermal measurement, not a
+    precision-T_c claim. A receipt that re-computes the number, not an echo.
+    """
+    if report.get("experiment") != "M04-specific-heat":
+        return None, "not an M04 specific-heat report"
+    T, cv = report.get("T"), report.get("specific_heat")
+    if not T or not cv or len(T) != len(cv) or len(T) < 3:
+        return None, "M04 report missing (T, specific_heat) arrays"
+    i = max(range(len(cv)), key=lambda k: cv[k])
+    # 3-point parabola refinement of the peak (stdlib port of m06.refine_peak).
+    if 0 < i < len(T) - 1:
+        y0, y1, y2 = cv[i - 1], cv[i], cv[i + 1]
+        denom = y0 - 2.0 * y1 + y2
+        peak_T = T[i] if denom == 0 else T[i] + 0.5 * (y0 - y2) / denom * (T[i] - T[i - 1])
+    else:
+        peak_T = T[i]
+    tol = 0.1
+    ok = abs(peak_T - ONSAGER_TC) <= tol
+    return ok, f"2D C peak at T={peak_T:.3f} vs Onsager exact {ONSAGER_TC:.4f} (tol ±{tol})"
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
-CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03, "M06": check_m06}
+CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
+          "M04": check_m04, "M06": check_m06}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:
