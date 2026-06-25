@@ -18,6 +18,7 @@ Usage:
   lab m02             run M02: finite-size scaling across lattice sizes
   lab m03             run M03: critical-exponent β via magnetization data-collapse
   lab m04             run M04: 2D Ising specific heat — the thermal cross-check of T_c
+  lab m05             run M05: triangular-lattice 2D Ising — verify T_c = 4/ln3 ≈ 3.641
   lab m06             run M06: 3D simple-cubic Ising — verify T_c ≈ 4.5115 (Phase 2)
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
@@ -123,6 +124,24 @@ def _parse_m04(args):
                    help="L=48, short sweep for a fast sanity pass")
     p.add_argument("--t-min", type=float, default=2.0)
     p.add_argument("--t-max", type=float, default=2.6)
+    p.add_argument("--n-temps", type=int, default=25)
+    p.add_argument("--sweeps", type=int, default=40000)
+    p.add_argument("--burnin", type=int, default=8000)
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m05(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # L must be a multiple of 3 for the triangular 3-colour update; 129 is the
+    # multiple of 3 nearest the square engine's 128 (ising_tri raises otherwise).
+    p.add_argument("--L", type=int, default=129,
+                   help="lattice side, must be a multiple of 3 (default 129)")
+    p.add_argument("--quick", action="store_true",
+                   help="L=48, short sweep for a fast sanity pass")
+    p.add_argument("--t-min", type=float, default=3.3)
+    p.add_argument("--t-max", type=float, default=4.0)
     p.add_argument("--n-temps", type=int, default=25)
     p.add_argument("--sweeps", type=int, default=40000)
     p.add_argument("--burnin", type=int, default=8000)
@@ -313,6 +332,38 @@ def main(argv=None):
               f"{result.tc_benchmark:.4f}, rel. err {result.rel_error*100:.1f}%)"
               f"  ·  χ cross-check {result.tc_chi_refined:.3f}  ·  {result.wall_seconds:.0f}s")
         path = render_mod.render_m04(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m05":
+        ns = _parse_m05(args[1:])
+        from . import m05
+        from . import render as render_mod
+        L = 48 if ns.quick else ns.L
+        sweeps = 4000 if ns.quick else ns.sweeps
+        burnin = 1500 if ns.quick else ns.burnin
+        print(f"M05 triangular-lattice 2D Ising · L={L} · {ns.n_temps} temps in "
+              f"[{ns.t_min}, {ns.t_max}] · {sweeps:,} sweeps on {ns.device}")
+
+        def _progress_m05(result):
+            print(f"  ✓ swept {len(result.T)} temps  ({result.wall_seconds:.1f}s)")
+
+        result = m05.run_m05(
+            L=L, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
+            n_sweeps=sweeps, n_burnin=burnin, seed=ns.seed, device=ns.device,
+            progress=_progress_m05,
+        )
+        report = m05.to_report(result)
+        print(f"  → χ-peak T_c = {result.tc_chi_refined:.3f}  (exact 4/ln3 = "
+              f"{result.tc_benchmark:.4f}, rel. err {result.rel_error*100:.1f}%)"
+              f"  ·  C cross-check {result.tc_cv_refined:.3f}  ·  {result.wall_seconds:.0f}s")
+        path = render_mod.render_m05(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod
