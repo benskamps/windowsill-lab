@@ -10,6 +10,8 @@ from lab.potts import PottsRunConfig
 from lab.potts import run as run_potts
 from lab.xy import XYRunConfig
 from lab.xy import run as run_xy
+from lab.heisenberg import HeisenbergRunConfig, _random_unit_vectors
+from lab.heisenberg import run as run_heis
 
 
 CUDA_AVAILABLE = torch.cuda.is_available()
@@ -288,3 +290,137 @@ def test_xy_tiny_gpu_run_smoke():
     assert r.helicity_modulus.shape == (5,)
     assert r.energy.shape == (5,) and (r.energy >= -2.0001).all()
     assert r.abs_mag.shape == (5,) and (r.abs_mag <= 1.0 + 1e-6).all()
+
+
+# ── M09: 2D Heisenberg engine (heisenberg) — O(3) unit vectors, Mermin–Wagner ──
+def test_heisenberg_runconfig_defaults():
+    cfg = HeisenbergRunConfig()
+    assert cfg.L == 32
+    assert cfg.updater == "metropolis"
+    assert cfg.n_samples() == cfg.n_sweeps // cfg.sample_every
+
+
+def test_heisenberg_rejects_unknown_updater():
+    cfg = HeisenbergRunConfig(L=8, n_temps=1, n_burnin=1, n_sweeps=2,
+                              updater="banana", device="cpu")
+    with pytest.raises(ValueError, match="unknown updater"):
+        run_heis(cfg)
+
+
+def test_heisenberg_uniform_sphere_sampling():
+    """The proposal/init must sample UNIFORMLY on S² — not pole-biased.
+
+    The classic O(3) bug is drawing (θ, φ) both uniform, which over-weights the
+    poles and systematically corrupts every energy and correlation. Uniform-on-
+    sphere requires z = cos θ uniform in [−1, 1], so over many samples ⟨z⟩ ≈ 0 AND
+    ⟨|z|⟩ ≈ 0.5 (the giveaway: a θ-uniform pole bias pushes ⟨|z|⟩ well above 0.5).
+    Every vector is also a genuine unit vector.
+    """
+    g = torch.Generator(device="cpu").manual_seed(0)
+    V = _random_unit_vectors((100000,), g, torch.device("cpu"))
+    norms = torch.linalg.vector_norm(V, dim=-1)
+    assert torch.allclose(norms, torch.ones_like(norms), atol=1e-5)
+    z = V[..., 2]
+    assert abs(float(z.mean())) < 0.02, "mean z must be ~0 (no hemisphere bias)"
+    # Uniform z → E|z| = 0.5; a θ-uniform pole bias would push this well above 0.5.
+    assert abs(float(z.abs().mean()) - 0.5) < 0.02, "E|z| must be ~0.5 (no pole bias)"
+    # x and y centred too (azimuthal symmetry).
+    assert abs(float(V[..., 0].mean())) < 0.02 and abs(float(V[..., 1].mean())) < 0.02
+
+
+def test_heisenberg_cpu_run_smoke():
+    """A tiny CPU Heisenberg run produces sensible-shaped, physically valid output.
+
+    The headline observable is ⟨|m|⟩, the Mermin–Wagner drift order parameter. We
+    assert the shapes, that the energy per spin lives in its bond range [-2, 2]
+    (O(3) dots ∈ [-1, 1], 0.5 de-double-counts the 2N bonds), that ⟨|m|⟩ ∈ [0, 1],
+    that χ is a non-negative variance, and that the realized Metropolis acceptance
+    is a sane fraction (the per-T-tuned δ keeping it off the 0/1 rails).
+    """
+    cfg = HeisenbergRunConfig(L=12, T_min=0.7, T_max=0.7, n_temps=1,
+                              n_burnin=200, n_sweeps=400, sample_every=10,
+                              over_relax=3, device="cpu")
+    r = run_heis(cfg)
+    assert r.T.shape == (1,)
+    assert r.abs_mag.shape == (1,)
+    assert r.abs_mag_err.shape == (1,) and (r.abs_mag_err >= 0).all()
+    assert r.chi.shape == (1,) and (r.chi >= -1e-6).all()
+    assert r.energy.shape == (1,)
+    assert r.acceptance.shape == (1,)
+    # Energy per spin e = -0.5·⟨S·Σ_4 nbr⟩ ∈ [-2, 2] (dots ∈ [-1,1], 0.5 de-double).
+    assert (r.energy >= -2.0001).all() and (r.energy <= 2.0001).all()
+    # ⟨|m|⟩ is a vector-magnetization fraction in [0, 1].
+    assert (r.abs_mag >= -1e-6).all() and (r.abs_mag <= 1.0 + 1e-6).all()
+    # Acceptance is a real fraction, comfortably off the 0/1 rails (δ is tuned).
+    assert (r.acceptance > 0.05).all() and (r.acceptance < 0.99).all()
+
+
+def test_heisenberg_low_T_aligned_high_T_floppy():
+    """The core physics: a cold O(3) lattice aligns (low E, high |m|), a hot one melts.
+
+    This calibrates the ΔE sign and the dot-product energy — a sign error leaves
+    the lattice stuck disordered at all T. A wide T window with a cold and a hot
+    point pins both ends. CPU so it always runs (no GPU dependency).
+    """
+    cfg = HeisenbergRunConfig(L=12, T_min=0.2, T_max=3.0, n_temps=4,
+                              n_burnin=400, n_sweeps=700, sample_every=10,
+                              over_relax=3, device="cpu")
+    r = run_heis(cfg)
+    # Coldest: nearly aligned — energy approaches the ground state -2, |m| high.
+    assert r.energy[0] < -1.5, f"cold lattice should align (E→-2), got {r.energy[0]:.3f}"
+    assert r.abs_mag[0] > 0.6, f"cold lattice should magnetize, got |m|={r.abs_mag[0]:.3f}"
+    # Hottest: floppy — energy well above the ground state, |m| small.
+    assert r.energy[-1] > r.energy[0]
+    assert r.abs_mag[-1] < r.abs_mag[0]
+
+
+def test_heisenberg_mermin_wagner_drift():
+    """The Mermin–Wagner signature: ⟨|m|⟩ DECREASES as L grows at a fixed T.
+
+    This is the whole point of M09 — there is no finite-T order, so the per-spin
+    magnetization drifts toward 0 with system size. A single L would fake a finite
+    ⟨|m|⟩; the drift across L is what verifies the *absence*. Small lattices + short
+    runs on CPU keep it a fast but unambiguous monotone check (the engine halves
+    |m| per doubling of L on the GPU at these settings; even short CPU runs keep
+    the inequalities clear).
+    """
+    mags = []
+    for L in (8, 16, 24):
+        cfg = HeisenbergRunConfig(L=L, T_min=0.7, T_max=0.7, n_temps=1,
+                                  n_burnin=400, n_sweeps=700, sample_every=10,
+                                  over_relax=3, seed=42, device="cpu")
+        mags.append(float(run_heis(cfg).abs_mag[0]))
+    assert mags[0] > mags[1] > mags[2], (
+        f"⟨|m|⟩ must drift down with L (Mermin–Wagner), got {mags}"
+    )
+
+
+def test_heisenberg_metropolis_and_wolff_both_run():
+    """Both updaters run and align a cold lattice (low E) — the embedded-Wolff
+    reflection (across the plane ⊥ the random axis, flipping ε) must order, not heat.
+
+    M09 drives Metropolis-plus-over-relaxation; the embedded-cluster Wolff path is
+    the alternative for the low-T (large-ξ) points. This exercises both on CPU and
+    checks they each drive a cold lattice toward alignment (E < -1) — a Wolff that
+    reflected through the axis instead of across the ⊥ plane would fail to order.
+    """
+    for updater in ("metropolis", "wolff"):
+        cfg = HeisenbergRunConfig(L=12, T_min=0.3, T_max=0.3, n_temps=1,
+                                  n_burnin=300, n_sweeps=500, sample_every=10,
+                                  over_relax=3, updater=updater, device="cpu")
+        r = run_heis(cfg)
+        assert r.energy.shape == (1,)
+        assert r.energy[0] < -1.0, \
+            f"{updater}: cold lattice should align (E<-1), got E={r.energy[0]:.3f}"
+
+
+@pytest.mark.skipif(not CUDA_AVAILABLE, reason="GPU not available")
+def test_heisenberg_tiny_gpu_run_smoke():
+    """Smoke test: a tiny Heisenberg GPU run produces sensible-shaped outputs."""
+    cfg = HeisenbergRunConfig(L=16, T_min=0.5, T_max=1.0, n_temps=3,
+                              n_burnin=20, n_sweeps=40, sample_every=10, device="cuda")
+    r = run_heis(cfg)
+    assert r.T.shape == (3,)
+    assert r.abs_mag.shape == (3,) and (r.abs_mag <= 1.0 + 1e-6).all()
+    assert r.energy.shape == (3,) and (r.energy >= -2.0001).all()
+    assert r.chi.shape == (3,) and (r.chi >= -1e-6).all()

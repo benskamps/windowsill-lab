@@ -400,10 +400,9 @@ def latest_report() -> dict | None:
     rep = _newest_report()
     if not rep:
         return None
-    T, chi = rep.get("T"), rep.get("chi")
-    peak_t = None
-    if T and chi and len(T) == len(chi):
-        peak_t = round(T[max(range(len(chi)), key=lambda i: chi[i])], 3)
+    # Reuse the guarded χ-peak helper — a scalar-T report (e.g. M09's fixed-T
+    # L-family) has no locatable peak and must not crash on ``len(T)``.
+    peak_t = _peak_t(rep)
     wall = rep.get("wall_seconds")
     headline = rep.get("headline")
     if not headline and peak_t is not None:
@@ -446,9 +445,16 @@ def _milestone_for(report: dict) -> str | None:
 
 
 def _peak_t(report: dict) -> float | None:
-    """T at max(χ) for an Ising χ-sweep, else ``None`` (e.g. M02/M03 reports)."""
+    """T at max(χ) for an Ising χ-sweep, else ``None`` (e.g. M02/M03/M09 reports).
+
+    Guards against reports whose ``T`` is *not* a parallel-to-χ array: M09, for
+    instance, carries a **scalar** ``T`` (a fixed-temperature L-family sweep) and a
+    per-L ``chi`` list, so ``len(T)`` would blow up. Only a list/tuple ``T`` the
+    same length as a list/tuple ``chi`` is a locatable χ-sweep.
+    """
     T, chi = report.get("T"), report.get("chi")
-    if T and chi and len(T) == len(chi):
+    if (isinstance(T, (list, tuple)) and isinstance(chi, (list, tuple))
+            and T and len(T) == len(chi)):
         return round(T[max(range(len(chi)), key=lambda i: chi[i])], 3)
     return None
 

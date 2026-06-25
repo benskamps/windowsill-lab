@@ -422,11 +422,65 @@ def check_m08(report: dict) -> tuple[bool | None, str]:
     )
 
 
+def check_m09(report: dict) -> tuple[bool | None, str]:
+    """2D Heisenberg / Mermin–Wagner: ⟨|m|⟩ drifts DOWN with L — the absence of order.
+
+    Returns ``None`` unless this is an M09 report. This milestone has **no
+    transition to locate** — its falsifiable signature is a *null done honestly*:
+    under Mermin–Wagner the 2D Heisenberg model cannot spontaneously order at any
+    T > 0 (and, unlike XY, has no BKT escape — π₁(S²)=0, no vortices), so at a
+    fixed temperature the per-spin vector magnetization ⟨|m|⟩ **decreases
+    monotonically as L grows**, drifting toward 0. PASS = that expected *absence*
+    is reproduced; a non-decreasing ⟨|m|⟩(L) (a fake finite-T transition, or a
+    broken simulation that orders spuriously) FAILS.
+
+    The check re-derives the verdict from the report's (L, ⟨|m|⟩) arrays — a
+    receipt, not an echo of the reported ``monotone_decreasing``: it confirms each
+    successive L has a strictly smaller ⟨|m|⟩ (beyond a small Monte-Carlo noise
+    floor built from the reported standard errors) AND that the slope of ⟨|m|⟩ vs
+    1/L is positive (|m| washes out as L→∞, the infinite-volume value is ~0). The
+    #1 way M09 ships wrong — reading a single small L where ⟨|m|⟩ looks finite and
+    "finding" a transition — is exactly what a flat/rising sequence would show, so
+    that failure is caught, not relabelled a discovery.
+    """
+    if report.get("experiment") != "M09-heisenberg":
+        return None, "not an M09 Heisenberg report"
+    Ls, m = report.get("L_values"), report.get("abs_mag")
+    if not Ls or not m or len(Ls) != len(m) or len(Ls) < 3:
+        return None, "M09 report missing (L_values, abs_mag) arrays (need ≥3 sizes)"
+    err = report.get("abs_mag_err") or [0.0] * len(m)
+
+    # Strictly decreasing beyond a 1.5·SEM noise floor (so Monte-Carlo jitter on a
+    # statistically-flat pair can't masquerade as a drift — or break a real one).
+    decreasing = all(
+        m[i + 1] < m[i] - 1.5 * max(err[i], err[i + 1]) for i in range(len(m) - 1)
+    )
+    # Independent corroboration: ⟨|m|⟩ falls toward its 1/L→0 (infinite-volume)
+    # intercept, so the least-squares slope of ⟨|m|⟩ against 1/L is positive.
+    x = [1.0 / L for L in Ls]
+    mx, my = sum(x) / len(x), sum(m) / len(m)
+    sxx = sum((a - mx) ** 2 for a in x)
+    sxy = sum((a - mx) * (b - my) for a, b in zip(x, m))
+    slope = sxy / sxx if sxx > 0 else 0.0
+
+    ok = decreasing and slope > 0.0
+    drift = " > ".join(f"{v:.3f}" for v in m)
+    ratios = ", ".join(f"{m[i+1]/m[i]:.2f}" for i in range(len(m) - 1) if m[i] > 0)
+    return ok, (
+        f"⟨|m|⟩(L={','.join(map(str, Ls))}) = {drift} "
+        f"(ratios {ratios}, slope vs 1/L = {slope:+.3f}) — "
+        + ("drifts toward 0 with L: Mermin–Wagner absence of order reproduced"
+           if ok else
+           "does NOT monotonically decrease — a fake finite-T transition, not the "
+           "expected absence")
+    )
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
-          "M07": check_m07, "M08": check_m08}
+          "M07": check_m07, "M08": check_m08, "M09": check_m09}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:

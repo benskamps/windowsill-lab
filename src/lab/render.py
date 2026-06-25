@@ -1536,3 +1536,234 @@ def render_m08(report: dict, date: str | None = None) -> Path:
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
+
+
+# ── M09 — 2D Heisenberg · Mermin–Wagner (the absence of order, done honestly) ──
+
+def _plot_m09_drift(report: dict) -> str:
+    """⟨|m|⟩ vs L drifting toward 0 — M09's headline (the absence-of-order signature).
+
+    Unlike every milestone before it, there is NO transition to mark. The plot
+    shows the per-spin vector magnetization ⟨|m|⟩ *falling* as the lattice grows
+    at a fixed temperature — the Mermin–Wagner fingerprint. A dashed guide at |m|=0
+    is the infinite-volume limit the sequence drifts toward; a faint reference line
+    for what *spontaneous order* would look like (a flat plateau) makes the
+    contrast legible — the measured points peel away from it, down toward zero.
+    """
+    Ls = np.asarray(report["L_values"], dtype=float)
+    m = np.asarray(report["abs_mag"], dtype=float)
+    m_err = report.get("abs_mag_err") or [0.0] * len(Ls)
+    T = report.get("T")
+    fig, ax = plt.subplots(figsize=(7, 4.4))
+    ax.errorbar(Ls, m, yerr=m_err, fmt="o-", color="#3a2e21", markersize=7,
+                capsize=3, linewidth=1.6, label=f"Measured ⟨|m|⟩  (T={T})")
+    # What spontaneous order would look like: a flat plateau at the smallest-L value.
+    ax.axhline(m[0], linestyle=":", color="#c89878", alpha=0.7,
+               label="if it ordered: a plateau (it doesn't)")
+    ax.axhline(0.0, linestyle="--", color="#7a9b56", alpha=0.8,
+               label="L → ∞ limit:  ⟨|m|⟩ → 0")
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(Ls)
+    ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
+    ax.set_ylim(bottom=min(-0.02, float(m.min()) - 0.03))
+    ax.set_xlabel("Lattice size  L")
+    ax.set_ylabel("⟨|m|⟩  (vector magnetization per spin)")
+    ax.set_title("Magnetization drifts toward 0 as L grows — no order at any T > 0")
+    ax.legend(frameon=False, fontsize=9)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_m09_energy(report: dict) -> str:
+    """⟨E⟩(L) flat with χ(L) overlaid — energy is intensive, |m| is the thing that drifts.
+
+    A corroborating "nothing pathological here" plot: the energy per spin is
+    essentially L-independent (an intensive quantity — the *same* physical state at
+    every size), which is the receipt that the drift in ⟨|m|⟩ is the order parameter
+    washing out, not the lattices sitting at different temperatures or being
+    un-equilibrated. The |m|-susceptibility χ(L) is overlaid for context.
+    """
+    Ls = np.asarray(report["L_values"], dtype=float)
+    e = np.asarray(report.get("energy") or [0.0] * len(Ls), dtype=float)
+    chi = np.asarray(report.get("chi") or [0.0] * len(Ls), dtype=float)
+    fig, ax = plt.subplots(figsize=(7, 4.0))
+    ax.plot(Ls, e, "o-", color="#3a2e21", markersize=6, linewidth=1.4,
+            label="⟨E⟩  (energy per spin — intensive, flat in L)")
+    ax.set_xscale("log", base=2)
+    ax.set_xticks(Ls)
+    ax.get_xaxis().set_major_formatter(plt.matplotlib.ticker.ScalarFormatter())
+    ax.set_xlabel("Lattice size  L")
+    ax.set_ylabel("E  (per spin)")
+    ax2 = ax.twinx()
+    ax2.plot(Ls, chi, "s-", color="#7a9b56", markersize=5, linewidth=1.2,
+             alpha=0.85, label="χ  (|m|-susceptibility)")
+    ax2.set_ylabel("χ  (per spin)")
+    ax.set_title("Energy is flat in L — it's the magnetization, not the state, that drifts")
+    lines1, lab1 = ax.get_legend_handles_labels()
+    lines2, lab2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, lab1 + lab2, frameon=False, fontsize=8, loc="center right")
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M09_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab · {date} · 2D Heisenberg · Mermin–Wagner</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  table {{ width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 14px; }}
+  th, td {{ text-align: right; padding: 6px 10px; border-bottom: 1px solid #e3d6bd; }}
+  th:first-child, td:first-child {{ text-align: left; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab · phase 2</h1>
+  <div class="date">{date} · M09 — 2D Heisenberg · Mermin–Wagner</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+
+  <h2>Magnetization drift across lattice size</h2>
+  {table}
+
+  <h2>⟨|m|⟩ vs L — the drift toward zero is the result</h2>
+  <figure><img src="data:image/png;base64,{drift_png}" alt="Heisenberg magnetization vs lattice size, drifting toward zero"></figure>
+
+  <h2>Energy &amp; susceptibility — the state is the same, only |m| washes out</h2>
+  <figure><img src="data:image/png;base64,{energy_png}" alt="Heisenberg energy and susceptibility vs lattice size"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def _m09_table(report: dict) -> str:
+    """A small per-L results table: L, ⟨|m|⟩ ± err, ratio to the previous L, energy."""
+    Ls = report["L_values"]
+    m = report["abs_mag"]
+    err = report.get("abs_mag_err") or [0.0] * len(Ls)
+    e = report.get("energy") or [0.0] * len(Ls)
+    rows = ["<tr><th>L</th><th>⟨|m|⟩</th><th>± err</th>"
+            "<th>ratio to prev</th><th>energy</th></tr>"]
+    for i, L in enumerate(Ls):
+        ratio = f"{m[i] / m[i-1]:.3f}" if i > 0 and m[i-1] > 0 else "—"
+        rows.append(
+            f"<tr><td>{L}</td><td>{m[i]:.4f}</td><td>{err[i]:.4f}</td>"
+            f"<td>{ratio}</td><td>{e[i]:.3f}</td></tr>"
+        )
+    return "<table>" + "".join(rows) + "</table>"
+
+
+def render_m09(report: dict, date: str | None = None) -> Path:
+    """Render an M09 2D-Heisenberg / Mermin–Wagner report (HTML + plots + JSON).
+
+    Mirrors ``render_m08``: a slug-keyed ``~/.lab`` dated cache + ``latest.html``
+    pointer AND a permanent committed pair (``reports/<date>-m09.html`` + ``.json``).
+    M09 is a milestone whose *correct* result is a **negative** one, so the verdict
+    is framed accordingly: a green ✓ "Mermin–Wagner confirmed" when ⟨|m|⟩ drifts
+    monotonically toward 0 as L grows (the expected *absence* of finite-T order is
+    reproduced), and a ✗ "absence NOT reproduced" when ⟨|m|⟩ fails to decrease — a
+    fake finite-T transition / broken run, kept honestly as a miss, never dressed
+    up as order. (This is the rare milestone where the *null IS the known answer*,
+    so a reproduced negative earns the green leaf — distinct from an ``[~]`` failed
+    calibration.)
+    """
+    from .publish import today_local
+    date = date or today_local()
+    _ensure_home()
+
+    Ls = report["L_values"]
+    m = report["abs_mag"]
+    T = report.get("T")
+    ratios = report.get("ratios") or []
+    slope = report.get("slope_vs_inv_L")
+    monotone = report.get("monotone_decreasing")
+
+    Ls_str = ", ".join(map(str, Ls))
+    drift_str = " → ".join(f"{v:.3f}" for v in m)
+    sentence = (
+        f"I ran the 2D Heisenberg model — O(3) unit-vector spins S ∈ S², "
+        f"E = −J·Σ S_i·S_j — on a family of square lattices L = {Ls_str} at a fixed "
+        f"temperature T = {T}. Unlike every milestone before it, M09 has NO "
+        f"transition to find: Mermin–Wagner forbids a 2D system with a continuous "
+        f"symmetry from ordering at any T &gt; 0, and (unlike the XY model) the "
+        f"Heisenberg sphere is simply connected, so there is no BKT escape either — "
+        f"no transition of any kind at finite T. The falsifiable signature of that "
+        f"absence is a finite-size drift: the per-spin magnetization ⟨|m|⟩ shrinks "
+        f"toward 0 as L grows (⟨|m|⟩ = {drift_str}). "
+        f"Wall time on the GPU: {report.get('wall_seconds', 0):.0f}s."
+    )
+
+    ratio_str = ", ".join(f"{r:.3f}" for r in ratios) or "—"
+    slope_str = f"{slope:+.3f}" if slope is not None else "—"
+    if monotone:
+        verdict = (
+            f"✓ Mermin–Wagner confirmed: ⟨|m|⟩ drifts {drift_str} across "
+            f"L = {Ls_str} (each step ×{ratio_str} &lt; 1; slope vs 1/L = {slope_str} "
+            f"&gt; 0, so ⟨|m|⟩ → 0 as L → ∞). There is no spontaneous order at this "
+            f"temperature — exactly as the theorem demands. This is the rare run "
+            f"whose *correct* answer is a negative one: the lab reproduces the known "
+            f"*absence* of 2D Heisenberg order, distinguishing it cleanly from the "
+            f"order-parameter plateau a real transition would show. (Reading a single "
+            f"small L would have faked a finite ⟨|m|⟩ and a spurious transition — the "
+            f"#1 way this milestone ships wrong; varying L is what makes the absence "
+            f"visible.)"
+        )
+    else:
+        verdict = (
+            f"✗ The expected absence was NOT reproduced: ⟨|m|⟩ = {drift_str} across "
+            f"L = {Ls_str} does not monotonically decrease (slope vs 1/L = {slope_str}). "
+            f"Either the run is un-equilibrated, the sphere sampling is pole-biased, "
+            f"or L is too small to clear ξ(T) — kept honestly as a miss, never "
+            f"relabelled order."
+        )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M09_HTML_TEMPLATE.format(
+        date=date, sentence=sentence, verdict=verdict,
+        table=_m09_table(report),
+        drift_png=_plot_m09_drift(report),
+        energy_png=_plot_m09_energy(report),
+        json_dump=json_dump,
+    )
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    _commit_report(date, slug, html, json_dump)
+    return out

@@ -69,14 +69,15 @@
     {
       "id": "M09",
       "title": "2D Heisenberg (continuous spins)",
-      "status": "open",
+      "status": "verified",
       "track": "physics",
-      "growth_form": "fern"
+      "growth_form": "fern",
+      "result": "the *absence* of order reproduced: at a fixed T=0.7 the per-spin vector magnetization \u27e8|m|\u27e9 drifts 0.478 \u2192 0.282 \u2192 0.142 across L=16, 32, 64 (each step \u00d70.59, \u00d70.50 < 1; slope vs 1/L = +7.05 > 0, so \u27e8|m|\u27e9 \u2192 0 as L \u2192 \u221e"
     },
     {
       "id": "M10",
       "title": "Antiferromagnetic Ising on a bipartite lattice (same as ferromagnetic by sign-flip \u2014 sanity check the framework handles negative J cleanly)",
-      "status": "pending",
+      "status": "open",
       "track": "physics",
       "growth_form": "fern"
     },
@@ -239,20 +240,20 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-06-25T04:49:52.905956+00:00",
+  "last_run": "2026-06-25T05:17:15.958191+00:00",
   "runs": 12,
   "temp_c": null,
   "latest_report": {
     "date": "2026-06-25",
-    "milestone": "M08",
+    "milestone": "M09",
     "verdict": "verified",
-    "headline": "2D XY BKT (L=64): helicity \u03a5(T) crosses the (2/\u03c0)T jump line at T_BKT=0.9128 vs benchmark 0.8929 (rel. err 2.2%) \u00b7 94s on GPU",
+    "headline": "2D Heisenberg (T=0.7): \u27e8|m|\u27e9 drifts 0.478, 0.282, 0.142 across L=16, 32, 64 (ratios 0.590 \u2192 0.502) \u2014 Mermin\u2013Wagner confirmed: no finite-T order \u00b7 250s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-06-25T04:50:48.084263+00:00",
+  "updated": "2026-06-25T05:18:11.675776+00:00",
   "provenance": {
-    "code_sha": "3128562-dirty",
+    "code_sha": "055df9d-dirty",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -261,6 +262,13 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-06-25",
+      "milestone": "M09",
+      "verdict": "verified",
+      "headline": "2D Heisenberg (T=0.7): \u27e8|m|\u27e9 drifts 0.478, 0.282, 0.142 across L=16, 32, 64 (ratios 0.590 \u2192 0.502) \u2014 Mermin\u2013Wagner confirmed: no finite-T order \u00b7 250s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
     {
       "date": "2026-06-25",
       "milestone": "M08",

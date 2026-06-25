@@ -397,3 +397,82 @@ def test_render_m08_appears_in_discovery_and_ledger(tmp_path, monkeypatch):
 
 def test_slug_for_maps_m08_report():
     assert _slug_for(_m08_fixture_report()) == "m08"
+
+
+# ── M09: 2D Heisenberg / Mermin–Wagner render path ───────────────────────────
+def _m09_fixture_report(abs_mag=(0.476, 0.285, 0.143), Ls=(16, 32, 64)):
+    """A synthetic M09 ``to_report``-shaped dict (no GPU).
+
+    Defaults to a clean Mermin–Wagner drift (⟨|m|⟩ halving as L doubles → the
+    absence of order). Overriding ``abs_mag`` with a flat/rising sequence models a
+    broken run (a fake finite-T transition). The drift verdict the renderer reports
+    is recomputed the same way the real run does, via ``m09`` helpers.
+    """
+    from lab.m09 import drift_slope
+    m = list(abs_mag)
+    ratios = [m[i + 1] / m[i] for i in range(len(m) - 1)]
+    err = [0.005] * len(Ls)
+    monotone = all(m[i + 1] < m[i] - 1.5 * max(err[i], err[i + 1])
+                   for i in range(len(m) - 1))
+    return {
+        "experiment": "M09-heisenberg", "headline": "M09 test",
+        "L_values": list(Ls), "T": 0.7,
+        "abs_mag": m, "abs_mag_err": err,
+        "chi": [0.1] * len(Ls), "energy": [-1.15] * len(Ls),
+        "acceptance": [0.55] * len(Ls),
+        "ratios": ratios, "slope_vs_inv_L": drift_slope(Ls, m),
+        "monotone_decreasing": monotone, "updater": "metropolis",
+        "wall_seconds": 80.0, "config": {"seed": 42, "model": "heisenberg"},
+    }
+
+
+def test_render_m09_writes_permanent_report_pair(tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    out = render.render_m09(_m09_fixture_report(), date="2026-06-25")
+    html_file = reports / "2026-06-25-m09.html"
+    json_file = reports / "2026-06-25-m09.json"
+    assert html_file.exists() and json_file.exists()
+    html = html_file.read_text(encoding="utf-8")
+    assert "M09" in html and "Heisenberg" in html and "Mermin" in html
+    assert json.loads(json_file.read_text(encoding="utf-8"))["experiment"] == "M09-heisenberg"
+
+
+def test_render_m09_verdict_passes_on_drift_to_zero(tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m09(_m09_fixture_report(abs_mag=(0.476, 0.285, 0.143)), date="2026-06-25")
+    html = (reports / "2026-06-25-m09.html").read_text(encoding="utf-8")
+    assert "✓" in html
+    # Names the result: the absence of order, confirmed by the L-drift.
+    assert "Mermin" in html and "absence" in html.lower()
+
+
+def test_render_m09_verdict_is_honest_miss_when_flat(tmp_path, monkeypatch):
+    """A non-decreasing ⟨|m|⟩(L) (a fake transition) is kept as a miss, never order."""
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m09(_m09_fixture_report(abs_mag=(0.30, 0.30, 0.30)), date="2026-06-25")
+    html = (reports / "2026-06-25-m09.html").read_text(encoding="utf-8")
+    assert "✓" not in html
+    assert "not reproduced" in html.lower()
+
+
+def test_render_m09_appears_in_discovery_and_ledger(tmp_path, monkeypatch):
+    """The rendered M09 report is discoverable as a run and rides the ledger as a
+    verified green leaf (the drifting fixture passes check_m09 — a reproduced
+    *absence* is the green leaf for this milestone)."""
+    reports, lab_home = _patch_dirs(tmp_path, monkeypatch)
+    from lab import publish, archive
+    monkeypatch.setattr(publish, "REPORTS_DIR", reports)
+    monkeypatch.setattr(publish, "LAB_HOME", lab_home)
+    monkeypatch.setattr(archive, "REPORTS_DIR", reports)
+    monkeypatch.setattr(archive, "LAB_HOME", lab_home)
+
+    render.render_m09(_m09_fixture_report(), date="2026-06-25")
+    runs = publish.discover_runs()
+    assert any(r["milestone"] == "M09" for r in runs)
+    ledger = archive.run_ledger()
+    m09_rows = [r for r in ledger if r["milestone"] == "M09"]
+    assert m09_rows and m09_rows[0]["verdict"] == "verified"   # drift fixture → green leaf
+
+
+def test_slug_for_maps_m09_report():
+    assert _slug_for(_m09_fixture_report()) == "m09"
