@@ -235,20 +235,20 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-06-20T07:00:37.755325+00:00",
-  "runs": 7,
+  "last_run": "2026-06-25T01:02:43.905130+00:00",
+  "runs": 11,
   "temp_c": null,
   "latest_report": {
-    "date": "2026-06-20",
+    "date": "2026-06-24",
     "milestone": "M01",
     "verdict": "verified",
-    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
-    "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-20-m01.html"
+    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
+    "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-24-m01.html"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-06-20T07:00:41.913169+00:00",
+  "updated": "2026-06-25T01:02:48.019810+00:00",
   "provenance": {
-    "code_sha": "12409a6",
+    "code_sha": "f9ee684",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -257,6 +257,34 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-06-24",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-24-m01.html"
+    },
+    {
+      "date": "2026-06-23",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-23-m01.html"
+    },
+    {
+      "date": "2026-06-22",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 32s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-22-m01.html"
+    },
+    {
+      "date": "2026-06-21",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 32s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/2026-06-21-m01.html"
+    },
     {
       "date": "2026-06-20",
       "milestone": "M01",
