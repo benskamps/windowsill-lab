@@ -39,6 +39,7 @@ class RunResult:
     chi: np.ndarray            # susceptibility per spin (signed m), (n_temps,)
     chi_abs: np.ndarray        # |m|-based susceptibility (FSS-appropriate), (n_temps,)
     energy: np.ndarray         # mean energy per spin, (n_temps,)
+    specific_heat: np.ndarray  # C per spin = (⟨E²⟩−⟨E⟩²)·N/T², (n_temps,) — M04
     snapshots: dict            # {temperature_key: 2D int8 lattice, sampled at end}
     wall_seconds: float
 
@@ -51,6 +52,7 @@ class RunResult:
             "chi": self.chi.tolist(),
             "chi_abs": self.chi_abs.tolist(),
             "energy": self.energy.tolist(),
+            "specific_heat": self.specific_heat.tolist(),
             "snapshots": {k: v.astype(int).tolist() for k, v in self.snapshots.items()},
             "wall_seconds": self.wall_seconds,
         }
@@ -131,6 +133,10 @@ def run(cfg: RunConfig) -> RunResult:
 
     # Save a few snapshot lattices for the gallery
     T_np = T.cpu().numpy()
+    # Specific heat per spin C(T) = (⟨E²⟩−⟨E⟩²)·N/T², from the same energy samples
+    # (population variance, matching the 3D engine). It diverges logarithmically
+    # at T_c — the observable M04 reads.
+    specific_heat = (cfg.L * cfg.L) * energy.var(dim=0, unbiased=False).numpy() / (T_np ** 2)
     pick_idx = [0, cfg.n_temps // 2, cfg.n_temps - 1]
     snapshots = {f"T={T_np[i]:.3f}": spins[i].cpu().numpy() for i in pick_idx}
 
@@ -142,6 +148,7 @@ def run(cfg: RunConfig) -> RunResult:
         chi=chi,
         chi_abs=chi_abs,
         energy=energy_mean,
+        specific_heat=specific_heat,
         snapshots=snapshots,
         wall_seconds=wall,
     )

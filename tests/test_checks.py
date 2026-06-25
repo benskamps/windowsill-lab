@@ -3,7 +3,7 @@ import math
 
 from lab.checks import (
     BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, TC_3D,
-    _grade, check_m01, check_m02, check_m03, check_m06, verify,
+    _grade, check_m01, check_m02, check_m03, check_m04, check_m06, verify,
 )
 
 
@@ -178,6 +178,37 @@ def test_m01_skips_an_m06_report():
     # T_c. The M01 check must NOT grade it against Onsager's 2D 2.269.
     ok, detail = check_m01(_m06_report(TC_3D))
     assert ok is None and "2D Ising" in detail
+
+
+def _m04_report(peak_at=ONSAGER_TC):
+    """A toy 2D-Ising report whose specific heat C(T) peaks at ``peak_at``."""
+    T = [round(2.0 + 0.05 * i, 3) for i in range(13)]            # 2.0 … 2.6
+    cv = [1.0 / (abs(t - peak_at) + 0.02) for t in T]           # sharp peak at peak_at
+    return {"experiment": "M04-specific-heat", "T": T, "specific_heat": cv}
+
+
+def test_m04_passes_near_tc():
+    ok, detail = check_m04(_m04_report(ONSAGER_TC))
+    assert ok, detail
+    assert "2.269" in detail   # cites Onsager's exact 2D T_c
+
+
+def test_m04_fails_when_peak_is_wrong():
+    # A C peak well above T_c (beyond the ±0.1 finite-L tolerance) is a broken
+    # thermal measurement and must be caught.
+    ok, _ = check_m04(_m04_report(2.5))
+    assert ok is False
+
+
+def test_m04_not_applicable_to_an_m06_report():
+    ok, detail = check_m04(_m06_report(TC_3D))
+    assert ok is None and "not an M04" in detail
+
+
+def test_m04_skips_a_bare_ising_report():
+    # An M01-shaped report (χ, not specific_heat) is not an M04 report.
+    ok, _ = check_m04(_ising_report(2.3))
+    assert ok is None
 
 
 def test_m01_still_grades_its_own_tagged_report():

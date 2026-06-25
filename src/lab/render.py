@@ -758,3 +758,172 @@ def render_m06(report: dict, date: str | None = None) -> Path:
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
+
+
+# ── M04 — 2D Ising specific heat (the thermal cross-check of T_c) ─────────────
+
+def _plot_m04_specific_heat(report: dict) -> str:
+    """C(T) with its peak, the exact Onsager T_c, and the χ-peak cross-check."""
+    T = report["T"]
+    cv = report.get("specific_heat") or [0.0] * len(T)
+    tc_bench = report.get("tc_benchmark", 2.2692)
+    tc_cv = report.get("tc_cv_refined", report.get("tc_cv"))
+    tc_chi = report.get("tc_chi_refined")
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.plot(T, cv, "s-", color="#7a9b56", markersize=4, linewidth=1.5,
+            label="C(T)  (specific heat)")
+    ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.85,
+               label=f"Onsager exact T_c = {tc_bench:.4f}")
+    if tc_cv is not None:
+        ax.axvline(tc_cv, linestyle=":", color="#5f7a3e", alpha=0.8,
+                   label=f"C-peak T_c(L) = {tc_cv:.3f}")
+    if tc_chi is not None:
+        ax.axvline(tc_chi, linestyle=":", color="#3a6ea5", alpha=0.55,
+                   label=f"χ-peak cross-check = {tc_chi:.3f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("C  (per spin)")
+    ax.set_title("Specific heat diverges (logarithmically) at T_c")
+    ax.legend(frameon=False, fontsize=8.5)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_m04_energy(report: dict) -> str:
+    """⟨E⟩(T): the smooth energy curve whose fluctuations ARE the specific heat."""
+    T = report["T"]
+    e = report.get("energy") or [0.0] * len(T)
+    tc_bench = report.get("tc_benchmark", 2.2692)
+    fig, ax = plt.subplots(figsize=(7, 4.0))
+    ax.plot(T, e, "o-", color="#3a2e21", markersize=4, linewidth=1.4,
+            label="⟨E⟩  (energy per spin)")
+    ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.85,
+               label=f"Onsager exact T_c = {tc_bench:.4f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("E  (per spin)")
+    ax.set_title("Energy rises smoothly — its steepest slope (= C) marks T_c")
+    ax.legend(frameon=False, fontsize=9)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M04_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab · {date} · 2D Ising specific heat</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab · phase 1</h1>
+  <div class="date">{date} · M04 — 2D Ising specific heat</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+
+  <h2>Specific heat vs Temperature — the divergence is T_c</h2>
+  <figure><img src="data:image/png;base64,{cv_png}" alt="2D Ising specific heat C(T)"></figure>
+
+  <h2>Energy vs Temperature — context</h2>
+  <figure><img src="data:image/png;base64,{e_png}" alt="2D Ising energy per spin"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def render_m04(report: dict, date: str | None = None) -> Path:
+    """Render an M04 2D-Ising specific-heat report (HTML + plots + JSON sidecar).
+
+    Mirrors ``render_m06``: a slug-keyed ``~/.lab`` dated cache + ``latest.html``
+    pointer AND a permanent committed pair (``reports/<date>-m04.html`` + ``.json``).
+    The verdict is an honest **pass** only when the specific-heat peak lands within
+    ±0.1 of Onsager's exact T_c ≈ 2.2692 — a finite-L tolerance (the peak sits a
+    little above the infinite-volume value); a miss stays a folded grey leaf with
+    its real numbers intact, never relabelled a discovery.
+    """
+    from .publish import today_local
+    date = date or today_local()
+    _ensure_home()
+
+    L = report.get("L")
+    tc_cv = report.get("tc_cv_refined", report.get("tc_cv"))
+    tc_chi = report.get("tc_chi_refined")
+    tc_bench = report.get("tc_benchmark", 2.2692)
+    rel_err = report.get("rel_error")
+    amp = report.get("log_amplitude")
+
+    sentence = (
+        f"I ran the 2D Ising model on an L={L} lattice across a window straddling "
+        f"the transition and read the specific heat C(T) = (⟨E²⟩−⟨E⟩²)·N/T² from "
+        f"the energy fluctuations. M01 found T_c from the magnetization; M04 is the "
+        f"independent thermal check — the specific heat carries Onsager's "
+        f"logarithmic divergence at the exact T_c ≈ {tc_bench:.4f}. The C peak sits "
+        f"at T_c(L) = {tc_cv:.3f}. Wall time: {report.get('wall_seconds', 0):.0f}s."
+    )
+    passed = tc_cv is not None and abs(tc_cv - tc_bench) <= 0.1
+    err_str = f"{rel_err*100:.1f}%" if rel_err is not None else "—"
+    chi_str = (f", and the χ peak from the same run independently gives "
+               f"T_c(L) = {tc_chi:.3f}") if tc_chi is not None else ""
+    amp_str = (f" Onsager's exact leading amplitude is A = (2/π)(2/T_c)² ≈ {amp:.3f}; "
+               f"a finite lattice rounds the true log into this peak, so the amplitude "
+               f"isn't resolved here — the peak location is the calibrated claim."
+               ) if amp is not None else ""
+    verdict = (
+        f"{'✓' if passed else '~'} C-peak T_c(L) = {tc_cv:.3f} vs Onsager exact "
+        f"{tc_bench:.4f} (rel. err {err_str}){chi_str}. "
+        + ("Two independent observables — the magnetization (M01) and the energy "
+           "fluctuations (M04) — agree on the same critical point; the thermal "
+           "response calibrates cleanly." + amp_str
+           if passed else
+           "The thermal transition is off — kept honestly as a null, not a "
+           "discovery." + amp_str)
+    )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M04_HTML_TEMPLATE.format(
+        date=date, sentence=sentence, verdict=verdict,
+        cv_png=_plot_m04_specific_heat(report),
+        e_png=_plot_m04_energy(report),
+        json_dump=json_dump,
+    )
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    _commit_report(date, slug, html, json_dump)
+    return out
