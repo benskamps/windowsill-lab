@@ -237,3 +237,72 @@ def test_lab_cache_discovery_finds_slug_keyed_files(tmp_path, monkeypatch):
     render.render_m03(_m03_fixture_report(), date="2026-06-15")
     milestones = {r["milestone"] for r in publish.discover_runs()}
     assert {"M02", "M03"} <= milestones
+
+
+# ── M07 — q-state Potts render path ──────────────────────────────────────────
+import math
+
+
+def _m07_fixture_report(misses=None):
+    """A synthetic M07 ``to_report``-shaped dict (no GPU). ``misses`` optionally
+    sets a q's χ-peak off its exact T_c (to model an honest null on that q)."""
+    misses = misses or {}
+    per_q = []
+    for q in (3, 4, 5, 6):
+        tc = 1.0 / math.log(1.0 + math.sqrt(q))
+        peak = misses.get(q, tc)
+        T = [round(peak - 0.12 + 0.01 * i, 4) for i in range(25)]
+        chi = [1.0 / (abs(t - peak) + 0.02) for t in T]
+        per_q.append({
+            "q": q, "T": T, "chi": chi,
+            "order": [1.0 if t < tc else 0.05 for t in T],
+            "order_err": [0.01] * 25,
+            "energy": [-1.5] * 25, "specific_heat": [0.5] * 25,
+            "tc_chi": peak, "tc_chi_refined": peak, "tc_exact": tc,
+            "rel_error": abs(peak - tc) / tc,
+            "chi_max": (1000.0 if q >= 5 else 200.0), "order_drop": 0.3,
+            "transition": "continuous" if q <= 4 else "first-order",
+            "wall_seconds": 10.0,
+        })
+    return {
+        "experiment": "M07-potts", "headline": "M07 test", "L": 64,
+        "per_q": per_q,
+        "transition_order": {"3": "continuous", "4": "continuous",
+                             "5": "first-order", "6": "first-order"},
+        "continuous_mean_order_drop": 0.3, "first_order_mean_order_drop": 0.3,
+        "continuous_mean_chi_max": 200.0, "first_order_mean_chi_max": 1000.0,
+        "wall_seconds": 40.0, "config": {"seed": 42},
+    }
+
+
+def test_render_m07_writes_permanent_report_pair(tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    out = render.render_m07(_m07_fixture_report(), date="2026-06-25")
+    html_file = reports / "2026-06-25-m07.html"
+    json_file = reports / "2026-06-25-m07.json"
+    assert html_file.exists() and json_file.exists()
+    html = html_file.read_text(encoding="utf-8")
+    assert "M07" in html and "Potts" in html
+    # The per-q table and both plots are present.
+    assert "<table>" in html and "transition" in html
+    assert json.loads(json_file.read_text(encoding="utf-8"))["experiment"] == "M07-potts"
+
+
+def test_render_m07_verdict_passes_when_every_q_locates_tc(tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m07(_m07_fixture_report(), date="2026-06-25")
+    html = (reports / "2026-06-25-m07.html").read_text(encoding="utf-8")
+    assert "✓" in html
+    # Names the continuous→first-order signature via χ_max.
+    assert "first-order" in html and "χ_max" in html
+
+
+def test_render_m07_verdict_is_honest_null_when_a_q_is_off(tmp_path, monkeypatch):
+    """A q whose χ peak misses its exact T_c by more than tolerance is kept as a
+    null — never relabeled a pass (q=3 continuous, ±0.1; push it 0.3 off)."""
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    tc3 = 1.0 / math.log(1.0 + math.sqrt(3))
+    render.render_m07(_m07_fixture_report(misses={3: tc3 - 0.3}), date="2026-06-25")
+    html = (reports / "2026-06-25-m07.html").read_text(encoding="utf-8")
+    assert "✓" not in html
+    assert "null" in html.lower()
