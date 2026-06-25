@@ -519,12 +519,76 @@ def check_m10(report: dict) -> tuple[bool | None, str]:
     return ok, detail
 
 
+def check_m11(report: dict) -> tuple[bool | None, str]:
+    """2D Edwards–Anderson spin glass: P(q) BROADENS as T → 0 — the T=0-critical signature.
+
+    Returns ``None`` unless this is an M11 report. Like M09 (Mermin–Wagner) this
+    milestone has **no finite-T transition to locate** — the 2D EA glass sits at the
+    lower critical dimension (T_c = 0), so the verification is the *expected approach
+    to the T = 0 critical point*: the disorder-averaged overlap distribution P(q)
+    **broadens monotonically as T falls** (its second moment ⟨q²⟩ grows toward T = 0).
+    A finite-T transition claim, or a P(q) that does **not** broaden, is the failure.
+
+    The check re-derives the verdict from the report's (T, ⟨q²⟩) arrays — a receipt,
+    not an echo of the reported ``monotone_broadening`` — and adds two physical
+    guards so a broken/un-equilibrated run can't pass by accident:
+
+    * **Broadening**: sorted by T ascending, ⟨q²⟩ is (weakly) decreasing — i.e. it
+      grows as T → 0. A small fraction of non-monotone steps is tolerated at the noisy
+      low-T end (≥ 80% of steps must broaden, AND ⟨q²⟩_cold must exceed ⟨q²⟩_hot by a
+      clear margin), since spin glasses are hard to equilibrate; a flat or shrinking
+      ⟨q²⟩ fails.
+    * **Symmetry**: P(q) = P(−q) by the ±J / spin-inversion symmetry, so the
+      disorder-averaged ⟨q⟩ must stay ≈ 0 (the equilibration diagnostic). A large
+      |⟨q⟩| means a single broken-symmetry replica leaked through (un-equilibrated or
+      buggy), so it fails even if ⟨q²⟩ happened to rise.
+    """
+    if report.get("experiment") != "M11-spin-glass-2d":
+        return None, "not an M11 spin-glass report"
+    T, q2 = report.get("T"), report.get("q2_mean")
+    if not T or not q2 or len(T) != len(q2) or len(T) < 3:
+        return None, "M11 report missing (T, q2_mean) arrays (need ≥3 temperatures)"
+
+    # Re-derive the broadening trend: sort by T, ⟨q²⟩ should fall as T rises.
+    order = sorted(range(len(T)), key=lambda i: T[i])
+    Ts = [T[i] for i in order]
+    q2s = [q2[i] for i in order]
+    steps = [q2s[i + 1] - q2s[i] for i in range(len(q2s) - 1)]
+    n_down = sum(1 for d in steps if d <= 1e-9)
+    frac = n_down / len(steps) if steps else 0.0
+    q2_cold, q2_hot = q2s[0], q2s[-1]
+    # Cold ⟨q²⟩ must clearly exceed hot (a real broadening, not noise), and ≥80% of
+    # the adjacent steps must broaden (tolerating a little low-T Monte-Carlo jitter).
+    broadens = frac >= 0.8 and q2_cold > q2_hot + 0.05
+
+    # Symmetry / equilibration guard: |⟨q⟩| ≈ 0 by the ±J symmetry. Prefer the
+    # re-derivable per-T ⟨q⟩ if present; else fall back to the reported diagnostic.
+    qm = report.get("q_mean")
+    max_abs_qmean = (max(abs(v) for v in qm) if qm else
+                     report.get("max_abs_q_mean", 0.0))
+    symmetric = max_abs_qmean <= 0.15
+
+    ok = broadens and symmetric
+    detail = (
+        f"⟨q²⟩ grows {q2_hot:.3f}→{q2_cold:.3f} as T falls {Ts[-1]:.2f}→{Ts[0]:.2f} "
+        f"({n_down}/{len(steps)} steps broaden); max|⟨q⟩|={max_abs_qmean:.3f} — "
+        + ("P(q) broadens toward the T=0 critical point (2D EA orders only at T=0; "
+           "no finite-T glass phase) — reproduced"
+           if ok else
+           ("⟨q²⟩ does NOT broaden monotonically toward T=0 — not the expected "
+            "T=0-critical behaviour" if not broadens else
+            "P(q) is not symmetric (|⟨q⟩| too large) — un-equilibrated or broken, "
+            "not a clean overlap"))
+    )
+    return ok, detail
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
-          "M10": check_m10}
+          "M10": check_m10, "M11": check_m11}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:

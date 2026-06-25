@@ -1966,3 +1966,205 @@ def render_m10(report: dict, date: str | None = None) -> Path:
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
+
+
+# ── M11 — 2D Edwards–Anderson spin glass (P(q) broadening toward T_c = 0) ─────
+
+def _plot_m11_pq(report: dict) -> str:
+    """P(q) at a few temperatures — the broadening as T → 0 is the headline visual."""
+    T = np.asarray(report["T"], dtype=float)
+    centers = np.asarray(report["q_bin_centers"], dtype=float)
+    pq = np.asarray(report["pq"], dtype=float)            # (n_temps, n_qbins)
+    # Pick up to 5 temperatures spread cold→hot to show the broadening.
+    order = np.argsort(T)
+    n = len(order)
+    pick = order[np.linspace(0, n - 1, min(5, n)).round().astype(int)]
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    colors = [_COPPER(0.12 + 0.78 * i / max(1, len(pick) - 1)) for i in range(len(pick))]
+    for col, idx in zip(colors, pick):
+        ax.plot(centers, pq[idx], "-", color=col, linewidth=1.8,
+                label=f"T = {T[idx]:.2f}")
+    ax.set_xlabel("overlap  q")
+    ax.set_ylabel("P(q)  (disorder-averaged)")
+    ax.set_title("P(q) broadens as T → 0 — the approach to the T=0 glass")
+    ax.legend(frameon=False, fontsize=9, title="cold → hot")
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_m11_q2(report: dict) -> str:
+    """⟨q²⟩(T) (the broadening signal) with the Binder cumulant overlaid."""
+    T = np.asarray(report["T"], dtype=float)
+    q2 = np.asarray(report["q2_mean"], dtype=float)
+    binder = np.asarray(report.get("binder") or [0.0] * len(T), dtype=float)
+    order = np.argsort(T)
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.plot(T[order], q2[order], "o-", color="#7a4e2f", markersize=5, linewidth=1.6,
+            label="⟨q²⟩  (overlap second moment)")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("⟨q²⟩")
+    ax2 = ax.twinx()
+    ax2.plot(T[order], binder[order], "s-", color="#7a9b56", markersize=4,
+             linewidth=1.2, alpha=0.85, label="Binder g")
+    ax2.set_ylabel("Binder cumulant  g")
+    ax.set_title("⟨q²⟩ grows as T → 0 — no finite-T transition (2D EA: T_c = 0)")
+    lines1, lab1 = ax.get_legend_handles_labels()
+    lines2, lab2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, lab1 + lab2, frameon=False, fontsize=8, loc="upper right")
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M11_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab · {date} · 2D Edwards–Anderson spin glass</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  .caveat {{ font-size: 14px; margin: 14px 0 0; padding: 12px 18px; background: #f6eee0; border-left: 3px solid #c89878; border-radius: 2px; opacity: 0.95; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab · phase 3</h1>
+  <div class="date">{date} · M11 — 2D Edwards–Anderson spin glass</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+  <div class="caveat">{caveat}</div>
+
+  <h2>P(q) — the overlap distribution broadens as T → 0</h2>
+  <figure><img src="data:image/png;base64,{pq_png}" alt="overlap distribution P(q) at several temperatures"></figure>
+
+  <h2>⟨q²⟩(T) &amp; the Binder cumulant — the broadening signal</h2>
+  <figure><img src="data:image/png;base64,{q2_png}" alt="overlap second moment and Binder cumulant vs temperature"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def render_m11(report: dict, date: str | None = None) -> Path:
+    """Render an M11 2D Edwards–Anderson spin-glass report (HTML + plots + JSON).
+
+    Mirrors ``render_m09`` (the other "verify an expected behaviour, not a T_c"
+    milestone): a slug-keyed ``~/.lab`` dated cache + ``latest.html`` pointer AND a
+    permanent committed pair (``reports/<date>-m11.html`` + ``.json``). M11's *correct*
+    result is the **approach to a T = 0 critical point**, not a transition — the 2D EA
+    glass orders only at T = 0 (lower critical dimension). The verdict is a green ✓
+    "P(q) broadens toward T=0" when ⟨q²⟩ grows monotonically as T falls and P(q) stays
+    symmetric; a ✗ otherwise. An equilibration caveat is always shown honestly (spin
+    glasses are hard to equilibrate at low T; this engine uses heavy Metropolis, not
+    parallel tempering), so the run never overclaims a low-T result it can't reach.
+    """
+    from .publish import today_local
+    date = date or today_local()
+    _ensure_home()
+
+    L = report.get("L")
+    n_real = report.get("n_realizations")
+    T = report.get("T") or []
+    q2 = report.get("q2_mean") or []
+    monotone = report.get("monotone_broadening")
+    frac = report.get("broadening_fraction")
+    q2_cold = report.get("q2_cold")
+    q2_hot = report.get("q2_hot")
+    max_abs_qmean = report.get("max_abs_q_mean")
+    sym_resid = report.get("pq_symmetry_resid")
+    t_cold = min(T) if T else 0.0
+    t_hot = max(T) if T else 0.0
+
+    sentence = (
+        f"I ran the 2D Edwards–Anderson spin glass — Ising spins with quenched "
+        f"random ±J bonds, E = −Σ J_ij s_i s_j — on an L={L} square lattice across "
+        f"{len(T)} temperatures, averaged over {n_real} disorder realizations, with "
+        f"two independent replicas per realization so I can read the overlap "
+        f"q = (1/N) Σ s_i^α s_i^β. Unlike a clean transition, the 2D glass orders "
+        f"only at T = 0 (the lower critical dimension), so the signature is the "
+        f"disorder-averaged P(q) <em>broadening</em> as T → 0: ⟨q²⟩ grows "
+        f"{q2_hot:.3f} → {q2_cold:.3f} as T falls {t_hot:.2f} → {t_cold:.2f}. "
+        f"Wall time on the GPU: {report.get('wall_seconds', 0):.0f}s."
+    )
+
+    frac_str = f"{frac*100:.0f}%" if frac is not None else "—"
+    if monotone:
+        verdict = (
+            f"✓ P(q) broadens toward T = 0: ⟨q²⟩ grows {q2_hot:.3f} → {q2_cold:.3f} "
+            f"as the lattice cools ({frac_str} of temperature steps broaden), and the "
+            f"distribution stays symmetric (max|⟨q⟩| = {max_abs_qmean:.3f} ≈ 0). This "
+            f"is the expected approach to the T = 0 spin-glass critical point — in two "
+            f"dimensions the Edwards–Anderson glass orders <em>only</em> at T = 0 (the "
+            f"lower critical dimension), so there is <em>no</em> finite-temperature "
+            f"glass phase to find. Reproducing the broadening (not a transition) is the "
+            f"calibrated result; like the Mermin–Wagner null (M09), the known behaviour "
+            f"IS the answer. (A finite-T transition with a Binder-cumulant crossing is "
+            f"the 3D case — that's M12.)"
+        )
+    else:
+        verdict = (
+            f"~ P(q) did NOT broaden cleanly toward T = 0: ⟨q²⟩ = {q2_hot:.3f} → "
+            f"{q2_cold:.3f} ({frac_str} of steps broaden), max|⟨q⟩| = {max_abs_qmean:.3f}. "
+            f"Kept honestly as an open/null — either the low-T points are "
+            f"un-equilibrated (the likely culprit; see the caveat) or the window is "
+            f"too narrow. Never relabelled a finite-T transition (there is none in 2D)."
+        )
+
+    caveat = (
+        f"Honesty on equilibration: 2D spin glasses are genuinely hard to equilibrate "
+        f"at low T (rugged free-energy landscape, long autocorrelation times). This "
+        f"engine uses heavy single-spin checkerboard Metropolis with a long burn-in — "
+        f"<em>not</em> parallel tempering — so the lowest-T points may be only "
+        f"partially equilibrated. The symmetry diagnostic max|⟨q⟩| = {max_abs_qmean:.3f} "
+        f"and the coldest-T P(q) symmetry residual {sym_resid:.3f} (both ≈ 0 when "
+        f"equilibrated) are reported so a mistune is visible, not hidden. The "
+        f"<em>broadening trend</em> toward T = 0 is robust well before full low-T "
+        f"equilibration; the precise low-T P(q) shape is not claimed. Parallel "
+        f"tempering would sharpen the cold end — see BACKLOG."
+    )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M11_HTML_TEMPLATE.format(
+        date=date, sentence=sentence, verdict=verdict, caveat=caveat,
+        pq_png=_plot_m11_pq(report),
+        q2_png=_plot_m11_q2(report),
+        json_dump=json_dump,
+    )
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    _commit_report(date, slug, html, json_dump)
+    return out

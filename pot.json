@@ -85,14 +85,15 @@
     {
       "id": "M11",
       "title": "Edwards-Anderson spin glass on a 2D square lattice",
-      "status": "open",
+      "status": "verified",
       "track": "physics",
-      "growth_form": "fern"
+      "growth_form": "fern",
+      "result": "the broadening reproduced: the disorder-averaged \u27e8q\u00b2\u27e9 grows monotonically 0.011 \u2192 0.306 (\u00d727, 15/15 temperature steps"
     },
     {
       "id": "M12",
       "title": "3D EA spin glass \u2014 the harder, more famous case",
-      "status": "pending",
+      "status": "open",
       "track": "physics",
       "growth_form": "fern"
     },
@@ -241,20 +242,20 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-06-25T05:35:54.676161+00:00",
+  "last_run": "2026-06-25T06:03:06.919692+00:00",
   "runs": 12,
   "temp_c": null,
   "latest_report": {
     "date": "2026-06-25",
-    "milestone": "M10",
+    "milestone": "M11",
     "verdict": "verified",
-    "headline": "Antiferromagnetic Ising (L=128): staggered \u03c7_s peaks at T_N=2.282 vs Onsager exact 2.2692 (rel. err 0.5%); C-peak cross-check 2.276; uniform \u27e8|m|\u27e9 stays \u22640.003 \u00b7 30s on GPU",
+    "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.306 as T falls 2.00 \u2192 0.60 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase) \u00b7 67s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-06-25T05:37:11.996931+00:00",
+  "updated": "2026-06-25T06:03:57.503393+00:00",
   "provenance": {
-    "code_sha": "966934a-dirty",
+    "code_sha": "3d8361d-dirty",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -263,6 +264,13 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-06-25",
+      "milestone": "M11",
+      "verdict": "verified",
+      "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.306 as T falls 2.00 \u2192 0.60 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase) \u00b7 67s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
     {
       "date": "2026-06-25",
       "milestone": "M10",

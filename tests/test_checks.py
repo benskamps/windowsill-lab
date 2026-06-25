@@ -4,7 +4,7 @@ import math
 from lab.checks import (
     BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT, TC_3D, TC_TRI,
     TWO_OVER_PI, _grade, check_m01, check_m02, check_m03, check_m04, check_m05,
-    check_m06, check_m07, check_m08, check_m09, check_m10, verify,
+    check_m06, check_m07, check_m08, check_m09, check_m10, check_m11, verify,
 )
 
 
@@ -549,3 +549,71 @@ def test_other_checks_skip_an_m10_report():
     assert check_m07(rep)[0] is None
     assert check_m08(rep)[0] is None
     assert check_m09(rep)[0] is None
+
+
+# ── M11: 2D Edwards–Anderson spin glass · P(q) broadening (T_c = 0) ───────────
+def _m11_report(q2_cold=0.45, q2_hot=0.03, max_abs_q=0.02, n_temps=8):
+    """A synthetic M11 report whose ⟨q²⟩ rises smoothly as T → 0 (P(q) broadens).
+
+    Temperatures ascend; ⟨q²⟩ interpolates linearly from ``q2_cold`` (lowest T) down
+    to ``q2_hot`` (highest T), so the disorder-averaged overlap second moment grows
+    as T falls — the 2D-EA broadening signature. ``q_mean`` is ≈0 (the symmetry /
+    equilibration diagnostic).
+    """
+    T = [round(0.2 + (2.0 - 0.2) * i / (n_temps - 1), 3) for i in range(n_temps)]
+    # q2 decreasing in T (so increasing toward T→0): cold→hot across ascending T.
+    q2 = [round(q2_cold + (q2_hot - q2_cold) * i / (n_temps - 1), 4) for i in range(n_temps)]
+    q_mean = [(-1) ** i * max_abs_q for i in range(n_temps)]   # small, alternating sign
+    return {
+        "experiment": "M11-spin-glass-2d",
+        "T": T, "q2_mean": q2, "q_mean": q_mean,
+        "max_abs_q_mean": max(abs(v) for v in q_mean),
+    }
+
+
+def test_m11_passes_on_clean_broadening():
+    ok, detail = check_m11(_m11_report())
+    assert ok, detail
+    assert "broadens toward the T=0" in detail
+
+
+def test_m11_fails_when_pq_does_not_broaden():
+    # A flat ⟨q²⟩ (cold ≈ hot) is NOT the expected broadening — must fail.
+    ok, _ = check_m11(_m11_report(q2_cold=0.05, q2_hot=0.04))
+    assert ok is False
+
+
+def test_m11_fails_on_inverted_trend():
+    # ⟨q²⟩ shrinking as T → 0 (the wrong sign — e.g. a broken overlap) must fail.
+    ok, _ = check_m11(_m11_report(q2_cold=0.03, q2_hot=0.45))
+    assert ok is False
+
+
+def test_m11_fails_on_broken_symmetry():
+    # ⟨q²⟩ broadens, but a large |⟨q⟩| means an un-equilibrated / symmetry-broken
+    # replica leaked through — the symmetry guard must fail it even so.
+    ok, detail = check_m11(_m11_report(max_abs_q=0.4))
+    assert ok is False
+    assert "symmetric" in detail or "equilibrated" in detail
+
+
+def test_m11_not_applicable_to_an_m10_report():
+    ok, detail = check_m11(_m10_report())
+    assert ok is None and "not an M11" in detail
+
+
+def test_m11_needs_enough_temperatures():
+    rep = _m11_report(n_temps=2)
+    ok, _ = check_m11(rep)
+    assert ok is None   # fewer than 3 temperatures → not gradable
+
+
+def test_other_checks_skip_an_m11_report():
+    # M11 carries (T, q2_mean) but NO top-level chi/specific_heat/per_q/helicity, and
+    # its tag is M11-spin-glass-2d — so none of the transition-locating checks claim it.
+    rep = _m11_report()
+    assert check_m01(rep)[0] is None
+    assert check_m04(rep)[0] is None
+    assert check_m08(rep)[0] is None
+    assert check_m09(rep)[0] is None
+    assert check_m10(rep)[0] is None
