@@ -2,8 +2,9 @@
 import math
 
 from lab.checks import (
-    BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, TC_3D,
-    _grade, check_m01, check_m02, check_m03, check_m04, check_m06, verify,
+    BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, TC_3D, TC_TRI,
+    _grade, check_m01, check_m02, check_m03, check_m04, check_m05, check_m06,
+    verify,
 )
 
 
@@ -218,3 +219,44 @@ def test_m01_still_grades_its_own_tagged_report():
     rep["experiment"] = "M01-ising-verification"
     ok, detail = check_m01(rep)
     assert ok, detail
+
+
+# ── M05: triangular-lattice Ising check ──────────────────────────────────────
+def _m05_report(peak_at=TC_TRI):
+    """A toy triangular-Ising report whose χ peaks at temperature ``peak_at``."""
+    T = [round(3.3 + 0.03 * i, 3) for i in range(25)]           # 3.3 … 4.02
+    chi = [1.0 / (abs(t - peak_at) + 0.02) for t in T]          # sharp peak at peak_at
+    return {"experiment": "M05-triangular", "T": T, "chi": chi}
+
+
+def test_m05_passes_near_tc():
+    ok, detail = check_m05(_m05_report(TC_TRI))
+    assert ok, detail
+    assert "3.641" in detail   # cites the exact triangular T_c = 4/ln3
+
+
+def test_m05_fails_when_peak_is_wrong():
+    # A χ peak well off the triangular T_c (e.g. a wrong neighbour count or the
+    # square checkerboard misused on this non-bipartite lattice) must be caught.
+    ok, _ = check_m05(_m05_report(3.9))
+    assert ok is False
+
+
+def test_m05_not_applicable_to_an_m06_report():
+    ok, detail = check_m05(_m06_report(TC_3D))
+    assert ok is None and "not an M05" in detail
+
+
+def test_m05_skips_a_bare_ising_report():
+    # An M01-shaped report (no experiment tag) is not an M05 report — and M05's
+    # T_c (3.641) is nowhere near the 2D square T_c, so cross-grading would be a bug.
+    ok, _ = check_m05(_ising_report(2.3))
+    assert ok is None
+
+
+def test_m01_skips_an_m05_report():
+    # THE cross-grading guard: an M05 report carries top-level T+chi but a
+    # triangular T_c (3.641). The M01 check must NOT grade it against Onsager's
+    # 2D square 2.269.
+    ok, detail = check_m01(_m05_report(TC_TRI))
+    assert ok is None and "2D Ising" in detail

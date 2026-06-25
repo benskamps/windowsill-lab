@@ -927,3 +927,187 @@ def render_m04(report: dict, date: str | None = None) -> Path:
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
+
+
+# ── M05 — triangular-lattice 2D Ising (a new geometry, exact T_c = 4/ln 3) ────
+
+def _plot_m05_chi(report: dict) -> str:
+    """χ(T) with the located T_c vs the exact triangular benchmark — M05's headline."""
+    T = report["T"]
+    chi = report["chi"]
+    tc_fit = report.get("tc_chi_refined", report.get("tc_chi"))
+    tc_bench = report.get("tc_benchmark", 4.0 / np.log(3.0))
+    tc_cv = report.get("tc_cv_refined")
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.plot(T, chi, "o-", color="#7a4e2f", markersize=4, linewidth=1.5,
+            label=f"Measured χ (L={report.get('L')})")
+    ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.85,
+               label=f"Exact T_c = 4/ln3 = {tc_bench:.4f}")
+    if tc_fit is not None:
+        ax.axvline(tc_fit, linestyle=":", color="#3a2e21", alpha=0.8,
+                   label=f"χ-peak T_c(L) = {tc_fit:.3f}")
+    if tc_cv is not None:
+        ax.axvline(tc_cv, linestyle=":", color="#3a6ea5", alpha=0.55,
+                   label=f"C-peak cross-check = {tc_cv:.3f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("χ  (per spin)")
+    ax.set_title("Triangular-lattice susceptibility — peak locates T_c")
+    ax.legend(frameon=False, fontsize=8.5)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_m05_mag_cv(report: dict) -> str:
+    """⟨|m|⟩(T) (the order parameter melting) with the specific heat C(T) overlaid."""
+    T = report["T"]
+    m = report["abs_mag"]
+    m_err = report.get("abs_mag_err") or [0.0] * len(T)
+    cv = report.get("specific_heat") or [0.0] * len(T)
+    tc_bench = report.get("tc_benchmark", 4.0 / np.log(3.0))
+    tc_cv = report.get("tc_cv_refined")
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.errorbar(T, m, yerr=m_err, fmt="o-", color="#3a2e21", markersize=4,
+                capsize=2, linewidth=1.4, label="⟨|m|⟩  (order parameter)")
+    ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.85,
+               label=f"Exact T_c = {tc_bench:.4f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("|m|  (per spin)")
+    ax.set_ylim(0, 1.05)
+    ax2 = ax.twinx()
+    ax2.plot(T, cv, "s-", color="#7a9b56", markersize=3, linewidth=1.2,
+             alpha=0.85, label="C  (specific heat)")
+    if tc_cv is not None:
+        ax2.axvline(tc_cv, linestyle=":", color="#5f7a3e", alpha=0.7,
+                    label=f"C-peak T_c(L) = {tc_cv:.3f}")
+    ax2.set_ylabel("C  (per spin)")
+    ax.set_title("Magnetization melts, specific heat peaks — same transition")
+    lines1, lab1 = ax.get_legend_handles_labels()
+    lines2, lab2 = ax2.get_legend_handles_labels()
+    ax.legend(lines1 + lines2, lab1 + lab2, frameon=False, fontsize=8, loc="upper right")
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M05_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab · {date} · triangular Ising</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab · phase 1</h1>
+  <div class="date">{date} · M05 — triangular-lattice 2D Ising</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+
+  <h2>Susceptibility vs Temperature — the peak is T_c</h2>
+  <figure><img src="data:image/png;base64,{chi_png}" alt="triangular Ising susceptibility"></figure>
+
+  <h2>Order parameter &amp; specific heat</h2>
+  <figure><img src="data:image/png;base64,{mag_png}" alt="triangular Ising magnetization and specific heat"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def render_m05(report: dict, date: str | None = None) -> Path:
+    """Render an M05 triangular-Ising report (HTML + plots + JSON sidecar).
+
+    Mirrors ``render_m06``: a slug-keyed ``~/.lab`` dated cache + ``latest.html``
+    pointer AND a permanent committed pair (``reports/<date>-m05.html`` + ``.json``).
+    The verdict is an honest **pass** only when the χ-peak T_c lands within ±0.15 of
+    the exact triangular T_c = 4/ln 3 ≈ 3.6410 — a finite-L tolerance (the
+    small-lattice peak sits *above* the infinite-volume value); a miss stays a
+    folded grey leaf with its real numbers intact, never relabelled a discovery.
+    """
+    from .publish import today_local
+    date = date or today_local()
+    _ensure_home()
+
+    L = report.get("L")
+    tc_fit = report.get("tc_chi_refined", report.get("tc_chi"))
+    tc_cv = report.get("tc_cv_refined")
+    tc_bench = report.get("tc_benchmark", 4.0 / np.log(3.0))
+    rel_err = report.get("rel_error")
+
+    sentence = (
+        f"I ran the 2D Ising model on a *triangular* lattice (L={L}) across a "
+        f"window straddling the transition and tracked the magnetic susceptibility "
+        f"χ(T). The triangular lattice is the square grid plus one diagonal — six "
+        f"neighbours per site, not four — so it is the same universality class as "
+        f"M01 but a different geometry, with its own *exact* critical temperature "
+        f"T_c = 4/ln 3 ≈ {tc_bench:.4f}. Because the triangular lattice is "
+        f"non-bipartite, this needed a 3-sublattice update, not the square "
+        f"checkerboard. The χ peak sits at T_c(L) = {tc_fit:.3f}. "
+        f"Wall time on the GPU: {report.get('wall_seconds', 0):.0f}s."
+    )
+    # Honest verdict: pass only when the χ-peak T_c lands within ±0.15 of 4/ln 3.
+    passed = tc_fit is not None and abs(tc_fit - tc_bench) <= 0.15
+    err_str = f"{rel_err*100:.1f}%" if rel_err is not None else "—"
+    cv_str = (f", and the specific-heat peak from the same run independently gives "
+              f"T_c(L) = {tc_cv:.3f}") if tc_cv is not None else ""
+    verdict = (
+        f"{'✓' if passed else '~'} χ-peak T_c(L) = {tc_fit:.3f} vs exact "
+        f"4/ln3 = {tc_bench:.4f} (rel. err {err_str}){cv_str}. "
+        + ("A new geometry reproduces its known answer: the triangular lattice's "
+           "exact T_c falls right where the susceptibility peaks, on an engine that "
+           "had to switch from the square checkerboard to a 3-sublattice update "
+           "(the triangular lattice is non-bipartite). Same universality class as "
+           "M01, different number — calibrated. (Small-L finite-size effects push "
+           "the pseudo-critical peak slightly above the infinite-volume T_c; an "
+           "L-extrapolation would sharpen it — see BACKLOG.)"
+           if passed else
+           "The transition is off — kept honestly as a null, not a discovery.")
+    )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M05_HTML_TEMPLATE.format(
+        date=date, sentence=sentence, verdict=verdict,
+        chi_png=_plot_m05_chi(report),
+        mag_png=_plot_m05_mag_cv(report),
+        json_dump=json_dump,
+    )
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    _commit_report(date, slug, html, json_dump)
+    return out
