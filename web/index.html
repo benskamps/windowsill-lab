@@ -90,6 +90,9 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    /* The [hidden] attribute must win over author `display` (e.g. .report/.expedition
+       are flex, .fn-link is inline-block) — otherwise toggling .hidden does nothing. */
+    [hidden] { display: none !important; }
 
     body {
       font-family: var(--font-sans);
@@ -227,6 +230,55 @@
     .report-line { color:var(--text); }
     .report-link { margin-left:auto; color:var(--text-secondary); text-decoration:none; border-bottom:1px dotted var(--border); }
     .report-link:hover { color:var(--text); }
+
+    /* ── The current expedition: the question the lab is growing toward NOW ───
+       Distinct from the nightly heartbeat (.report). Reads the open milestone's
+       plain-language story from the feed; hidden if there's no open milestone. */
+    .expedition {
+      display:flex; flex-wrap:wrap; align-items:baseline; gap:0.4rem 0.6rem;
+      margin-top:0.7rem; padding:0.55rem 0.8rem;
+      border:1px solid var(--border); border-radius:8px;
+      background:linear-gradient(180deg, rgba(127,174,107,0.06), transparent);
+      font-size:0.82rem;
+    }
+    .exp-tag { color:var(--leaf); text-transform:uppercase; letter-spacing:0.06em;
+               font-size:0.66rem; font-family:var(--font-mono); }
+    .exp-label { color:var(--text); font-weight:600; }
+    .exp-q { color:var(--text-secondary); font-style:italic; flex-basis:100%; }
+
+    /* ── Field note: tap or focus a leaf to read its plain-language story ─────
+       The receipt (technical result + public record) is a secondary disclosure.
+       Reuses the page vars/fonts; calm, no overlay — appears in flow. */
+    .fieldnote {
+      position:relative; margin-top:0.7rem; padding:0.8rem 2rem 0.85rem 0.9rem;
+      border:1px solid var(--border); border-radius:8px;
+      background:rgba(255,255,255,0.015);
+      animation:fn-in 0.35s cubic-bezier(0.25,0.46,0.45,0.94);
+    }
+    @keyframes fn-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+    .fieldnote.null { background:rgba(138,143,130,0.05); }
+    .fn-close { position:absolute; top:0.45rem; right:0.55rem; background:none; border:none;
+                color:var(--text-muted); font-size:1.15rem; line-height:1; cursor:pointer; padding:0.15rem 0.3rem; }
+    .fn-close:hover { color:var(--text); }
+    .fn-kicker { color:var(--text-muted); font-family:var(--font-mono); font-size:0.66rem;
+                 text-transform:uppercase; letter-spacing:0.06em; }
+    .fn-label { font-size:1.05rem; color:var(--text); margin-top:0.15rem; font-weight:600; }
+    .fn-q { color:var(--text-secondary); font-style:italic; margin-top:0.4rem; line-height:1.5; }
+    .fn-r { color:var(--text); margin-top:0.5rem; line-height:1.55; }
+    .fn-receipt { margin-top:0.6rem; }
+    .fn-receipt > summary { cursor:pointer; list-style:none; font-family:var(--font-mono);
+                            font-size:0.72rem; color:var(--text-muted); }
+    .fn-receipt > summary::-webkit-details-marker { display:none; }
+    .fn-receipt > summary::before { content:'\25b8\00a0'; }
+    .fn-receipt[open] > summary::before { content:'\25be\00a0'; }
+    .fn-receipt > summary:hover { color:var(--text-secondary); }
+    .fn-tech { font-family:var(--font-mono); font-size:0.75rem; color:var(--text-secondary);
+               margin-top:0.4rem; line-height:1.55; }
+    .fn-link { display:inline-block; margin-top:0.5rem; color:var(--leaf); text-decoration:none;
+               font-size:0.8rem; border-bottom:1px dotted var(--border); }
+    .fn-link:hover { color:var(--text); }
+    .leaf { cursor:pointer; }
+    .leaf:focus-visible, #bud:focus-visible { outline:2px solid var(--leaf); outline-offset:2px; border-radius:2px; }
 
     /* ── The archive: a calm, collapsed every-run ledger ─────────────────────
        Hidden entirely unless the live feed carries reports[]. The seedling is
@@ -496,10 +548,29 @@
       <span><b>offerings</b> <span class="v" id="m-offerings">0</span></span>
     </section>
 
+    <div class="expedition" id="expedition" hidden>
+      <span class="exp-tag">now growing</span>
+      <span class="exp-label" id="exp-label">—</span>
+      <span class="exp-q" id="exp-q"></span>
+    </div>
+
     <div class="report" id="report" hidden>
       <span class="report-tag">last night</span>
       <span class="report-line" id="report-line">—</span>
       <a class="report-link" id="report-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">full report ↗</a>
+    </div>
+
+    <div class="fieldnote" id="fieldnote" hidden role="region" aria-live="polite" aria-label="field note">
+      <button class="fn-close" id="fn-close" type="button" aria-label="close field note">×</button>
+      <div class="fn-kicker" id="fn-kicker">—</div>
+      <h3 class="fn-label" id="fn-label">—</h3>
+      <p class="fn-q" id="fn-q" hidden></p>
+      <p class="fn-r" id="fn-r" hidden></p>
+      <details class="fn-receipt" id="fn-receipt" hidden>
+        <summary>show the receipt</summary>
+        <p class="fn-tech" id="fn-tech"></p>
+        <a class="fn-link" id="fn-link" target="_blank" rel="noopener noreferrer" hidden>view the record ↗</a>
+      </details>
     </div>
 
     <details class="archive" id="archive" hidden>
@@ -939,6 +1010,15 @@
         bt.textContent = (open.id ? open.id + ' · ' : '') + (open.title || 'open experiment') +
           ' — running (' + Math.round(openProg * 100) + '%)';
         $('bud').appendChild(bt);
+        // The bud opens the current expedition's field note (story + receipt).
+        _openMilestone = open;
+        $('bud').setAttribute('tabindex', '0');
+        $('bud').setAttribute('aria-label',
+          (open.id ? open.id + ': ' : '') + (open.short_label || open.title || 'open experiment') +
+          ' — running now. Open field note.');
+      } else {
+        _openMilestone = null;
+        $('bud').removeAttribute('tabindex');
       }
 
       // Ladder complete → it flowers. Months out, and honest when it happens.
@@ -1003,18 +1083,88 @@
         (meta.length ? ' · ' + meta.join(' · ') : '') + (safeUrl ? ' ↗' : '');
       g.appendChild(t);
 
-      // A verified contribution with a public record: the leaf links to it.
-      if (safeUrl) {
-        var a = document.createElementNS(SVGNS, 'a');
-        a.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', safeUrl);
-        a.setAttribute('href', safeUrl);
-        a.setAttribute('target', '_blank');
-        a.setAttribute('rel', 'noopener noreferrer');
-        a.setAttribute('style', 'cursor:pointer');
-        a.appendChild(g);
-        return a;
-      }
+      // Tap / click / keyboard-focus a leaf to open its field note — the plain-
+      // language story, with the technical result and any public record behind a
+      // "show the receipt" disclosure. (The hover <title> stays as a desktop
+      // nicety, but the field note is what works on touch and for keyboards.)
+      makeLeafInteractive(g, m);
       return g;
+    }
+
+    // ── Field notes: a leaf's plain-language story, on tap or keyboard focus ──
+    var _openMilestone = null;
+    var FN_STATUS = {
+      verified: 'verified',
+      'null': 'failed calibration (kept on the books)',
+      open: 'running now',
+      pending: 'ahead',
+    };
+    function _setHidden(el, hide) { if (el) el.hidden = !!hide; }
+
+    function makeLeafInteractive(g, m) {
+      g.setAttribute('tabindex', '0');
+      g.setAttribute('role', 'button');
+      g.setAttribute('aria-label',
+        (m.id ? m.id + ': ' : '') + (m.short_label || m.title || 'milestone') + ' — ' +
+        (m.status === 'null' ? 'failed calibration' : 'verified') + '. Open field note.');
+      g.addEventListener('click', function () { openFieldNote(m); });
+      g.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+          e.preventDefault(); openFieldNote(m);
+        }
+      });
+    }
+
+    function openFieldNote(m) {
+      m = m || {};
+      var box = $('fieldnote'); if (!box) return;
+      var status = m.status || 'verified';
+      box.classList.toggle('null', status === 'null');
+      $('fn-kicker').textContent = (m.id ? m.id + ' · ' : '') + (FN_STATUS[status] || status);
+      $('fn-label').textContent = m.short_label || m.title || 'milestone';
+
+      var q = $('fn-q');
+      if (m.question_plain) { q.textContent = m.question_plain; _setHidden(q, false); }
+      else _setHidden(q, true);
+
+      var r = $('fn-r');
+      var plain = m.result_plain
+        || (status === 'open'
+              ? 'Running now — no result yet. This is the experiment the plant is growing toward.'
+              : (status === 'null'
+                  ? 'A calibration that missed — kept on the record on purpose, never hidden.'
+                  : null));
+      if (plain) { r.textContent = plain; _setHidden(r, false); }
+      else _setHidden(r, true);
+
+      // The receipt: the technical result, the public record (venue/doi/link).
+      var tech = m.result || (status === 'null' ? 'failed calibration (null, kept on the books)' : '');
+      var meta = [];
+      if (m.venue) meta.push(m.venue);
+      if (m.doi) meta.push('doi:' + m.doi);
+      if (meta.length) tech = (tech ? tech + ' · ' : '') + meta.join(' · ');
+      var safeUrl = (typeof m.url === 'string' && /^https?:\/\//i.test(m.url)) ? m.url : null;
+      var receipt = $('fn-receipt'), link = $('fn-link');
+      if (tech || safeUrl) {
+        $('fn-tech').textContent = tech || '';
+        _setHidden($('fn-tech'), !tech);
+        if (safeUrl) { link.href = safeUrl; _setHidden(link, false); }
+        else _setHidden(link, true);
+        receipt.open = false;
+        _setHidden(receipt, false);
+      } else {
+        _setHidden(receipt, true);
+      }
+
+      _setHidden(box, false);
+      var close = $('fn-close');
+      if (close) close.focus();
+      if (box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function closeFieldNote() {
+      var box = $('fieldnote');
+      if (box) box.hidden = true;
     }
 
     function drawFlower(top, on) {
@@ -1227,6 +1377,20 @@
         rbox.hidden = true;
       }
 
+      // The current expedition — the open milestone's plain-language question,
+      // distinct from the nightly heartbeat above. Hidden if nothing is open or
+      // the feed carries no story for it (procedural default).
+      var exp = $('expedition');
+      if (exp && open && (open.question_plain || open.short_label)) {
+        $('exp-label').textContent = open.short_label || open.title || (open.id || 'current experiment');
+        var eq = $('exp-q');
+        if (open.question_plain) { eq.textContent = open.question_plain; _setHidden(eq, false); }
+        else _setHidden(eq, true);
+        exp.hidden = false;
+      } else if (exp) {
+        exp.hidden = true;
+      }
+
       // The honest every-run ledger — hidden unless the feed carries reports[].
       drawRunList(state.reports, state.archive_url);
 
@@ -1251,6 +1415,26 @@
     seedStars();
     seedDust();
     render({});  // procedural default — beautiful with no backend at all
+
+    // Wire the field note: close button, Escape to dismiss, and the bud (the
+    // open experiment) as a focusable opener. Leaves wire themselves on render.
+    (function () {
+      var close = $('fn-close');
+      if (close) close.addEventListener('click', closeFieldNote);
+      document.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { var b = $('fieldnote'); if (b && !b.hidden) closeFieldNote(); }
+      });
+      var bud = $('bud');
+      if (bud) {
+        bud.setAttribute('role', 'button');
+        bud.addEventListener('click', function () { if (_openMilestone) openFieldNote(_openMilestone); });
+        bud.addEventListener('keydown', function (e) {
+          if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+            e.preventDefault(); if (_openMilestone) openFieldNote(_openMilestone);
+          }
+        });
+      }
+    })();
 
     // Keep the light walking with the clock.
     setInterval(function () { applyPhase(new Date()); }, 60000);
