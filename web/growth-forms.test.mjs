@@ -76,8 +76,28 @@ test("the three shipped forms are visually DISTINCT", () => {
   assert.ok(succSpread > fernSpread + 5, "succulent fans its nodes out into a rosette");
 });
 
-test("growth_form from the feed selects the page form", () => {
-  // dominant track wins
+test("growth_form selection: the OPEN milestone's track is the hero form", () => {
+  // The open milestone wins even when another track dominates by count — this is
+  // the fix for "fern always wins" (physics dominates the curriculum forever).
+  const ms = [
+    { id: "M01", growth_form: "fern", status: "verified" },
+    { id: "M02", growth_form: "fern", status: "verified" },
+    { id: "A01", growth_form: "creeper", status: "open" },
+  ];
+  assert.equal(GF.pageGrowthForm(ms), "creeper"); // not fern, despite the physics majority
+
+  // The real curriculum today (physics-heavy, M12 physics open) → fern, correctly.
+  const real = [
+    { id: "M11", growth_form: "fern", status: "verified" },
+    { id: "M12", growth_form: "fern", status: "open" },
+    { id: "C01", growth_form: "vine", status: "pending" },
+    { id: "A01", growth_form: "creeper", status: "pending" },
+  ];
+  assert.equal(GF.pageGrowthForm(real), "fern");
+});
+
+test("growth_form selection: falls back to the most common form when nothing is open", () => {
+  // No open milestone and no status → the legacy mode-wins fallback still holds.
   const physics = [{ growth_form: "fern" }, { growth_form: "fern" }, { growth_form: "vine" }];
   assert.equal(GF.pageGrowthForm(physics), "fern");
   const compute = [{ growth_form: "vine" }, { growth_form: "vine" }, { growth_form: "fern" }];

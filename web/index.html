@@ -734,16 +734,30 @@
   };
   var DEFAULT_FORM = "fern";
 
-  // Pick the PAGE's growth form from its milestones. A windowsill shows one
-  // plant, so we pick the form of the dominant track among closed+open
-  // milestones (most common growth_form wins; ties → first seen). This keeps
-  // the page coherent while honoring whatever the feed stamped.
+  // Pick the PAGE's growth form. A windowsill shows ONE plant — the experiment
+  // growing now — so the hero form tracks the OPEN milestone's track, not
+  // whichever track merely has the most milestones. (A mode-over-all rule locks
+  // the page to the physics fern forever, since physics dominates the
+  // curriculum; the open-track rule lets the plant become a creeper, succulent,
+  // etc. when the lab moves into astronomy / instrument / compute work.) Falls
+  // back, in order, to the newest closed milestone's form, then the most common
+  // form, then the homogeneous default — so it always returns something sane.
+  function formOf(m) {
+    var gf = m && typeof m.growth_form === "string" ? m.growth_form : null;
+    return gf && FORMS[gf] ? gf : null;
+  }
   function pageGrowthForm(milestones) {
     if (!Array.isArray(milestones) || !milestones.length) return DEFAULT_FORM;
+    var open = milestones.find(function (m) { return m && m.status === "open"; });
+    if (open && formOf(open)) return formOf(open);
+    for (var i = milestones.length - 1; i >= 0; i--) {
+      var m = milestones[i];
+      if (m && (m.status === "verified" || m.status === "null") && formOf(m)) return formOf(m);
+    }
     var tally = {}, order = [];
-    milestones.forEach(function (m) {
-      var gf = m && typeof m.growth_form === "string" ? m.growth_form : null;
-      if (!gf || !FORMS[gf]) return;
+    milestones.forEach(function (mm) {
+      var gf = formOf(mm);
+      if (!gf) return;
       if (tally[gf] == null) { tally[gf] = 0; order.push(gf); }
       tally[gf]++;
     });
