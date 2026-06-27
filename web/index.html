@@ -492,7 +492,7 @@
     <section class="legend" id="legend" aria-label="what the windowsill is showing">
       <span><b>milestones</b> <span class="v" id="m-growth">—</span></span>
       <span><b>watered</b> <span class="v" id="m-watered">—</span></span>
-      <span><b>runs</b> <span class="v" id="m-runs">—</span></span>
+      <span><b>nights</b> <span class="v" id="m-runs">—</span></span>
       <span><b>offerings</b> <span class="v" id="m-offerings">0</span></span>
     </section>
 
@@ -555,12 +555,14 @@
         be trusted by re-finding that number on its own. Each night it sweeps across temperatures and
         watches for the moment the magnets line up, where a measurement called the <b>magnetic
         susceptibility</b> spikes. Last run it landed near <code>2.30 ± 0.05</code> — a clean match —
-        in 11–30 seconds on the GPU (the graphics chip that also runs video games). The ethos:
+        in 11–30 seconds on the GPU (the graphics chip that also runs video games). That nightly re-check is the lab's <b>heartbeat</b> — every night it
+        re-proves it can still find an answer we already trust, while the curriculum's frontier climbs
+        on ahead of it. The ethos:
         <em>a result that doesn't reproduce a known answer is a failed calibration, not a
-        discovery</em>, and the honest misses stay in the record beside the wins. Four milestones are
-        verified so far — the 2D Ising critical point; finite-size scaling (how the answer shifts on
-        bigger and bigger grids); the critical exponent β (how sharp the snap is); and the 3D Ising
-        model — out of a roughly 31-step curriculum that climbs in four phases: verify famous exact
+        discovery</em>, and the honest misses stay in the record beside the wins. So far
+        <span id="ex-verified">several</span> milestones are verified — beginning with the 2D Ising
+        critical point and climbing through finite-size scaling, critical exponents, other lattices
+        and models, and on toward spin glasses — out of a roughly 31-step curriculum that climbs in four phases: verify famous exact
         results, map textbook-known territory, push corners last explored in the 1990s on big
         computer clusters a single modern chip now out-muscles, then reach genuinely open questions.
         A companion track points the same patient machine outward into <b>citizen science</b> —
@@ -1195,10 +1197,17 @@
       $('m-runs').textContent = state.runs != null ? state.runs : '—';
       $('m-offerings').textContent = n;
 
+      // Feed-drive the explainer's verified count so the prose can't drift stale.
+      var exV = $('ex-verified');
+      if (exV) exV.textContent = verifiedList.length;
+
       var rep = state.latest_report, rbox = $('report');
       if (rbox && rep && rep.headline) {
         $('report-line').textContent = rep.headline + (rep.date ? ' · ' + rep.date : '');
-        if (rep.url && /^https?:\/\//.test(rep.url)) $('report-link').href = rep.url;
+        // The feed's ledger rows carry `href`; the older fallback path carries `url`.
+        // Accept either so the "full report" link tracks the feed instead of the repo default.
+        var repUrl = rep.href || rep.url;
+        if (repUrl && /^https?:\/\//.test(repUrl)) $('report-link').href = repUrl;
         rbox.hidden = false;
       } else if (rbox) {
         rbox.hidden = true;
