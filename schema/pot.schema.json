@@ -20,6 +20,7 @@
         "peak_t": { "type": ["number", "null"] },
         "onsager_tc": { "type": ["number", "null"] },
         "wall_s": { "type": ["number", "null"] },
+        "href": { "type": ["string", "null"], "description": "canonical report link emitted by the archive ledger; the page reads href, falling back to url" },
         "url": { "type": ["string", "null"] }
       }
     },
@@ -52,7 +53,11 @@
           "enum": ["fern", "vine", "creeper", "succulent", "moss", "sprout"]
         },
         "progress": { "type": "number", "minimum": 0, "maximum": 1 },
-        "result": { "type": "string" },
+        "result": { "type": "string", "description": "the technical result string, lifted from the MILESTONES.md '(done … — …)' parenthetical" },
+        "short_label": { "type": "string", "description": "story layer (src/lab/stories.py): 2-4 plain words naming the experiment" },
+        "question_plain": { "type": "string", "description": "story layer: the experiment's question in everyday, jargon-free language" },
+        "why_it_matters": { "type": "string", "description": "story layer: one sentence on why a curious non-expert should care" },
+        "result_plain": { "type": ["string", "null"], "description": "story layer: one plain-language sentence stating the verified outcome; null for open/pending" },
         "venue": { "type": "string" },
         "url": { "type": "string", "pattern": "^https?://" },
         "doi": { "type": "string" }

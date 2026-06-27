@@ -21,6 +21,8 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from .stories import STORIES   # durable plain-language story layer (stdlib-only dict)
+
 # Mirror render.LAB_HOME without importing it (render pulls matplotlib).
 LAB_HOME = Path.home() / ".lab"
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -162,6 +164,19 @@ def parse_milestones(text: str) -> list[dict]:
                 result = re.sub(r"^done\s+\S+\s*[—\-]\s*", "", chosen).strip()
                 if result:
                     ms["result"] = result
+
+        # Merge the durable plain-language story layer (src/lab/stories.py) — the
+        # public copy, kept beside the curriculum so the page never has to infer
+        # plain language from technical prose. Never overwrites the technical
+        # ``result``; ``result_plain`` only rides along on verified milestones.
+        story = STORIES.get(mid)
+        if story:
+            for k in ("short_label", "question_plain", "why_it_matters"):
+                v = story.get(k)
+                if v:
+                    ms[k] = v
+            if status == "verified" and story.get("result_plain"):
+                ms["result_plain"] = story["result_plain"]
 
         ms.update(tags)   # venue / url / doi / progress when present
         if "progress" in ms:
