@@ -339,6 +339,8 @@
     details.curious[open] > summary::before { content:'\25be\00a0'; }
     details.curious > summary:hover { color:var(--text); }
     .ex-foot { margin-top:1.6rem; font-size:0.8rem; }
+    .pipeline { margin-top:0.7rem; text-align:center; }
+    .pipeline code { font-size:0.8rem; letter-spacing:0.01em; }
     @media (max-width:560px) {
       .read-list > div { flex-direction:column; gap:0.1rem; }
       .read-list dt { flex-basis:auto; }
@@ -640,6 +642,24 @@
         number theory, astronomy archives, even using the chip itself to catch passing particles, and
         donating spare cycles to big shared projects. <em>Romance in the questions, rigor in the
         claims.</em></p>
+      </details>
+
+      <details class="curious">
+        <summary>How the machine works — the engineering under the calm</summary>
+        <p>The calm surface is the last mile of a real instrument. Underneath, one automated
+        pipeline runs itself every night:</p>
+        <p class="pipeline"><code>schedule → simulate → verify → report → publish → grow</code></p>
+        <p>A scheduled task wakes the machine; a <b>GPU simulation</b> (PyTorch) runs the night's
+        experiment; a <b>deterministic check</b> compares the result against known theory and passes
+        or fails it; a <b>provenance-stamped report</b> (HTML + JSON, carrying the exact code commit
+        and the machine it ran on) is written and committed; a small <b>versioned JSON feed</b>
+        (<code>pot.json</code> — a published contract this very page reads) is updated; and the plant
+        you're looking at is drawn straight from that feed. Continuous integration re-runs the whole
+        test suite on every change, and a result that doesn't reproduce a known answer is kept as an
+        honest null, never quietly dropped.</p>
+        <p>Built end to end by one person: the GPU physics, the verification gate, the nightly
+        scheduler, the provenance, the JSON contract, the tests and CI, and the live drawing — every
+        layer from the silicon to the seedling.</p>
       </details>
 
       <p class="ex-foot">The live feed, the source, and the full curriculum live at
