@@ -220,10 +220,10 @@
       "status": "pending",
       "track": "compute",
       "growth_form": "vine",
-      "venue": "GIMPS",
       "short_label": "Hunt a giant prime",
       "question_plain": "Can one home computer take a turn at the worldwide search for enormous prime numbers?",
-      "why_it_matters": "It puts a windowsill machine into a real global hunt where home volunteers have actually discovered record-breaking primes."
+      "why_it_matters": "It puts a windowsill machine into a real global hunt where home volunteers have actually discovered record-breaking primes.",
+      "venue": "GIMPS"
     },
     {
       "id": "C03",
@@ -231,10 +231,10 @@
       "status": "pending",
       "track": "compute",
       "growth_form": "vine",
-      "venue": "OEIS",
       "short_label": "Grow a number list",
       "question_plain": "Can we add new, checked terms to a famous catalog of number sequences and have them officially accepted?",
-      "why_it_matters": "It turns idle computing time into a permanent, credited addition to a reference mathematicians actually use."
+      "why_it_matters": "It turns idle computing time into a permanent, credited addition to a reference mathematicians actually use.",
+      "venue": "OEIS"
     },
     {
       "id": "C04",
@@ -242,10 +242,10 @@
       "status": "pending",
       "track": "compute",
       "growth_form": "vine",
-      "venue": "PrimeGrid",
       "short_label": "Join the prime grid",
       "question_plain": "Can our machine pull a fair share of work in a shared, worldwide search for special primes?",
-      "why_it_matters": "It contributes verified work to open mathematical problems that no single computer could finish alone."
+      "why_it_matters": "It contributes verified work to open mathematical problems that no single computer could finish alone.",
+      "venue": "PrimeGrid"
     },
     {
       "id": "A01",
@@ -263,10 +263,10 @@
       "status": "pending",
       "track": "astronomy",
       "growth_form": "creeper",
-      "venue": "AAVSO",
       "short_label": "Track a pulsing star",
       "question_plain": "Can we follow a star that brightens and dims, time its rhythm, and add a real observation to the amateur record?",
-      "why_it_matters": "It earns a place in the standard amateur variable-star database that researchers draw on for long-term star behavior."
+      "why_it_matters": "It earns a place in the standard amateur variable-star database that researchers draw on for long-term star behavior.",
+      "venue": "AAVSO"
     },
     {
       "id": "A03",
@@ -274,10 +274,10 @@
       "status": "pending",
       "track": "astronomy",
       "growth_form": "creeper",
-      "venue": "GWOSC",
       "short_label": "Reweigh two black holes",
       "question_plain": "From open gravitational-wave data, can we re-measure the mass of a collision that shook spacetime and match the official answer?",
-      "why_it_matters": "It shows a home machine can independently re-derive a landmark physics result from the same public data the discoverers used."
+      "why_it_matters": "It shows a home machine can independently re-derive a landmark physics result from the same public data the discoverers used.",
+      "venue": "GWOSC"
     },
     {
       "id": "A04",
@@ -285,10 +285,10 @@
       "status": "pending",
       "track": "astronomy",
       "growth_form": "creeper",
-      "venue": "ExoFOP",
       "short_label": "Search for a planet",
       "question_plain": "Can we comb an entire patch of sky for the faint dip of an unseen planet and confirm a real one?",
-      "why_it_matters": "It moves from checking known planets to actually finding one in raw survey data and reporting it for follow-up."
+      "why_it_matters": "It moves from checking known planets to actually finding one in raw survey data and reporting it for follow-up.",
+      "venue": "ExoFOP"
     },
     {
       "id": "I01",
@@ -306,10 +306,10 @@
       "status": "pending",
       "track": "instrument",
       "growth_form": "succulent",
-      "venue": "DECO",
       "short_label": "Counting cosmic rays",
       "question_plain": "If the camera watches in the dark for a whole month, can it count the tiny sparks left by particles raining down from space?",
-      "why_it_matters": "It lets a single machine on a windowsill measure the steady drizzle of cosmic rays that passes through all of us every minute."
+      "why_it_matters": "It lets a single machine on a windowsill measure the steady drizzle of cosmic rays that passes through all of us every minute.",
+      "venue": "DECO"
     },
     {
       "id": "I03",
@@ -317,10 +317,10 @@
       "status": "pending",
       "track": "instrument",
       "growth_form": "succulent",
-      "venue": "Zenodo",
       "short_label": "Randomness beacon",
       "question_plain": "Can the machine bottle pure, unpredictable randomness from its own hardware and publish it as a trustworthy, time-stamped feed?",
-      "why_it_matters": "Genuinely unguessable numbers are the bedrock of secure communication, and a published feed lets anyone use and check them."
+      "why_it_matters": "Genuinely unguessable numbers are the bedrock of secure communication, and a published feed lets anyone use and check them.",
+      "venue": "Zenodo"
     },
     {
       "id": "B01",
@@ -328,10 +328,10 @@
       "status": "pending",
       "track": "boinc",
       "growth_form": "moss",
-      "venue": "Einstein@Home",
       "short_label": "Hunting gravity waves",
       "question_plain": "Can this machine donate its spare hours to a worldwide hunt for the faint hum of spinning dead stars?",
-      "why_it_matters": "Pooling idle home computers is how volunteers help search for ripples in spacetime that no single lab could find alone."
+      "why_it_matters": "Pooling idle home computers is how volunteers help search for ripples in spacetime that no single lab could find alone.",
+      "venue": "Einstein@Home"
     },
     {
       "id": "B02",
@@ -339,27 +339,27 @@
       "status": "pending",
       "track": "boinc",
       "growth_form": "moss",
-      "venue": "BOINC",
       "short_label": "Folding proteins",
       "question_plain": "Can the machine give its idle time to help work out the shapes of proteins that drive disease and medicine?",
-      "why_it_matters": "Volunteer computing on problems like protein folding has fed real research a single household machine could never tackle by itself."
+      "why_it_matters": "Volunteer computing on problems like protein folding has fed real research a single household machine could never tackle by itself.",
+      "venue": "BOINC"
     }
   ],
   "total": 31,
-  "last_run": "2026-06-26T07:00:38.060607+00:00",
-  "runs": 13,
+  "last_run": "2026-06-28T07:00:36.474652+00:00",
+  "runs": 14,
   "temp_c": null,
   "latest_report": {
-    "date": "2026-06-26",
+    "date": "2026-06-28",
     "milestone": "M01",
     "verdict": "verified",
-    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
+    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-06-26T07:00:42.365353+00:00",
+  "updated": "2026-06-28T07:00:40.651611+00:00",
   "provenance": {
-    "code_sha": "1bde83c",
+    "code_sha": "e97c0a5",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -368,6 +368,13 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-06-28",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
     {
       "date": "2026-06-26",
       "milestone": "M01",
