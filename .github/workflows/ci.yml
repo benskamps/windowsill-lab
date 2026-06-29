@@ -46,6 +46,11 @@ jobs:
           node-version: "22"
       - name: Growth-form registry tests
         run: node --test web/growth-forms.test.mjs
+      # web/index.html is mirrored verbatim into brokenbranchdevwebsite, whose CI
+      # validates it. Gate it here with the same html-validate config so the mirror
+      # can never push HTML the downstream site rejects (which silently reds its main).
+      - name: HTML validation (windowsill page — mirror target's gate)
+        run: npx --yes html-validate@9.7.1 web/index.html
 
   # The numerical physics tests need the full scientific stack.
   physics:
