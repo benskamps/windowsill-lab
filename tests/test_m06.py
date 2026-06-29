@@ -11,7 +11,7 @@ import numpy as np
 from lab.m06 import (
     TC_3D, BETA_3D, GAMMA_3D, NU_3D,
     susceptibility_peak, specific_heat_peak, refine_peak, relative_error,
-    to_report, M06Result,
+    to_report, M06Result, extrapolate_tc,
 )
 
 
@@ -88,3 +88,65 @@ def test_report_is_distinguishable_from_2d_ising():
     rep = to_report(_toy_result())
     assert rep["experiment"] == "M06-3d-ising"
     assert not rep["experiment"].startswith("M01")
+
+
+# --- extrapolate_tc: the L → ∞ instrument, tested against synthetic data with a
+#     KNOWN intercept (no Monte-Carlo sweep), mirroring the peak-finder tests. ---
+
+def test_extrapolate_tc_recovers_known_intercept_and_slope():
+    # Synthetic finite-size law with an EXACT intercept + amplitude:
+    #   T_c(L) = tc_inf + a · L^(−1/ν).
+    # OLS on x = L^(−1/ν) must recover both, with r² == 1.
+    nu = NU_3D
+    tc_inf_true, a_true = 4.5115, 0.85
+    Ls = [8, 10, 12, 16, 24]
+    x = np.asarray(Ls, dtype=float) ** (-1.0 / nu)
+    tc = tc_inf_true + a_true * x
+    fit = extrapolate_tc(Ls, tc, nu=nu)
+    assert abs(fit["tc_inf"] - tc_inf_true) < 1e-9
+    assert abs(fit["slope"] - a_true) < 1e-9
+    assert fit["r_squared"] is not None and abs(fit["r_squared"] - 1.0) < 1e-9
+    assert fit["n_points"] == 5
+
+
+def test_extrapolate_tc_intercept_sits_below_finite_L_peaks():
+    # Positive finite-size amplitude ⇒ every finite-L pseudo-critical peak sits
+    # ABOVE T_c(∞); the extrapolated intercept must fall below the smallest one.
+    nu = NU_3D
+    Ls = [8, 10, 12, 16]
+    x = np.asarray(Ls, dtype=float) ** (-1.0 / nu)
+    tc = 4.5115 + 0.9 * x
+    fit = extrapolate_tc(Ls, tc, nu=nu)
+    assert fit["tc_inf"] < min(tc)
+    assert abs(fit["tc_inf"] - 4.5115) < 1e-9
+
+
+def test_extrapolate_tc_requires_two_lattice_sizes():
+    raised = False
+    try:
+        extrapolate_tc([12], [4.51])
+    except ValueError:
+        raised = True
+    assert raised
+
+
+def test_extrapolate_tc_rejects_mismatched_lengths():
+    raised = False
+    try:
+        extrapolate_tc([8, 10, 12], [4.55, 4.53])
+    except ValueError:
+        raised = True
+    assert raised
+
+
+def test_extrapolate_tc_exact_only_at_generating_nu():
+    # Data generated to be linear in L^(−1/0.63) is NOT linear in L^(−1); fitting
+    # with the wrong ν drops r² below 1. Confirms ν is a real lever, not ignored.
+    Ls = [8, 10, 12, 16, 24]
+    gen_nu = 0.63
+    x = np.asarray(Ls, dtype=float) ** (-1.0 / gen_nu)
+    tc = 4.5115 + 0.8 * x
+    good = extrapolate_tc(Ls, tc, nu=gen_nu)
+    wrong = extrapolate_tc(Ls, tc, nu=1.0)
+    assert abs(good["r_squared"] - 1.0) < 1e-9
+    assert wrong["r_squared"] < good["r_squared"]

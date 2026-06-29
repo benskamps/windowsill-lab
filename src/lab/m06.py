@@ -197,3 +197,191 @@ def to_report(result: M06Result) -> dict:
         "wall_seconds": result.wall_seconds,
         "config": result.config,
     }
+
+
+# --------------------------------------------------------------------------- #
+# L-extrapolation — sharpen the finite-L pseudo-critical T_c toward T_c(∞).
+#
+# A single small lattice lands the χ-peak at a pseudo-critical T_c(L) shifted
+# *above* the infinite-volume value by an O(L^(−1/ν)) finite-size correction
+# (render_m06's own verdict flags this and points here / to the BACKLOG). Running
+# several L and extrapolating T_c(L) → T_c(∞) turns a calibration pass into a
+# precision number — the next instrument the lab already asked for.
+# --------------------------------------------------------------------------- #
+
+
+def extrapolate_tc(Ls, tc_of_L, nu: float = NU_3D) -> dict:
+    """Extrapolate finite-size pseudo-critical ``T_c(L)`` to the thermodynamic limit.
+
+    The peak of χ on a finite L³ lattice sits at
+
+        T_c(L) = T_c(∞) + a · L^(−1/ν)
+
+    so regressing ``T_c(L)`` on ``x = L^(−1/ν)`` and reading the intercept
+    (``x → 0``, i.e. ``L → ∞``) recovers ``T_c(∞)``. NumPy-only, runs no Monte-Carlo
+    sweep — same spirit as ``susceptibility_peak`` / ``refine_peak`` / ``fss``: the
+    fit is unit-tested against synthetic data with a *known* intercept rather than
+    trusting a reported number.
+
+    Returns a dict: ``tc_inf`` (intercept), ``slope`` (``a``), ``tc_inf_stderr``
+    (OLS standard error of the intercept; ``None`` with <3 points), ``r_squared``
+    (``None`` with <3 points), ``nu``, ``n_points``, and the ``Ls`` / ``x`` /
+    ``tc_of_L`` arrays sorted by ascending ``x`` (large-L first).
+    """
+    Ls = np.asarray(Ls, dtype=float)
+    tc = np.asarray(tc_of_L, dtype=float)
+    if Ls.shape != tc.shape:
+        raise ValueError("Ls and tc_of_L must have the same length")
+    if Ls.size < 2:
+        raise ValueError("need at least two lattice sizes to extrapolate")
+    if np.any(Ls <= 0.0):
+        raise ValueError("lattice sizes must be positive")
+
+    x = Ls ** (-1.0 / nu)
+    order = np.argsort(x)            # ascending x ⇒ descending L (large lattice first)
+    x_s, tc_s, Ls_s = x[order], tc[order], Ls[order]
+
+    # Ordinary least squares: tc = intercept + slope · x.
+    design = np.vstack([np.ones_like(x_s), x_s]).T
+    coef, *_ = np.linalg.lstsq(design, tc_s, rcond=None)
+    intercept, slope = float(coef[0]), float(coef[1])
+
+    n = int(x_s.size)
+    r_squared: float | None = None
+    intercept_stderr: float | None = None
+    if n >= 3:
+        pred = intercept + slope * x_s
+        ss_res = float(np.sum((tc_s - pred) ** 2))
+        ss_tot = float(np.sum((tc_s - tc_s.mean()) ** 2))
+        r_squared = 1.0 - ss_res / ss_tot if ss_tot > 0.0 else 1.0
+        dof = n - 2
+        if dof > 0:
+            sigma2 = ss_res / dof
+            xtx_inv = np.linalg.inv(design.T @ design)
+            intercept_stderr = float(np.sqrt(sigma2 * xtx_inv[0, 0]))
+
+    return {
+        "tc_inf": intercept,
+        "slope": slope,
+        "tc_inf_stderr": intercept_stderr,
+        "r_squared": r_squared,
+        "nu": float(nu),
+        "n_points": n,
+        "Ls": Ls_s.tolist(),
+        "x": x_s.tolist(),
+        "tc_of_L": tc_s.tolist(),
+    }
+
+
+@dataclass
+class M06ExtrapResult:
+    Ls: list                 # lattice sizes swept
+    tc_of_L: list            # χ-peak T_c(L) (parabola-refined) at each L
+    tc_inf: float            # extrapolated T_c(∞) (the intercept)
+    tc_inf_stderr: float     # OLS standard error of the intercept (None if <3 L)
+    r_squared: float         # fit quality (None if <3 L)
+    slope: float             # the finite-size amplitude a
+    nu: float                # exponent used for the L^(−1/ν) axis
+    tc_benchmark: float      # 4.5115
+    rel_error: float         # |tc_inf − benchmark| / benchmark
+    per_L: list              # trimmed per-L records (L, tc_chi_refined, tc_cv, wall)
+    wall_seconds: float
+    config: dict
+
+
+def run_m06_l_extrapolation(
+    Ls=(8, 10, 12, 16),
+    T_min: float = 4.3,
+    T_max: float = 4.75,
+    n_temps: int = 17,
+    n_sweeps: int = 6000,
+    n_burnin: int = 2000,
+    seed: int = 42,
+    nu: float = NU_3D,
+    progress=None,
+) -> M06ExtrapResult:
+    """Run M06 at several lattice sizes and extrapolate ``T_c(L) → T_c(∞)``.
+
+    Each L gets an independent χ-peak ``T_c(L)`` from ``run_m06`` (same engine and
+    parabola refinement as the single-L milestone), with the seed varied per L so
+    the runs are statistically independent. The temperature window is tightened
+    around the benchmark (the pseudo-critical peaks for these small L sit just
+    above 4.5115) so a modest CPU sweep budget concentrates on resolving the peak.
+    ``extrapolate_tc`` then reads the intercept.
+
+    CPU-modest by default ({8,10,12,16}³, 6k sweeps) — finishes in a few minutes
+    with no GPU, mirroring ``run_m06``'s device-safety reasoning.
+    """
+    t0 = time.time()
+    Ls = tuple(int(L) for L in Ls)
+    per_L: list = []
+    tc_of_L: list = []
+    for i, L in enumerate(Ls):
+        r = run_m06(
+            L=L, T_min=T_min, T_max=T_max, n_temps=n_temps,
+            n_sweeps=n_sweeps, n_burnin=n_burnin, seed=seed + i,
+        )
+        per_L.append(r)
+        tc_of_L.append(r.tc_chi_refined)
+        if progress is not None:
+            progress(L, r)
+
+    fit = extrapolate_tc(Ls, tc_of_L, nu=nu)
+    return M06ExtrapResult(
+        Ls=list(Ls),
+        tc_of_L=list(tc_of_L),
+        tc_inf=fit["tc_inf"],
+        tc_inf_stderr=fit["tc_inf_stderr"],
+        r_squared=fit["r_squared"],
+        slope=fit["slope"],
+        nu=fit["nu"],
+        tc_benchmark=TC_3D,
+        rel_error=relative_error(fit["tc_inf"]),
+        per_L=[
+            {
+                "L": r.L,
+                "tc_chi_refined": r.tc_chi_refined,
+                "tc_chi": r.tc_chi,
+                "tc_cv": r.tc_cv,
+                "wall_seconds": r.wall_seconds,
+            }
+            for r in per_L
+        ],
+        wall_seconds=time.time() - t0,
+        config={
+            "Ls": list(Ls), "T_min": T_min, "T_max": T_max, "n_temps": n_temps,
+            "n_sweeps": n_sweeps, "n_burnin": n_burnin, "seed": seed, "nu": nu,
+        },
+    )
+
+
+def extrapolation_to_report(result: M06ExtrapResult) -> dict:
+    """A JSON report for the L-extrapolation, tagged ``M06-extrapolation``.
+
+    Distinct ``experiment`` tag so the single-L χ-peak checks skip it. Carries the
+    per-L ladder plus the extrapolated headline so a future render/feed wiring (a
+    Ben-direction call on how to present it publicly) has everything it needs.
+    """
+    stderr = result.tc_inf_stderr
+    stderr_str = f"±{stderr:.3f}" if stderr is not None else ""
+    return {
+        "experiment": "M06-extrapolation",
+        "headline": (
+            f"3D Ising T_c via L-extrapolation over L∈{result.Ls}: "
+            f"T_c(∞) = {result.tc_inf:.4f}{stderr_str} vs MC benchmark "
+            f"{result.tc_benchmark:.4f} (rel. err {result.rel_error*100:.2f}%) "
+            f"· {result.wall_seconds:.0f}s on CPU"
+        ),
+        "Ls": result.Ls,
+        "tc_of_L": result.tc_of_L,
+        "tc_inf": result.tc_inf,
+        "tc_inf_stderr": result.tc_inf_stderr,
+        "r_squared": result.r_squared,
+        "slope": result.slope,
+        "nu": result.nu,
+        "tc_benchmark": result.tc_benchmark,
+        "rel_error": result.rel_error,
+        "per_L": result.per_L,
+        "wall_seconds": result.wall_seconds,
+        "config": result.config,
+    }
