@@ -747,7 +747,8 @@
 
   // ── FERN — the core physics convergence ladder ──────────────────────────
   // A single upright stem; fronds (nodes) alternate side to side as it climbs.
-  // The default, homogeneous seedling shape. (sprout shares this builder.)
+  // The physics ladder's form, and the homogeneous default the registry falls
+  // back to for any unknown growth form.
   function fern(ctx) {
     var top = tipY(ctx);
     var midx = CX + Math.sin(tipFrac(ctx) * 3) * 5;
@@ -813,14 +814,90 @@
     return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
   }
 
+  // ── CREEPER — a long astronomy time-series, trailing across the seasons ───
+  // One broad runner that sweeps out to a single side low down and curves home
+  // to the center at the tip — a horizontal cascade of measurements rather than
+  // an upright climb. Where vine coils side to side, the creeper trails one way.
+  // Same root, same tip height; only the stem trails.
+  function creeper(ctx) {
+    var top = tipY(ctx);
+    var reach = 46;                  // how far the runner trails to the side (wide, low)
+    var segs = 16;
+    var d = "M" + CX + " " + ctx.base;
+    for (var s = 1; s <= segs; s++) {
+      var f = s / segs;
+      var y = ctx.base + (top - ctx.base) * f;
+      // one broad lateral sweep, widest mid-low, home to the center at the tip
+      var x = CX - Math.sin(f * Math.PI) * reach * (1 - f * 0.25);
+      d += " L" + fmt(x) + " " + fmt(y);
+    }
+    var nodes = [];
+    for (var i = 0; i < ctx.count; i++) {
+      var ny = nodeY(ctx, i);
+      var fy = (ny - ctx.base) / (top - ctx.base || 1);   // 0 at soil → 1 at tip
+      var nx = CX - Math.sin(fy * Math.PI) * reach * (1 - fy * 0.25);
+      // every measurement trails the same way — the series reads as one long runner
+      nodes.push({ x: fmt(nx), y: ny, dir: -1, t: (i + 1) / Math.max(1, ctx.total) });
+    }
+    return { stem: d, nodes: nodes, tip: { x: CX, y: top } };
+  }
+
+  // ── MOSS — a distributed, mat-forming (BOINC-style) contribution ──────────
+  // Not a climb at all: a low, wide mat of small contributions hugging the soil,
+  // filled in from the center outward, with a thin sprig rising to the shared
+  // tip. Its compactness is horizontal (a spreading colony) where succulent's is
+  // radial (a tight rosette). Same root, same tip height.
+  function moss(ctx) {
+    var top = tipY(ctx);
+    var matY = ctx.base - 12;                        // the mat hugs the soil
+    var mw = 30 + Math.min(ctx.count, 14) * 2.2;     // mat half-width grows with the colony
+    var stem = "M" + CX + " " + ctx.base +
+               " L" + fmt(CX - mw) + " " + fmt(matY) +
+               " Q" + CX + " " + fmt(matY + 9) + " " + fmt(CX + mw) + " " + fmt(matY) +
+               " L" + CX + " " + ctx.base +
+               " L" + CX + " " + fmt(top);            // a thin sprig to the shared tip
+    var nodes = [];
+    var half = Math.max(1, Math.ceil(ctx.count / 2));
+    for (var i = 0; i < ctx.count; i++) {
+      // fill the mat from the center outward, alternating sides (a colony, not a rosette)
+      var rank = Math.ceil((i + 1) / 2);
+      var side = (i % 2) ? 1 : -1;
+      var nx = CX + side * mw * (rank / half);
+      var ny = matY - (i % 3) * 4;                   // a shallow, lumpy mat
+      nodes.push({ x: fmt(nx), y: fmt(ny), dir: side, t: (i + 1) / Math.max(1, ctx.total) });
+    }
+    return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
+  }
+
+  // ── SPROUT — the simplest young seedling (misc / default track) ───────────
+  // A short shoot with a slight lean, its few leaves clustered low like
+  // cotyledons rather than unfurled all the way up a fern. The quietest form: a
+  // milestone family that's only just begun. Same root, same tip height.
+  function sprout(ctx) {
+    var top = tipY(ctx);
+    var lean = 7;                                    // a young shoot leans, then straightens
+    var stem = "M" + CX + " " + ctx.base +
+               " Q" + fmt(CX + lean) + " " + fmt((ctx.base + top) / 2) +
+               " " + CX + " " + fmt(top);
+    var nodes = [];
+    var floor = ctx.base - 22;
+    for (var i = 0; i < ctx.count; i++) {
+      var frac = (i + 1) / Math.max(1, ctx.count);
+      // leaves cluster in the lower part of the shoot (a seedling, not a tall fern)
+      var ny = floor - (floor - top) * frac * 0.55;
+      nodes.push({ x: CX, y: fmt(ny), dir: (i % 2) ? 1 : -1, t: (i + 1) / Math.max(1, ctx.total) });
+    }
+    return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
+  }
+
   // The registry — the single interface. `growth_form` from the feed maps here;
-  // unknown forms degrade to the homogeneous default (fern/sprout).
+  // unknown forms degrade to the homogeneous default (fern).
   var FORMS = {
     fern: fern,
-    sprout: fern,        // the homogeneous default seedling is fern-shaped
+    sprout: sprout,      // a simple young seedling, leaves clustered low
     vine: vine,
-    creeper: vine,       // a trailing time-series reuses the climbing path for now
-    moss: succulent,     // a mat-former: compact, like the rosette
+    creeper: creeper,    // a trailing astronomy time-series, sweeping to one side
+    moss: moss,          // a low, wide BOINC-style mat
     succulent: succulent,
   };
   var DEFAULT_FORM = "fern";

@@ -17,7 +17,12 @@ const require = createRequire(import.meta.url);
 const GF = require("./growth-forms.js");
 
 const CTX = { count: 6, total: 31, openProg: 0.3, base: 344, rise: 154 };
-const SHIPPED = ["fern", "vine", "succulent"]; // the 2–3 forms the BACKLOG asked for
+const SHIPPED = ["fern", "vine", "succulent"]; // the original 3 forms the BACKLOG asked for
+// The remaining three contract forms (astronomy/boinc/misc tracks). Each used to
+// alias one of the SHIPPED forms; now each has its own distinct build().
+const NEW_FORMS = ["creeper", "moss", "sprout"];
+const ALIAS_OF = { creeper: "vine", moss: "succulent", sprout: "fern" };
+const ALL_FORMS = [...SHIPPED, ...NEW_FORMS]; // mirrors src/lab/publish.py GROWTH_FORMS
 
 function validPath(d) {
   // an SVG path that starts with a moveto and carries finite coordinates only
@@ -74,6 +79,57 @@ test("the three shipped forms are visually DISTINCT", () => {
   const succSpread = Math.max(...succNodes.map((n) => Math.abs(n.x - GF.CX)));
   assert.ok(fernSpread < 1, "fern nodes ride the central stem");
   assert.ok(succSpread > fernSpread + 5, "succulent fans its nodes out into a rosette");
+});
+
+// Signature of a form's node layout — the (x, y) of every node — so two forms
+// can be compared for "different node arrangement" independent of stem path.
+function nodeSig(form, ctx = CTX) {
+  return JSON.stringify(GF.build(form, ctx).nodes.map((n) => [n.x, n.y]));
+}
+
+test("creeper/moss/sprout are HOMOGENEOUS: root at pot center, same tip height as fern", () => {
+  const fernTip = GF.build("fern", CTX).tip;
+  for (const name of NEW_FORMS) {
+    const g = GF.build(name, CTX);
+    assert.ok(validPath(g.stem), `${name}: stem must be a valid SVG path`);
+    // roots at the pot center: the path begins with the moveto to (CX, base)
+    assert.ok(g.stem.startsWith("M" + GF.CX + " "), `${name}: stem roots at the pot center x`);
+    assert.equal(g.tip.x, GF.CX, `${name}: tip centered on the pot`);
+    assert.ok(Math.abs(g.tip.y - fernTip.y) < 1e-6,
+      `${name}: tip height must match fern (got ${g.tip.y} vs ${fernTip.y})`);
+  }
+});
+
+test("creeper/moss/sprout keep one node per closed milestone, finite + sided", () => {
+  for (const name of NEW_FORMS) {
+    for (const count of [0, 1, 6, 20]) {
+      const g = GF.build(name, { ...CTX, count });
+      assert.equal(g.nodes.length, count, `${name}: nodes==count at count=${count}`);
+      for (const n of g.nodes) {
+        assert.ok(Number.isFinite(n.x) && Number.isFinite(n.y), `${name}: finite node coords`);
+        assert.ok(n.dir === 1 || n.dir === -1, `${name}: node.dir is a side`);
+      }
+    }
+  }
+});
+
+test("creeper/moss/sprout are DISTINCT from the forms they used to alias", () => {
+  // Each was a comment-level alias (creeper→vine, moss→succulent, sprout→fern).
+  // Now each must draw a different stem AND lay its nodes out differently.
+  for (const name of NEW_FORMS) {
+    const alias = ALIAS_OF[name];
+    assert.notEqual(GF.build(name, CTX).stem, GF.build(alias, CTX).stem,
+      `${name} must not reuse ${alias}'s stem path`);
+    assert.notEqual(nodeSig(name), nodeSig(alias),
+      `${name} must arrange its nodes differently than ${alias}`);
+  }
+});
+
+test("all six contract forms draw mutually distinct stems", () => {
+  // mirrors src/lab/publish.py GROWTH_FORMS — none of the six should collide.
+  const stems = ALL_FORMS.map((name) => GF.build(name, CTX).stem);
+  assert.equal(new Set(stems).size, ALL_FORMS.length,
+    "every one of the six growth forms must draw a unique stem");
 });
 
 test("growth_form selection: the OPEN milestone's track is the hero form", () => {
