@@ -2,9 +2,10 @@
 import math
 
 from lab.checks import (
-    BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT, TC_3D, TC_TRI,
-    TWO_OVER_PI, _grade, check_m01, check_m02, check_m03, check_m04, check_m05,
-    check_m06, check_m07, check_m08, check_m09, check_m10, check_m11, verify,
+    BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT, TC_3D, TC_SG_3D,
+    TC_SG_3D_TOL, TC_TRI, TWO_OVER_PI, _grade, check_m01, check_m02, check_m03,
+    check_m04, check_m05, check_m06, check_m07, check_m08, check_m09, check_m10,
+    check_m11, check_m12, verify,
 )
 
 
@@ -606,6 +607,83 @@ def test_m11_needs_enough_temperatures():
     rep = _m11_report(n_temps=2)
     ok, _ = check_m11(rep)
     assert ok is None   # fewer than 3 temperatures → not gradable
+
+
+# ── M12: 3D Edwards–Anderson spin glass · Binder crossing (T_SG ≈ 0.95) ───────
+def _m12_report(t_sg=TC_SG_3D, max_abs_q=0.02, n_temps=7, sizes=(4, 6, 8), crossing=True):
+    """A synthetic M12 report whose g_L(T) curves cross cleanly at ``t_sg``.
+
+    Below the crossing the larger lattice is more ordered (higher g); above it, less —
+    so ``d = g_large − g_small`` runs + → − through ``t_sg``, the check's crossing rule.
+    ``crossing=False`` makes every size identical (parallel, no intersection) — the
+    smeared/under-equilibrated failure the check must reject.
+    """
+    T = [round(0.4 + (1.6 - 0.4) * i / (n_temps - 1), 3) for i in range(n_temps)]
+    binder_by_L = {}
+    q_mean_by_L = {}
+    for L in sizes:
+        if crossing:
+            binder_by_L[str(L)] = [round(0.5 + (t_sg - t) * (0.4 + 0.15 * L), 5) for t in T]
+        else:
+            binder_by_L[str(L)] = [0.3 for _ in T]   # flat & identical → no crossing
+        q_mean_by_L[str(L)] = [(-1) ** i * max_abs_q for i in range(n_temps)]
+    return {
+        "experiment": "M12-spin-glass-3d",
+        "T": T,
+        "binder_by_L": binder_by_L,
+        "q_mean_by_L": q_mean_by_L,
+        "t_sg_benchmark": t_sg,
+        "tolerance": TC_SG_3D_TOL,
+    }
+
+
+def test_m12_passes_on_clean_crossing():
+    ok, detail = check_m12(_m12_report())
+    assert ok, detail
+    assert "cross near T_SG" in detail
+
+
+def test_m12_fails_when_no_crossing_resolved():
+    # Flat, identical g_L(T) → no multi-L intersection → the smeared/under-equilibrated
+    # failure mode. Must fail (not pass on a flat curve), and say so.
+    ok, detail = check_m12(_m12_report(crossing=False))
+    assert ok is False
+    assert "no multi-L Binder crossing" in detail
+
+
+def test_m12_fails_when_crossing_far_from_benchmark():
+    # A clean crossing, but at 0.4 — well outside the 0.95 ± 0.15 band. Must fail.
+    ok, detail = check_m12(_m12_report(t_sg=0.4))
+    assert ok is False
+    assert "far from the 0.95 benchmark" in detail
+
+
+def test_m12_fails_on_broken_symmetry():
+    # Curves cross at 0.95, but a large |⟨q⟩| means a symmetry-broken / un-equilibrated
+    # replica leaked through — the symmetry guard must fail it.
+    ok, detail = check_m12(_m12_report(max_abs_q=0.4))
+    assert ok is False
+    assert "symmetric" in detail
+
+
+def test_m12_uses_own_tolerance_not_the_reports():
+    # A report can't widen its own tolerance to pass: even if it claims tolerance=1.0,
+    # the check uses its OWN ±0.15 band, so a crossing at 0.4 still fails.
+    rep = _m12_report(t_sg=0.4)
+    rep["tolerance"] = 1.0
+    ok, _ = check_m12(rep)
+    assert ok is False
+
+
+def test_m12_not_applicable_to_an_m11_report():
+    ok, detail = check_m12(_m11_report())
+    assert ok is None and "not an M12" in detail
+
+
+def test_m12_needs_three_sizes():
+    rep = _m12_report(sizes=(4, 6))
+    ok, _ = check_m12(rep)
+    assert ok is None   # fewer than 3 lattice sizes → not gradable
 
 
 def test_other_checks_skip_an_m11_report():

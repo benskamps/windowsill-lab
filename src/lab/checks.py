@@ -27,6 +27,15 @@ BETA_OVER_NU = 1.0 / 8.0    # = 0.125
 INV_NU = 1.0                # 1/ν
 # 3D simple-cubic Ising critical temperature — the MC/series benchmark (M06).
 TC_3D = 4.5115
+# 3D ±J Edwards–Anderson spin-glass transition temperature (M12) — the modern
+# Monte-Carlo benchmark (no closed form; the literature clusters near ≈0.95).
+# Located by the disorder-averaged Binder-cumulant crossing across lattice sizes.
+TC_SG_3D = 0.95
+# Crossing tolerance for M12: finite-size Binder crossings drift with the size pair
+# and carry corrections-to-scaling, so — like M08's ±0.07 BKT window — a physically
+# justified band is allowed. Owned by the check (not read from the report) so a run
+# can't widen its own tolerance to pass. A broken run still misses by a wide margin.
+TC_SG_3D_TOL = 0.15
 # Exact triangular-lattice 2D Ising critical temperature (M05): T_c = 4/ln 3.
 TC_TRI = 4.0 / math.log(3.0)   # ≈ 3.6410
 # 2D XY BKT transition temperature (M08) — the square-lattice MC/RG benchmark
@@ -583,12 +592,106 @@ def check_m11(report: dict) -> tuple[bool | None, str]:
     return ok, detail
 
 
+def _binder_crossing_stdlib(Ts, G_by_L) -> tuple[float | None, list[tuple]]:
+    """Re-derive the multi-L Binder crossing from sorted arrays — stdlib, a receipt.
+
+    ``Ts`` is the ascending temperature ladder; ``G_by_L`` maps each L (int) to its
+    g_L(T) on that ladder. For each size pair the crossing is the first ``+ → −`` sign
+    change of ``d(T) = g_large − g_small`` (larger L is more ordered below T_SG, less
+    above), linear-interpolated to the zero of ``d``. Returns ``(primary_T, pairs)``
+    where the primary estimate is the crossing of the two largest sizes (or the median
+    of all pairwise crossings if that pair does not cross), and ``pairs`` is the list of
+    ``(L_small, L_large, T)`` crossings. ``(None, [])`` when nothing crosses — an honest
+    no-crossing, not an invented T_SG. Mirrors ``m12.locate_tsg`` deliberately: the
+    check re-computes the number independently rather than echoing the reported one.
+    """
+    Ls = sorted(G_by_L)
+    pairs: list[tuple] = []
+    for a in range(len(Ls)):
+        for b in range(a + 1, len(Ls)):
+            gs, gl = G_by_L[Ls[a]], G_by_L[Ls[b]]
+            d = [x - y for y, x in zip(gs, gl)]
+            for i in range(len(d) - 1):
+                if d[i] >= 0.0 and d[i + 1] < 0.0:
+                    denom = d[i + 1] - d[i]
+                    t = Ts[i] if denom == 0 else Ts[i] + (-d[i]) * (Ts[i + 1] - Ts[i]) / denom
+                    pairs.append((Ls[a], Ls[b], float(t)))
+                    break
+    if not pairs:
+        return None, []
+    big = {Ls[-1], Ls[-2]} if len(Ls) >= 2 else {Ls[-1]}
+    top = next((t for (a, b, t) in pairs if {a, b} == big), None)
+    if top is None:
+        ts = sorted(t for (_, _, t) in pairs)
+        top = ts[len(ts) // 2]
+    return float(top), pairs
+
+
+def check_m12(report: dict) -> tuple[bool | None, str]:
+    """3D Edwards–Anderson spin glass: a multi-L Binder crossing locates T_SG ≈ 0.95.
+
+    Returns ``None`` unless this is an M12 report. Unlike M11 (2D, T_c = 0, no finite-T
+    phase), the **3D** ±J glass has a genuine finite-temperature spin-glass transition;
+    its fingerprint is the disorder-averaged Binder cumulant g_L(T) crossing at a single
+    temperature across ≥3 lattice sizes on one shared ladder. The check **re-derives**
+    that crossing from the report's per-L ``binder_by_L`` arrays (a receipt, not an echo
+    of the reported ``crossing_T``) and asserts it lands near the ≈0.95 benchmark within
+    the check-owned ±0.15 band, plus two guards so an under-equilibrated run can't pass:
+
+    * **A crossing must exist**: ≥3 sizes must actually intersect. A smeared, crossing-
+      free g_L(T) — the signature of parallel-tempering under-equilibration (M11's
+      documented failure mode) — has no crossing and fails, rather than passing on a
+      flat curve.
+    * **Symmetry / equilibration**: P(q) = P(−q) by the ±J symmetry, so the disorder-
+      averaged ⟨q⟩ must stay ≈ 0 across every size and temperature. A large |⟨q⟩| means
+      a broken-symmetry replica leaked through, so it fails even if a crossing appeared.
+    """
+    if report.get("experiment") != "M12-spin-glass-3d":
+        return None, "not an M12 spin-glass report"
+    T = report.get("T")
+    binder_by_L = report.get("binder_by_L")
+    if (not T or not binder_by_L or len(binder_by_L) < 3 or len(T) < 3
+            or any(len(v) != len(T) for v in binder_by_L.values())):
+        return None, "M12 report missing a shared T ladder or ≥3 per-L Binder arrays"
+
+    order = sorted(range(len(T)), key=lambda i: T[i])
+    Ts = [float(T[i]) for i in order]
+    G_by_L = {int(k): [float(v[i]) for i in order] for k, v in binder_by_L.items()}
+    crossing_T, pairs = _binder_crossing_stdlib(Ts, G_by_L)
+
+    # Symmetry / equilibration guard: |⟨q⟩| ≈ 0 across all sizes and temperatures.
+    qm = report.get("q_mean_by_L") or {}
+    max_abs_qmean = max((abs(x) for v in qm.values() for x in v), default=None)
+    if max_abs_qmean is None:
+        max_abs_qmean = report.get("max_abs_q_mean", 0.0)
+
+    has_crossing = crossing_T is not None
+    near = has_crossing and abs(crossing_T - TC_SG_3D) <= TC_SG_3D_TOL
+    symmetric = max_abs_qmean <= 0.15
+    ok = near and symmetric
+
+    ct_str = f"{crossing_T:.3f}" if has_crossing else "none"
+    pair_str = ", ".join(f"{a}/{b}→{t:.3f}" for (a, b, t) in pairs) or "no pair crosses"
+    detail = (
+        f"Binder crossing T_SG = {ct_str} vs benchmark {TC_SG_3D:.2f} "
+        f"(tol ±{TC_SG_3D_TOL}); pairwise [{pair_str}]; max|⟨q⟩|={max_abs_qmean:.3f} — "
+        + ("g_L(T) cross near T_SG≈0.95 — the finite-T 3D spin-glass transition, "
+           "reproduced" if ok else
+           ("no multi-L Binder crossing resolved (smeared g_L(T) — likely "
+            "under-equilibrated; needs more disorder realizations / longer parallel "
+            "tempering)" if not has_crossing else
+            ("crossing far from the 0.95 benchmark" if not near else
+             "P(q) not symmetric (|⟨q⟩| too large) — un-equilibrated or broken")))
+    )
+    return ok, detail
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
-          "M10": check_m10, "M11": check_m11}
+          "M10": check_m10, "M11": check_m11, "M12": check_m12}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:

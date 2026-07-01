@@ -25,6 +25,7 @@ Usage:
   lab m09             run M09: 2D Heisenberg — verify NO finite-T order (Mermin–Wagner)
   lab m10             run M10: antiferromagnetic Ising — T_N = Onsager 2.2692 on staggered m_s
   lab m11             run M11: 2D Edwards–Anderson spin glass — P(q) broadens toward T_c=0
+  lab m12             run M12: 3D EA spin glass — Binder-cumulant crossing at T_SG≈0.95 (parallel tempering)
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -282,6 +283,35 @@ def _parse_m11(args):
                    help="quenched ±J disorder realizations to average P(q) over")
     p.add_argument("--sweeps", type=int, default=60000)
     p.add_argument("--burnin", type=int, default=30000)
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m12(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M12 is the 3D EA glass: a genuine finite-T spin-glass transition at T_SG ≈ 0.95,
+    # found by the disorder-averaged Binder-cumulant CROSSING across ≥3 lattice sizes on
+    # a SHARED T ladder that straddles 0.95. Parallel tempering is mandatory — single-
+    # spin Metropolis can't equilibrate the cold rungs and the crossing washes out (M11's
+    # documented failure mode). --quick runs a small CPU pass that proves the code end to
+    # end but does not generally resolve the crossing (that needs a GPU run with many
+    # disorder realizations); it then ships an honest [~] null, per the lab's convention.
+    p.add_argument("--L-values", default="4,6,8",
+                   help="comma-separated even lattice sizes on the shared ladder (default 4,6,8)")
+    p.add_argument("--quick", action="store_true",
+                   help="small CPU pass (few realizations, short sweep) — proves the code, not the physics")
+    p.add_argument("--t-min", type=float, default=0.4,
+                   help="cold edge — must sit below T_SG≈0.95 (default 0.4)")
+    p.add_argument("--t-max", type=float, default=1.6,
+                   help="hot edge — the ergodic end parallel tempering decorrelates in (default 1.6)")
+    p.add_argument("--n-temps", type=int, default=16)
+    p.add_argument("--realizations", type=int, default=200,
+                   help="quenched ±J disorder realizations to average the Binder cumulant over")
+    p.add_argument("--sweeps", type=int, default=20000)
+    p.add_argument("--burnin", type=int, default=10000)
+    p.add_argument("--swap-every", type=int, default=10,
+                   help="attempt a parallel-tempering even/odd swap round every N sweeps")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
@@ -723,6 +753,56 @@ def main(argv=None):
               f"({result.broadening_fraction*100:.0f}% of steps) · max|⟨q⟩|="
               f"{result.max_abs_q_mean:.3f} · {verdict} · {result.wall_seconds:.0f}s")
         path = render_mod.render_m11(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m12":
+        ns = _parse_m12(args[1:])
+        from . import m12
+        from . import render as render_mod
+        L_values = [int(x) for x in ns.L_values.split(",") if x.strip()]
+        device = ns.device
+        if ns.quick:
+            # A small CPU pass: proves the multi-file recipe end-to-end and writes
+            # HTML+JSON. It will not generally resolve the crossing — that is the GPU
+            # full run's job — so an unresolved crossing here ships as an honest null.
+            L_values = [4, 6, 8]
+            realizations, n_temps = 8, 10
+            sweeps, burnin, swap_every = 800, 400, 5
+            device = "cpu"
+        else:
+            realizations, n_temps = ns.realizations, ns.n_temps
+            sweeps, burnin, swap_every = ns.sweeps, ns.burnin, ns.swap_every
+        print(f"M12 3D Edwards–Anderson spin glass · L={L_values} · {n_temps} temps in "
+              f"[{ns.t_min}, {ns.t_max}] straddling T_SG≈0.95 · {realizations} disorder "
+              f"realizations × 2 replicas · parallel tempering (swap every {swap_every}) "
+              f"· {sweeps:,} sweeps on {device}")
+
+        def _progress_m12(L, r):
+            print(f"  ✓ L={L:<3} swept {len(r.T)} temps  (swap≈{r.swap_rate.mean():.2f}, "
+                  f"{r.wall_seconds:.1f}s)")
+
+        result = m12.run_m12(
+            L_values=L_values, T_min=ns.t_min, T_max=ns.t_max, n_temps=n_temps,
+            n_realizations=realizations, n_sweeps=sweeps, n_burnin=burnin,
+            swap_every=swap_every, seed=ns.seed, device=device, progress=_progress_m12,
+        )
+        report = m12.to_report(result)
+        ct = result.crossing_T
+        ct_str = f"{ct:.3f}" if ct is not None else "none"
+        verdict = ("Binder crossing at T_SG≈%s — the finite-T 3D glass transition" % ct_str
+                   if result.crossing_resolved
+                   else "no clean crossing near 0.95 — honest [~] null (needs the GPU full run)")
+        print(f"  → Binder crossing T_SG = {ct_str} (benchmark {result.t_sg_benchmark:.2f} "
+              f"± {result.tolerance:.2f}) · max|⟨q⟩|={result.max_abs_q_mean:.3f} · "
+              f"{verdict} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_m12(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod
