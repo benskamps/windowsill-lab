@@ -2168,3 +2168,219 @@ def render_m11(report: dict, date: str | None = None) -> Path:
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
+
+
+def _plot_m12_binder(report: dict) -> str:
+    """The headline: disorder-averaged Binder cumulant g_L(T) for each L — they CROSS.
+
+    The multi-size intersection is the finite-T spin-glass transition T_SG. A vertical
+    marker shows the located crossing (when one resolved) and a faint line the ≈0.95
+    benchmark, so the eye lands on the physics claim.
+    """
+    T = np.asarray(report["T"], dtype=float)
+    order = np.argsort(T)
+    Ts = T[order]
+    binder_by_L = report.get("binder_by_L") or {}
+    Ls = sorted(binder_by_L, key=lambda k: int(k))
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    colors = [_COPPER(0.15 + 0.72 * i / max(1, len(Ls) - 1)) for i in range(len(Ls))]
+    for col, L in zip(colors, Ls):
+        g = np.asarray(binder_by_L[L], dtype=float)[order]
+        ax.plot(Ts, g, "o-", color=col, markersize=4, linewidth=1.6, label=f"L = {L}")
+    bench = report.get("t_sg_benchmark", 0.95)
+    ax.axvline(bench, color="#8a8a8a", linestyle=":", linewidth=1.1,
+               label=f"benchmark ≈ {bench:.2f}")
+    ct = report.get("crossing_T")
+    if ct is not None:
+        ax.axvline(ct, color="#7a9b56", linestyle="--", linewidth=1.4,
+                   label=f"crossing T_SG = {ct:.3f}")
+    ax.set_xlabel("Temperature  T  (J/k_B)")
+    ax.set_ylabel("Binder cumulant  g_L")
+    ax.set_title("g_L(T) crosses at T_SG — the finite-T 3D spin-glass transition")
+    ax.legend(frameon=False, fontsize=8, loc="upper right")
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_m12_pq(report: dict) -> str:
+    """P(q) at the largest L across temperatures — the overlap distribution's structure.
+
+    Below T_SG the disorder-averaged P(q) grows weight at large |q| (the glass); above it
+    stays a narrow peak at q = 0 (the paramagnet). Symmetric P(q) = P(−q) by the ±J
+    symmetry — the equilibration diagnostic made visible.
+    """
+    T = np.asarray(report["T"], dtype=float)
+    centers = np.asarray(report.get("q_bin_centers") or [], dtype=float)
+    pq = np.asarray(report.get("pq_ref") or [], dtype=float)
+    L_ref = report.get("pq_ref_L")
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    if pq.size and centers.size:
+        order = np.argsort(T)
+        n = len(order)
+        pick = order[np.linspace(0, n - 1, min(5, n)).round().astype(int)]
+        colors = [_COPPER(0.12 + 0.78 * i / max(1, len(pick) - 1)) for i in range(len(pick))]
+        for col, idx in zip(colors, pick):
+            ax.plot(centers, pq[idx], "-", color=col, linewidth=1.8, label=f"T = {T[idx]:.2f}")
+        ax.legend(frameon=False, fontsize=9, title="cold → hot")
+    ax.set_xlabel("overlap  q")
+    ax.set_ylabel("P(q)  (disorder-averaged)")
+    ax.set_title(f"P(q) at L = {L_ref} — broadens into the glass below T_SG")
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M12_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab · {date} · 3D Edwards–Anderson spin glass</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  .caveat {{ font-size: 14px; margin: 14px 0 0; padding: 12px 18px; background: #f6eee0; border-left: 3px solid #c89878; border-radius: 2px; opacity: 0.95; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab · phase 3</h1>
+  <div class="date">{date} · M12 — 3D Edwards–Anderson spin glass</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+  <div class="caveat">{caveat}</div>
+
+  <h2>The Binder cumulant crossing — the finite-T spin-glass transition</h2>
+  <figure><img src="data:image/png;base64,{binder_png}" alt="disorder-averaged Binder cumulant vs temperature for several lattice sizes, crossing at T_SG"></figure>
+
+  <h2>P(q) — the overlap distribution at the largest lattice</h2>
+  <figure><img src="data:image/png;base64,{pq_png}" alt="overlap distribution P(q) at several temperatures"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def render_m12(report: dict, date: str | None = None) -> Path:
+    """Render an M12 3D Edwards–Anderson spin-glass report (HTML + plots + JSON).
+
+    Mirrors ``render_m11`` but the physics is different: the **3D** ±J glass has a real
+    finite-temperature transition, so the verdict is the **multi-L Binder-cumulant
+    crossing** landing near T_SG ≈ 0.95 (not a T = 0 approach). A green ✓ when a crossing
+    resolves within tolerance and the overlap stays symmetric; a ✗/~ honest null when it
+    does not — the parallel-tempering equilibration caveat is always shown, and a small
+    CPU ``--quick`` pass is labelled as a code proof, not a resolved crossing.
+    """
+    from .publish import today_local
+    date = date or today_local()
+    _ensure_home()
+
+    L_values = report.get("L_values") or []
+    n_real = report.get("n_realizations")
+    T = report.get("T") or []
+    ct = report.get("crossing_T")
+    bench = report.get("t_sg_benchmark", 0.95)
+    tol = report.get("tolerance", 0.15)
+    resolved = report.get("crossing_resolved")
+    max_abs_qmean = report.get("max_abs_q_mean", 0.0)
+    pairs = report.get("crossing_pairs") or []
+    mean_T = report.get("crossing_mean_T")
+    swap_by_L = report.get("swap_rate_by_L") or {}
+    swap_vals = [v for arr in swap_by_L.values() for v in arr]
+    swap_mean = sum(swap_vals) / len(swap_vals) if swap_vals else 0.0
+    t_cold = min(T) if T else 0.0
+    t_hot = max(T) if T else 0.0
+    ct_str = f"{ct:.3f}" if ct is not None else "none"
+    mean_str = f"{mean_T:.3f}" if mean_T is not None else "—"
+    pair_str = ", ".join(f"{p['L1']}/{p['L2']} → {p['T']:.3f}" for p in pairs) or "none"
+
+    sentence = (
+        f"I ran the 3D Edwards–Anderson spin glass — Ising spins with quenched random "
+        f"±J bonds on a simple-cubic lattice, E = −Σ J_ij s_i s_j — across lattice sizes "
+        f"L = {L_values} on one shared temperature ladder [{t_cold:.2f}, {t_hot:.2f}] "
+        f"straddling T_SG ≈ 0.95, averaged over {n_real} disorder realizations with two "
+        f"replicas each for the overlap q = (1/N) Σ s_i^α s_i^β. Unlike the 2D glass "
+        f"(M11, which orders only at T = 0), the 3D glass has a genuine finite-temperature "
+        f"transition, and its fingerprint is the disorder-averaged <em>Binder cumulant "
+        f"crossing</em> across sizes. Parallel tempering (mean swap acceptance "
+        f"{swap_mean:.2f}) equilibrates the cold rungs. Wall time: "
+        f"{report.get('wall_seconds', 0):.0f}s."
+    )
+
+    if resolved:
+        verdict = (
+            f"✓ The Binder cumulant curves g_L(T) cross at T_SG = {ct_str} — inside the "
+            f"{bench:.2f} ± {tol:.2f} benchmark band for the 3D ±J Edwards–Anderson "
+            f"transition — and the overlap stays symmetric (max|⟨q⟩| = {max_abs_qmean:.3f} "
+            f"≈ 0). Pairwise crossings [{pair_str}] (mean {mean_str}). This is the genuine "
+            f"finite-temperature spin-glass transition — the famous hard case that, unlike "
+            f"2D (T_c = 0, M11), orders at a real temperature. The scale-invariant crossing "
+            f"(not a single-L peak) is the calibrated result."
+        )
+    else:
+        why = ("no multi-size crossing resolved" if ct is None
+               else f"the crossing landed at {ct_str}, outside the {bench:.2f} ± {tol:.2f} band")
+        verdict = (
+            f"~ No clean Binder crossing near {bench:.2f} — {why}. Kept honestly as an "
+            f"open/null (a folded grey leaf), <em>not</em> a fake green. The most likely "
+            f"cause at this scale is under-equilibration / too few disorder realizations: "
+            f"resolving a sharp 3-size crossing needs a long parallel-tempered GPU run. A "
+            f"CPU <code>--quick</code> pass proves the pipeline end-to-end but is not "
+            f"expected to resolve the physics. Pairwise crossings observed: [{pair_str}]."
+        )
+
+    caveat = (
+        f"Honesty on equilibration: 3D spin glasses are hard to equilibrate near T_SG "
+        f"(rugged landscape, long autocorrelation times). This engine uses checkerboard "
+        f"Metropolis <em>with parallel tempering</em> (replica exchange across the "
+        f"temperature ladder — the tool M11 lacked), because single-spin dynamics alone "
+        f"produces a smeared, crossing-free g_L(T) that only looks finished. The mean swap "
+        f"acceptance {swap_mean:.2f} and the symmetry diagnostic max|⟨q⟩| = "
+        f"{max_abs_qmean:.3f} (≈ 0 when equilibrated) are reported so a mistune is visible, "
+        f"not hidden. Promotion to a verified ✓ is human-reviewed via the report PR — the "
+        f"milestone is never auto-marked done from an unattended run."
+    )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M12_HTML_TEMPLATE.format(
+        date=date, sentence=sentence, verdict=verdict, caveat=caveat,
+        binder_png=_plot_m12_binder(report),
+        pq_png=_plot_m12_pq(report),
+        json_dump=json_dump,
+    )
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    _commit_report(date, slug, html, json_dump)
+    return out
