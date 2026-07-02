@@ -3,9 +3,9 @@ import math
 
 from lab.checks import (
     BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT, TC_3D, TC_SG_3D,
-    TC_SG_3D_TOL, TC_TRI, TWO_OVER_PI, _grade, check_m01, check_m02, check_m03,
-    check_m04, check_m05, check_m06, check_m07, check_m08, check_m09, check_m10,
-    check_m11, check_m12, verify,
+    TC_SG_3D_TOL, TC_TRI, TWO_OVER_PI, WANNIER_S0, WANNIER_S0_TOL, _grade,
+    check_m01, check_m02, check_m03, check_m04, check_m05, check_m06, check_m07,
+    check_m08, check_m09, check_m10, check_m11, check_m12, check_m13, verify,
 )
 
 
@@ -695,3 +695,80 @@ def test_other_checks_skip_an_m11_report():
     assert check_m08(rep)[0] is None
     assert check_m09(rep)[0] is None
     assert check_m10(rep)[0] is None
+
+
+# ── M13: frustrated triangular antiferromagnet · residual entropy (Wannier 0.3383) ──
+def _schottky_C(T, gap=1.0, g0=1.0, g1=1.0):
+    x = gap / T
+    ex = math.exp(-x)
+    return x * x * g0 * g1 * ex / (g0 + g1 * ex) ** 2
+
+
+def _m13_report(g1=0.426, e_ground=-1.0):
+    """A synthetic M13 report whose C(T) is an analytic two-level (Schottky) curve tuned so
+    that ∫ C/T (from S∞ = ln2) leaves a KNOWN residual: g1=0.426 → 0.3383 (Wannier), while
+    other g1 shift it away. The check integrates C/T itself, so a controllable analytic
+    curve is the cleanest grader input — no engine, exact target. ``e_ground`` sets the
+    cold-end energy the ground-state anchor reads (exact triangular-AFM value is −1)."""
+    lo, hi, n = math.log(0.03), math.log(30.0), 220
+    T = [math.exp(lo + (hi - lo) * i / (n - 1)) for i in range(n)]
+    C = [_schottky_C(t, 1.0, 1.0, g1) for t in T]
+    energy = [e_ground] + [e_ground + 0.2 * i for i in range(len(T) - 1)]
+    return {"experiment": "M13-triangular-afm", "T": T, "specific_heat": C, "energy": energy}
+
+
+def test_m13_passes_on_wannier_residual():
+    ok, detail = check_m13(_m13_report())
+    assert ok, detail
+    assert "reproduced" in detail
+
+
+def test_m13_fails_when_residual_too_high():
+    # g1=0.05 removes almost no entropy → residual ≈ 0.64, far above 0.3383. Must fail.
+    ok, detail = check_m13(_m13_report(g1=0.05))
+    assert ok is False
+    assert "misses 0.3383" in detail
+
+
+def test_m13_fails_when_residual_too_low():
+    # g1=1.0 removes the full ln2 → residual ≈ 0 (a non-degenerate ground state). Must fail.
+    ok, detail = check_m13(_m13_report(g1=1.0))
+    assert ok is False
+
+
+def test_m13_fails_on_wrong_ground_energy():
+    # Residual is right (Wannier) but the cold energy is −3 (an accidental ferromagnet):
+    # the independent ground-state anchor must reject it even with a perfect integral.
+    ok, detail = check_m13(_m13_report(e_ground=-3.0))
+    assert ok is False
+    assert "ground energy" in detail.lower()
+
+
+def test_m13_re_derives_not_echoes():
+    # The check integrates C/T from the arrays; a lie in a stored s0_measured is ignored.
+    rep = _m13_report()
+    rep["s0_measured"] = 0.999
+    ok, _ = check_m13(rep)
+    assert ok is True
+
+
+def test_m13_needs_parallel_arrays():
+    rep = _m13_report()
+    rep["specific_heat"] = rep["specific_heat"][:5]   # length mismatch → not gradable
+    ok, _ = check_m13(rep)
+    assert ok is None
+
+
+def test_m13_not_applicable_to_an_m12_report():
+    ok, detail = check_m13(_m12_report())
+    assert ok is None and "not an M13" in detail
+
+
+def test_other_checks_skip_an_m13_report():
+    # M13 carries (T, specific_heat, energy) with tag M13-triangular-afm — no χ/crossing/
+    # helicity check should claim it (a bare-Ising χ check keys on a `chi` array it lacks).
+    rep = _m13_report()
+    assert check_m04(rep)[0] is None
+    assert check_m05(rep)[0] is None
+    assert check_m10(rep)[0] is None
+    assert check_m12(rep)[0] is None

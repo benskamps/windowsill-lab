@@ -26,6 +26,7 @@ Usage:
   lab m10             run M10: antiferromagnetic Ising — T_N = Onsager 2.2692 on staggered m_s
   lab m11             run M11: 2D Edwards–Anderson spin glass — P(q) broadens toward T_c=0
   lab m12             run M12: 3D EA spin glass — Binder-cumulant crossing at T_SG≈0.95 (parallel tempering)
+  lab m13             run M13: frustrated triangular AFM — residual entropy S0/N≈0.3383 via C/T integration
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -312,6 +313,31 @@ def _parse_m12(args):
     p.add_argument("--burnin", type=int, default=10000)
     p.add_argument("--swap-every", type=int, default=10,
                    help="attempt a parallel-tempering even/odd swap round every N sweeps")
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m13(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M13 is the frustrated triangular antiferromagnet (J=−1): NO ordering transition, a
+    # macroscopically degenerate ground state, and the signature is the residual entropy
+    # S0/N = 0.3383 k_B (Wannier), measured by integrating C(T)/T from S(∞)=ln2 down. So
+    # the window is WIDE (near T=0 up to high T where S→ln2), not a tight peak straddle,
+    # and the grid is geometric — packed into the low-T hump where C/T carries its weight.
+    # L must be a multiple of 3 (the triangular 3-colour update's periodic seam).
+    p.add_argument("--L", type=int, default=96,
+                   help="lattice side, a multiple of 3 (default 96)")
+    p.add_argument("--quick", action="store_true",
+                   help="small CPU pass (L=24, short sweep) — proves the pipeline end to end")
+    p.add_argument("--t-min", type=float, default=0.10,
+                   help="cold edge — near T=0 to expose the residual (default 0.10)")
+    p.add_argument("--t-max", type=float, default=14.0,
+                   help="hot edge — high enough that S climbs back to ln2 (default 14.0)")
+    p.add_argument("--n-temps", type=int, default=80,
+                   help="geometric temperature-grid points (default 80)")
+    p.add_argument("--sweeps", type=int, default=40000)
+    p.add_argument("--burnin", type=int, default=8000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
@@ -803,6 +829,53 @@ def main(argv=None):
               f"± {result.tolerance:.2f}) · max|⟨q⟩|={result.max_abs_q_mean:.3f} · "
               f"{verdict} · {result.wall_seconds:.0f}s")
         path = render_mod.render_m12(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m13":
+        ns = _parse_m13(args[1:])
+        from . import m13
+        from . import render as render_mod
+        if ns.quick:
+            # A small CPU pass: proves the multi-file recipe end-to-end and writes
+            # HTML+JSON. The frustrated model equilibrates easily (single-spin flips walk
+            # the degenerate ground manifold), so even this coarse grid usually lands the
+            # integrated residual near 0.3383 — but a miss here still ships an honest null.
+            L, n_temps = 24, 40
+            t_min, t_max = 0.15, 12.0
+            sweeps, burnin = 3000, 1000
+            device = "cpu"
+        else:
+            L, n_temps = ns.L, ns.n_temps
+            t_min, t_max = ns.t_min, ns.t_max
+            sweeps, burnin = ns.sweeps, ns.burnin
+            device = ns.device
+        print(f"M13 frustrated triangular antiferromagnet · L={L} · {n_temps} geometric "
+              f"temps in [{t_min}, {t_max}] · {sweeps:,} sweeps on {device} · integrating "
+              f"C(T)/T → residual entropy vs Wannier 0.3383")
+
+        def _progress_m13(result):
+            print(f"  ✓ swept {len(result.T)} temps  (ground energy {result.e_ground:.4f}, "
+                  f"{result.wall_seconds:.1f}s)")
+
+        result = m13.run_m13(
+            L=L, T_min=t_min, T_max=t_max, n_temps=n_temps,
+            n_sweeps=sweeps, n_burnin=burnin, seed=ns.seed, device=device,
+            progress=_progress_m13,
+        )
+        report = m13.to_report(result)
+        verdict = ("residual entropy reproduced — Wannier 0.3383" if result.resolved
+                   else "integrated residual off 0.3383 — honest [~] null")
+        print(f"  → residual S0/N = {result.s0_measured:.4f} (Wannier {result.s0_benchmark:.4f}, "
+              f"Δ={result.s0_abs_error:.4f}) · ground energy {result.e_ground:.4f}/spin (exact −1) "
+              f"· {verdict} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_m13(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod
