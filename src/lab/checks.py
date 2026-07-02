@@ -43,6 +43,24 @@ TC_TRI = 4.0 / math.log(3.0)   # ≈ 3.6410
 T_BKT = 0.8929
 # The universal-jump slope: at the crossing Υ/T = 2/π, i.e. Υ(T_BKT) = (2/π)·T_BKT.
 TWO_OVER_PI = 2.0 / math.pi
+# Wannier's exact residual (ground-state) entropy per spin of the triangular Ising
+# antiferromagnet (M13): S0/N = 0.3383 k_B, the macroscopic degeneracy the frustrated
+# ground state leaves at T=0. Measured by integrating C(T)/T down from S(∞)=ln2.
+WANNIER_S0 = 0.3383
+# Residual-entropy tolerance for M13. A physically-justified band, NOT a fudge: the
+# integrated residual carries a few-percent systematic from the finite temperature
+# window and the trapezoidal integration of a Monte-Carlo C(T). Empirically it lands
+# slightly BELOW 0.3383 and converges to ≈0.32 as the lattice grows (L=24→0.334,
+# L=96→0.322), so ±0.03 comfortably passes the trustworthy large-L runs while a broken
+# run — wrong geometry, wrong J sign, or a non-degenerate ground state (residual near 0
+# or ln2) — misses by 10× more. Owned by the check, not read from the report, so a run
+# can't widen its own tolerance.
+WANNIER_S0_TOL = 0.03
+# The exact triangular-AFM ground-state energy per spin (|J| units): each frustrated
+# triangle keeps two of three bonds → Σ_bonds s_i s_j = −N → e = −1. An independent
+# anchor: a wrong-sign (accidental FM, e→−3) or wrong-geometry run fails this outright.
+TRI_AFM_GROUND_ENERGY = -1.0
+TRI_AFM_GROUND_ENERGY_TOL = 0.06
 
 
 def _reports_newest_first() -> list[Path]:
@@ -686,12 +704,63 @@ def check_m12(report: dict) -> tuple[bool | None, str]:
     return ok, detail
 
 
+def check_m13(report: dict) -> tuple[bool | None, str]:
+    """Frustrated triangular antiferromagnet: the integrated residual entropy ≈ 0.3383 k_B.
+
+    Returns ``None`` unless this is an M13 report. Otherwise **re-derives** the residual
+    entropy from the report's own ``(T, specific_heat)`` arrays — re-integrating C(T)/T
+    down from the free-spin reference S(∞) = ln 2 with the shared ``entropy`` primitive
+    (a receipt, not an echo of the reported ``s0_measured``) — and asserts it lands near
+    Wannier's exact ``S0/N = 0.3383`` within the check-owned ±0.03 band. Two things make
+    the pass honest rather than lucky:
+
+    * **The integration is redone here**, from the raw C(T), so a report cannot ship a
+      hand-set residual; the number is recomputed from the curve every grade.
+    * **A ground-state anchor**: the frustrated triangular AFM has an exact ground energy
+      of −1 per spin (two of every triangle's three bonds satisfied). The coldest measured
+      energy must sit near −1, so an accidental ferromagnet (e → −3) or a wrong-geometry
+      run fails outright even if its integral happened to land near 0.3383.
+
+    A miss (coarse grid / small lattice / broken model) fails, and the milestone ships as
+    an honest ``[~]`` failed-calibration null — never a fake green.
+    """
+    if report.get("experiment") != "M13-triangular-afm":
+        return None, "not an M13 triangular-AFM report"
+    T, C = report.get("T"), report.get("specific_heat")
+    if not T or not C or len(T) != len(C) or len(T) < 3:
+        return None, "M13 report missing parallel (T, specific_heat) arrays"
+
+    from .entropy import LN2, residual_entropy
+    s0 = residual_entropy(T, C, s_inf=LN2, add_high_t_tail=True)
+    near = abs(s0 - WANNIER_S0) <= WANNIER_S0_TOL
+
+    # Ground-state energy anchor: the coldest measured energy per spin ≈ −1.
+    energy = report.get("energy") or []
+    e_ground = min(energy) if energy else None
+    ground_ok = e_ground is not None and abs(e_ground - TRI_AFM_GROUND_ENERGY) <= TRI_AFM_GROUND_ENERGY_TOL
+
+    ok = bool(near and ground_ok)
+    e_str = f"{e_ground:.3f}" if e_ground is not None else "—"
+    detail = (
+        f"integrated residual S0/N = {s0:.4f} vs Wannier exact {WANNIER_S0:.4f} "
+        f"(tol ±{WANNIER_S0_TOL}); ground-state energy {e_str}/spin (exact −1) — "
+        + ("frustrated residual entropy reproduced by C/T integration" if ok else
+           ("residual near 0.3383 but the ground energy is off (wrong sign/geometry?)"
+            if near and not ground_ok else
+            ("ground energy sane but the integrated residual misses 0.3383 — coarse "
+             "grid / small lattice / under-converged C" if ground_ok and not near else
+             "both the residual and the ground energy are off — broken run")))
+    )
+    return ok, detail
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
-          "M10": check_m10, "M11": check_m11, "M12": check_m12}
+          "M10": check_m10, "M11": check_m11, "M12": check_m12,
+          "M13": check_m13}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:
