@@ -346,20 +346,20 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-07-01T07:00:40.197206+00:00",
-  "runs": 17,
+  "last_run": "2026-07-02T07:00:39.050829+00:00",
+  "runs": 18,
   "temp_c": null,
   "latest_report": {
-    "date": "2026-07-01",
+    "date": "2026-07-02",
     "milestone": "M01",
     "verdict": "verified",
-    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 32s on GPU",
+    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 29s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-07-01T07:00:44.578944+00:00",
+  "updated": "2026-07-02T07:00:43.391869+00:00",
   "provenance": {
-    "code_sha": "99d747d",
+    "code_sha": "297f772",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -368,6 +368,27 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-07-02",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 29s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
+    {
+      "date": "2026-07-01",
+      "milestone": "M13",
+      "verdict": "unscored",
+      "headline": "Frustrated triangular Ising antiferromagnet (L=24): no ordering transition, a macroscopically degenerate ground state. Integrating C(T)/T from S(\u221e)=ln2 down gives a residual entropy S0/N = 0.3338 k_B vs Wannier's exact 0.3383 (\u0394=0.0045); ground-state energy -1.0000 per spin (exact \u22121) \u2014 residual S0/N \u2248 0.3338 k_B \u2014 Wannier reproduced \u00b7 6s",
+      "href": null
+    },
+    {
+      "date": "2026-07-01",
+      "milestone": "M12",
+      "verdict": "null",
+      "headline": "3D Edwards\u2013Anderson spin glass (L=[4, 6, 8], 8 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 0.558 (benchmark 0.95 \u00b1 0.15) \u2014 no clean crossing near 0.95 \u2014 calibration null \u00b7 8s",
+      "href": null
+    },
     {
       "date": "2026-07-01",
       "milestone": "M01",
