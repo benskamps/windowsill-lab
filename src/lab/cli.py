@@ -87,6 +87,8 @@ def _parse_m02(args):
     p.add_argument("--burnin", type=int, default=30000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--updater", default="wolff",
+                   help="'wolff' (cluster, near-T_c; unlocks L≥512) or 'metropolis'")
     return p.parse_args(args)
 
 

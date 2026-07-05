@@ -103,3 +103,55 @@ def test_m06_command_routes_to_runner_and_renderer(monkeypatch, capsys):
     assert calls["render"]["experiment"] == "M06-3d-ising"
     out = capsys.readouterr().out
     assert "M06 3D simple-cubic Ising" in out
+
+
+def test_m02_command_forwards_updater(monkeypatch, capsys):
+    """`lab m02 ... --updater wolff` parses the flag and forwards it to run_fss.
+
+    Regression guard: the m02 handler references ``ns.updater`` for its banner
+    and the run call, so ``_parse_m02`` MUST define ``--updater`` (default
+    'wolff') or the command crashes with AttributeError. The runner + renderer
+    are stubbed so no Monte-Carlo sweep runs."""
+    calls = {}
+
+    class _FakeResult:
+        slope = 1.75
+        r2 = 0.999
+        wall_seconds = 42.0
+
+    def fake_run_fss(**kwargs):
+        calls["run"] = kwargs
+        return _FakeResult()
+
+    def fake_to_report(result):
+        return {"experiment": "M02-finite-size-scaling", "curves": []}
+
+    def fake_render_fss(report, date=None):
+        calls["render"] = report
+        return "/tmp/fake-2026-06-15-m02.html"
+
+    from lab import fss as fss_mod
+    from lab import render as render_mod
+    from lab import publish as publish_mod
+    monkeypatch.setattr(fss_mod, "run_fss", fake_run_fss)
+    monkeypatch.setattr(fss_mod, "to_report", fake_to_report)
+    monkeypatch.setattr(render_mod, "render_fss", fake_render_fss)
+    monkeypatch.setattr(publish_mod, "publish", lambda *a, **k: "/tmp/pot.json")
+
+    # explicit flag
+    rc = cli.main(["m02", "--L", "8,12", "--device", "cpu", "--sweeps", "100",
+                   "--updater", "wolff"])
+    assert rc == 0
+    assert calls["run"]["L_values"] == (8, 12)
+    assert calls["run"]["updater"] == "wolff"
+    assert calls["run"]["n_sweeps"] == 100
+    out = capsys.readouterr().out
+    assert "M02 finite-size scaling" in out
+    assert "cluster updates" in out and "wolff" in out    # banner names the regime
+
+    # default (no flag) is still wolff, and metropolis prints "sweeps"
+    rc = cli.main(["m02", "--L", "8", "--device", "cpu", "--updater", "metropolis"])
+    assert rc == 0
+    assert calls["run"]["updater"] == "metropolis"
+    out = capsys.readouterr().out
+    assert "sweeps · metropolis" in out
