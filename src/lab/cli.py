@@ -21,6 +21,7 @@ RUNNERS = {
     "M02": "m02", "M03": "m03", "M04": "m04", "M05": "m05",
     "M06": "m06", "M07": "m07", "M08": "m08", "M09": "m09",
     "M10": "m10", "M11": "m11", "M12": "m12", "M13": "m13",
+    "M14": "m14",
 }
 
 
@@ -62,6 +63,7 @@ Usage:
   lab m11             run M11: 2D Edwards–Anderson spin glass — P(q) broadens toward T_c=0
   lab m12             run M12: 3D EA spin glass — Binder-cumulant crossing at T_SG≈0.95 (parallel tempering)
   lab m13             run M13: frustrated triangular AFM — residual entropy S0/N≈0.3383 via C/T integration
+  lab m14             run M14: random-bond Ising — exact Nishimori-line energy, map toward the MNP p_c≈0.109
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -375,6 +377,30 @@ def _parse_m13(args):
                    help="geometric temperature-grid points (default 80)")
     p.add_argument("--sweeps", type=int, default=40000)
     p.add_argument("--burnin", type=int, default=8000)
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m14(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M14 is the random-bond Ising model swept along its Nishimori line (tanh(1/T)=1−2p).
+    # The VERIFIED claim is the exact Nishimori-line energy E/N = −2 tanh(1/T); the sweep
+    # also maps the ferro-order collapse toward the multicritical point p_c≈0.109 (only
+    # approximately at this scale). L defaults to a two-size (12,24) map, the larger of
+    # which grades the energy; the ±J disorder is averaged over many realizations. --quick
+    # runs a small CPU pass that proves the pipeline end to end.
+    p.add_argument("--L-values", default="12,24",
+                   help="comma-separated map lattice sizes; the largest grades the energy (default 12,24)")
+    p.add_argument("--quick", action="store_true",
+                   help="small CPU pass (L=8,12, few realizations, short sweep) — proves the pipeline")
+    p.add_argument("--p-values", default=None,
+                   help="comma-separated AF-bond fractions along the Nishimori line "
+                        "(default 0.04,0.06,0.08,0.10,0.1094,0.12,0.14,0.16)")
+    p.add_argument("--realizations", type=int, default=64,
+                   help="quenched ±J disorder realizations to average over")
+    p.add_argument("--sweeps", type=int, default=10000)
+    p.add_argument("--burnin", type=int, default=4000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
@@ -915,6 +941,57 @@ def main(argv=None):
               f"Δ={result.s0_abs_error:.4f}) · ground energy {result.e_ground:.4f}/spin (exact −1) "
               f"· {verdict} · {result.wall_seconds:.0f}s")
         path = render_mod.render_m13(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m14":
+        ns = _parse_m14(args[1:])
+        from . import m14
+        from . import render as render_mod
+        L_values = tuple(int(x) for x in ns.L_values.split(",") if x.strip())
+        p_values = (tuple(float(x) for x in ns.p_values.split(",") if x.strip())
+                    if ns.p_values else
+                    (0.04, 0.06, 0.08, 0.10, 0.1094, 0.12, 0.14, 0.16))
+        device = ns.device
+        if ns.quick:
+            # A small CPU pass: proves the multi-file recipe end to end and writes HTML+JSON.
+            # The Nishimori-line energy is an exact identity, so even this coarse pass usually
+            # reproduces it; a miss still ships an honest null.
+            L_values = (8, 12)
+            p_values = (0.05, 0.10, 0.1094, 0.15)
+            realizations, sweeps, burnin = 16, 3000, 1200
+            device = "cpu"
+        else:
+            realizations, sweeps, burnin = ns.realizations, ns.sweeps, ns.burnin
+        print(f"M14 random-bond Ising (Nishimori line) · L={list(L_values)} · "
+              f"p={', '.join(f'{p:.3f}' for p in p_values)} · {realizations} disorder "
+              f"realizations · {sweeps:,} sweeps on {device} · verifying E/N = −2 tanh(1/T)")
+
+        def _progress_m14(L, p, r):
+            print(f"  ✓ L={L:<3} p={p:.4f} T_NL={r.T:.4f}  E={r.energy:.4f} "
+                  f"(exact {r.energy_exact_nl:.4f}, Δ={abs(r.energy-r.energy_exact_nl):.4f}) "
+                  f"|m|={r.abs_mag:.3f}  ({r.wall_seconds:.1f}s)")
+
+        result = m14.run_m14(
+            p_values=p_values, L_values=L_values, n_realizations=realizations,
+            n_sweeps=sweeps, n_burnin=burnin, seed=ns.seed, device=device,
+            progress=_progress_m14,
+        )
+        report = m14.to_report(result)
+        ph = result.mnp_order_p_half
+        ph_str = f"p≈{ph:.3f}" if ph is not None else "unresolved"
+        verdict = ("exact Nishimori-line energy reproduced" if result.energy_resolved
+                   else "Nishimori-line energy off — honest [~] null")
+        print(f"  → max energy Δ = {result.max_energy_dev:.4f} vs exact −2 tanh(1/T) "
+              f"(L={result.gate_L}) · ferro order collapses near {ph_str} "
+              f"(MNP p_c≈{result.p_c_benchmark:.4f}) · {verdict} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_m14(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod

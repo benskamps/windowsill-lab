@@ -94,8 +94,12 @@ mkdir -p "$(dirname "$LOG")"
   # their own schedule, and a bare push from a stale main is rejected ("fetch
   # first") — exactly how the feed stranded for days in June 2026. Rebase on top.
   git pull --rebase --autostash 2>/dev/null || true
-  # Run today's experiment (best-effort); always leave the feed fresh.
-  "{PY}" -m lab.cli run || "{PY}" -m lab.cli publish
+  # Advance the frontier: `lab next` runs the LOWEST OPEN milestone's experiment
+  # (falling back to the M01 heartbeat when the open milestone has no runner yet),
+  # so the windowsill climbs the curriculum on its own instead of re-running M01
+  # every night. Best-effort; always leave the feed fresh. (Swapped from `lab run`
+  # to the milestone-aware scheduler 2026-07-05, together with the M14 runner.)
+  "{PY}" -m lab.cli next || "{PY}" -m lab.cli publish
   # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
   # per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.
   git add pot.json 2>/dev/null || true
@@ -175,8 +179,12 @@ if ($branch -ne 'main') {
 # the push below is rejected ("fetch first") -- exactly how the feed stranded for
 # days in June 2026. Rebase whatever we do on top of whatever has already landed.
 git pull --rebase --autostash 2>&1 | LogCmd
-# Run today's experiment (best-effort); always leave the feed fresh.
-& '__PY__' -m lab.cli run 2>&1 | LogCmd
+# Advance the frontier: `lab next` runs the LOWEST OPEN milestone's experiment (falling
+# back to the M01 heartbeat when the open milestone has no runner yet), so the windowsill
+# climbs the curriculum on its own instead of re-running M01 every night. Best-effort;
+# always leave the feed fresh. (Swapped from `lab run` to the milestone-aware scheduler
+# 2026-07-05, together with the M14 runner landing.)
+& '__PY__' -m lab.cli next 2>&1 | LogCmd
 if ($LASTEXITCODE -ne 0) { & '__PY__' -m lab.cli publish 2>&1 | LogCmd }
 # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
 # per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.

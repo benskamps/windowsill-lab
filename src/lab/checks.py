@@ -61,6 +61,22 @@ WANNIER_S0_TOL = 0.03
 # anchor: a wrong-sign (accidental FM, e→−3) or wrong-geometry run fails this outright.
 TRI_AFM_GROUND_ENERGY = -1.0
 TRI_AFM_GROUND_ENERGY_TOL = 0.06
+# 2D ±J random-bond Ising, the multicritical Nishimori point (M14): the square-lattice
+# literature benchmark (p_c ≈ 0.109–0.110, T_c ≈ 0.953). M14 does NOT gate on pinning
+# this — it is genuinely hard at reachable scale — it gates on the EXACT Nishimori-line
+# internal energy, an identity that needs no critical precision.
+MNP_P_C = 0.1094
+MNP_T_C = 0.9528
+# Nishimori-line energy tolerance for M14, OWNED BY THE CHECK. On the line the disorder-
+# averaged energy per spin is the exact identity E/N = −2·tanh(1/T) = −2(1−2p) (square,
+# J=1); at modest L the measured value sits within a few ×0.01 of it, so ±0.05 passes the
+# trustworthy runs while a broken engine (wrong bond draw, wrong estimator, off the line)
+# misses by far more. A hard identity, not a fitted T_c — the tolerance is slack, not a fudge.
+MNP_ENERGY_TOL = 0.05
+# How tightly a reported (p, T) point must sit on the Nishimori line to be graded: the
+# check re-derives tanh(1/T) and requires it to equal 1 − 2p. A point off the line has no
+# exact-energy identity to test against, so it is rejected rather than mis-graded.
+NISHIMORI_LINE_TOL = 1e-2
 
 
 def _reports_newest_first() -> list[Path]:
@@ -754,13 +770,78 @@ def check_m13(report: dict) -> tuple[bool | None, str]:
     return ok, detail
 
 
+def check_m14(report: dict) -> tuple[bool | None, str]:
+    """Random-bond Ising: the disorder-averaged energy ON the Nishimori line is exact.
+
+    Returns ``None`` unless this is an M14 report. M14's verified claim is NOT the
+    (genuinely hard) multicritical-point location — it is the **exact Nishimori-line
+    internal energy**. On the line ``tanh(J/T) = 1 − 2p``, and Nishimori's gauge symmetry
+    fixes the disorder-averaged energy per spin to the identity
+
+        E/N = −2 J tanh(J/T) = −2 J (1 − 2p)      (square lattice, exact, any L),
+
+    so the check **re-derives** the exact target from each calibration point's own ``T``
+    (a receipt, not an echo of the reported ``energy_exact``) and asserts the measured
+    disorder-averaged energy lands within the check-owned ±0.05 band, at every point. Two
+    guards keep the pass honest:
+
+    * **On the line**: each point must actually sit on the Nishimori line — the check
+      re-checks ``tanh(1/T) ≈ 1 − 2p`` — else there is no exact identity to grade against
+      and the point is rejected (a run can't smuggle in an off-line point that happens to
+      match some other energy).
+    * **A spread of points**: ≥3 distinct ``p`` must be graded, so a single lucky point
+      can't carry the leaf.
+
+    The precise MNP (p_c ≈ 0.109, T_c ≈ 0.953) is mapped only approximately at reachable
+    scale and is deliberately **not** gated — a documented open edge, not a fake green.
+    """
+    if report.get("experiment") != "M14-random-bond-nishimori":
+        return None, "not an M14 random-bond report"
+    pts = report.get("calibration_points")
+    if not pts or len(pts) < 3:
+        return None, "M14 report missing ≥3 Nishimori-line calibration points"
+
+    parts: list[str] = []
+    all_ok = True
+    graded = 0
+    for pt in pts:
+        p, T, e = pt.get("p"), pt.get("T"), pt.get("energy")
+        if p is None or T is None or e is None or T <= 0:
+            continue
+        # Guard 1 — the point must be on the Nishimori line, else the identity doesn't apply.
+        on_line = abs(math.tanh(1.0 / T) - (1.0 - 2.0 * p)) <= NISHIMORI_LINE_TOL
+        if not on_line:
+            all_ok = False
+            parts.append(f"p={p:.3f}: OFF the Nishimori line ✗")
+            continue
+        graded += 1
+        # Re-derive the exact target from T alone (a receipt): E/N = −2·tanh(1/T).
+        e_exact = -2.0 * math.tanh(1.0 / T)
+        dev = abs(e - e_exact)
+        ok = dev <= MNP_ENERGY_TOL
+        all_ok = all_ok and ok
+        parts.append(f"p={p:.3f}: E={e:.3f} vs {e_exact:.3f} (Δ={dev:.3f}){'' if ok else ' ✗'}")
+
+    if graded < 3:
+        return None, "M14 report has <3 gradable on-line calibration points"
+    detail = (
+        f"Nishimori-line energy E/N vs exact −2·tanh(1/T) — " + "; ".join(parts) + " — "
+        + ("the exact disorder-averaged Nishimori-line energy is reproduced across the "
+           "line (the MNP p_c≈0.109 itself is mapped only approximately at this scale)"
+           if all_ok else
+           "measured energy departs from the exact Nishimori-line identity — a broken "
+           "random-bond run, not the expected exact energy")
+    )
+    return all_ok, detail
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
           "M10": check_m10, "M11": check_m11, "M12": check_m12,
-          "M13": check_m13}
+          "M13": check_m13, "M14": check_m14}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:

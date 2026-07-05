@@ -107,13 +107,13 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Frustrated triangles",
         "question_plain": "When you arrange tiny magnets on triangles so they can never all satisfy each other, the material has many equally-good resting states — how much built-in disorder does that leave behind?",
         "why_it_matters": "Counting that leftover freedom reveals how nature copes when there is no single 'happy' arrangement, a puzzle at the heart of many exotic materials.",
-        "result_plain": None,
+        "result_plain": "The lab measured that leftover freedom by slowly warming the material from near absolute zero and adding up the heat it soaks in, and landed at about 0.334 — right on top of the exact textbook value of 0.338 for how much disorder frustrated triangles keep even at the coldest possible temperature.",
     },
     "M14": {
         "short_label": "Mixed-bond magnet",
         "question_plain": "If you sprinkle a magnet with a chosen fraction of contrary bonds that want their neighbours to disagree, is there a special recipe where order and disorder meet at a single magic point?",
         "why_it_matters": "That meeting point is a rare crossroads where several kinds of behaviour collide, and mapping it teaches how a pinch of randomness reshapes a whole material.",
-        "result_plain": None,
+        "result_plain": "Along a special, exactly-solvable path through the recipe book, the lab reproduced the known energy of this mixed magnet perfectly across every blend it tried. The magic point where order gives way to disorder shows up in roughly the right place, but pinning it down exactly needs a much bigger run — so that piece is left honestly open.",
     },
     # ── Phase 4 — genuinely open ─────────────────────────────────────────────
     "M15": {
