@@ -2607,3 +2607,206 @@ def render_m13(report: dict, date: str | None = None) -> Path:
     (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
+
+
+def _plot_m14_energy(report: dict) -> str:
+    """The verified claim: measured energy on the Nishimori line vs the exact identity.
+
+    Walking p up the Nishimori line, the disorder-averaged energy per spin should trace the
+    exact curve E/N = -2 tanh(1/T) = -2(1-2p) (solid). The measured points (at the gate L)
+    are overlaid with error bars; the eye lands on how tightly they sit on the exact line -
+    that agreement IS the calibration.
+    """
+    p = np.asarray(report["p_values"], dtype=float)
+    e_exact = np.asarray(report["energy_exact"], dtype=float)
+    gate_L = str(report.get("gate_L"))
+    e_meas = np.asarray(report["energy_by_L"][gate_L], dtype=float)
+    e_err = np.asarray(report.get("energy_err_by_L", {}).get(gate_L, [0.0] * len(p)), dtype=float)
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    ax.plot(p, e_exact, "-", color="#9b6b3e", linewidth=2,
+            label="exact  E/N = -2 tanh(1/T) = -2(1-2p)")
+    ax.errorbar(p, e_meas, yerr=e_err, fmt="o", color="#3a2e21", markersize=5, capsize=2,
+                label=f"measured (L={gate_L})")
+    ax.axvline(report.get("p_c_benchmark", 0.1094), linestyle="--", color="#c89878",
+               alpha=0.7, label=f"MNP p_c = {report.get('p_c_benchmark', 0.1094):.4f}")
+    ax.set_xlabel("antiferromagnetic-bond fraction  p  (along the Nishimori line)")
+    ax.set_ylabel("energy  E/N  (per spin)")
+    ax.set_title("Nishimori-line energy - measured vs exact identity")
+    ax.legend(frameon=False, fontsize=8.5)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+def _plot_m14_order(report: dict) -> str:
+    """The map: the ferromagnetic order parameter |m| collapsing near the MNP.
+
+    Along the Nishimori line, the disorder-averaged |m| is strong (ferromagnet) at small p
+    and dies as p rises toward the multicritical point. Plotted for each L, with the
+    benchmark p_c marked. The collapse brackets p_c ~ 0.109 - an approximate map at this
+    scale, not a precise pinning (the two-L Binder crossing does not resolve here).
+    """
+    p = np.asarray(report["p_values"], dtype=float)
+    fig, ax = plt.subplots(figsize=(7, 4.2))
+    colors = ["#7a9b56", "#3a6ea5", "#7a4e2f", "#9b6b3e"]
+    for i, L in enumerate(report.get("L_values", [])):
+        m = np.asarray(report["abs_mag_by_L"][str(L)], dtype=float)
+        ax.plot(p, m, "o-", color=colors[i % len(colors)], markersize=4, linewidth=1.5,
+                label=f"|m| (L={L})")
+    ax.axvline(report.get("p_c_benchmark", 0.1094), linestyle="--", color="#c89878",
+               alpha=0.8, label=f"MNP benchmark p_c = {report.get('p_c_benchmark', 0.1094):.4f}")
+    ph = report.get("mnp_order_p_half")
+    if ph is not None:
+        ax.axvline(ph, linestyle=":", color="#3a2e21", alpha=0.6,
+                   label=f"|m| drops through 1/2 at p ~ {ph:.3f}")
+    ax.set_xlabel("antiferromagnetic-bond fraction  p  (along the Nishimori line)")
+    ax.set_ylabel("|m|  (ferromagnetic order, per spin)")
+    ax.set_title("Mapping the multicritical point - ferro order dies near p_c")
+    ax.legend(frameon=False, fontsize=8.5)
+    ax.set_facecolor("#fbf6ea")
+    fig.patch.set_facecolor("#f6efe1")
+    return _fig_to_b64(fig)
+
+
+M14_HTML_TEMPLATE = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>windowsill-lab &middot; {date} &middot; random-bond Ising (Nishimori)</title>
+<style>
+  :root {{ color-scheme: light; }}
+  body {{
+    margin: 0; padding: 36px 24px 80px; min-height: 100vh;
+    background: linear-gradient(180deg, #f6efe1 0%, #ede1c8 100%);
+    font-family: 'Iowan Old Style', Georgia, serif;
+    color: #3a2e21; line-height: 1.55;
+  }}
+  .wrap {{ max-width: 760px; margin: 0 auto; }}
+  h1 {{ font-weight: 500; font-size: 28px; margin: 0 0 4px; letter-spacing: -0.01em; }}
+  h2 {{ font-size: 14px; letter-spacing: 0.08em; text-transform: uppercase; opacity: 0.55; margin: 38px 0 12px; font-weight: 600; }}
+  .date {{ opacity: 0.55; font-size: 14px; margin-bottom: 28px; }}
+  .lede {{ font-size: 17px; padding: 18px 22px; background: #fbf6ea; border-left: 3px solid #c89878; border-radius: 2px; }}
+  .verdict {{ font-size: 15px; margin: 18px 0 0; padding: 12px 18px; background: #eef3e6; border-left: 3px solid #7a9b56; border-radius: 2px; }}
+  .caveat {{ font-size: 14px; margin: 14px 0 0; padding: 12px 18px; background: #f6eee0; border-left: 3px solid #c89878; border-radius: 2px; opacity: 0.95; }}
+  figure {{ margin: 22px 0; }}
+  figure img {{ width: 100%; height: auto; border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }}
+  details {{ margin-top: 28px; padding: 14px 18px; background: #fbf6ea; border-radius: 4px; }}
+  details summary {{ cursor: pointer; font-size: 13px; letter-spacing: 0.04em; opacity: 0.6; }}
+  details pre {{ font-size: 11px; max-height: 320px; overflow: auto; margin-top: 12px; }}
+  .footer {{ margin-top: 60px; padding-top: 18px; border-top: 1px solid #d6c0a2; opacity: 0.5; font-size: 12px; }}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>windowsill-lab &middot; phase 3</h1>
+  <div class="date">{date} &middot; M14 - random-bond Ising, the Nishimori line</div>
+
+  <div class="lede">{sentence}</div>
+  <div class="verdict">{verdict}</div>
+  <div class="caveat">{caveat}</div>
+
+  <h2>Nishimori-line energy - measured vs the exact identity</h2>
+  <figure><img src="data:image/png;base64,{energy_png}" alt="disorder-averaged energy per spin along the Nishimori line vs the exact -2 tanh(1/T) identity"></figure>
+
+  <h2>Mapping the multicritical point - ferro order dies near p_c</h2>
+  <figure><img src="data:image/png;base64,{order_png}" alt="ferromagnetic order parameter collapsing as p rises toward the multicritical Nishimori point"></figure>
+
+  <details>
+    <summary>Raw measurements (JSON)</summary>
+    <pre>{json_dump}</pre>
+  </details>
+
+  <div class="footer">
+    Sibling to <a href="https://github.com/benskamps/fish-tank">fish-tank</a>;
+    its calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>.
+    One machine, one patient observation, real signal, accumulates over months.
+  </div>
+</div>
+</body>
+</html>
+"""
+
+
+def render_m14(report: dict, date: str | None = None) -> Path:
+    """Render an M14 random-bond-Ising / Nishimori-line report (HTML + plots + JSON).
+
+    The verified claim is the exact Nishimori-line internal energy: the measured disorder-
+    averaged energy per spin reproduces -2 tanh(1/T) across a spread of p on the line. The
+    green check is earned by that identity (re-derived by check_m14); the multicritical
+    point p_c itself is only mapped approximately at this scale and is called out honestly
+    as an open edge, never a fake green. Promotion is human-reviewed via the report PR.
+    """
+    from .publish import today_local
+    date = date or today_local()
+    _ensure_home()
+
+    gate_L = report.get("gate_L")
+    max_dev = report.get("max_energy_dev")
+    resolved = report.get("energy_resolved")
+    ph = report.get("mnp_order_p_half")
+    crossing = report.get("binder_crossing_p")
+    p_c = report.get("p_c_benchmark", 0.1094)
+    t_c = report.get("t_c_benchmark", 0.9528)
+    ps = report.get("p_values") or []
+    p_lo = min(ps) if ps else 0.0
+    p_hi = max(ps) if ps else 0.0
+    n_real = report.get("n_realizations")
+
+    sentence = (
+        f"I ran the random-bond Ising model - a square grid of spins where a fraction p of "
+        f"the couplings are flipped antiferromagnetic - along its <em>Nishimori line</em>, "
+        f"the special curve tanh(1/T) = 1 - 2p where a hidden gauge symmetry makes the energy "
+        f"exactly solvable. I swept p across [{p_lo:.2f}, {p_hi:.2f}] (each at its own line "
+        f"temperature T = 2/ln((1-p)/p)), averaging the energy over {n_real} frozen disorder "
+        f"realizations at L={gate_L}. Wall time: {report.get('wall_seconds', 0):.0f}s."
+    )
+
+    dev_str = f"{max_dev:.3f}" if max_dev is not None else "-"
+    if resolved:
+        verdict = (
+            f"The measured disorder-averaged energy sits on the exact Nishimori-line identity "
+            f"E/N = -2 tanh(1/T) = -2(1 - 2p) across the whole sweep - the largest departure is "
+            f"only Delta = {dev_str} per spin. That identity holds at any lattice size (it is a "
+            f"gauge symmetry, not a finite-size-shifted critical point), so reproducing it is a "
+            f"real, cheap, exact win on the frontier of the ladder: the lab's first result on a "
+            f"quenched-disorder phase diagram."
+        )
+    else:
+        verdict = (
+            f"The measured energy departs from the exact Nishimori-line identity (largest Delta = "
+            f"{dev_str} per spin). Kept honestly as an open/null - a folded grey leaf - not a fake "
+            f"green. The likely cause is under-equilibration of the frozen +/-J disorder at the "
+            f"colder points; more sweeps or realizations sharpen it."
+        )
+
+    ph_str = f"p ~ {ph:.3f}" if ph is not None else "not cleanly located in-window"
+    cross_str = (f"an approximate two-size Binder crossing at p ~ {crossing:.3f}"
+                 if crossing is not None else
+                 "no clean two-size Binder crossing (the L=12 and L=24 curves do not cross "
+                 "in this window - the expected strong finite-size drift of the MNP)")
+    caveat = (
+        f"Honesty on the multicritical point itself: mapping <em>where</em> the ferromagnet dies "
+        f"on the Nishimori line - the multicritical Nishimori point, benchmark p_c &asymp; {p_c:.4f}, "
+        f"T_c &asymp; {t_c:.4f} - is genuinely hard at a windowsill's scale. The ferromagnetic order "
+        f"parameter |m| does collapse through the right region ({ph_str} at L={gate_L}), bracketing "
+        f"the benchmark, but pinning p_c precisely needs a large lattice and many realizations (a "
+        f"hero run): here there is {cross_str}. So the exact energy earns the leaf; the precise MNP "
+        f"stays a documented open edge. The grading check re-derives the exact energy from each "
+        f"point's own temperature with its own tolerance - the report cannot set its own bar - and "
+        f"does not gate on the MNP location; promotion is human-reviewed."
+    )
+
+    json_dump = json.dumps(report, indent=2)
+    html = M14_HTML_TEMPLATE.format(
+        date=date, sentence=sentence, verdict=verdict, caveat=caveat,
+        energy_png=_plot_m14_energy(report),
+        order_png=_plot_m14_order(report),
+        json_dump=json_dump,
+    )
+    slug = _slug_for(report)
+    out = LAB_HOME / f"{date}-{slug}.html"
+    out.write_text(html, encoding="utf-8")
+    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    _commit_report(date, slug, html, json_dump)
+    return out

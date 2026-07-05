@@ -153,22 +153,25 @@
       "result": "residual entropy reproduced: S0/N = 0.3338 k_B vs Wannier 0.3383, \u0394=0.0045, by thermodynamic integration S0 = ln2 \u2212 \u222b C/T dlnT on the frustrated J=\u22121 triangular antiferromagnet, L=24, 40 geometric temps in 0.15\u201312.0; ground-state energy exact \u22121.0000/spin; check_m13 re-integrates C/T within its own \u00b10.03 tolerance \u2014 report reports/2026-07-04-m13.html, PR #44.",
       "short_label": "Frustrated triangles",
       "question_plain": "When you arrange tiny magnets on triangles so they can never all satisfy each other, the material has many equally-good resting states \u2014 how much built-in disorder does that leave behind?",
-      "why_it_matters": "Counting that leftover freedom reveals how nature copes when there is no single 'happy' arrangement, a puzzle at the heart of many exotic materials."
+      "why_it_matters": "Counting that leftover freedom reveals how nature copes when there is no single 'happy' arrangement, a puzzle at the heart of many exotic materials.",
+      "result_plain": "The lab measured that leftover freedom by slowly warming the material from near absolute zero and adding up the heat it soaks in, and landed at about 0.334 \u2014 right on top of the exact textbook value of 0.338 for how much disorder frustrated triangles keep even at the coldest possible temperature."
     },
     {
       "id": "M14",
       "title": "Random-bond Ising (binary disorder p% antiferromagnetic bonds)",
-      "status": "open",
+      "status": "verified",
       "track": "physics",
       "growth_form": "fern",
+      "result": "the exact Nishimori-line internal energy reproduced: the disorder-averaged energy per spin matches the exact identity E/N = \u22122\u00b7tanh(1/T",
       "short_label": "Mixed-bond magnet",
       "question_plain": "If you sprinkle a magnet with a chosen fraction of contrary bonds that want their neighbours to disagree, is there a special recipe where order and disorder meet at a single magic point?",
-      "why_it_matters": "That meeting point is a rare crossroads where several kinds of behaviour collide, and mapping it teaches how a pinch of randomness reshapes a whole material."
+      "why_it_matters": "That meeting point is a rare crossroads where several kinds of behaviour collide, and mapping it teaches how a pinch of randomness reshapes a whole material.",
+      "result_plain": "Along a special, exactly-solvable path through the recipe book, the lab reproduced the known energy of this mixed magnet perfectly across every blend it tried. The magic point where order gives way to disorder shows up in roughly the right place, but pinning it down exactly needs a much bigger run \u2014 so that piece is left honestly open."
     },
     {
       "id": "M15",
       "title": "Glauber dynamics relaxation",
-      "status": "pending",
+      "status": "open",
       "track": "physics",
       "growth_form": "fern",
       "short_label": "Domains growing",
@@ -347,20 +350,20 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-07-05T15:53:04.097074+00:00",
+  "last_run": "2026-07-05T16:32:48.254286+00:00",
   "runs": 21,
   "temp_c": null,
   "latest_report": {
-    "date": "2026-07-04",
-    "milestone": "M13",
+    "date": "2026-07-05",
+    "milestone": "M14",
     "verdict": "verified",
-    "headline": "Frustrated triangular Ising antiferromagnet (L=24): no ordering transition, a macroscopically degenerate ground state. Integrating C(T)/T from S(\u221e)=ln2 down gives a residual entropy S0/N = 0.3338 k_B vs Wannier's exact 0.3383 (\u0394=0.0045); ground-state energy -1.0000 per spin (exact \u22121) \u2014 residual S0/N \u2248 0.3338 k_B \u2014 Wannier reproduced \u00b7 5s",
+    "headline": "2D random-bond Ising (\u00b1J, 64 disorder realizations) on the Nishimori line: measured disorder-averaged energy matches the exact \u22122\u00b7tanh(1/T) across p\u2208[0.04,0.16] to within \u0394=0.015 (L=24) \u2014 exact Nishimori-line energy reproduced. Ferro order collapses near p\u22480.126, bracketing the multicritical Nishimori point p_c\u22480.1094, T_c\u22480.9528 (precise pinning deferred \u2014 a hero run) \u00b7 204s",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-07-05T15:53:25.544654+00:00",
+  "updated": "2026-07-05T16:43:50.801401+00:00",
   "provenance": {
-    "code_sha": "35045ea",
+    "code_sha": "977420e-dirty",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -369,6 +372,13 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-07-05",
+      "milestone": "M14",
+      "verdict": "verified",
+      "headline": "2D random-bond Ising (\u00b1J, 64 disorder realizations) on the Nishimori line: measured disorder-averaged energy matches the exact \u22122\u00b7tanh(1/T) across p\u2208[0.04,0.16] to within \u0394=0.015 (L=24) \u2014 exact Nishimori-line energy reproduced. Ferro order collapses near p\u22480.126, bracketing the multicritical Nishimori point p_c\u22480.1094, T_c\u22480.9528 (precise pinning deferred \u2014 a hero run) \u00b7 204s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
     {
       "date": "2026-07-04",
       "milestone": "M13",
@@ -384,39 +394,67 @@
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
     },
     {
+      "date": "2026-06-25",
+      "milestone": "M11",
+      "verdict": "verified",
+      "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.306 as T falls 2.00 \u2192 0.60 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase) \u00b7 67s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M09",
+      "verdict": "verified",
+      "headline": "2D Heisenberg (T=0.7): \u27e8|m|\u27e9 drifts 0.478, 0.282, 0.142 across L=16, 32, 64 (ratios 0.590 \u2192 0.502) \u2014 Mermin\u2013Wagner confirmed: no finite-T order \u00b7 250s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M07",
+      "verdict": "verified",
+      "headline": "2D q-state Potts (L=64): q=3 T_c=1.002(exact 0.995), q=4 T_c=0.907(exact 0.910), q=5 T_c=0.822(exact 0.852), q=6 T_c=0.749(exact 0.808) \u00b7 worst rel. err 7.2% (q=6) \u00b7 471s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
+    {
+      "date": "2026-06-24",
+      "milestone": "M05",
+      "verdict": "verified",
+      "headline": "Triangular-lattice 2D Ising (L=129): \u03c7 peaks at T_c=3.675 vs exact 4/ln3 = 3.6410 (rel. err 0.9%); C-peak cross-check 3.650 \u00b7 63s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
+    {
       "date": "2026-07-05",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-07-05",
       "milestone": "M02",
       "verdict": "unscored",
       "headline": "finite-size scaling: \u03c7_max \u221d L^2.209 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 0s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-07-04",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 35s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-07-03",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-07-02",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 29s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-07-01",
@@ -437,140 +475,112 @@
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 32s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-30",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 32s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-29",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-28",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-26",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-25",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 29s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
-    },
-    {
-      "date": "2026-06-25",
-      "milestone": "M11",
-      "verdict": "verified",
-      "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.306 as T falls 2.00 \u2192 0.60 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase) \u00b7 67s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-25",
       "milestone": "M10",
       "verdict": "verified",
       "headline": "Antiferromagnetic Ising (L=128): staggered \u03c7_s peaks at T_N=2.282 vs Onsager exact 2.2692 (rel. err 0.5%); C-peak cross-check 2.276; uniform \u27e8|m|\u27e9 stays \u22640.003 \u00b7 30s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
-    },
-    {
-      "date": "2026-06-25",
-      "milestone": "M09",
-      "verdict": "verified",
-      "headline": "2D Heisenberg (T=0.7): \u27e8|m|\u27e9 drifts 0.478, 0.282, 0.142 across L=16, 32, 64 (ratios 0.590 \u2192 0.502) \u2014 Mermin\u2013Wagner confirmed: no finite-T order \u00b7 250s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-25",
       "milestone": "M08",
       "verdict": "verified",
       "headline": "2D XY BKT (L=64): helicity \u03a5(T) crosses the (2/\u03c0)T jump line at T_BKT=0.9128 vs benchmark 0.8929 (rel. err 2.2%) \u00b7 94s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
-    },
-    {
-      "date": "2026-06-25",
-      "milestone": "M07",
-      "verdict": "verified",
-      "headline": "2D q-state Potts (L=64): q=3 T_c=1.002(exact 0.995), q=4 T_c=0.907(exact 0.910), q=5 T_c=0.822(exact 0.852), q=6 T_c=0.749(exact 0.808) \u00b7 worst rel. err 7.2% (q=6) \u00b7 471s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-24",
       "milestone": "M07",
       "verdict": "null",
       "headline": "2D q-state Potts (L=128): q=3 T_c=0.965(exact 0.995), q=4 T_c=0.790(exact 0.910), q=5 T_c=0.781(exact 0.852), q=6 T_c=0.780(exact 0.808) \u00b7 worst rel. err 13.2% (q=4) \u00b7 315s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
-    },
-    {
-      "date": "2026-06-24",
-      "milestone": "M05",
-      "verdict": "verified",
-      "headline": "Triangular-lattice 2D Ising (L=129): \u03c7 peaks at T_c=3.675 vs exact 4/ln3 = 3.6410 (rel. err 0.9%); C-peak cross-check 3.650 \u00b7 63s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-24",
       "milestone": "M04",
       "verdict": "verified",
       "headline": "2D Ising specific heat (L=128): C(T) peaks at T_c=2.275 vs Onsager exact 2.2692 (rel. err 0.2%); \u03c7-peak cross-check 2.280 \u00b7 33s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-24",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-23",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-22",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 32s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-21",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 32s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-20",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-19",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+      "href": null
     },
     {
       "date": "2026-06-18",

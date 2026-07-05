@@ -29,15 +29,30 @@ def test_select_next_picks_the_lowest_open_milestone():
 
 
 def test_select_next_flags_missing_runner_for_frontier_without_engine():
-    """When the open milestone has no runner registered (e.g. M14), selection
-    still names it but reports has_runner=False so the caller can heartbeat."""
+    """When the open milestone has no runner registered (e.g. M15, past the runner
+    frontier), selection still names it but reports has_runner=False so the caller
+    can heartbeat."""
+    milestones = [
+        {"id": "M14", "status": "verified"},
+        {"id": "M15", "status": "open"},
+    ]
+    mid, has_runner = cli._select_next(milestones)
+    assert mid == "M15"
+    assert has_runner is False
+
+
+def test_select_next_dispatches_m14_now_that_it_has_a_runner():
+    """M14 landed a runner (the random-bond / Nishimori engine), so when it is the
+    open bench selection reports has_runner=True — the nightly climbs to it rather
+    than heartbeating. The regression this locks: M14 used to be the runner frontier."""
     milestones = [
         {"id": "M13", "status": "verified"},
         {"id": "M14", "status": "open"},
+        {"id": "M15", "status": "pending"},
     ]
     mid, has_runner = cli._select_next(milestones)
     assert mid == "M14"
-    assert has_runner is False
+    assert has_runner is True
 
 
 def test_select_next_returns_none_when_nothing_open():
@@ -84,8 +99,24 @@ def test_next_dry_run_names_open_milestone_not_m01(monkeypatch, capsys):
 
 
 def test_next_dry_run_falls_back_to_heartbeat_when_no_runner(monkeypatch, capsys):
-    """Open milestone past the runner frontier (M14) → dry-run reports the M01
+    """Open milestone past the runner frontier (M15) → dry-run reports the M01
     heartbeat as the fallback, naming the milestone it's standing in for."""
+    from lab import publish as publish_mod
+    monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
+        {"id": "M14", "status": "verified"},
+        {"id": "M15", "status": "open"},
+    ])
+    rc = cli.main(["next", "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "would run `lab run`" in out
+    assert "no runner for M15" in out
+
+
+def test_next_dry_run_selects_m14_runner_when_m14_open(monkeypatch, capsys):
+    """With M14 the open bench, `lab next --dry-run` now names the M14 runner it
+    would dispatch — the proof that landing the random-bond engine makes the nightly
+    climb to the frontier instead of heartbeating (M14 was the runner frontier before)."""
     from lab import publish as publish_mod
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
         {"id": "M13", "status": "verified"},
@@ -94,8 +125,8 @@ def test_next_dry_run_falls_back_to_heartbeat_when_no_runner(monkeypatch, capsys
     rc = cli.main(["next", "--dry-run"])
     out = capsys.readouterr().out
     assert rc == 0
-    assert "would run `lab run`" in out
-    assert "no runner for M14" in out
+    assert "M14" in out
+    assert "would run `lab m14`" in out
 
 
 def test_next_routes_to_the_open_milestones_runner(monkeypatch, capsys):
