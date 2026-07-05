@@ -9,12 +9,47 @@ from pathlib import Path
 # trivial constant we keep here to avoid importing render just for the path.
 LAB_HOME = Path.home() / ".lab"
 
+# Milestone → the ``lab`` subcommand that runs its experiment. This formalizes
+# the mapping the bespoke ``lab mNN`` subcommands already encode, so ``lab next``
+# can dispatch the OPEN milestone's runner. M01 is the un-prefixed base Ising
+# engine (``lab run``) — the nightly heartbeat. Milestones past the last entry
+# here (M14+, and the Citizen-Science C/A/I/B tracks) have no runner yet, so
+# ``lab next`` falls back to the heartbeat until their engine lands. Add an entry
+# the moment a milestone gets a runnable command.
+RUNNERS = {
+    "M01": "run",
+    "M02": "m02", "M03": "m03", "M04": "m04", "M05": "m05",
+    "M06": "m06", "M07": "m07", "M08": "m08", "M09": "m09",
+    "M10": "m10", "M11": "m11", "M12": "m12", "M13": "m13",
+}
+
+
+def _select_next(milestones):
+    """Pick the lowest OPEN milestone and say whether we can run it.
+
+    ``parse_milestones`` already flags exactly one milestone ``status=='open'``
+    — the first pending in file order (M-track before the Citizen-Science
+    tracks), unless one is explicitly marked ``[>]``. That is the lab's single
+    bench: the experiment running now / next. We return its id and whether a
+    runner is registered for it. Returns ``(None, False)`` when nothing is open
+    (every milestone verified/null) — the caller then falls back to the
+    heartbeat. This is pure selection: it reads state and decides, it never runs
+    a simulation or edits ``MILESTONES.md``.
+    """
+    open_ms = next((m for m in milestones if m.get("status") == "open"), None)
+    if open_ms is None:
+        return None, False
+    mid = open_ms["id"]
+    return mid, mid in RUNNERS
+
 
 HELP = """lab — a windowsill physics lab.
 
 Usage:
   lab                 run today's experiment and open the report
-  lab run             run only — don't open the browser
+  lab run             run only — don't open the browser (the M01 heartbeat)
+  lab next            run the lowest OPEN milestone's experiment (heartbeat if none)
+  lab next --dry-run  print which milestone `lab next` would run — run nothing
   lab m02             run M02: finite-size scaling across lattice sizes
   lab m03             run M03: critical-exponent β via magnetization data-collapse
   lab m04             run M04: 2D Ising specific heat — the thermal cross-check of T_c
@@ -884,6 +919,35 @@ def main(argv=None):
         except Exception as e:  # noqa: BLE001 — publishing must never fail a run
             print(f"  (snapshot skipped: {e})")
         return 0
+
+    if cmd == "next":
+        # Milestone-aware scheduler: run the LOWEST OPEN milestone's experiment,
+        # falling back to the M01 heartbeat when the open milestone has no runner
+        # yet (M14+) or nothing is open. Selection is read-only — it never edits
+        # MILESTONES.md; a milestone is only marked done by the verify gate + a
+        # human-reviewed PR (see docs/investigations/2026-06-26-heartbeat-vs-lab-next).
+        # NOTE: the installed nightly still runs `lab run` (the heartbeat). Swapping
+        # it to `lab next` is a deliberate, human-gated change (setup.py, one line) —
+        # this command exists so that swap can be watched via --dry-run first.
+        from . import publish as publish_mod
+        dry = "--dry-run" in args
+        passthrough = [a for a in args[1:] if a != "--dry-run"]
+        text = (publish_mod.MILESTONES_MD.read_text(encoding="utf-8")
+                if publish_mod.MILESTONES_MD.exists() else "")
+        milestones = publish_mod.parse_milestones(text)
+        mid, has_runner = _select_next(milestones)
+        if mid is None:
+            subcmd, reason = "run", "no open milestone — heartbeat"
+        elif has_runner:
+            subcmd, reason = RUNNERS[mid], f"open milestone {mid}"
+        else:
+            subcmd, reason = "run", f"no runner for {mid} yet — heartbeat instead"
+        label = mid or "—"
+        if dry:
+            print(f"lab next → {label}: would run `lab {subcmd}` ({reason})")
+            return 0
+        print(f"lab next → {label}: running `lab {subcmd}` ({reason})")
+        return main([subcmd, *passthrough])
 
     if cmd == "run" or (cmd not in ("help", "open") and cmd.startswith("--")):
         rest = args if cmd != "run" else args[1:]
