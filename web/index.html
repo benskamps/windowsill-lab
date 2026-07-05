@@ -1519,7 +1519,9 @@
       var close = $('fn-close');
       if (close) close.addEventListener('click', closeFieldNote);
       document.addEventListener('keydown', function (e) {
-        if (e.key === 'Escape') { var b = $('fieldnote'); if (b && !b.hidden) closeFieldNote(); }
+        // preventDefault claims the keypress so overlaid chrome (the guided
+        // walk bar honors defaultPrevented) doesn't also act on this Escape.
+        if (e.key === 'Escape') { var b = $('fieldnote'); if (b && !b.hidden) { e.preventDefault(); closeFieldNote(); } }
       });
       var bud = $('bud');
       if (bud) {
