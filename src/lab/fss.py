@@ -29,9 +29,13 @@ from .onsager import T_C
 GAMMA_OVER_NU = 7.0 / 4.0   # 2D Ising, exact (Onsager / Kaufman)
 NU = 1.0                    # correlation-length exponent, exact
 
-# Lattice sizes spanning an 8× linear range — enough leverage for a clean slope
-# while staying inside what Metropolis equilibrates at criticality. L≥512 needs
-# a cluster algorithm (Wolff) to beat critical slowing down — see BACKLOG.
+# Lattice sizes spanning an 8× linear range — enough leverage for a clean slope.
+# Historically capped at 256 because single-spin Metropolis suffers critical
+# slowing down (z ≈ 2.17) near T_c and can't equilibrate larger lattices in a
+# tractable sweep budget. With the Wolff cluster updater (``updater='wolff'``,
+# the default, z ≈ 0.25) this cap lifts: the nightly can extend the tuple to
+# L = 512/1024 to tighten the measured γ/ν — see BACKLOG's cluster-algorithm
+# section and the PR that wired Wolff into ``run_fss``.
 DEFAULT_L = (32, 64, 128, 256)
 
 
@@ -103,26 +107,55 @@ def run_fss(
     n_burnin: int = 30000,
     seed: int = 42,
     device: str = "cuda",
+    updater: str = "wolff",
     progress=None,
 ) -> FSSResult:
     """Run the Ising sweep at each lattice size and fit the peak scaling.
 
-    Uses the **|m|-based susceptibility** (``RunResult.chi_abs``), the
+    Uses the **|m|-based susceptibility** (``chi_abs``), the
     finite-size-scaling–appropriate observable: the signed χ is contaminated by
     magnetization sign-flips on large lattices near T_c and does NOT scale
-    cleanly. The temperature window sits tight around T_c (default [2.20, 2.40])
+    cleanly. The temperature window sits tight around T_c (default [2.27, 2.40])
     so the increasingly narrow peak is well-resolved and never dips into the
     sub-T_c region where the sign artifact lives. ``progress(L, curve)`` is
     called after each lattice if provided, so a CLI can report as it goes.
+
+    M02 measures χ_max IN the critical region, where single-spin Metropolis
+    suffers critical slowing down (z ≈ 2.17) and caps the reachable lattice at
+    L ≈ 256. The default ``updater='wolff'`` samples with the cluster algorithm
+    (z ≈ 0.25, ``wolff.py``) — the correct instrument for criticality — so the
+    nightly can push ``L_values`` to 512/1024 and sharpen γ/ν. Pass
+    ``updater='metropolis'`` to fall back to ``ising.run`` (an algorithm
+    cross-check, or off-critical work). Both engines expose ``chi_abs`` and
+    ``T`` with identical shapes, so the peak-fit path is updater-agnostic. NOTE
+    the units difference: in the Wolff branch ``n_sweeps``/``n_burnin`` are
+    counted in *cluster updates*, not Metropolis sweeps (far fewer needed).
+
+    GPU-SAFETY CONTRACT: this production driver is for the actual milestone
+    night — it is NOT invoked by the test suite (the tests exercise only the
+    numpy analysis layer and a tiny CPU Wolff/Metropolis agreement smoke). Any
+    manual smoke MUST be ``device='cpu'`` with small ``L``/``n_sweeps`` so it
+    finishes in seconds; the L≥512 sweep is the nightly's job, never CI.
     """
     t0 = time.time()
     curves: list[FSSCurve] = []
     for L in L_values:
-        cfg = RunConfig(
-            L=L, T_min=T_min, T_max=T_max, n_temps=n_temps,
-            n_sweeps=n_sweeps, n_burnin=n_burnin, seed=seed, device=device,
-        )
-        r = run(cfg)
+        if updater == "wolff":
+            from .wolff import WolffConfig, wolff_run
+            cfg = WolffConfig(
+                L=L, T_min=T_min, T_max=T_max, n_temps=n_temps,
+                n_updates=n_sweeps, n_burnin=n_burnin, seed=seed, device=device,
+            )
+            r = wolff_run(cfg)
+        elif updater == "metropolis":
+            cfg = RunConfig(
+                L=L, T_min=T_min, T_max=T_max, n_temps=n_temps,
+                n_sweeps=n_sweeps, n_burnin=n_burnin, seed=seed, device=device,
+            )
+            r = run(cfg)
+        else:
+            raise ValueError(f"unknown updater {updater!r} (use 'wolff' or 'metropolis')")
+
         cmax, tpk = chi_peak(r.T, r.chi_abs)   # |m|-susceptibility peak
         curve = FSSCurve(
             L=L, T=r.T.tolist(), chi=r.chi_abs.tolist(),
@@ -142,6 +175,7 @@ def run_fss(
         config={
             "T_min": T_min, "T_max": T_max, "n_temps": n_temps,
             "n_sweeps": n_sweeps, "n_burnin": n_burnin, "seed": seed,
+            "updater": updater,
         },
     )
 

@@ -122,6 +122,8 @@ def _parse_m02(args):
     p.add_argument("--burnin", type=int, default=30000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--updater", default="wolff",
+                   help="'wolff' (cluster, near-T_c; unlocks L≥512) or 'metropolis'")
     return p.parse_args(args)
 
 
@@ -476,8 +478,10 @@ def main(argv=None):
             L_values = (32, 64, 128)
         else:
             L_values = fss.DEFAULT_L
+        unit = "cluster updates" if ns.updater == "wolff" else "sweeps"
         print(f"M02 finite-size scaling · L = {', '.join(map(str, L_values))} · "
-              f"{ns.n_temps} temps in [{ns.t_min}, {ns.t_max}] · {ns.sweeps:,} sweeps")
+              f"{ns.n_temps} temps in [{ns.t_min}, {ns.t_max}] · {ns.sweeps:,} {unit} "
+              f"· {ns.updater} on {ns.device}")
 
         def _progress(L, curve):
             print(f"  ✓ L={L:<4} χ_max={curve.chi_max:8.1f} at T={curve.T_peak:.3f}"
@@ -486,7 +490,7 @@ def main(argv=None):
         result = fss.run_fss(
             L_values=L_values, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
             n_sweeps=ns.sweeps, n_burnin=ns.burnin, seed=ns.seed, device=ns.device,
-            progress=_progress,
+            updater=ns.updater, progress=_progress,
         )
         report = fss.to_report(result)
         print(f"  → χ_max ∝ L^{result.slope:.3f}  (theory γ/ν = 7/4 = 1.75, "
