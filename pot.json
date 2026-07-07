@@ -171,7 +171,7 @@
     {
       "id": "M15",
       "title": "Glauber dynamics relaxation",
-      "status": "open",
+      "status": "null",
       "track": "physics",
       "growth_form": "fern",
       "short_label": "Domains growing",
@@ -181,7 +181,7 @@
     {
       "id": "M16",
       "title": "Aging in spin glasses",
-      "status": "pending",
+      "status": "open",
       "track": "physics",
       "growth_form": "fern",
       "short_label": "Aging memory",
@@ -350,20 +350,20 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-07-06T07:00:39.085025+00:00",
-  "runs": 22,
+  "last_run": "2026-07-07T04:20:59.624716+00:00",
+  "runs": 23,
   "temp_c": null,
   "latest_report": {
-    "date": "2026-07-06",
-    "milestone": "M01",
+    "date": "2026-07-07",
+    "milestone": "M15",
     "verdict": "verified",
-    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
+    "headline": "2D Ising quenched from T=\u221e to T=1.498 (0.66\u00b7T_c), L=512, 48 seeds: domain length grows as a clean power law L(t)\u223ct^n with n=0.486\u00b10.001 (stat, R\u00b2=0.9999) from the correlation length; energy-length cross-check n=0.469, drifting to n\u22480.496 on the late window. The effective exponent sits a few percent below the asymptotic Allen\u2013Cahn \u00bd \u2014 the documented preasymptotic correction \u2014 so the honest systematic band is \u2248\u00b10.02. Glauber coarsening exponent consistent with Allen\u2013Cahn t^(1/2) \u00b7 34s",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-07-06T07:00:43.636984+00:00",
+  "updated": "2026-07-07T04:21:55.049510+00:00",
   "provenance": {
-    "code_sha": "d64c4c8",
+    "code_sha": "8d97ccc-dirty",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -372,6 +372,13 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-07-07",
+      "milestone": "M15",
+      "verdict": "verified",
+      "headline": "2D Ising quenched from T=\u221e to T=1.498 (0.66\u00b7T_c), L=512, 48 seeds: domain length grows as a clean power law L(t)\u223ct^n with n=0.486\u00b10.001 (stat, R\u00b2=0.9999) from the correlation length; energy-length cross-check n=0.469, drifting to n\u22480.496 on the late window. The effective exponent sits a few percent below the asymptotic Allen\u2013Cahn \u00bd \u2014 the documented preasymptotic correction \u2014 so the honest systematic band is \u2248\u00b10.02. Glauber coarsening exponent consistent with Allen\u2013Cahn t^(1/2) \u00b7 34s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html"
+    },
     {
       "date": "2026-07-06",
       "milestone": "M01",
