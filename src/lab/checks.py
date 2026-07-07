@@ -77,6 +77,25 @@ MNP_ENERGY_TOL = 0.05
 # check re-derives tanh(1/T) and requires it to equal 1 − 2p. A point off the line has no
 # exact-energy identity to test against, so it is rejected rather than mis-graded.
 NISHIMORI_LINE_TOL = 1e-2
+# Allen–Cahn coarsening exponent (M15): curvature-driven growth of a non-conserved order
+# parameter gives L_domain(t) ∼ t^(1/2). The verified claim is this GROWTH EXPONENT.
+ALLEN_CAHN_EXPONENT = 0.5
+# Exponent tolerance for M15, OWNED BY THE CHECK. A physically-justified band, NOT a fudge:
+# Allen–Cahn is asymptotic and the finite-time effective exponent is documented to sit a few
+# percent BELOW ½ (the preasymptotic correction — coarsening approaches t^(1/2) from below),
+# so ±0.06 admits the honest ~0.46–0.49 measured at reachable scale while still rejecting a
+# broken run: diffusive ¼, ballistic 1, or a frozen/saturated ~0 all miss by far more.
+ALLEN_CAHN_TOL = 0.06
+# The log-log coarsening line is essentially perfect, so a genuine power-law fit clears a
+# high R²; a noisy/curved L(t) (un-quenched, or fit across the finite-size saturation knee)
+# would not. Guards against grading a slope off a bad line.
+M15_MIN_R2 = 0.99
+# M15 scaling-window rule — re-derived here (a receipt), matching ``m15`` defaults. The check
+# prefers the window params the report stored (so producer and grader can't silently drift),
+# falling back to these if absent.
+M15_T_FIT_MIN = 20
+M15_L_MIN_FIT = 4.0
+M15_SAT_FRAC = 0.20
 
 
 def _reports_newest_first() -> list[Path]:
@@ -835,13 +854,102 @@ def check_m14(report: dict) -> tuple[bool | None, str]:
     return all_ok, detail
 
 
+def _loglog_slope_r2(xs: list[float], ys: list[float]) -> tuple[float, float, int]:
+    """Least-squares slope + R² of ``log y`` vs ``log x`` (stdlib), plus the point count.
+
+    Distinct from ``_loglog_slope`` (which takes raw x,y and logs them): here ``xs``/``ys``
+    are ALREADY the window-selected raw ``t``/``L`` and this logs them once. Returns
+    ``(slope, r2, n)``. The check re-fits the M15 growth exponent itself — a receipt, not an
+    echo of the reported number.
+    """
+    lx = [math.log(x) for x in xs]
+    ly = [math.log(y) for y in ys]
+    n = len(lx)
+    mx, my = sum(lx) / n, sum(ly) / n
+    sxx = sum((a - mx) ** 2 for a in lx)
+    sxy = sum((a - mx) * (b - my) for a, b in zip(lx, ly))
+    slope = sxy / sxx if sxx > 0 else 0.0
+    intercept = my - slope * mx
+    ss_res = sum((b - (slope * a + intercept)) ** 2 for a, b in zip(lx, ly))
+    ss_tot = sum((b - my) ** 2 for b in ly)
+    r2 = 1.0 - ss_res / ss_tot if ss_tot > 0 else 0.0
+    return slope, r2, n
+
+
+def check_m15(report: dict) -> tuple[bool | None, str]:
+    """Glauber domain growth: the coarsening exponent n in L(t) ∼ t^n is Allen–Cahn's ½.
+
+    Returns ``None`` unless this is an M15 report. Otherwise **re-derives** the growth
+    exponent from the report's own ``(times, L_corr)`` arrays — re-selecting the scaling
+    window (t ≥ t_fit_min, L ∈ [L_min_fit, sat_frac·L]) with the *stored* window rule and
+    re-fitting ``log L`` vs ``log t`` (a receipt, not an echo of the reported ``exponent``) —
+    and asserts it lands near the Allen–Cahn ½ within the check-owned ±0.06 band. Two guards
+    keep the pass honest:
+
+    * **A clean power law**: the re-fit R² must clear ``M15_MIN_R2`` (0.99). A noisy or curved
+      L(t) — an un-quenched run, or a fit dragged across the finite-size saturation knee —
+      fails rather than passing on a slope through bad points.
+    * **Real growth over range**: ≥5 window points spanning at least a decade in ``t`` and a
+      clearly growing L (L_hi ≥ 2·L_lo), so a nearly-flat/frozen curve can't score a fit.
+
+    The graded estimator is the **correlation length** (the energy length rides along in the
+    report as a documented cross-check). The finite-time effective exponent honestly sits a
+    few percent below ½; the band absorbs that documented preasymptotic bias without admitting
+    a broken exponent (diffusive ¼, ballistic 1, frozen ~0).
+    """
+    if report.get("experiment") != "M15-glauber-domain-growth":
+        return None, "not an M15 Glauber domain-growth report"
+    t, L = report.get("times"), report.get("L_corr")
+    if not t or not L or len(t) != len(L) or len(t) < 5:
+        return None, "M15 report missing parallel (times, L_corr) arrays"
+
+    L_box = report.get("L")
+    if not L_box:
+        return None, "M15 report missing the lattice size L"
+    t_fit_min = report.get("t_fit_min", M15_T_FIT_MIN)
+    l_min_fit = report.get("l_min_fit", M15_L_MIN_FIT)
+    sat_frac = report.get("sat_frac", M15_SAT_FRAC)
+
+    # Re-select the scaling window from the stored rule and re-fit the exponent.
+    xs, ys = [], []
+    for ti, Li in zip(t, L):
+        if (Li is None or ti is None or Li <= 0 or not math.isfinite(Li)):
+            continue
+        if ti >= t_fit_min and l_min_fit <= Li <= sat_frac * L_box:
+            xs.append(float(ti)); ys.append(float(Li))
+    if len(xs) < 5:
+        return None, "M15 report has <5 points inside the scaling window"
+
+    slope, r2, n = _loglog_slope_r2(xs, ys)
+    t_lo, t_hi = min(xs), max(xs)
+    L_lo, L_hi = min(ys), max(ys)
+    decade = t_hi / t_lo >= 10.0
+    grew = L_hi >= 2.0 * L_lo
+    clean = r2 >= M15_MIN_R2
+    near = abs(slope - ALLEN_CAHN_EXPONENT) <= ALLEN_CAHN_TOL
+    ok = bool(near and clean and decade and grew)
+
+    detail = (
+        f"coarsening exponent n = {slope:.3f} vs Allen–Cahn {ALLEN_CAHN_EXPONENT:.2f} "
+        f"(tol ±{ALLEN_CAHN_TOL}, R²={r2:.4f}, {n} pts, t∈[{t_lo:.0f},{t_hi:.0f}], "
+        f"L∈[{L_lo:.1f},{L_hi:.1f}]) — "
+        + ("L(t)∼t^n grows as Allen–Cahn t^(1/2) predicts (effective exponent a few percent "
+           "below ½ is the documented preasymptotic correction)" if ok else
+           ("R² too low — L(t) is not a clean power law (un-quenched or fit across the "
+            "saturation knee)" if not clean else
+            ("window too short — needs ≥1 decade in t and a clearly growing L" if not (decade and grew) else
+             "exponent off the Allen–Cahn ½ prediction — a broken coarsening run")))
+    )
+    return ok, detail
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
           "M10": check_m10, "M11": check_m11, "M12": check_m12,
-          "M13": check_m13, "M14": check_m14}
+          "M13": check_m13, "M14": check_m14, "M15": check_m15}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:

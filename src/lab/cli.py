@@ -21,7 +21,7 @@ RUNNERS = {
     "M02": "m02", "M03": "m03", "M04": "m04", "M05": "m05",
     "M06": "m06", "M07": "m07", "M08": "m08", "M09": "m09",
     "M10": "m10", "M11": "m11", "M12": "m12", "M13": "m13",
-    "M14": "m14",
+    "M14": "m14", "M15": "m15",
 }
 
 
@@ -64,6 +64,7 @@ Usage:
   lab m12             run M12: 3D EA spin glass — Binder-cumulant crossing at T_SG≈0.95 (parallel tempering)
   lab m13             run M13: frustrated triangular AFM — residual entropy S0/N≈0.3383 via C/T integration
   lab m14             run M14: random-bond Ising — exact Nishimori-line energy, map toward the MNP p_c≈0.109
+  lab m15             run M15: Glauber dynamics — domain growth L(t)∼t^(1/2) after a quench (Phase 4)
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -401,6 +402,31 @@ def _parse_m14(args):
                    help="quenched ±J disorder realizations to average over")
     p.add_argument("--sweeps", type=int, default=10000)
     p.add_argument("--burnin", type=int, default=4000)
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m15(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M15 is NON-equilibrium: a single lattice quenched from T=inf to T<T_c, evolved under
+    # single-spin Glauber (heat-bath) dynamics — cluster updates are FORBIDDEN, they destroy
+    # the coarsening. There is no temperature sweep; T is the fixed quench target (default
+    # ~0.66·T_c). The x-axis is Monte-Carlo time (sweeps). L defaults to 512 (a large box so
+    # domains grow over a wide window before finite-size saturation); n_seeds averages several
+    # random starts. --quick runs a small CPU pass that proves the pipeline end to end.
+    p.add_argument("--L", type=int, default=512,
+                   help="lattice side (default 512; bigger box = wider scaling window)")
+    p.add_argument("--quick", action="store_true",
+                   help="small CPU pass (L=96, few seeds, short time) — proves the pipeline")
+    p.add_argument("--T", type=float, default=None,
+                   help="quench temperature < T_c (default ~0.66·T_c ≈ 1.498)")
+    p.add_argument("--seeds", type=int, default=48,
+                   help="independent random initial conditions, averaged (default 48)")
+    p.add_argument("--t-max", type=int, default=8000,
+                   help="final Monte-Carlo time in sweeps (default 8000)")
+    p.add_argument("--n-times", type=int, default=52,
+                   help="log-spaced measurement times (default 52)")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
@@ -992,6 +1018,51 @@ def main(argv=None):
               f"(L={result.gate_L}) · ferro order collapses near {ph_str} "
               f"(MNP p_c≈{result.p_c_benchmark:.4f}) · {verdict} · {result.wall_seconds:.0f}s")
         path = render_mod.render_m14(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m15":
+        ns = _parse_m15(args[1:])
+        from . import m15
+        from . import render as render_mod
+        device = ns.device
+        if ns.quick:
+            # A small CPU pass: proves the quench → measure → fit → report pipeline end to end
+            # and writes HTML+JSON. The scaling window is short at this scale, so the exponent
+            # is coarse — a miss still ships an honest null, per the lab's convention.
+            L, seeds, t_max, n_times = 96, 8, 1500, 32
+            device = "cpu"
+        else:
+            L, seeds, t_max, n_times = ns.L, ns.seeds, ns.t_max, ns.n_times
+        from .onsager import T_C as _TC
+        T = ns.T if ns.T is not None else 0.66 * float(_TC)
+        print(f"M15 Glauber domain growth · L={L} · quench T={T:.3f} ({T/float(_TC):.2f}·T_c) · "
+              f"{seeds} seeds · t_max={t_max:,} sweeps on {device} · fitting L(t)∼t^n vs "
+              f"Allen–Cahn ½ (single-spin heat-bath — NO cluster updates)")
+
+        def _progress_m15(result):
+            print(f"  ✓ measured {len(result.times)} times  (n={result.exponent:.3f}, "
+                  f"R²={result.r2:.4f}, {result.wall_seconds:.1f}s)")
+
+        result = m15.run_m15(
+            L=L, T=ns.T, n_seeds=seeds, t_max=t_max, n_times=n_times,
+            seed=ns.seed, device=device, progress=_progress_m15,
+        )
+        report = m15.to_report(result)
+        energy_n = result.energy_fit.exponent if result.energy_fit is not None else None
+        en_str = f"{energy_n:.3f}" if energy_n is not None else "—"
+        verdict = ("consistent with Allen–Cahn t^(1/2)" if result.supports_allen_cahn
+                   else "off the Allen–Cahn ½ — honest [~] null")
+        print(f"  → growth exponent n = {result.exponent:.3f} ± {result.exponent_stderr:.3f} "
+              f"(stat) · energy-length cross-check {en_str} · systematic band "
+              f"±{max(result.systematic_spread, 0.02):.2f} · {verdict} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_m15(report)
         print(f"  ✓ report: {path}")
         try:
             from . import publish as publish_mod
