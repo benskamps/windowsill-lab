@@ -2,10 +2,11 @@
 import math
 
 from lab.checks import (
-    BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT, TC_3D, TC_SG_3D,
-    TC_SG_3D_TOL, TC_TRI, TWO_OVER_PI, WANNIER_S0, WANNIER_S0_TOL, _grade,
-    check_m01, check_m02, check_m03, check_m04, check_m05, check_m06, check_m07,
-    check_m08, check_m09, check_m10, check_m11, check_m12, check_m13, verify,
+    ALLEN_CAHN_EXPONENT, BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT,
+    TC_3D, TC_SG_3D, TC_SG_3D_TOL, TC_TRI, TWO_OVER_PI, WANNIER_S0, WANNIER_S0_TOL,
+    _grade, check_m01, check_m02, check_m03, check_m04, check_m05, check_m06,
+    check_m07, check_m08, check_m09, check_m10, check_m11, check_m12, check_m13,
+    check_m15, verify,
 )
 
 
@@ -772,3 +773,52 @@ def test_other_checks_skip_an_m13_report():
     assert check_m05(rep)[0] is None
     assert check_m10(rep)[0] is None
     assert check_m12(rep)[0] is None
+
+
+# ── M15 — Glauber domain-growth exponent (stdlib grading, mirrors the m13/m14 pattern) ──
+def _m15_report(n=0.485, L_box=512, k=52):
+    """A synthetic M15 report with a clean power law L_c(t) = 1.2*t^n (stdlib only), carrying
+    the scaling-window rule the check re-reads. The check re-selects the window and re-fits the
+    exponent from these arrays, so a clean t^n curve is graded by its recomputed slope."""
+    lo, hi = math.log(1.0), math.log(8000.0)
+    ts = sorted({int(round(math.exp(lo + (hi - lo) * i / (k - 1)))) for i in range(k)})
+    Lc = [1.2 * t ** n for t in ts]
+    return {
+        "experiment": "M15-glauber-domain-growth",
+        "L": L_box,
+        "times": [float(t) for t in ts],
+        "L_corr": Lc,
+        "exponent": n,                      # a stored number the check must NOT trust blindly
+        "t_fit_min": 20, "l_min_fit": 4.0, "sat_frac": 0.20,
+    }
+
+
+def test_check_m15_passes_a_clean_allen_cahn_half():
+    ok, detail = check_m15(_m15_report(n=0.485))
+    assert ok is True
+    assert "0.48" in detail and str(ALLEN_CAHN_EXPONENT) in detail
+
+
+def test_check_m15_is_a_receipt_not_an_echo():
+    # A lie in the stored exponent must not flip the grade — the recomputed slope decides.
+    rep = _m15_report(n=0.49)
+    rep["exponent"] = 0.001
+    assert check_m15(rep)[0] is True
+    rep2 = _m15_report(n=0.25)
+    rep2["exponent"] = 0.5                  # a flattering lie on a diffusive run
+    assert check_m15(rep2)[0] is False
+
+
+def test_check_m15_rejects_diffusive_and_ballistic_exponents():
+    assert check_m15(_m15_report(n=0.25))[0] is False    # diffusive ¼ — off the ½ band
+    assert check_m15(_m15_report(n=1.0))[0] is False      # ballistic 1 — off the ½ band
+
+
+def test_check_m15_admits_the_documented_low_bias():
+    # The finite-time effective exponent honestly sits a few percent below ½; the band admits it.
+    assert check_m15(_m15_report(n=0.46))[0] is True
+
+
+def test_check_m15_ignores_foreign_reports():
+    assert check_m15({"experiment": "M13-triangular-afm"})[0] is None
+    assert check_m15({"experiment": "M01-ising-verification", "T": [1, 2], "chi": [1, 2]})[0] is None
