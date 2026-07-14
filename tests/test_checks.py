@@ -1,6 +1,8 @@
 """The verification gate: a verified milestone must reproduce its number."""
+import json
 import math
 
+import lab.checks as checks
 from lab.checks import (
     ALLEN_CAHN_EXPONENT, BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT,
     TC_3D, TC_SG_3D, TC_SG_3D_TOL, TC_TRI, TWO_OVER_PI, WANNIER_S0, WANNIER_S0_TOL,
@@ -77,6 +79,30 @@ def test_verify_runs_against_the_repo():
 
 def test_verify_filters_by_id():
     assert verify(["ZZ99"]) == []   # not a verified milestone → nothing to do
+
+
+def test_verify_uses_public_receipts_in_a_clean_checkout(tmp_path, monkeypatch):
+    """CI must regrade promoted work even when only compact evidence is tracked."""
+    reports = tmp_path / "reports"
+    receipts = reports / "receipts"
+    lab_home = tmp_path / "lab-home"
+    receipts.mkdir(parents=True)
+    lab_home.mkdir()
+    milestones = tmp_path / "MILESTONES.md"
+    milestones.write_text("- [x] **M01** — Onsager gate\n", encoding="utf-8")
+    (receipts / "run-2026-06-15-m01.json").write_text(
+        json.dumps(_ising_report(round(ONSAGER_TC, 1))), encoding="utf-8",
+    )
+
+    monkeypatch.setattr(checks, "REPORTS_DIR", reports)
+    monkeypatch.setattr(checks, "LAB_HOME", lab_home)
+    monkeypatch.setattr(checks, "MILESTONES_MD", milestones)
+
+    assert checks.verify() == [{
+        "id": "M01",
+        "status": "pass",
+        "detail": checks.check_m01(_ising_report(round(ONSAGER_TC, 1)))[1],
+    }]
 
 
 # ── M02: finite-size scaling check ───────────────────────────────────────────

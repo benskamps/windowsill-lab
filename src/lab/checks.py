@@ -99,18 +99,28 @@ M15_SAT_FRAC = 0.20
 
 
 def _reports_newest_first() -> list[Path]:
-    """Report JSONs newest-first, across the repo and ``~/.lab``.
+    """Report and public-receipt JSONs newest-first.
 
-    Matches both legacy ``<date>.json`` dumps and the permanent
-    ``<date>-<slug>.json`` files, and sorts by the *leading date* (the first 10
-    chars of the stem) so ``2026-06-15-m02`` and ``2026-06-15`` order by their
-    shared day rather than by the slug tail.
+    Full reports remain the preferred local evidence.  A clean git checkout may
+    intentionally contain only compact ``reports/receipts/run-<date>-<slug>.json``
+    artifacts for older runs, so include those as a verification fallback.  The
+    receipts omit only visual snapshots and retain every checker input.
     """
     paths: list[Path] = []
     for d in (REPORTS_DIR, LAB_HOME):
         if d.exists():
             paths += d.glob("[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]*.json")
-    return sorted(paths, key=lambda p: p.stem[:10], reverse=True)
+    receipts = REPORTS_DIR / "receipts"
+    if receipts.exists():
+        paths += receipts.glob("run-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.json")
+
+    def sort_key(path: Path) -> tuple[str, bool]:
+        is_receipt = path.parent == receipts
+        date = path.stem[4:14] if is_receipt else path.stem[:10]
+        # For the same run date, try the full report before its compact receipt.
+        return date, not is_receipt
+
+    return sorted(paths, key=sort_key, reverse=True)
 
 
 def check_m01(report: dict) -> tuple[bool | None, str]:
