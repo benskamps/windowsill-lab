@@ -132,7 +132,10 @@ def check_m01(report: dict) -> tuple[bool | None, str]:
     if not T or not chi or len(T) != len(chi):
         return None, "not an Ising χ-sweep"
     peak_T = T[max(range(len(chi)), key=lambda i: chi[i])]
-    tol = 0.2
+    # The default sweep's 0.1-spaced grid can resolve the peak to roughly one
+    # bin.  ±0.1 remains a regression/calibration gate, not a precision claim,
+    # but no longer passes a result two whole bins away from Onsager.
+    tol = 0.1
     ok = abs(peak_T - ONSAGER_TC) <= tol
     return ok, f"χ peak at T={peak_T:.3f} vs Onsager {ONSAGER_TC:.3f} (tol ±{tol})"
 

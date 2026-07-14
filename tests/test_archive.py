@@ -74,9 +74,11 @@ def _patch(tmp_path, monkeypatch):
     reports = tmp_path / "reports"
     lab_home = tmp_path / "lab"
     monkeypatch.setattr(archive, "REPORTS_DIR", reports)
+    monkeypatch.setattr(archive, "RECEIPTS_DIR", reports / "receipts")
     monkeypatch.setattr(archive, "LAB_HOME", lab_home)
     # publish's discovery shares the same dirs (archive defers to it).
     monkeypatch.setattr(publish, "REPORTS_DIR", reports)
+    monkeypatch.setattr(publish, "RECEIPTS_DIR", reports / "receipts")
     monkeypatch.setattr(publish, "LAB_HOME", lab_home)
     return reports, lab_home
 
@@ -159,7 +161,7 @@ def test_scan_runs_keeps_corrupt_json_as_honest_unreadable_gap(tmp_path, monkeyp
     assert by_date["2026-06-14"]["verdict"] == "unreadable"
 
 
-def test_scan_runs_committed_run_links_to_archive_index(tmp_path, monkeypatch):
+def test_scan_runs_committed_run_links_to_exact_archive_row(tmp_path, monkeypatch):
     reports, lab_home = _patch(tmp_path, monkeypatch)
     _write_report(reports, "2026-06-15-m01", mtime=1000)
     (reports / "2026-06-15-m01.html").write_text("<html>r</html>", encoding="utf-8")
@@ -167,9 +169,9 @@ def test_scan_runs_committed_run_links_to_archive_index(tmp_path, monkeypatch):
     r = runs[0]
     assert r["has_dated_html"] is True
     # Dated per-run renders are gitignored (never on GitHub), so a committed run
-    # deep-links to the one committed, htmlpreview-able surface — the archive
+    # deep-links to the exact row on the committed, htmlpreview-able archive
     # index — not its own uncommitted dated render, which would 400.
-    assert r["report_href"] == publish.ARCHIVE_URL
+    assert r["report_href"] == publish.ARCHIVE_URL + "#run-2026-06-15-m01"
     assert "2026-06-15-m01.html" not in r["report_href"]
 
 
@@ -193,7 +195,9 @@ def test_run_ledger_rows_are_sanitized(tmp_path, monkeypatch):
     _write_report(reports, "2026-06-15-m02", mtime=1000, **_m02_good())
     rows = run_ledger()
     assert rows
-    assert set(rows[0]) == {"date", "milestone", "verdict", "headline", "href"}
+    assert set(rows[0]) == {
+        "date", "milestone", "verdict", "headline", "href", "receipt_url",
+    }
 
 
 def test_run_ledger_non_http_href_becomes_none(tmp_path, monkeypatch):
@@ -244,18 +248,22 @@ def test_render_index_null_keeps_numbers_and_folded_grey_marker(tmp_path, monkey
     assert "null" in html.lower() or "folded" in html.lower()
 
 
-def test_render_index_links_committed_run_to_archive(tmp_path, monkeypatch):
+def test_render_index_links_committed_run_to_public_receipt(tmp_path, monkeypatch):
     reports, lab_home = _patch(tmp_path, monkeypatch)
     _write_report(reports, "2026-06-15-m01", mtime=1000)
     (reports / "2026-06-15-m01.html").write_text("<html>r</html>", encoding="utf-8")
+    receipts = reports / "receipts"
+    receipts.mkdir()
+    (receipts / "run-2026-06-15-m01.json").write_text("{}", encoding="utf-8")
     _write_report(lab_home, "2026-06-08-m01", mtime=500)   # local-only, json only
     html = render_index()
-    # A committed run links to the committed archive index (its dated render is
-    # gitignored), never to the uncommitted dated file that would 400.
-    assert "reports/index.html" in html
+    # A committed run links its compact, durable evidence rather than claiming
+    # the gitignored full dated HTML is public.
+    assert "run-2026-06-15-m01.json" in html
+    assert "receipt.json" in html
     assert "2026-06-15-m01.html" not in html
     # ... and a local-only run still carries its dated JSON path for traceability.
-    assert "2026-06-08" in html and ".json" in html
+    assert "2026-06-08" in html and "local report" in html
 
 
 def test_render_index_is_html_escaped(tmp_path, monkeypatch):
@@ -277,6 +285,7 @@ def test_render_index_groups_by_milestone(tmp_path, monkeypatch):
     # Both milestone ids head their group.
     assert "M01" in html
     assert "M02" in html
+    assert 'id="run-2026-06-15-m02"' in html
 
 
 def test_render_index_accepts_explicit_runs_list():

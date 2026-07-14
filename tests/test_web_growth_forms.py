@@ -64,3 +64,27 @@ def test_module_exposes_three_distinct_shipped_forms():
     # every value publish.py's GROWTH_FORMS can emit must be a registry key
     for form in ("fern", "vine", "creeper", "succulent", "moss", "sprout"):
         assert f"{form}:" in src, f"feed form '{form}' not wired into the registry"
+
+
+def test_page_has_one_canonical_feed_for_readout_and_snapshot_link():
+    html = PAGE.read_text(encoding="utf-8")
+    canonical = (
+        "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/pot.json"
+    )
+    assert html.count(canonical) == 1
+    assert "data-feed-url=" in html
+    assert "snapshotLink.href = feedUrl" in html
+    assert "fetch(feedUrl" in html
+    assert "fetch('/api/pot'" not in html
+
+
+def test_review_pending_runs_are_not_painted_as_promoted():
+    html = PAGE.read_text(encoding="utf-8")
+    assert "milestoneStatus[r.milestone] === 'review'" in html
+    assert "ARC_GLYPH = { verified:'●', review:'◆'" in html
+
+
+def test_host_only_walk_does_not_404_in_local_file_mode():
+    html = PAGE.read_text(encoding="utf-8")
+    assert '<script defer src="/walk/walk.js"></script>' not in html
+    assert "brokenbranch\\.dev" in html

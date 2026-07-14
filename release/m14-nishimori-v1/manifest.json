@@ -1,0 +1,54 @@
+{
+  "schema_version": "windowsill.release-manifest.v1",
+  "release_id": "m14-nishimori-v1",
+  "files": [
+    {
+      "path": ".gitattributes",
+      "bytes": 26,
+      "sha256": "1f188a384f3a7d8e293f83c43a896957fff3e9ff9fc3f752e6d78825f92f65ec"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 1075,
+      "sha256": "ed814da053f971eb33dea42f4f5d759b4e7d6d90a9d2cf28d6b259fe3f5704ab"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1683,
+      "sha256": "b910874f808936b0c65645a3b46f0490ee83c36f6628704dc183b1de3ac9632e"
+    },
+    {
+      "path": "build_archive.py",
+      "bytes": 5247,
+      "sha256": "80b324435d1809879445db0cd3a935eb1cfb2ab74dd073eb0b1f2eff849a8144"
+    },
+    {
+      "path": "evidence/2026-07-05-m14.json",
+      "bytes": 5351,
+      "sha256": "a6ed8abaccf25dfd3d1bacd0f519df17c9de19944e171557818e4f57dfc33677"
+    },
+    {
+      "path": "receipt.json",
+      "bytes": 5379,
+      "sha256": "d3a4950a766b5a71fabd2e2d84311daee2c225cb3ef6972ab825e4b331bd6cc2"
+    },
+    {
+      "path": "verify_release.py",
+      "bytes": 21535,
+      "sha256": "f53ffe9d8eb0ac0ecfc3aa2b6737b123f403dd6b01e7d3e5de4013c95083c8cf"
+    }
+  ],
+  "excluded_from_file_table": {
+    "manifest.json": "Self-hashing would be circular.",
+    "m14-nishimori-v1.zip": "The archive cannot contain or hash itself; verify its extracted payload with this manifest."
+  },
+  "verify_command": "python verify_release.py receipt.json --strict",
+  "archive": {
+    "path": "m14-nishimori-v1.zip",
+    "root_directory": "m14-nishimori-v1",
+    "entry_order": "lexicographic_posix_path",
+    "entry_timestamp": "1980-01-01T00:00:00",
+    "entry_mode": "0644",
+    "compression": "stored"
+  }
+}

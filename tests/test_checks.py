@@ -42,6 +42,12 @@ def test_m01_fails_when_peak_is_wrong():
     assert ok is False
 
 
+def test_m01_gate_is_one_temperature_bin_not_two():
+    ok, detail = check_m01(_ising_report(2.4))
+    assert ok is False
+    assert "±0.1" in detail
+
+
 def test_m01_not_applicable_to_non_ising_report():
     ok, detail = check_m01({"some": "other experiment"})   # no T/chi
     assert ok is None and "not an Ising" in detail

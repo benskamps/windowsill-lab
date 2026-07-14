@@ -1,8 +1,8 @@
 # Mirror the canonical seed-in-the-pot page to brokenbranch.dev.
 #
-# web/index.html in THIS repo is the single source of truth. Whenever it changes
-# on main, copy it into the website repo so the hosted surface
-# (brokenbranch.dev/windowsill) always matches what people download here.
+# web/index.html and schema/pot.schema.json in THIS repo are the sources of
+# truth. Mirror the public surface and its contract together so the page and
+# API cannot silently drift apart.
 #
 # Setup (one time): add a repo secret named SITE_SYNC_TOKEN — a fine-grained
 # Personal Access Token scoped to benskamps/brokenbranchdevwebsite with
@@ -14,6 +14,7 @@ on:
     branches: [main]
     paths:
       - web/index.html
+      - schema/pot.schema.json
       - .github/workflows/mirror-page.yml
   workflow_dispatch: {}   # manual "sync now" button
 
@@ -38,8 +39,11 @@ jobs:
           token: ${{ secrets.SITE_SYNC_TOKEN }}
           path: site
 
-      - name: Copy the page across
-        run: cp web/index.html site/windowsill/index.html
+      - name: Copy the page and contract across
+        run: |
+          mkdir -p site/schema
+          cp web/index.html site/windowsill/index.html
+          cp schema/pot.schema.json site/schema/pot.schema.json
 
       - name: Commit & push only if it actually changed
         working-directory: site
@@ -54,10 +58,10 @@ jobs:
           # protection setting instead.)
           git config user.name "Ben Schippers"
           git config user.email "benjamin.schippers@outlook.com"
-          if git diff --quiet -- windowsill/index.html; then
-            echo "site already matches web/index.html — nothing to mirror"
+          if git diff --quiet -- windowsill/index.html schema/pot.schema.json; then
+            echo "site already matches the Windowsill page and schema — nothing to mirror"
             exit 0
           fi
-          git add windowsill/index.html
-          git commit -m "chore(windowsill): mirror web/index.html from windowsill-lab@${GITHUB_SHA::7}"
+          git add windowsill/index.html schema/pot.schema.json
+          git commit -m "chore(windowsill): mirror page and schema from windowsill-lab@${GITHUB_SHA::7}"
           git push

@@ -20,7 +20,7 @@
     ║  would make the pot busier, it doesn't belong here.          ║
     ╚══════════════════════════════════════════════════════════════╝
 -->
-<html lang="en">
+<html lang="en" data-feed-url="https://raw.githubusercontent.com/benskamps/windowsill-lab/main/pot.json">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -34,8 +34,15 @@
   <meta property="og:description" content="A little plant that grows on real science: a home computer runs one physics experiment a night, verified results become leaves, and honest misses are kept too. The calm sibling of the aquarium.">
   <meta property="og:site_name" content="Broken Branch">
   <meta property="og:image" content="https://www.brokenbranch.dev/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="A single seedling in a clay pot on a windowsill — the lab's calm live readout, a leaf for every verified overnight result.">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="windowsill — a live readout of the lab">
+  <meta name="twitter:description" content="A little plant that grows on real science: a home computer runs one physics experiment a night, verified results become leaves, and honest misses are kept too. The calm sibling of the aquarium.">
+  <meta name="twitter:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <link rel="canonical" href="https://www.brokenbranch.dev/windowsill/">
-  <link rel="icon" type="image/svg+xml" href="../assets/favicon.svg">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d0c0a'/%3E%3Cpath d='M32 51V28c0-9 6-15 16-16-1 11-6 17-16 18M32 38c-8-1-13-6-14-15 9 1 14 6 14 14' fill='none' stroke='%237fae6b' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
@@ -48,6 +55,8 @@
       --text-muted: #8a857c;
       --clay: #c97b54;
       --leaf: #7fae6b;
+      --review: #d2aa67;
+      --null: #8f9288;
       --font-sans: 'Fraunces', Georgia, serif;
       --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
@@ -104,38 +113,47 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 2rem 1rem 3rem;
+      padding: 2rem 1.25rem 4rem;
       transition: background 3s cubic-bezier(0.25, 0.46, 0.45, 0.94);
     }
 
-    .wrap { width: 100%; max-width: 720px; }
+    .wrap { width: 100%; max-width: 1040px; }
 
-    .home { display:inline-block; margin-bottom:1.5rem; font-family:var(--font-mono);
+    .crumbs { display:flex; gap:1rem; align-items:center; margin-bottom:3.2rem; }
+    .home { display:inline-block; font-family:var(--font-mono);
             font-size:0.8rem; color:var(--text-secondary); text-decoration:none; }
     .home:hover { color: var(--text); }
+    .lab-kicker, .section-kicker {
+      font-family:var(--font-mono); font-size:0.68rem; line-height:1.4;
+      color:var(--clay); letter-spacing:0.12em; text-transform:uppercase;
+    }
 
     .topbar {
       display:flex; align-items:baseline; justify-content:space-between;
-      gap:1rem; margin-bottom:0.25rem;
+      gap:1.5rem; margin:0.25rem 0 0.7rem;
     }
     .label {
-      font-family:var(--font-mono); font-weight:700; font-size:1.05rem;
-      letter-spacing:-0.01em; color:var(--text); margin:0;
+      font-family:var(--font-sans); font-weight:520;
+      font-size:clamp(3.2rem, 8vw, 6.6rem); line-height:0.86;
+      letter-spacing:-0.055em; color:var(--text); margin:0;
     }
-    .label .sky { color:var(--clay); margin-right:0.4rem; }
+    .label .sky { display:inline-block; color:var(--clay); margin-right:0.45rem;
+                  font-family:var(--font-mono); font-size:0.26em; vertical-align:top;
+                  transform:translateY(0.45em); letter-spacing:0; }
     .phase-mood { font-family:var(--font-mono); font-size:0.85rem; color:var(--text-secondary); }
     .phase-mood .mood { color:var(--leaf); }
 
     .tagline {
-      font-size:0.82rem; color:var(--text-muted); margin-bottom:1.25rem; line-height:1.5;
+      max-width:680px; font-size:clamp(1rem, 2vw, 1.22rem); color:var(--text-muted);
+      margin-bottom:1.5rem; line-height:1.55;
     }
+    .tagline strong { color:var(--text); font-weight:520; }
 
     /* The scene breaks out of the text column — the windowsill deserves the wall. */
     .scene {
       position:relative;
-      width: min(960px, calc(100vw - 2rem));
-      margin-left: calc(50% - min(960px, calc(100vw - 2rem)) / 2);
-      border-radius: 14px;
+      width:100%;
+      border-radius:18px;
       overflow:hidden;
       border:1px solid var(--border);
       box-shadow: 0 24px 60px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.03);
@@ -143,6 +161,10 @@
       transition: background 3s ease;
     }
     .scene svg { display:block; width:100%; height:auto; }
+    .scene-notes {
+      position:absolute; top:1.1rem; right:1.1rem; z-index:3;
+      width:min(290px, calc(100% - 2.2rem)); display:grid; gap:0.6rem;
+    }
 
     /* ── Sky, sun & light ────────────────────────────────────── */
     .sky-stop { transition: stop-color 3s ease; }     /* top/mid/bot/haze cross-fade */
@@ -185,6 +207,7 @@
     /* ── The plant ───────────────────────────────────────────── */
     /* The whole plant sways once, slowly, from the base. Calm: a single lane. */
     #plant { transform-origin: 400px 446px; animation: sway 11s ease-in-out infinite alternate; }
+    .scene:hover #plant, .scene:focus-within #plant { animation-play-state:paused; }
     @keyframes sway { from { transform: rotate(-1deg); } to { transform: rotate(1deg); } }
     .leaf { transform-box: fill-box; transform-origin:center; }
     #stem, #leaves, .leaf, #bud, #flower { transition: opacity 1.2s ease; }
@@ -204,7 +227,7 @@
 
     /* ── Status & text ───────────────────────────────────────── */
     .legend {
-      display:flex; flex-wrap:wrap; gap:0.5rem 1.4rem; margin-top:0.9rem;
+      display:flex; flex-wrap:wrap; gap:0.5rem 1.4rem; margin-top:1rem;
       font-family:var(--font-mono); font-size:0.75rem; color:var(--text-muted);
     }
     .legend b { color: var(--text-secondary); font-weight:600; }
@@ -221,30 +244,81 @@
     .footer a:hover { color:var(--text); }
 
     .report {
-      display:flex; align-items:baseline; gap:0.6rem; flex-wrap:wrap;
-      margin-top:0.8rem; padding:0.55rem 0.8rem;
-      background:rgba(127,174,107,0.06); border:1px solid var(--border); border-radius:8px;
+      display:grid; gap:0.25rem; padding:0.72rem 0.8rem;
+      background:rgba(13,12,10,0.78); border:1px solid rgba(250,248,244,0.14); border-radius:9px;
+      backdrop-filter:blur(10px);
       font-family:var(--font-mono); font-size:0.78rem; color:var(--text-secondary);
     }
     .report-tag { color:var(--leaf); text-transform:uppercase; letter-spacing:0.06em; font-size:0.66rem; }
     .report-line { color:var(--text); }
-    .report-link { margin-left:auto; color:var(--text-secondary); text-decoration:none; border-bottom:1px dotted var(--border); }
+    .report-line { overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+    .report-link { justify-self:start; color:var(--text-secondary); text-decoration:none; border-bottom:1px dotted var(--border); }
     .report-link:hover { color:var(--text); }
 
     /* ── The current expedition: the question the lab is growing toward NOW ───
        Distinct from the nightly heartbeat (.report). Reads the open milestone's
        plain-language story from the feed; hidden if there's no open milestone. */
     .expedition {
-      display:flex; flex-wrap:wrap; align-items:baseline; gap:0.4rem 0.6rem;
-      margin-top:0.7rem; padding:0.55rem 0.8rem;
-      border:1px solid var(--border); border-radius:8px;
-      background:linear-gradient(180deg, rgba(127,174,107,0.06), transparent);
+      display:grid; gap:0.18rem; padding:0.72rem 0.8rem;
+      border:1px solid rgba(250,248,244,0.14); border-radius:9px;
+      background:linear-gradient(180deg, rgba(13,12,10,0.84), rgba(13,12,10,0.67));
+      backdrop-filter:blur(10px);
       font-size:0.82rem;
     }
     .exp-tag { color:var(--leaf); text-transform:uppercase; letter-spacing:0.06em;
                font-size:0.66rem; font-family:var(--font-mono); }
     .exp-label { color:var(--text); font-weight:600; }
-    .exp-q { color:var(--text-secondary); font-style:italic; flex-basis:100%; }
+    .exp-q { color:var(--text-secondary); font-style:italic; line-height:1.4; }
+
+    /* A scrollable specimen index: the same records as the plant, without
+       asking fingers or keyboards to chase a swaying SVG leaf. */
+    .milestone-rail {
+      display:flex; gap:0.45rem; overflow-x:auto; padding:0.85rem 0 0.55rem;
+      scrollbar-width:thin; scrollbar-color:var(--border) transparent;
+    }
+    .milestone-chip {
+      min-width:44px; min-height:44px; padding:0 0.7rem; border-radius:999px;
+      border:1px solid var(--border); background:transparent; color:var(--text-muted);
+      font:0.72rem var(--font-mono); cursor:pointer; white-space:nowrap;
+    }
+    .milestone-chip:hover, .milestone-chip:focus-visible { color:var(--text); border-color:var(--text-muted); outline:none; }
+    .milestone-chip.verified { color:var(--leaf); border-color:rgba(127,174,107,0.42); }
+    .milestone-chip.review { color:var(--review); border-color:rgba(210,170,103,0.45); }
+    .milestone-chip.null { color:var(--null); border-style:dashed; }
+    .milestone-chip.open { color:var(--text-secondary); }
+
+    .instrument-record {
+      display:flex; flex-wrap:wrap; gap:0.55rem 1rem; align-items:center;
+      padding:0.7rem 0; border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+      color:var(--text-muted); font:0.68rem var(--font-mono);
+    }
+    .instrument-record code { color:var(--text-secondary); font:inherit; }
+    .instrument-record a { color:var(--text-secondary); text-decoration:none; border-bottom:1px dotted var(--border); }
+    .record-state { margin-right:auto; color:var(--text-secondary); }
+    .record-state i { display:inline-block; width:0.48rem; height:0.48rem; margin-right:0.35rem;
+                      border-radius:50%; background:var(--text-muted); box-shadow:0 0 0 3px rgba(138,133,124,0.1); }
+    .record-state.fresh { color:var(--leaf); }
+    .record-state.fresh i { background:var(--leaf); box-shadow:0 0 0 3px rgba(127,174,107,0.12); }
+    .record-state.quiet { color:var(--review); }
+    .record-state.quiet i { background:var(--review); box-shadow:0 0 0 3px rgba(210,170,103,0.12); }
+
+    .portable-release {
+      display:grid; grid-template-columns:120px minmax(0, 700px); gap:clamp(1.5rem, 5vw, 4rem);
+      align-items:start; margin-top:clamp(3rem, 7vw, 5.5rem); padding:1.35rem 0;
+      border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+    }
+    .release-mark { color:var(--clay); font:0.72rem var(--font-mono); letter-spacing:0.12em; }
+    .portable-release h2 { margin-top:0.45rem; font-size:clamp(1.65rem, 3vw, 2.7rem);
+                           font-weight:520; line-height:1.08; letter-spacing:-0.03em; }
+    .portable-release p { margin-top:0.85rem; max-width:650px; color:var(--text-muted); font-size:0.88rem; line-height:1.65; }
+    .portable-release code { color:var(--review); font:0.78rem var(--font-mono); }
+    .release-proof { display:flex; flex-wrap:wrap; gap:0.45rem 1.2rem; margin-top:1rem;
+                     color:var(--text-muted); font:0.68rem/1.5 var(--font-mono); }
+    .release-proof strong { color:var(--leaf); font-weight:600; }
+    .release-links { display:flex; flex-wrap:wrap; gap:0.75rem 1.4rem; margin-top:1rem; }
+    .release-links a { min-height:44px; display:inline-flex; align-items:center; color:var(--leaf);
+                       font:0.72rem var(--font-mono); text-decoration:none; border-bottom:1px dotted var(--border); }
+    .release-links a:hover { color:var(--text); }
 
     /* ── Field note: tap or focus a leaf to read its plain-language story ─────
        The receipt (technical result + public record) is a secondary disclosure.
@@ -257,8 +331,9 @@
     }
     @keyframes fn-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
     .fieldnote.null { background:rgba(138,143,130,0.05); }
-    .fn-close { position:absolute; top:0.45rem; right:0.55rem; background:none; border:none;
-                color:var(--text-muted); font-size:1.15rem; line-height:1; cursor:pointer; padding:0.15rem 0.3rem; }
+    .fieldnote.review { background:rgba(210,170,103,0.055); border-color:rgba(210,170,103,0.28); }
+    .fn-close { position:absolute; top:0.3rem; right:0.35rem; width:44px; height:44px; background:none; border:none;
+                color:var(--text-muted); font-size:1.15rem; line-height:1; cursor:pointer; }
     .fn-close:hover { color:var(--text); }
     .fn-kicker { color:var(--text-muted); font-family:var(--font-mono); font-size:0.66rem;
                  text-transform:uppercase; letter-spacing:0.06em; }
@@ -277,8 +352,9 @@
     .fn-link { display:inline-block; margin-top:0.5rem; color:var(--leaf); text-decoration:none;
                font-size:0.8rem; border-bottom:1px dotted var(--border); }
     .fn-link:hover { color:var(--text); }
-    .leaf { cursor:pointer; }
-    .leaf:focus-visible, #bud:focus-visible { outline:2px solid var(--leaf); outline-offset:2px; border-radius:2px; }
+    .leaf, .leaf-hit { cursor:pointer; }
+    .leaf-hit { fill:transparent; stroke:none; }
+    .leaf:focus-visible, #bud:focus-visible { outline:2px solid var(--leaf); outline-offset:3px; border-radius:50%; }
 
     /* ── The archive: a calm, collapsed every-run ledger ─────────────────────
        Hidden entirely unless the live feed carries reports[]. The seedling is
@@ -301,19 +377,51 @@
     .arc-glyph { width:1.1em; }
     .arc-row.verified .arc-glyph { color:var(--leaf); }
     .arc-row.null .arc-glyph { color:var(--text-muted); }
+    .arc-row.review .arc-glyph { color:var(--review); }
     .arc-row.unscored .arc-glyph, .arc-row.unreadable .arc-glyph { color:var(--text-muted); }
     .arc-date { color:var(--text-muted); white-space:nowrap; }
     .arc-mid { color:var(--text-secondary); }
     .arc-head { color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .arc-link { margin-left:auto; color:var(--text-secondary); text-decoration:none;
                 border-bottom:1px dotted var(--border); white-space:nowrap; }
+    .arc-link + .arc-link { margin-left:0.15rem; }
     .arc-link:hover { color:var(--text); }
     .arc-all { display:block; margin-top:0.5rem; font-size:0.74rem;
                color:var(--text-secondary); text-decoration:none; }
     .arc-all:hover { color:var(--text); }
 
+    .journey, .garden { margin-top:clamp(4rem, 9vw, 7rem); padding-top:1.25rem; border-top:1px solid var(--border); }
+    .section-intro { display:grid; grid-template-columns:minmax(120px, 0.65fr) 1.5fr 1fr; gap:1.5rem; align-items:start; }
+    .section-intro h2 { font-size:clamp(1.9rem, 4vw, 3.4rem); line-height:1.04; letter-spacing:-0.035em; font-weight:520; }
+    .section-intro p { color:var(--text-muted); line-height:1.6; font-size:0.88rem; }
+    .phase-rail { list-style:none; display:grid; grid-template-columns:repeat(4,1fr); margin-top:2.5rem; border-top:1px solid var(--border); }
+    .phase-rail li { position:relative; min-height:150px; padding:1rem 1rem 1rem 0; border-right:1px solid var(--border); color:var(--text-muted); }
+    .phase-rail li:last-child { border-right:none; padding-left:1rem; }
+    .phase-rail li + li { padding-left:1rem; }
+    .phase-rail li::before { content:''; position:absolute; width:7px; height:7px; border-radius:50%; background:var(--border); top:-4px; left:0; }
+    .phase-rail li + li::before { left:1rem; }
+    .phase-rail li.reached::before { background:var(--leaf); box-shadow:0 0 0 4px rgba(127,174,107,0.1); }
+    .phase-rail li.current::before { background:var(--review); box-shadow:0 0 0 4px rgba(210,170,103,0.12); }
+    .phase-rail span { display:block; color:var(--text-muted); font:0.68rem var(--font-mono); }
+    .phase-rail strong { display:block; margin-top:2rem; color:var(--text-secondary); font-size:0.96rem; font-weight:520; }
+    .phase-rail li.reached strong { color:var(--text); }
+    .phase-rail em { display:block; margin-top:0.35rem; color:var(--text-muted); font:normal 0.67rem/1.45 var(--font-mono); }
+
+    .garden-row { display:grid; grid-template-columns:repeat(4,1fr); gap:0; margin-top:2.5rem; border-top:1px solid var(--border); }
+    .garden-specimen { min-height:245px; padding:1.1rem; border-right:1px solid var(--border); color:var(--text-muted); }
+    .garden-specimen:first-child { padding-left:0; }
+    .garden-specimen:last-child { border-right:none; }
+    .garden-specimen svg { display:block; width:100%; height:150px; overflow:visible; }
+    .garden-specimen path { fill:none; stroke:rgba(250,248,244,0.36); stroke-width:1.8; stroke-linecap:round; }
+    .garden-specimen ellipse, .garden-specimen circle { fill:rgba(127,174,107,0.7); }
+    .garden-specimen:nth-child(2) ellipse, .garden-specimen:nth-child(2) circle { fill:rgba(210,170,103,0.68); }
+    .garden-specimen:nth-child(3) ellipse, .garden-specimen:nth-child(3) circle { fill:rgba(110,151,179,0.68); }
+    .garden-specimen:nth-child(4) ellipse, .garden-specimen:nth-child(4) circle { fill:rgba(184,130,162,0.68); }
+    .garden-specimen strong { display:block; color:var(--text-secondary); font-size:0.9rem; font-weight:520; }
+    .garden-specimen small { display:block; margin-top:0.3rem; color:var(--text-muted); font:0.66rem/1.45 var(--font-mono); }
+
     .explainer {
-      margin-top:2rem; font-size:0.85rem; color:var(--text-muted); line-height:1.7;
+      max-width:780px; margin-top:5rem; font-size:0.85rem; color:var(--text-muted); line-height:1.7;
       border-top:1px solid var(--border); padding-top:1.25rem;
     }
     .explainer b { color:var(--text-secondary); font-weight:600; }
@@ -346,33 +454,49 @@
       .read-list dt { flex-basis:auto; }
     }
 
-    @media (max-width: 560px) {
+    @media (max-width: 720px) {
       body { padding:1.25rem 0.85rem 2.5rem; }
+      .crumbs { margin-bottom:2.2rem; }
       .topbar { flex-direction:column; align-items:flex-start; gap:0.15rem; margin-bottom:0.4rem; }
-      .label { font-size:0.98rem; }
-      .tagline { font-size:0.78rem; margin-bottom:1rem; }
+      .label { font-size:clamp(3rem, 15vw, 4.8rem); }
+      .phase-mood { font-size:0.72rem; }
+      .tagline { font-size:0.95rem; margin-bottom:1rem; }
+      .scene { border-radius:12px; }
+      .scene-notes { position:static; width:100%; padding:0.7rem; background:var(--room-2); }
+      .report, .expedition { background:rgba(255,255,255,0.025); backdrop-filter:none; }
       .legend { gap:0.4rem 1rem; font-size:0.72rem; }
       .footer { font-size:0.74rem; }
       .pebble-label { font-size: 13px; }
+      .section-intro { grid-template-columns:1fr; gap:0.6rem; }
+      .section-intro h2 { max-width:520px; }
+      .phase-rail, .garden-row { display:flex; overflow-x:auto; scroll-snap-type:x proximity; }
+      .phase-rail li { flex:0 0 210px; scroll-snap-align:start; }
+      .garden-specimen { flex:0 0 220px; scroll-snap-align:start; }
+      .garden-specimen:first-child { padding-left:1.1rem; }
+      .portable-release { grid-template-columns:1fr; gap:0.65rem; }
     }
 
     @media (prefers-reduced-motion: reduce) {
       body { transition: none; }
       #plant, .dust, .star, .clouds { animation: none; }
       .dust { opacity: 0.22; }
+      .fieldnote { animation:none; }
     }
   </style>
 </head>
 <body data-phase="day">
   <main class="wrap" id="main-content">
-    <a class="home" href="/labs/">← the lab</a>
-    <a class="home" href="/" style="margin-left:14px">broken branch</a>
+    <nav class="crumbs" aria-label="breadcrumb">
+      <a class="home" href="/labs/">← the lab</a>
+      <a class="home" href="/">broken branch</a>
+    </nav>
 
+    <p class="lab-kicker">Windowsill Lab · a patient home science machine</p>
     <div class="topbar">
       <h1 class="label"><span class="sky" id="sky">☀</span>windowsill</h1>
       <div class="phase-mood"><span id="phase">day</span> · <span id="season">spring</span> · feels <span class="mood" id="mood">—</span></div>
     </div>
-    <div class="tagline">A computer in Ben's home runs one small physics experiment every night while everyone sleeps — and this plant is the report it leaves by morning. The calm sibling of the <a href="/aquarium/" style="color:var(--text-secondary)">aquarium</a>.</div>
+    <div class="tagline"><strong>A home GPU keeps a night shift.</strong> It begins with famous answers, earns trust one check at a time, and keeps every miss. The plant is its public notebook.</div>
 
     <div class="scene" id="scene">
       <svg viewBox="0 0 800 560" role="img" aria-label="A single seedling in a clay pot on a sunlit windowsill">
@@ -541,6 +665,20 @@
         <rect x="0" y="0" width="800" height="560" fill="url(#vignette)" pointer-events="none"/>
         <rect id="amb" x="0" y="0" width="800" height="560" pointer-events="none" style="mix-blend-mode:screen"/>
       </svg>
+
+      <div class="scene-notes" role="group" aria-label="current instrument state">
+        <div class="expedition" id="expedition" hidden>
+          <span class="exp-tag" id="exp-tag">on the bench</span>
+          <span class="exp-label" id="exp-label">—</span>
+          <span class="exp-q" id="exp-q"></span>
+        </div>
+
+        <div class="report" id="report" hidden>
+          <span class="report-tag">latest field note</span>
+          <span class="report-line" id="report-line">—</span>
+          <a class="report-link" id="report-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">open record ↗</a>
+        </div>
+      </div>
     </div>
 
     <section class="legend" id="legend" aria-label="what the windowsill is showing">
@@ -550,17 +688,34 @@
       <span><b>offerings</b> <span class="v" id="m-offerings">0</span></span>
     </section>
 
-    <div class="expedition" id="expedition" hidden>
-      <span class="exp-tag">now growing</span>
-      <span class="exp-label" id="exp-label">—</span>
-      <span class="exp-q" id="exp-q"></span>
+    <nav class="milestone-rail" id="milestone-rail" aria-label="milestone field notes"></nav>
+
+    <div class="instrument-record" id="instrument-record" role="group" aria-label="public instrument record">
+      <span class="record-state" id="record-state"><i aria-hidden="true"></i> local scene</span>
+      <span>feed <code id="record-schema">—</code></span>
+      <a id="record-source" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">source</a>
+      <a id="record-snapshot" href="#" target="_blank" rel="noopener">snapshot.json</a>
     </div>
 
-    <div class="report" id="report" hidden>
-      <span class="report-tag">last night</span>
-      <span class="report-line" id="report-line">—</span>
-      <a class="report-link" id="report-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">full report ↗</a>
-    </div>
+    <aside class="portable-release" aria-labelledby="portable-title">
+      <span class="release-mark" aria-hidden="true">M14</span>
+      <div>
+        <span class="section-kicker">A result you can take home</span>
+        <h2 id="portable-title">Eight saved measurements. One exact identity. No network required.</h2>
+        <p>The M14 receipt independently regrades the persisted Nishimori-line energies at <code>L=24</code>. It claims statistical agreement—not a new proof, a simulation rerun, or a precise multicritical point.</p>
+        <div class="release-proof" role="group" aria-label="portable release boundary">
+          <span><strong>PASS</strong> · strict regrade</span>
+          <span>8 aggregate points</span>
+          <span>max Δ 0.015 ≤ 0.05</span>
+          <span>sha256 <code>34be3fa6330b…b985</code></span>
+        </div>
+        <div class="release-links">
+          <a href="https://raw.githubusercontent.com/benskamps/windowsill-lab/main/release/m14-nishimori-v1/m14-nishimori-v1.zip">download the portable ZIP</a>
+          <a href="https://raw.githubusercontent.com/benskamps/windowsill-lab/main/release/m14-nishimori-v1.sha256">SHA-256</a>
+          <a href="https://github.com/benskamps/windowsill-lab/tree/main/release/m14-nishimori-v1" target="_blank" rel="noopener">inspect its boundary ↗</a>
+        </div>
+      </div>
+    </aside>
 
     <section class="fieldnote" id="fieldnote" hidden aria-live="polite" aria-label="field note">
       <button class="fn-close" id="fn-close" type="button" aria-label="close field note">×</button>
@@ -580,6 +735,29 @@
       <div class="arc-list" id="arc-list"></div>
     </details>
 
+    <section class="journey" id="journey" aria-labelledby="journey-title">
+      <div class="section-intro">
+        <span class="section-kicker">The curriculum</span>
+        <h2 id="journey-title">Trust first. Then harder questions.</h2>
+        <p>The lab does not jump from a pretty simulation to a discovery claim. It climbs in four explicit stages.</p>
+      </div>
+      <ol class="phase-rail" id="phase-rail">
+        <li data-curriculum-phase="1"><span>01</span><strong>Verify the instrument</strong><em>M01–M05 · exact answers</em></li>
+        <li data-curriculum-phase="2"><span>02</span><strong>Map known territory</strong><em>M06–M10 · new models</em></li>
+        <li data-curriculum-phase="3"><span>03</span><strong>Push the edge</strong><em>M11–M14 · disorder</em></li>
+        <li data-curriculum-phase="4"><span>04</span><strong>Ask open questions</strong><em>M15–M18 · non-equilibrium</em></li>
+      </ol>
+    </section>
+
+    <section class="garden" aria-labelledby="garden-title">
+      <div class="section-intro">
+        <span class="section-kicker">One machine, many sciences</span>
+        <h2 id="garden-title">The plant changes with the question.</h2>
+        <p>Every track keeps the same pot and evidence rules. Only the growth form changes.</p>
+      </div>
+      <ul class="garden-row" id="garden-row" aria-labelledby="garden-title"></ul>
+    </section>
+
     <div class="footer">
       <span id="status">reading the windowsill…</span>
       <a href="https://github.com/benskamps/windowsill-lab" id="repo">source · how it works ↗</a>
@@ -590,21 +768,18 @@
       <p>A seedling on a windowsill, wired to real work. The plant is a picture of how a quiet
       overnight experiment is going: a home computer runs one careful physics question while you
       sleep, writes up what it found, and the plant grows from the results.</p>
-      <p>Right now it's studying a sudden switch that scientists call a <b>phase transition</b>.
-      Picture a flat grid of tiny magnets, each one nudging its neighbours to point the same way:
-      when things are warm they point every which way — no pattern — but cool them past one exact
-      temperature and they tip, all together, into agreement. It's the same family of change as a
-      magnet losing its pull when it gets hot, or water turning to ice. The lovely part is that
-      this exact tip-over temperature was worked out by hand back in <b>1944</b> (about 2.27 on the
-      scale this experiment uses), so we already know the right answer — which means the computer's
-      first job is simply to find that number on its own. If it can't land on something we already
-      trust, the problem is the instrument, not the universe.</p>
+      <p>The lower leaves are calibration: phase transitions and magnetic models whose answers are
+      known well enough to expose a bad instrument. Higher leaves move into disorder and dynamics,
+      where the claims must get narrower as the questions get harder. Tap any leaf—or use the
+      milestone rail—to see its question, finding, and technical receipt. The growing tip says
+      whether the next question has a runner ready or is honestly still only on the bench.</p>
 
       <h2 class="ex-h">How to read the plant</h2>
       <dl class="read-list">
-        <div><dt>green leaf</dt><dd>a finished experiment that got the right answer — checked, trusted, and hardened onto the stem to stay.</dd></div>
+        <div><dt>green leaf</dt><dd>a machine-checked result that a human reviewed and promoted onto the permanent record.</dd></div>
+        <div><dt>amber leaf</dt><dd>a measurement whose checker passed, waiting for a human to read the evidence before it can turn green.</dd></div>
         <div><dt>grey folded leaf</dt><dd>an experiment that missed. We keep it on the plant on purpose — an honest "we tried, it didn't work," left where you can see it, never hidden.</dd></div>
-        <div><dt>the soft growing tip</dt><dd>the experiment running right now, tonight, still unfinished.</dd></div>
+        <div><dt>the soft growing tip</dt><dd>the question at the front of the curriculum. Its field note says whether code exists to run it yet.</dd></div>
         <div><dt>stem height</dt><dd>how far the plant has climbed through its list of experiments — taller means more done.</dd></div>
         <div><dt>dark, damp soil</dt><dd>a fresh overnight run just finished and watered it. The soil slowly dries through the day until the next run.</dd></div>
         <div><dt>the season</dt><dd>how hard the computer is working: hard work heats it up, and that heat sets the season — cool and quiet reads as winter, busy and warm as summer.</dd></div>
@@ -649,10 +824,13 @@
         <p>The calm surface is the last mile of a real instrument. Underneath, one automated
         pipeline runs itself every night:</p>
         <p class="pipeline"><code>schedule → simulate → verify → report → publish → grow</code></p>
-        <p>A scheduled task wakes the machine; a <b>GPU simulation</b> (PyTorch) runs the night's
-        experiment; a <b>deterministic check</b> compares the result against known theory and passes
-        or fails it; a <b>provenance-stamped report</b> (HTML + JSON, carrying the exact code commit
-        and the machine it ran on) is written and committed; a small <b>versioned JSON feed</b>
+        <p>A scheduled task wakes the machine and asks the curriculum for a runnable next step. If
+        the frontier is still only a design, the lab records that fact and runs its M01 calibration
+        heartbeat instead of pretending. A <b>GPU simulation</b> (PyTorch) produces measurements; a
+        <b>deterministic check</b> independently re-derives the gated result; and a report is written
+        and committed. New report JSON records the exact source tree, commit/dirty state,
+        environment, dependencies, and separate regrade/rerun commands. Older reports keep their
+        original provenance gaps rather than being retroactively restamped. A small <b>versioned JSON feed</b>
         (<code>pot.json</code> — a published contract this very page reads) is updated; and the plant
         you're looking at is drawn straight from that feed. Continuous integration re-runs the whole
         test suite on every change, and a result that doesn't reproduce a known answer is kept as an
@@ -668,7 +846,7 @@
     </div>
 
     <div class="footer" style="margin-top:10px">
-      <span>windowsill · part of the Brokenbranch Lab</span>
+      <span>windowsill · part of the Broken Branch labs</span>
       <a href="/labs/">the lab ↗</a>
     </div>
   </main>
@@ -676,7 +854,8 @@
   <!-- Growth forms: pluggable plant shapes behind one interface, picked from the
        feed's per-milestone `growth_form` (derived from track in publish.py). This
        block is INLINED from web/growth-forms.js so the page stays a single
-       downloadable file (the mirror to brokenbranch.dev copies only index.html).
+       downloadable file (the mirror to brokenbranch.dev copies the page and
+       its JSON schema, but no companion JavaScript bundle).
        The two copies are kept identical by tests/test_web_growth_forms.py — edit
        web/growth-forms.js, then re-sync the block between the markers below. -->
   <!-- BEGIN growth-forms.js (inlined; source of truth: web/growth-forms.js) -->
@@ -1055,16 +1234,14 @@
     var SEASON_LEAF = { winter:'#7d8f6e', spring:'#7fae6b', summer:'#5f9c4e', autumn:'#c98a3e' };
     var BASE = 344, RISE = 154;   // soil surface y, and the full-ladder rise in px
 
-    // The real curriculum as of today (windowsill-lab/MILESTONES.md): M01
-    // verified, M02 the open experiment, the rest still ahead. A live snapshot
-    // overwrites this — without one, the seed shows the honest current state.
-    var DEFAULT_MILESTONES = [
-      { id:'M01', title:'2D Ising T_c', status:'verified', result:'T_c 2.30 ± 0.05 · Onsager 2.2692 ✓' },
-      { id:'M02', title:'Finite-size scaling', status:'open', progress:0.3 }
-    ];
+    // No snapshot means no scientific assertions. The procedural fallback is
+    // deliberately a seed, not an old milestone list pretending to be current.
+    var DEFAULT_MILESTONES = [];
     var DEFAULT_TOTAL = 31;       // physics ladder + the four citizen-science tracks
 
-    function isClosed(m) { return m && (m.status === 'verified' || m.status === 'null'); }
+    function isClosed(m) {
+      return m && (m.status === 'verified' || m.status === 'review' || m.status === 'null');
+    }
 
     function drawStalk(milestones, total, season) {
       var leafColor = SEASON_LEAF[season] || SEASON_LEAF.spring;
@@ -1086,7 +1263,8 @@
 
       $('stem').setAttribute('d', geo.stem);
 
-      // One leaf per closed milestone, placed at the form's node positions.
+      // One leaf per measured milestone. Amber leaves passed the machine check
+      // but remain explicitly separate from human-promoted green ones.
       var leaves = $('leaves');
       leaves.textContent = '';
       var frag = document.createDocumentFragment();
@@ -1096,23 +1274,26 @@
       });
       leaves.appendChild(frag);
 
-      // The open experiment is the tender bud at the very tip.
+      // The open experiment is the tender bud at the very tip. "Open" means
+      // it is on the bench; runner_available says whether tonight can run it.
       $('bud').setAttribute('cx', geo.tip.x.toFixed(0));
       $('bud').setAttribute('cy', topY.toFixed(0));
       $('bud').setAttribute('fill', leafColor);
       $('bud').setAttribute('opacity', open ? '1' : '0');
       $('bud').textContent = '';
       if (open) {
+        var scheduled = open.runner_available === true;
         var bt = document.createElementNS(SVGNS, 'title');
         bt.textContent = (open.id ? open.id + ' · ' : '') + (open.title || 'open experiment') +
-          ' — running (' + Math.round(openProg * 100) + '%)';
+          (scheduled ? ' — runner ready' : ' — on the bench; runner not built yet');
         $('bud').appendChild(bt);
         // The bud opens the current expedition's field note (story + receipt).
         _openMilestone = open;
         $('bud').setAttribute('tabindex', '0');
         $('bud').setAttribute('aria-label',
           (open.id ? open.id + ': ' : '') + (open.short_label || open.title || 'open experiment') +
-          ' — running now. Open field note.');
+          (scheduled ? ' — runner ready.' : ' — on the bench; runner not built yet.') +
+          ' Open field note.');
       } else {
         _openMilestone = null;
         $('bud').removeAttribute('tabindex');
@@ -1132,14 +1313,15 @@
         ',' + clamp((n & 255) + amt) + ')';
     }
 
-    // A milestone leaf: a veined green blade for a verified result, a smaller
-    // folded grey one for a null (failed calibration). <title> carries the result.
+    // A milestone leaf: green = human-promoted, amber = machine-checked and
+    // awaiting review, folded grey = a null kept on the books.
     function milestoneLeaf(x, y, dir, m, color) {
       var nul = (m.status === 'null');
+      var review = (m.status === 'review');
       var len = nul ? 12 : 18;
       var ey = nul ? y + len * 0.35 : y - len * 0.55;   // null leaves droop downward
       var ex = x + dir * len;
-      var fill = nul ? '#8a8f82' : color;
+      var fill = nul ? '#8a8f82' : (review ? '#d2aa67' : color);
 
       var g = document.createElementNS(SVGNS, 'g');
       g.setAttribute('class', 'leaf');
@@ -1162,6 +1344,15 @@
       rib.setAttribute('stroke-width', '0.8');
       rib.setAttribute('stroke-linecap', 'round');
       g.appendChild(rib);
+
+      // A transparent 44px target makes the small, gently swaying leaf usable
+      // by touch and pointer while the visible botany remains delicate.
+      var hit = document.createElementNS(SVGNS, 'circle');
+      hit.setAttribute('class', 'leaf-hit');
+      hit.setAttribute('cx', (x + dir * len * 0.5).toFixed(1));
+      hit.setAttribute('cy', (y + ey) / 2);
+      hit.setAttribute('r', '22');
+      g.appendChild(hit);
 
       // Only http(s) records become links — never javascript:/data: URLs from
       // a snapshot, even though it's self-owned. Defense in depth on the sink.
@@ -1192,8 +1383,9 @@
     var _openMilestone = null;
     var FN_STATUS = {
       verified: 'verified',
+      review: 'machine-checked · awaiting human review',
       'null': 'failed calibration (kept on the books)',
-      open: 'running now',
+      open: 'on the bench',
       pending: 'ahead',
     };
     function _setHidden(el, hide) { if (el) el.hidden = !!hide; }
@@ -1203,20 +1395,24 @@
       g.setAttribute('role', 'button');
       g.setAttribute('aria-label',
         (m.id ? m.id + ': ' : '') + (m.short_label || m.title || 'milestone') + ' — ' +
-        (m.status === 'null' ? 'failed calibration' : 'verified') + '. Open field note.');
-      g.addEventListener('click', function () { openFieldNote(m); });
+        (m.status === 'null' ? 'failed calibration' :
+          (m.status === 'review' ? 'awaiting human review' : 'verified')) + '. Open field note.');
+      g.addEventListener('click', function () { openFieldNote(m, g); });
       g.addEventListener('keydown', function (e) {
         if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
-          e.preventDefault(); openFieldNote(m);
+          e.preventDefault(); openFieldNote(m, g);
         }
       });
     }
 
-    function openFieldNote(m) {
+    var _fieldNoteReturn = null;
+    function openFieldNote(m, trigger) {
       m = m || {};
       var box = $('fieldnote'); if (!box) return;
       var status = m.status || 'verified';
+      _fieldNoteReturn = trigger || document.activeElement || _fieldNoteReturn;
       box.classList.toggle('null', status === 'null');
+      box.classList.toggle('review', status === 'review');
       $('fn-kicker').textContent = (m.id ? m.id + ' · ' : '') + (FN_STATUS[status] || status);
       $('fn-label').textContent = m.short_label || m.title || 'milestone';
 
@@ -1227,10 +1423,14 @@
       var r = $('fn-r');
       var plain = m.result_plain
         || (status === 'open'
-              ? 'Running now — no result yet. This is the experiment the plant is growing toward.'
+              ? (m.runner_available
+                  ? 'The runner is ready, but there is no result yet.'
+                  : 'This question is on the bench. Its runner has not been built yet, so tonight will not quietly claim to run it.')
               : (status === 'null'
                   ? 'A calibration that missed — kept on the record on purpose, never hidden.'
-                  : null));
+                  : (status === 'review'
+                      ? 'The machine check passed. This remains amber until a human reads the evidence and promotes it.'
+                      : null)));
       if (plain) { r.textContent = plain; _setHidden(r, false); }
       else _setHidden(r, true);
 
@@ -1262,6 +1462,10 @@
     function closeFieldNote() {
       var box = $('fieldnote');
       if (box) box.hidden = true;
+      if (_fieldNoteReturn && typeof _fieldNoteReturn.focus === 'function' && document.contains(_fieldNoteReturn)) {
+        _fieldNoteReturn.focus();
+      }
+      _fieldNoteReturn = null;
     }
 
     function drawFlower(top, on) {
@@ -1351,18 +1555,27 @@
     // the archive index. Hidden entirely when reports[] is absent/empty, so the
     // procedural seed stays byte-for-byte unchanged. textContent (never raw
     // HTML) + the same /^https?:\/\//i href-guard the milestone leaves use.
-    var ARC_GLYPH = { verified:'●', null:'◑', unscored:'○', unreadable:'⚠' };
-    function drawRunList(reports, archiveUrl) {
+    var ARC_GLYPH = { verified:'●', review:'◆', null:'◑', unscored:'○', unreadable:'⚠' };
+    function drawRunList(reports, archiveUrl, milestones) {
       var box = $('archive'), list = $('arc-list');
       if (!box || !list) return;
       if (!Array.isArray(reports) || !reports.length) { box.hidden = true; return; }
       list.textContent = '';
+      var milestoneStatus = {};
+      (milestones || []).forEach(function (m) {
+        if (m && m.id) milestoneStatus[m.id] = m.status;
+      });
       var shown = reports.slice(0, 8);
       shown.forEach(function (r) {
         r = r || {};
         var verdict = (r.verdict === 'null' || r.verdict === 'unscored' ||
                        r.verdict === 'unreadable') ? r.verdict
-                    : (r.status === 'null' ? 'null' : 'verified');
+                     : (r.status === 'null' ? 'null' : 'verified');
+        // A passing run is not the same thing as a human-promoted milestone.
+        // Keep review-pending evidence amber everywhere, including this ledger.
+        if (verdict === 'verified' && milestoneStatus[r.milestone] === 'review') {
+          verdict = 'review';
+        }
         var row = document.createElement('div');
         row.className = 'arc-row ' + verdict;
 
@@ -1397,8 +1610,21 @@
           a.href = href;
           a.target = '_blank';
           a.rel = 'noopener noreferrer';
-          a.textContent = 'report ↗';
+          a.textContent = 'record ↗';
+          a.title = 'Open this run in the human-readable archive';
           row.appendChild(a);
+        }
+        var receiptUrl = (typeof r.receipt_url === 'string' && /^https?:\/\//i.test(r.receipt_url))
+          ? r.receipt_url : null;
+        if (receiptUrl) {
+          var evidence = document.createElement('a');
+          evidence.className = 'arc-link';
+          evidence.href = receiptUrl;
+          evidence.target = '_blank';
+          evidence.rel = 'noopener noreferrer';
+          evidence.textContent = 'data ↗';
+          evidence.title = 'Open the compact measurement receipt and provenance';
+          row.appendChild(evidence);
         }
         list.appendChild(row);
       });
@@ -1435,6 +1661,141 @@
       return 'autumn';
     }
 
+    function feedFreshness(state) {
+      if (!state || state.empty || !state.last_run) return 'offline';
+      var age = (Date.now() - new Date(state.last_run).getTime()) / 3600000;
+      if (!isFinite(age)) return 'offline';
+      return age <= 36 ? 'fresh' : 'quiet';
+    }
+
+    function drawMilestoneRail(milestones) {
+      var rail = $('milestone-rail');
+      if (!rail) return;
+      rail.textContent = '';
+      (milestones || []).forEach(function (m) {
+        if (!m || !m.id) return;
+        var allowed = /^(verified|review|null|open|pending)$/.test(m.status) ? m.status : 'pending';
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'milestone-chip ' + allowed;
+        b.textContent = m.id;
+        b.title = (m.short_label || m.title || m.id) + ' · ' + (FN_STATUS[allowed] || allowed);
+        b.setAttribute('aria-label', b.title + '. Open field note.');
+        if (allowed === 'open') b.setAttribute('aria-current', 'step');
+        b.addEventListener('click', function () { openFieldNote(m, b); });
+        rail.appendChild(b);
+      });
+      rail.hidden = !rail.childNodes.length;
+    }
+
+    function curriculumStage(m) {
+      var hit = m && /^M(\d{2})$/.exec(m.id || '');
+      if (!hit) return 0;
+      var n = Number(hit[1]);
+      if (n <= 5) return 1;
+      if (n <= 10) return 2;
+      if (n <= 14) return 3;
+      return 4;
+    }
+
+    function paintCurriculum(milestones) {
+      var physics = (milestones || []).filter(function (m) { return curriculumStage(m); });
+      var current = physics.find(function (m) { return m.status === 'open'; })
+        || physics.find(function (m) { return m.status === 'review'; })
+        || physics.slice().reverse().find(isClosed);
+      var stage = curriculumStage(current);
+      document.querySelectorAll('[data-curriculum-phase]').forEach(function (li) {
+        var n = Number(li.getAttribute('data-curriculum-phase'));
+        li.classList.toggle('reached', !!stage && n < stage);
+        li.classList.toggle('current', !!stage && n === stage);
+      });
+    }
+
+    function drawGarden() {
+      var row = $('garden-row');
+      if (!row || row.childNodes.length) return;
+      var specimens = [
+        { form:'fern', label:'Physics', note:'phase changes · disorder' },
+        { form:'vine', label:'Compute', note:'proofs · number searches' },
+        { form:'creeper', label:'Astronomy', note:'signals unfolding in time' },
+        { form:'succulent', label:'Instruments', note:'calibration · patient counts' }
+      ];
+      specimens.forEach(function (spec) {
+        var item = document.createElement('li');
+        item.className = 'garden-specimen';
+        var svg = document.createElementNS(SVGNS, 'svg');
+        svg.setAttribute('viewBox', '315 10 170 145');
+        svg.setAttribute('aria-hidden', 'true');
+        var geo = GF.build(spec.form, { count:5, total:8, openProg:0.35, base:142, rise:112 });
+        var stem = document.createElementNS(SVGNS, 'path');
+        stem.setAttribute('d', geo.stem);
+        svg.appendChild(stem);
+        geo.nodes.forEach(function (node, i) {
+          var leaf = document.createElementNS(SVGNS, i % 3 === 2 ? 'circle' : 'ellipse');
+          leaf.setAttribute('cx', (node.x + node.dir * 8).toFixed(1));
+          leaf.setAttribute('cy', (node.y - 4).toFixed(1));
+          if (leaf.tagName.toLowerCase() === 'circle') {
+            leaf.setAttribute('r', '5');
+          } else {
+            leaf.setAttribute('rx', '10');
+            leaf.setAttribute('ry', '4.2');
+            leaf.setAttribute('transform', 'rotate(' + (node.dir < 0 ? -24 : 24) + ' ' +
+              (node.x + node.dir * 8).toFixed(1) + ' ' + (node.y - 4).toFixed(1) + ')');
+          }
+          svg.appendChild(leaf);
+        });
+        item.appendChild(svg);
+        var label = document.createElement('strong');
+        label.textContent = spec.label;
+        item.appendChild(label);
+        var note = document.createElement('small');
+        note.textContent = spec.note;
+        item.appendChild(note);
+        row.appendChild(item);
+      });
+    }
+
+    function updateInstrumentRecord(state, freshness) {
+      var record = $('record-state');
+      var schema = $('record-schema');
+      var source = $('record-source');
+      if (schema) schema.textContent = state.schema_version ? 'v' + state.schema_version : 'unavailable';
+      if (record) {
+        record.className = 'record-state ' + freshness;
+        record.innerHTML = '<i aria-hidden="true"></i>' +
+          (freshness === 'fresh' ? 'feed current' : (freshness === 'quiet' ? 'feed quiet' : 'local scene'));
+      }
+      var codeSha = state.provenance && state.provenance.code_sha;
+      var match = typeof codeSha === 'string' && /^([0-9a-f]{7,40})(-dirty)?$/i.exec(codeSha);
+      if (source) {
+        source.textContent = match ? 'source ' + match[1].slice(0, 7) + (match[2] ? '*' : '') : 'source repository';
+        source.href = match
+          ? 'https://github.com/benskamps/windowsill-lab/commit/' + match[1]
+          : 'https://github.com/benskamps/windowsill-lab';
+        source.title = match && match[2]
+          ? 'Snapshot generated from this commit with additional working-tree changes'
+          : 'Exact source commit';
+      }
+    }
+
+    function setFooterStatus(freshness, state, open) {
+      var el = $('status');
+      if (!el) return;
+      el.textContent = '';
+      var lead = document.createElement('span');
+      lead.className = freshness === 'fresh' ? 'live' : 'sleeping';
+      if (freshness === 'fresh' && open && open.runner_available) lead.textContent = '● scheduled';
+      else if (freshness === 'fresh') lead.textContent = '● heartbeat';
+      else if (freshness === 'quiet') lead.textContent = '◌ feed quiet';
+      else lead.textContent = '○ local scene';
+      el.appendChild(lead);
+      el.appendChild(document.createTextNode(freshness === 'offline'
+        ? ' · live snapshot unavailable'
+        : ' · last confirmed ' + ago(state.last_run)));
+    }
+
+    var _renderState = { mode:'local-scene' };
+
     // ── Render from a (possibly empty) state object ─────────────────────────
     function render(state) {
       state = state || {};
@@ -1442,6 +1803,7 @@
       var milestones = (Array.isArray(state.milestones) && state.milestones.length)
         ? state.milestones : DEFAULT_MILESTONES;
       var total = state.total || DEFAULT_TOTAL;
+      var freshness = feedFreshness(state);
       var moisture = (state.moisture != null) ? state.moisture
                    : (state.last_run ? wetFromRun(state.last_run) : 0.3);
 
@@ -1449,12 +1811,21 @@
       drawStalk(milestones, total, season);
       applyMoisture(moisture);
       var n = drawPebbles(state.offerings);
+      drawMilestoneRail(milestones);
+      paintCurriculum(milestones);
+      updateInstrumentRecord(state, freshness);
 
       var verifiedList = milestones.filter(function (m) { return m && m.status === 'verified'; });
+      var reviewList = milestones.filter(function (m) { return m && m.status === 'review'; });
+      var nullList = milestones.filter(function (m) { return m && m.status === 'null'; });
       var open = milestones.find(function (m) { return m && m.status === 'open'; });
-      $('m-growth').textContent = verifiedList.length + ' / ' + total + ' verified' +
-        (open && open.id ? ' · ' + open.id + ' open' : '');
-      $('m-watered').textContent = ago(state.last_run);
+      var growth = [];
+      if (verifiedList.length) growth.push(verifiedList.length + ' promoted');
+      if (reviewList.length) growth.push(reviewList.length + ' in review');
+      if (nullList.length) growth.push(nullList.length + ' null kept');
+      if (open && open.id) growth.push(open.id + (open.runner_available ? ' runner ready' : ' on bench'));
+      $('m-growth').textContent = growth.length ? growth.join(' · ') : 'awaiting a snapshot';
+      $('m-watered').textContent = state.last_run ? ago(state.last_run) : '—';
       $('m-runs').textContent = state.runs != null ? state.runs : '—';
       $('m-offerings').textContent = n;
 
@@ -1464,6 +1835,9 @@
 
       var rep = state.latest_report, rbox = $('report');
       if (rbox && rep && rep.headline) {
+        var repMilestone = milestones.find(function (m) { return m && m.id === rep.milestone; });
+        document.querySelector('.report-tag').textContent = repMilestone && repMilestone.status === 'review'
+          ? 'machine check · review pending' : 'latest field note';
         $('report-line').textContent = rep.headline + (rep.date ? ' · ' + rep.date : '');
         // The feed's ledger rows carry `href`; the older fallback path carries `url`.
         // Accept either so the "full report" link tracks the feed instead of the repo default.
@@ -1479,6 +1853,7 @@
       // the feed carries no story for it (procedural default).
       var exp = $('expedition');
       if (exp && open && (open.question_plain || open.short_label)) {
+        $('exp-tag').textContent = open.runner_available ? 'runner ready' : 'on the bench';
         $('exp-label').textContent = open.short_label || open.title || (open.id || 'current experiment');
         var eq = $('exp-q');
         if (open.question_plain) { eq.textContent = open.question_plain; _setHidden(eq, false); }
@@ -1489,14 +1864,29 @@
       }
 
       // The honest every-run ledger — hidden unless the feed carries reports[].
-      drawRunList(state.reports, state.archive_url);
+      drawRunList(state.reports, state.archive_url, milestones);
+      setFooterStatus(freshness, state, open);
 
-      var live = !state.empty && state.last_run;
-      var lastV = verifiedList[verifiedList.length - 1];
-      $('status').innerHTML = live
-        ? '<span class="live">● mapping</span> · last run ' + ago(state.last_run)
-        : '<span class="sleeping">○ patient</span> · ' +
-          (lastV ? (lastV.id || 'last result') + ' verified' : 'seed still a seed');
+      _renderState = {
+        mode: freshness === 'offline' ? 'local-scene' : 'feed-backed',
+        feed: freshness,
+        phase: document.body.getAttribute('data-phase'),
+        season: season,
+        schema_version: state.schema_version || null,
+        last_run: state.last_run || null,
+        runs: state.runs == null ? null : state.runs,
+        plant: {
+          growth_form: GF.pageGrowthForm(milestones),
+          promoted_leaves: verifiedList.length,
+          amber_review_leaves: reviewList.length,
+          folded_null_leaves: nullList.length,
+          open_bud: open ? {
+            id: open.id || null,
+            runner_available: open.runner_available === true,
+            state: open.runner_available ? 'runner-ready' : 'on-bench'
+          } : null
+        }
+      };
     }
 
     // Soil dries over ~16h between the lab's patient overnight runs.
@@ -1511,7 +1901,8 @@
     applyPhase(now);
     seedStars();
     seedDust();
-    render({});  // procedural default — beautiful with no backend at all
+    drawGarden();
+    render({ empty:true, reason:'boot' });
 
     // Wire the field note: close button, Escape to dismiss, and the bud (the
     // open experiment) as a focusable opener. Leaves wire themselves on render.
@@ -1526,24 +1917,53 @@
       var bud = $('bud');
       if (bud) {
         bud.setAttribute('role', 'button');
-        bud.addEventListener('click', function () { if (_openMilestone) openFieldNote(_openMilestone); });
+        bud.addEventListener('click', function () { if (_openMilestone) openFieldNote(_openMilestone, bud); });
         bud.addEventListener('keydown', function (e) {
           if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
-            e.preventDefault(); if (_openMilestone) openFieldNote(_openMilestone);
+            e.preventDefault(); if (_openMilestone) openFieldNote(_openMilestone, bud);
           }
         });
       }
     })();
 
+    // Deterministic, text-only state for browser tests and assistive inspection.
+    // Coordinates in the illustration use the SVG viewBox (0,0 top-left; 800×560).
+    window.render_game_to_text = function () {
+      return JSON.stringify({
+        coordinate_system: 'SVG viewBox: origin top-left, x right, y down, 800x560',
+        windowsill: _renderState
+      });
+    };
+
     // Keep the light walking with the clock.
     setInterval(function () { applyPhase(new Date()); }, 60000);
 
-    // Try the live feed; the page already looks complete if this never returns.
-    fetch('/api/pot', { cache: 'no-store' })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (state) { if (state && !state.empty) render(state); })
-      .catch(function () { /* stay procedural; the seed keeps its own time */ });
+    // One canonical URL drives both the rendered state and the visible
+    // snapshot.json link, so the two public truths cannot drift apart.
+    var feedUrl = document.documentElement.getAttribute('data-feed-url');
+    var snapshotLink = $('record-snapshot');
+    if (snapshotLink && feedUrl) snapshotLink.href = feedUrl;
+
+    // Try the live feed. Failure leaves a beautiful but explicitly local seed;
+    // it never resurrects stale scientific claims as a decorative fallback.
+    fetch(feedUrl, { cache: 'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('pot feed ' + r.status);
+        return r.json();
+      })
+      .then(function (state) { render(state || { empty:true, reason:'empty-response' }); })
+      .catch(function () { render({ empty:true, reason:'fetch-error' }); });
   })();
+  </script>
+  <script>
+    // The guided walk belongs to the hosted Broken Branch shell, not this
+    // downloadable instrument. Load it only where the companion asset exists.
+    if (/(^|\.)brokenbranch\.dev$/i.test(location.hostname)) {
+      var walk = document.createElement('script');
+      walk.src = '/walk/walk.js';
+      walk.defer = true;
+      document.body.appendChild(walk);
+    }
   </script>
 </body>
 </html>

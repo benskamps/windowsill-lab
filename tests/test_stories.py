@@ -2,8 +2,8 @@
 
 Guards the contract that publish.parse_milestones merges src/lab/stories.py onto
 each milestone, that every milestone in the curriculum has a story (so a new
-milestone can't ship without one), that result_plain rides only on verified
-milestones, and that jargon stays out of the plain-language fields.
+milestone can't ship without one), that result_plain rides only on promoted or
+review-stage measurements, and that jargon stays out of the plain fields.
 """
 from pathlib import Path
 
@@ -49,9 +49,9 @@ def test_parse_merges_story_fields():
     assert "Onsager" in m01["result"]
 
 
-def test_result_plain_only_on_verified():
+def test_result_plain_only_on_measured_lifecycle_states():
     for m in _milestones():
-        if m["status"] != "verified":
+        if m["status"] not in {"verified", "review", "null"}:
             assert "result_plain" not in m, (
                 f"{m['id']} is {m['status']} but carries result_plain"
             )

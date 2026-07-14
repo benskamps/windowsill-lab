@@ -1,0 +1,63 @@
+{
+  "L_values": [
+    16,
+    32,
+    64
+  ],
+  "T": 0.7,
+  "abs_mag": [
+    0.47819435596466064,
+    0.28209465742111206,
+    0.14155040681362152
+  ],
+  "abs_mag_err": [
+    0.0030694780871272087,
+    0.002927936613559723,
+    0.0018441840074956417
+  ],
+  "acceptance": [
+    0.5561861395835876,
+    0.5584824085235596,
+    0.5587099194526672
+  ],
+  "chi": [
+    3.442214012145996,
+    12.528294563293457,
+    19.88089370727539
+  ],
+  "config": {
+    "L_values": [
+      16,
+      32,
+      64
+    ],
+    "T": 0.7,
+    "model": "heisenberg",
+    "n_burnin": 8000,
+    "n_sweeps": 20000,
+    "over_relax": 3,
+    "seed": 42,
+    "updater": "metropolis"
+  },
+  "energy": [
+    -1.1615891456604004,
+    -1.1496179103851318,
+    -1.1476621627807617
+  ],
+  "experiment": "M09-heisenberg",
+  "headline": "2D Heisenberg (T=0.7): ⟨|m|⟩ drifts 0.478, 0.282, 0.142 across L=16, 32, 64 (ratios 0.590 → 0.502) — Mermin–Wagner confirmed: no finite-T order · 250s on GPU",
+  "monotone_decreasing": true,
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "0ffd9403634c67ea4d75697513f8b31b579baf49254733ed6895e19194435908"
+  },
+  "ratios": [
+    0.5899163256580956,
+    0.5017833662915299
+  ],
+  "slope_vs_inv_L": 7.052230834960939,
+  "updater": "metropolis",
+  "wall_seconds": 250.39315152168274
+}

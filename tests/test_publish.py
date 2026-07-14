@@ -16,6 +16,7 @@ SAMPLE = """
 - [ ] **M02** — Finite-size scaling: rerun at L = 32, 64, 128, 256, 512 and check collapse.
 - [~] **M03** — Specific heat curve C(T). Should diverge. (binning unstable — failed calibration)
 - [ ] **M04** — Verify lattice geometries beyond square: triangular (T_c ≈ 3.641).
+- [?] **M15** — Domain growth. (attempted 2026-07-07 — n=0.486 from G(r,t), awaiting review)
 
 ## Conventions
 - Each milestone PR includes the report it generated.
@@ -24,7 +25,7 @@ SAMPLE = """
 
 def test_parses_all_milestone_lines_only():
     ms = parse_milestones(SAMPLE)
-    assert [m["id"] for m in ms] == ["M01", "M02", "M03", "M04"]
+    assert [m["id"] for m in ms] == ["M01", "M02", "M03", "M04", "M15"]
 
 
 def test_status_mapping():
@@ -33,6 +34,7 @@ def test_status_mapping():
     assert ms["M02"]["status"] == "open"      # first pending → the open experiment
     assert ms["M03"]["status"] == "null"      # [~] → honest null
     assert ms["M04"]["status"] == "pending"   # later pending stays pending
+    assert ms["M15"]["status"] == "review"    # [?] → measured, not promoted
 
 
 def test_title_is_first_clause():
@@ -47,6 +49,22 @@ def test_verified_result_lifts_parenthetical():
     assert "done" not in ms["M01"]["result"]   # the "done <date> —" prefix is stripped
 
 
+def test_balanced_result_keeps_nested_physics_notation():
+    text = (
+        "- [x] **M14** — Nishimori identity. "
+        "(done 2026-07-05 — E/N = -2*tanh(1/T) across p in [0.04,0.16])\n"
+    )
+    result = parse_milestones(text)[0]["result"]
+    assert "tanh(1/T)" in result
+    assert result.endswith("[0.04,0.16]")
+
+
+def test_review_result_is_retained_without_becoming_verified():
+    ms = {m["id"]: m for m in parse_milestones(SAMPLE)}["M15"]
+    assert ms["status"] == "review"
+    assert "G(r,t)" in ms["result"]
+
+
 def test_null_has_no_result_field():
     ms = {m["id"]: m for m in parse_milestones(SAMPLE)}
     assert "result" not in ms["M03"]
@@ -57,11 +75,20 @@ def test_only_first_pending_is_open():
     assert statuses.count("open") == 1
 
 
+def test_runner_availability_is_feed_visible():
+    ms = {m["id"]: m for m in parse_milestones(SAMPLE)}
+    assert ms["M01"]["runner_available"] is True
+    assert ms["M15"]["runner_available"] is True
+    later = parse_milestones("- [ ] **M16** — Aging memory.\n")[0]
+    assert later["status"] == "open"
+    assert later["runner_available"] is False
+
+
 def test_build_snapshot_shape():
     ms = parse_milestones(SAMPLE)
     snap = build_snapshot(ms, "2026-06-08T00:00:00+00:00", 1, 47.0)
     assert snap["source"] == "windowsill-lab"
-    assert snap["total"] == 4
+    assert snap["total"] == 5
     assert snap["runs"] == 1
     assert snap["temp_c"] == 47.0
     assert snap["last_run"].startswith("2026-06-08")
@@ -291,8 +318,8 @@ from lab.publish import (
 from pathlib import Path
 
 
-def test_schema_version_bumped_to_3():
-    assert SCHEMA_VERSION == 3
+def test_schema_version_bumped_to_4():
+    assert SCHEMA_VERSION == 4
 
 
 def test_slug_for_rules():
@@ -424,6 +451,32 @@ def test_build_snapshot_back_compat_without_reports():
     # No reports kwarg → legacy single-report behavior preserved.
     assert snap["latest_report"] == rep
     assert snap.get("reports", []) == []
+
+
+def test_ensure_public_receipts_publishes_compact_evidence(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    lab_home = tmp_path / "lab"
+    receipts = reports / "receipts"
+    monkeypatch.setattr(publish, "REPORTS_DIR", reports)
+    monkeypatch.setattr(publish, "LAB_HOME", lab_home)
+    monkeypatch.setattr(publish, "RECEIPTS_DIR", receipts)
+    _write_report(
+        lab_home, "2026-06-15-m01", mtime=1000,
+        experiment="M01-ising-verification",
+        snapshots={"cold": [[1, -1], [-1, 1]]},
+    )
+
+    paths = publish.ensure_public_receipts()
+    assert paths == [receipts / "run-2026-06-15-m01.json"]
+    data = json.loads(paths[0].read_text(encoding="utf-8"))
+    assert data["T"] and data["chi"]
+    assert "snapshots" not in data
+    assert data["public_receipt"]["omitted"][0]["path"] == "snapshots"
+
+    # Re-running is byte-idempotent.
+    before = paths[0].read_bytes()
+    assert publish.ensure_public_receipts() == paths
+    assert paths[0].read_bytes() == before
 
 
 def test_lab_cache_is_slug_keyed_no_same_day_collision(tmp_path, monkeypatch):

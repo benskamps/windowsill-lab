@@ -71,6 +71,7 @@ def test_nightly_ps1_is_runnable_and_self_contained():
     assert "REFUSING" in ps
     # Same sync-before-push guard as the bash analog (the June 2026 stranding fix).
     assert "git pull --rebase" in ps
+    assert "push failed after 4 attempts" in ps
 
 
 def test_task_xml_is_wellformed_and_runs_the_nightly():
@@ -84,6 +85,8 @@ def test_task_xml_is_wellformed_and_runs_the_nightly():
     # windowsill grows even when nobody's at the machine at 3am.
     assert "<StartWhenAvailable>true</StartWhenAvailable>" in xml
     assert "<WakeToRun>true</WakeToRun>" in xml
+    assert "<RestartOnFailure>" in xml
+    assert "-NonInteractive -WindowStyle Hidden" in xml
 
 
 def test_windows_dry_run_writes_nothing(tmp_path, monkeypatch):

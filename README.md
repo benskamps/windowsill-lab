@@ -1,6 +1,6 @@
 # windowsill-lab
 
-> 🌲 Part of the [Brokenbranch Lab](https://www.brokenbranch.dev/lab/) — one human and a cluster of AI agents shipping strange software in public. This is one experiment among many; the front door lists them all.
+> 🌲 Part of the [Broken Branch labs](https://www.brokenbranch.dev/labs/) — one human and a cluster of AI agents shipping strange software in public. This is one experiment among many; the front door lists them all.
 
 A patient numerical-physics instrument that lives in your machine.
 
@@ -29,7 +29,13 @@ machine.
 ```bash
 git clone https://github.com/benskamps/windowsill-lab
 cd windowsill-lab
-python -m venv .venv && source .venv/bin/activate
+python -m venv .venv
+
+# macOS / Linux
+source .venv/bin/activate
+
+# Windows PowerShell (use this instead of the line above)
+# .\.venv\Scripts\Activate.ps1
 
 # PyTorch with ROCm support (adjust the channel if you're on CUDA)
 pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/rocm6.4
@@ -47,11 +53,14 @@ One repo, everything in it: the **engine** (`src/`), the published **feed**
 pull, fork, and customize. Where it's headed lives in [`BACKLOG.md`](BACKLOG.md).
 
 `lab setup` runs a pre-flight (Python, git remote, compute device) and then
-installs a nightly job — a systemd **user** timer where available, a cron line
-otherwise — that runs the experiment, refreshes `pot.json`, and pushes it. After
-that the seed breathes without you. Inspect first with `lab setup --check`, or
-see the plan with `lab setup --dry-run`. No accounts, no service to sign into —
-publishing is your own `git push`.
+installs a nightly job — Windows Task Scheduler on Windows, a systemd **user**
+timer where available, or a cron line otherwise — that runs the next available
+curriculum experiment (and an M01 heartbeat when the frontier has no runner),
+refreshes `pot.json`, and pushes it. Inspect first with `lab setup --check`, or
+see the plan with `lab setup --dry-run`; a dry run never writes or schedules
+anything. No accounts, no service to sign into — publishing is your own
+`git push`. The default Windows task runs while you are logged in, wakes a
+sleeping machine, and retries a failed launch twice.
 
 The report lives at `~/.lab/YYYY-MM-DD.html` (one per day) with a
 `~/.lab/latest.html` pointer for convenience. Raw measurements are also
@@ -62,7 +71,7 @@ re-analyze without re-running.
 
 | Phase | What | Why |
 |---|---|---|
-| **1. Verify** | 2D Ising critical exponents on a square lattice. | Calibrates the lab against Onsager's exact 1944 result. You know the code is correct because the answer is known to six decimal places. |
+| **1. Verify** | 2D Ising critical exponents on a square lattice. | Calibrates the lab against Onsager's exact 1944 result. The known answer makes a strong regression target; the ±0.1 gate catches a broken instrument but is not a precision proof of the whole codebase. |
 | **2. Map known territory** | 3D Ising · Potts (q=3,4,5) · XY · Heisenberg models. | Phase diagrams in textbooks. Your numbers should match. Builds the rendering + measurement stack across more systems. |
 | **3. Push the edge** | Spin glasses (Edwards-Anderson), frustrated lattices, quenched disorder. | Numbers from this corner are *worse-known* — many papers are from the 90s on clusters that a modern GPU dwarfs. Quietly verify or improve. |
 | **4. Genuinely open** | Non-equilibrium phase transitions · aging dynamics · KPZ universality on weird geometries. | Active research areas where one home GPU patiently sweeping a parameter for months has a real chance at a plot nobody has. |
@@ -90,6 +99,8 @@ single seedling grows on this lab's *passive citizen science*: each **verified**
 milestone hardens into a node on the stem (a green leaf), a **failed
 calibration** is a folded grey leaf (an honest null, kept on the books), the
 patient overnight **runs** water the soil, and CPU heat sets the season.
+Machine-checked measurements waiting for human review stay amber; only a human
+promotion turns them green.
 
 ```bash
 lab publish                 # write the committed pot.json (the live feed)
@@ -116,7 +127,32 @@ milestone can't wear a green leaf on the honor system.
 
 **Receipts.** Every snapshot carries `provenance` — the code SHA (`-dirty` when
 the tree has uncommitted changes), a sanitized environment string, and the
-versions of `torch`/`numpy`/`matplotlib` a result depended on.
+versions of `torch`/`numpy`/`matplotlib` a result depended on. Every run also
+publishes a compact `reports/receipts/run-*.json` record: all checker inputs and
+provenance remain, heavy visual snapshots are omitted explicitly, and both the
+source report and each omission are SHA-256 pinned. Full reports remain local;
+the newest full render is published as `reports/latest.html`.
+
+## A portable result
+
+[`release/m14-nishimori-v1`](release/m14-nishimori-v1/) and its
+[`portable ZIP`](release/m14-nishimori-v1/m14-nishimori-v1.zip) package one deliberately
+narrow claim as an offline verification release. Its standard-library checker
+regrades eight persisted `L=24` aggregate energy measurements against the exact
+Nishimori-line identity, checks every byte against a manifest, and rejects
+undeclared or modified files. The deterministic ZIP can be extracted and checked
+without this repository or a network connection; its external digest is pinned
+in [`release/m14-nishimori-v1.sha256`](release/m14-nishimori-v1.sha256):
+
+```bash
+python verify_release.py receipt.json --strict
+```
+
+The boundary is as important as the pass: this is saved-data statistical
+agreement, not a Monte Carlo rerun, a proof of the identity, a precise location
+of the multicritical point, or a novelty claim. The original M14 report did not
+record run-start provenance, so the release says that plainly instead of
+reconstructing a cleaner story after the fact.
 
 ## Hardware notes
 

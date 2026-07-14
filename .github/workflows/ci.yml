@@ -17,7 +17,7 @@ jobs:
           python-version: "3.11"
       - run: pip install pytest
       - name: Pipeline + contract tests
-        run: PYTHONPATH=src pytest tests/test_publish.py tests/test_checks.py tests/test_schema.py tests/test_setup.py tests/test_web_growth_forms.py
+        run: PYTHONPATH=src pytest tests/test_publish.py tests/test_checks.py tests/test_schema.py tests/test_setup.py tests/test_web_growth_forms.py tests/test_receipt.py tests/test_m14_release.py
       - name: Verify milestones reproduce their numbers
         run: PYTHONPATH=src python -m lab.cli verify
       - name: pot.json is in sync with MILESTONES.md
@@ -52,7 +52,9 @@ jobs:
       - name: HTML validation (windowsill page — mirror target's gate)
         run: npx --yes html-validate@9.7.1 web/index.html
 
-  # The numerical physics tests need the full scientific stack.
+  # The numerical physics tests need the full scientific stack. Run the whole
+  # CPU suite: a green workflow must mean the same thing as "all tests passed",
+  # not a hand-picked 42% subset that omits newer milestone engines.
   physics:
     runs-on: ubuntu-latest
     steps:
@@ -60,7 +62,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - name: Install (CPU torch)
-        run: pip install pytest numpy "torch>=2.4" --extra-index-url https://download.pytorch.org/whl/cpu
-      - name: Physics tests
-        run: PYTHONPATH=src pytest tests/test_ising.py tests/test_onsager.py
+      - name: Install project with CPU torch
+        run: |
+          python -m pip install --upgrade pip
+          pip install "torch>=2.4" --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+      - name: Full CPU test suite
+        run: PYTHONPATH=src pytest -q

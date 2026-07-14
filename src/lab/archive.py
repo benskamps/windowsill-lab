@@ -13,8 +13,10 @@ index of EVERY run on record, not just the milestone summaries:
 * an **unreadable** run is an honest gap — a corrupt report JSON, kept as a
   row rather than vanished.
 
-Each row deep-links the exact report it came from (the dated committed HTML if
-present, else the dated JSON), so nothing is hidden and nothing is deleted.
+Each row keeps a stable human-readable archive anchor and, where available, a
+compact public receipt containing its gated measurements and provenance. Heavy
+visual snapshots stay in the local/full report and are explicitly hash-pinned
+as omissions rather than silently disappearing.
 
 Kept deliberately import-light — *stdlib only* (mirrors ``publish.py``): no
 torch, no matplotlib. The verdict is graded through ``checks.CHECKS`` (keyed by
@@ -31,8 +33,9 @@ import re
 from pathlib import Path
 
 from .publish import (
-    ARCHIVE_URL, LAB_HOME, REPORTS_DIR, REPORT_URL_BASE, _DATE_GLOB, _date_of,
-    _milestone_for, _peak_t, _slug_for, today_local,
+    ARCHIVE_URL, LAB_HOME, RECEIPTS_DIR, RECEIPT_URL_BASE, REPORTS_DIR,
+    REPORT_URL_BASE, _DATE_GLOB, _date_of, _milestone_for, _peak_t,
+    _receipt_filename, _slug_for, today_local,
 )
 
 # Where the index lands. The nightly already ``git add -A reports/`` so writing
@@ -146,6 +149,12 @@ def classify_run(report: dict) -> dict:
     }
 
 
+def _anchor_for(date: str, slug: str) -> str:
+    """Stable, URL-safe archive row anchor for one dated run."""
+    safe = re.sub(r"[^a-z0-9-]+", "-", f"{date}-{slug}".lower()).strip("-")
+    return f"run-{safe}"
+
+
 def _href_for(date: str, slug: str, is_repo: bool, has_dated_html: bool,
               local_path: Path) -> str:
     """The report deep-link for a run.
@@ -156,12 +165,13 @@ def _href_for(date: str, slug: str, is_repo: bool, has_dated_html: bool,
     The only committed, htmlpreview-able report surfaces are
     ``reports/latest.html`` (the newest run — linked as the page's main "full
     report") and ``reports/index.html`` (this committed every-run ledger). So a
-    committed run deep-links to the archive index; a local-only (~/.lab) run keeps
-    its dated JSON path for traceability before a backfill (the page link-guard
-    keeps non-http hrefs out of the public ledger).
+    committed run deep-links to its stable row anchor in the archive index; its
+    separate ``receipt_href`` points at a small, durable measurement receipt.
+    A local-only (~/.lab) run keeps its dated JSON path for traceability before
+    publication (the page link-guard keeps non-http hrefs out of the feed).
     """
     if is_repo:
-        return ARCHIVE_URL
+        return f"{ARCHIVE_URL}#{_anchor_for(date, slug)}"
     # Local-only: a file path to the dated JSON cache. Not an http link.
     return local_path.as_uri() if local_path.exists() else str(local_path)
 
@@ -195,10 +205,12 @@ def scan_runs() -> list[dict]:
                 key = (date, p.stem)
                 row = {
                     "date": date, "milestone": None, "kind": "unreadable",
+                    "slug": p.stem,
                     "experiment": None, "headline": None,
                     "verdict": "unreadable", "detail": "report JSON is corrupt",
                     "numbers": "—", "code_sha": None,
                     "has_dated_html": False, "local_only": not is_repo,
+                    "receipt_href": None,
                     "report_href": (p.as_uri() if p.exists() else str(p)),
                 }
                 cur = by_key.get(key)
@@ -211,9 +223,15 @@ def scan_runs() -> list[dict]:
             has_html = (directory / f"{date}-{slug}.html").exists()
             row = classify_run(data)
             row["date"] = date
+            row["slug"] = slug
             row["has_dated_html"] = has_html
             row["local_only"] = not is_repo
             row["report_href"] = _href_for(date, slug, is_repo, has_html, p)
+            receipt = RECEIPTS_DIR / _receipt_filename(date, slug)
+            row["receipt_href"] = (
+                RECEIPT_URL_BASE + _receipt_filename(date, slug)
+                if receipt.exists() else None
+            )
 
             cur = by_key.get(key)
             cur_is_repo = (not cur[1]["local_only"]) if cur else False
@@ -236,10 +254,12 @@ def _public_href(href: str | None) -> str | None:
 def run_ledger(limit: int | None = None) -> list[dict]:
     """Newest-first sanitized rows for ``pot.json``'s ``reports`` array.
 
-    Each row is ONLY ``{date, milestone, verdict, headline, href}`` — no
-    config, no curves, no raw arrays leak into the public feed. A non-http href
-    (a local-only ~/.lab path) becomes ``None`` so the page never tries to link
-    it. ``unreadable`` and ``unscored`` rows are mapped to the schema's
+    Each row is ONLY ``{date, milestone, verdict, headline, href,
+    receipt_url}`` — no config, no curves, no raw arrays leak into the feed.
+    ``href`` opens the human-readable archive row; ``receipt_url`` opens the
+    durable measurement evidence. A non-http href (a local-only ~/.lab path)
+    becomes ``None`` so the page never tries to link it. ``unreadable`` and
+    ``unscored`` rows are mapped to the schema's
     ``verified``/``null`` enum is NOT done here — the schema's ``report`` enum is
     extended to carry all four verdicts honestly.
     """
@@ -253,6 +273,7 @@ def run_ledger(limit: int | None = None) -> list[dict]:
             "verdict": r["verdict"],
             "headline": r.get("headline"),
             "href": _public_href(r.get("report_href")),
+            "receipt_url": _public_href(r.get("receipt_href")),
         }
         for r in rows
     ]
@@ -260,7 +281,9 @@ def run_ledger(limit: int | None = None) -> list[dict]:
 
 # ── render_index: the HTML page (reuses the report templates' calm CSS) ───────
 _LEAF = {
-    "verified": ("●", "verified", "leaf"),
+    # Run verdicts describe the deterministic checker, not the separate human
+    # milestone-promotion lifecycle exposed by pot.json v4.
+    "verified": ("●", "machine check passed", "leaf"),
     "null":     ("◑", "null · folded grey leaf", "null"),
     "unscored": ("○", "unscored", "unscored"),
     "unreadable": ("⚠", "unreadable", "unreadable"),
@@ -338,21 +361,27 @@ def _row_html(run: dict) -> str:
     numbers = html.escape(str(run.get("numbers") or "—"))
     detail = html.escape(str(run.get("detail") or ""))
     verd = html.escape(label)
+    receipt_href = run.get("receipt_href")
     href = run.get("report_href")
+    slug = str(run.get("slug") or run.get("milestone") or "run").lower()
+    anchor = html.escape(_anchor_for(str(run.get("date") or "undated"), slug), quote=True)
     flag = ' <span class="flag">(local only — backfill pending)</span>' if run.get("local_only") else ""
     # The link cell: only ever a same-origin/href the index itself owns; the
     # public pot.json ledger separately strips non-http. textContent-equivalent
     # escaping (we escape every interpolated value above).
-    if href:
-        link = f'<a class="run" href="{html.escape(href, quote=True)}">report ↗</a>{flag}'
+    if receipt_href:
+        link = (f'<a class="run" href="{html.escape(receipt_href, quote=True)}">'
+                f'receipt.json ↗</a>{flag}')
+    elif href and run.get("local_only"):
+        link = f'<a class="run" href="{html.escape(href, quote=True)}">local report ↗</a>{flag}'
     else:
-        link = f'<span class="flag">no report</span>{flag}'
+        link = f'<span class="flag">receipt unavailable</span>{flag}'
     # The null's real numbers + detail are shown, never deleted.
     body = f'<span class="num">{numbers}</span>'
     if detail and detail != numbers:
         body += f'<br><span class="num" style="opacity:0.7">{detail}</span>'
     return (
-        f'<tr class="{cls}">'
+        f'<tr class="{cls}" id="{anchor}">'
         f'<td class="glyph">{glyph}</td>'
         f'<td class="date">{date}</td>'
         f'<td><span class="verd">{verd}</span><br>{headline}</td>'
@@ -368,7 +397,7 @@ def _group_html(milestone: str, runs: list[dict]) -> str:
     return (
         f'  <h2>{head}</h2>\n'
         f'  <table>\n'
-        f'    <tr><th></th><th>date</th><th>run</th><th>numbers</th><th>report</th></tr>\n'
+        f'    <tr><th></th><th>date</th><th>run</th><th>numbers</th><th>evidence</th></tr>\n'
         f'{rows}\n'
         f'  </table>'
     )
@@ -399,7 +428,7 @@ def render_index(runs: list[dict] | None = None) -> str:
     n_null = sum(1 for r in runs if r["verdict"] == "null")
     summary = html.escape(
         f"Every run the lab has on record — {len(runs)} so far, "
-        f"{n_verified} verified, {n_null} honest null"
+        f"{n_verified} passing checks, {n_null} honest null"
         + ("s" if n_null != 1 else "")
         + ". Nothing hidden, nothing deleted."
     )

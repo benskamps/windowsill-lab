@@ -7,6 +7,40 @@ rendering themselves are covered by test_m03 / test_render.
 import lab.cli as cli
 
 
+def test_verify_command_is_fail_closed_for_missing_evidence(monkeypatch, capsys):
+    from lab import checks as checks_mod
+
+    monkeypatch.setattr(checks_mod, "verify", lambda _ids=None: [
+        {"id": "M01", "status": "pass", "detail": "ok"},
+        {"id": "M02", "status": "no-report", "detail": "missing receipt"},
+        {"id": "M03", "status": "unchecked", "detail": "no checker"},
+    ])
+    rc = cli.main(["verify"])
+    captured = capsys.readouterr()
+    assert rc == 1
+    assert "M02 (no-report)" in captured.err
+    assert "M03 (unchecked)" in captured.err
+
+
+def test_verify_command_passes_only_when_every_result_passes(monkeypatch, capsys):
+    from lab import checks as checks_mod
+
+    monkeypatch.setattr(checks_mod, "verify", lambda _ids=None: [
+        {"id": "M01", "status": "pass", "detail": "reproduced"},
+        {"id": "M14", "status": "pass", "detail": "identity reproduced"},
+    ])
+    assert cli.main(["verify"]) == 0
+    assert "VERIFICATION INCOMPLETE" not in capsys.readouterr().err
+
+
+def test_verify_command_fails_when_filter_matches_nothing(monkeypatch, capsys):
+    from lab import checks as checks_mod
+
+    monkeypatch.setattr(checks_mod, "verify", lambda _ids=None: [])
+    assert cli.main(["verify", "ZZ99"]) == 1
+    assert "no verified milestones" in capsys.readouterr().err
+
+
 def test_help_lists_m03(capsys):
     rc = cli.main(["help"])
     out = capsys.readouterr().out
@@ -155,3 +189,22 @@ def test_m02_command_forwards_updater(monkeypatch, capsys):
     assert calls["run"]["updater"] == "metropolis"
     out = capsys.readouterr().out
     assert "sweeps · metropolis" in out
+
+
+def test_setup_dry_run_never_claims_the_scheduler_was_installed(monkeypatch, capsys):
+    from lab import setup as setup_mod
+
+    monkeypatch.setattr(setup_mod, "health_checks", lambda: [
+        {"name": "test", "ok": True, "detail": "ready"},
+    ])
+    monkeypatch.setattr(setup_mod, "install", lambda **_: {
+        "method": "schtasks",
+        "nightly": "nightly.ps1",
+        "steps": ["(dry run — nothing written)"],
+        "notes": [],
+    })
+
+    assert cli.main(["setup", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "dry run complete — nothing was written or scheduled" in out
+    assert "will now grow on its own" not in out

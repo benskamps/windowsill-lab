@@ -4,25 +4,16 @@ import sys
 import webbrowser
 from pathlib import Path
 
+from .curriculum import RUNNERS
+
 # Lightweight commands (open / publish / help) must work without torch or
 # matplotlib, so ising/render are imported lazily inside `run`. LAB_HOME is a
 # trivial constant we keep here to avoid importing render just for the path.
 LAB_HOME = Path.home() / ".lab"
 
-# Milestone → the ``lab`` subcommand that runs its experiment. This formalizes
-# the mapping the bespoke ``lab mNN`` subcommands already encode, so ``lab next``
-# can dispatch the OPEN milestone's runner. M01 is the un-prefixed base Ising
-# engine (``lab run``) — the nightly heartbeat. Milestones past the last entry
-# here (M14+, and the Citizen-Science C/A/I/B tracks) have no runner yet, so
-# ``lab next`` falls back to the heartbeat until their engine lands. Add an entry
-# the moment a milestone gets a runnable command.
-RUNNERS = {
-    "M01": "run",
-    "M02": "m02", "M03": "m03", "M04": "m04", "M05": "m05",
-    "M06": "m06", "M07": "m07", "M08": "m08", "M09": "m09",
-    "M10": "m10", "M11": "m11", "M12": "m12", "M13": "m13",
-    "M14": "m14", "M15": "m15",
-}
+# Milestone → runnable ``lab`` subcommand lives in ``curriculum.py`` so the
+# scheduler and the public feed expose the same operational truth. M01 is the
+# un-prefixed heartbeat; milestones past M15 currently remain on the bench.
 
 
 def _select_next(milestones):
@@ -490,13 +481,18 @@ def main(argv=None):
         ids = [a for a in args[1:] if not a.startswith("-")] or None
         results = checks.verify(ids)
         if not results:
-            print("no verified milestones to check."); return 0
+            print("no verified milestones to check.", file=sys.stderr)
+            return 1
         mark = {"pass": "✓", "fail": "✗", "unchecked": "·", "no-report": "?"}
         for r in results:
             print(f"  {mark.get(r['status'], '?')} {r['id']} [{r['status']}] — {r['detail']}")
-        failed = [r["id"] for r in results if r["status"] == "fail"]
-        if failed:
-            print(f"\nFAILED: {', '.join(failed)}", file=sys.stderr); return 1
+        blocked = [r for r in results if r["status"] != "pass"]
+        if blocked:
+            summary = ", ".join(f"{r['id']} ({r['status']})" for r in blocked)
+            print(f"\nVERIFICATION INCOMPLETE: {summary}", file=sys.stderr)
+            print("Every promoted milestone must have a registered check and a readable passing report.",
+                  file=sys.stderr)
+            return 1
         return 0
 
     if cmd == "setup":
@@ -517,7 +513,10 @@ def main(argv=None):
             print(f"  · {s}")
         for n in plan["notes"]:
             print(n)
-        print("\nthe windowsill will now grow on its own. 🌱")
+        if "--dry-run" in flags:
+            print("\ndry run complete — nothing was written or scheduled.")
+        else:
+            print("\nthe windowsill will now grow on its own. 🌱")
         return 0
 
     if cmd == "m02":

@@ -110,7 +110,16 @@ mkdir -p "$(dirname "$LOG")"
     git commit -m "nightly: $(date -u +%F)"
     # On rejection, remote advanced under us: rebase and retry, don't hammer a
     # push that can only be rejected again.
-    for i in 1 2 3 4; do git push && break || {{ git pull --rebase --autostash; sleep $((2 ** i)); }}; done
+    pushed=0
+    for i in 1 2 3 4; do
+      if git push; then pushed=1; break; fi
+      git pull --rebase --autostash
+      sleep $((2 ** i))
+    done
+    if [ "$pushed" -ne 1 ]; then
+      echo "ERROR: push failed after 4 attempts"
+      exit 1
+    fi
   fi
   echo "── done"
 }} >>"$LOG" 2>&1
@@ -164,6 +173,7 @@ New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
 # control flow keys off $LASTEXITCODE, which the pipe preserves.
 function Log($m) { Add-Content -LiteralPath $log -Value $m -Encoding utf8 }
 filter LogCmd { Log "$_" }
+trap { Log "-- failed: $($_.Exception.Message)"; exit 1 }
 Log "-- $((Get-Date).ToUniversalTime().ToString('s'))Z nightly start"
 # Guard: only the published trunk feeds brokenbranch.dev. If the clone was left
 # on a feature branch, a nightly commit/push would strand the feed (and the
@@ -193,17 +203,22 @@ git add -A reports/ 2>&1 | LogCmd
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {
     git commit -m "nightly: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd'))" 2>&1 | LogCmd
+    $pushSucceeded = $false
     for ($i = 1; $i -le 4; $i++) {
         git push 2>&1 | LogCmd
-        if ($LASTEXITCODE -eq 0) { break }
+        if ($LASTEXITCODE -eq 0) { $pushSucceeded = $true; break }
         # Remote advanced between the sync above and now. Rebase onto it and retry,
         # rather than hammering a push that can only be rejected again.
         Log "push rejected; rebasing onto origin/main and retrying"
         git pull --rebase --autostash 2>&1 | LogCmd
         Start-Sleep -Seconds ([math]::Pow(2, $i))
     }
+    if (-not $pushSucceeded) {
+        Log "ERROR: push failed after 4 attempts"
+        exit 1
+    }
 }
-Log "-- done"
+Log "-- done (success)"
 """
 
 # Task Scheduler XML. schtasks /Create /XML wants UTF-16, so the file is written
@@ -234,6 +249,11 @@ _TASK_XML = """<?xml version="1.0" encoding="UTF-16"?>
     <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
     <StartWhenAvailable>true</StartWhenAvailable>
     <WakeToRun>true</WakeToRun>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <RestartOnFailure>
+      <Interval>PT5M</Interval>
+      <Count>2</Count>
+    </RestartOnFailure>
     <ExecutionTimeLimit>PT2H</ExecutionTimeLimit>
     <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
     <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
@@ -242,7 +262,7 @@ _TASK_XML = """<?xml version="1.0" encoding="UTF-16"?>
   <Actions Context="Author">
     <Exec>
       <Command>powershell.exe</Command>
-      <Arguments>-NoProfile -ExecutionPolicy Bypass -File "__NIGHTLY_PS1__"</Arguments>
+      <Arguments>-NoLogo -NoProfile -NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "__NIGHTLY_PS1__"</Arguments>
     </Exec>
   </Actions>
 </Task>
