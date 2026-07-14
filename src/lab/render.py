@@ -2,8 +2,12 @@
 from __future__ import annotations
 
 import base64
+import hashlib
+import importlib.metadata
 import io
 import json
+import platform
+import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -21,6 +25,94 @@ LAB_HOME = Path.home() / ".lab"
 # deep-link every node on the seedling stem; the nightly commits the whole
 # reports/ tree on every run.
 REPO_REPORTS = Path(__file__).resolve().parents[2] / "reports"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+
+
+def _git(*args: str) -> str | None:
+    try:
+        run = subprocess.run(
+            ["git", *args], cwd=REPO_ROOT, capture_output=True, text=True,
+            encoding="utf-8", errors="replace", timeout=5, check=False,
+        )
+        return (run.stdout or "").strip() if run.returncode == 0 else None
+    except (OSError, subprocess.SubprocessError):
+        return None
+
+
+def _source_tree_sha256() -> str:
+    """Digest the Python source tree that produced a report.
+
+    This is not a substitute for a clean commit; it is the honest fallback that
+    makes a dirty run's exact local source state distinguishable without
+    publishing a patch that may contain unrelated work.
+    """
+
+    digest = hashlib.sha256()
+    source = REPO_ROOT / "src" / "lab"
+    for path in sorted(source.glob("*.py")):
+        digest.update(path.name.encode("utf-8"))
+        digest.update(b"\0")
+        digest.update(path.read_bytes())
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
+def _dependency_versions() -> dict[str, str]:
+    versions: dict[str, str] = {}
+    for name in ("numpy", "torch", "matplotlib"):
+        try:
+            versions[name] = importlib.metadata.version(name)
+        except importlib.metadata.PackageNotFoundError:
+            continue
+    return versions
+
+
+def _stamp_report_json(json_dump: str, slug: str) -> str:
+    """Add prospective, machine-readable provenance to a persisted report.
+
+    Legacy reports remain explicitly legacy; every new committed report records
+    its source commit, cleanliness, full source-tree digest, runtime, dependency
+    versions, and the separate commands for saved-data regrading and stochastic
+    rerunning. Missing git metadata is represented as null, never guessed.
+    """
+
+    try:
+        report = json.loads(json_dump)
+    except (TypeError, json.JSONDecodeError):
+        return json_dump
+    if not isinstance(report, dict):
+        return json_dump
+
+    status = _git("status", "--porcelain", "--", "src/lab")
+    commit = _git("rev-parse", "HEAD")
+    milestone = slug.upper() if slug != "run" else None
+    rerun = None
+    if slug == "m01":
+        rerun = "python -m lab.cli run"
+    elif milestone:
+        rerun = f"python -m lab.cli {slug}"
+
+    report["report_schema_version"] = 1
+    report["generated_at"] = datetime.now(timezone.utc).isoformat()
+    diff = _git("diff", "--binary", "HEAD", "--", "src/lab") or ""
+    dirty_material = (status or "") + "\n" + diff
+    report["provenance"] = {
+        "source_commit": commit,
+        "source_clean": status == "" if status is not None else False,
+        "source_diff_sha256": (
+            hashlib.sha256(dirty_material.encode("utf-8")).hexdigest()
+            if status else None
+        ),
+        "source_tree_sha256": _source_tree_sha256(),
+        "python": platform.python_version(),
+        "platform": f"{platform.system().lower()}-{platform.machine().lower()}",
+        "dependencies": _dependency_versions(),
+    }
+    report["reproduction"] = {
+        "regrade": f"python -m lab.cli verify {milestone}" if milestone else "python -m lab.cli verify",
+        "rerun": rerun,
+    }
+    return json.dumps(report, indent=2, ensure_ascii=False)
 
 
 def _ensure_home() -> Path:
@@ -52,11 +144,25 @@ def _commit_report(date: str, slug: str, html: str, json_dump: str) -> Path:
     rather than lossy). Distinct dates and distinct slugs never collide — which
     is the whole fix: the old single ``latest.html`` buried every prior run.
     """
+    stamped_dump = _stamp_report_json(json_dump, slug)
+    if stamped_dump != json_dump and json_dump in html:
+        html = html.replace(json_dump, stamped_dump)
+    json_dump = stamped_dump
+
     REPO_REPORTS.mkdir(parents=True, exist_ok=True)
     html_path = REPO_REPORTS / f"{date}-{slug}.html"
     json_path = REPO_REPORTS / f"{date}-{slug}.json"
     html_path.write_text(html, encoding="utf-8")
     json_path.write_text(json_dump, encoding="utf-8")
+    # Keep a small, durable public record even though the full dated report is
+    # intentionally gitignored.  Numerical curves + provenance remain; only
+    # heavyweight lattice snapshots are replaced by explicit digests.
+    from .receipt import write_public_receipt  # stdlib-only, kept lazy
+    write_public_receipt(
+        json.loads(json_dump),
+        REPO_REPORTS / "receipts" / f"run-{date}-{slug}.json",
+        json_dump.encode("utf-8"),
+    )
     # Back-compat pointer: a copy of the newest, not an archive that gets clobbered.
     (REPO_REPORTS / "latest.html").write_text(html, encoding="utf-8")
     return html_path

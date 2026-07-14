@@ -82,6 +82,16 @@ def test_bad_status_is_rejected():
     assert validate(bad, SCHEMA)
 
 
+def test_review_status_and_runner_capability_conform():
+    candidate = {
+        "milestones": [{
+            "id": "M15", "status": "review", "track": "physics",
+            "growth_form": "fern", "runner_available": True,
+        }]
+    }
+    assert validate(candidate, SCHEMA) == []
+
+
 def test_non_http_url_is_rejected():
     # Mirrors the windowsill page's link guard: only http(s) records become links.
     bad = {"milestones": [{"id": "M01", "status": "verified", "url": "javascript:alert(1)"}]}

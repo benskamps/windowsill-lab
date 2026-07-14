@@ -12,6 +12,7 @@ run fast and never touch the live ``reports/`` or ``~/.lab``. Everything goes
 through monkeypatched tmp dirs.
 """
 import json
+from types import SimpleNamespace
 
 from lab import render
 from lab.render import _commit_report, _slug_for
@@ -25,6 +26,17 @@ def _patch_dirs(tmp_path, monkeypatch):
     return reports, lab_home
 
 
+def test_git_metadata_read_is_utf8_and_survives_an_empty_capture(monkeypatch):
+    """Windows git output may contain Unicode from the working diff."""
+    def fake_run(*_args, **kwargs):
+        assert kwargs["encoding"] == "utf-8"
+        assert kwargs["errors"] == "replace"
+        return SimpleNamespace(returncode=0, stdout=None)
+
+    monkeypatch.setattr(render.subprocess, "run", fake_run)
+    assert render._git("diff", "--stat") == ""
+
+
 def test_commit_report_writes_permanent_pair(tmp_path, monkeypatch):
     reports, _ = _patch_dirs(tmp_path, monkeypatch)
     dump = json.dumps({"experiment": "M02-finite-size-scaling", "headline": "hi"})
@@ -33,10 +45,30 @@ def test_commit_report_writes_permanent_pair(tmp_path, monkeypatch):
     html_file = reports / "2026-06-15-m02.html"
     json_file = reports / "2026-06-15-m02.json"
     assert html_file.exists() and json_file.exists()
+    receipt_file = reports / "receipts" / "run-2026-06-15-m02.json"
+    assert receipt_file.exists()
     assert path == html_file
     assert html_file.read_text(encoding="utf-8") == "<html>m02</html>"
     # JSON round-trips back to the same object.
     assert json.loads(json_file.read_text(encoding="utf-8"))["experiment"] == "M02-finite-size-scaling"
+    receipt = json.loads(receipt_file.read_text(encoding="utf-8"))
+    assert receipt["public_receipt"]["schema"] == "windowsill.measurement-receipt.v1"
+
+
+def test_committed_report_is_provenance_stamped(tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    dump = json.dumps({"experiment": "M14-random-bond-nishimori", "config": {"seed": 42}})
+    _commit_report("2026-07-05", "m14", "<pre>" + dump + "</pre>", dump)
+
+    data = json.loads((reports / "2026-07-05-m14.json").read_text(encoding="utf-8"))
+    assert data["report_schema_version"] == 1
+    assert data["generated_at"]
+    assert len(data["provenance"]["source_tree_sha256"]) == 64
+    assert isinstance(data["provenance"]["source_clean"], bool)
+    assert data["reproduction"]["regrade"] == "python -m lab.cli verify M14"
+    assert data["reproduction"]["rerun"] == "python -m lab.cli m14"
+    html = (reports / "2026-07-05-m14.html").read_text(encoding="utf-8")
+    assert "source_tree_sha256" in html
 
 
 def test_second_render_does_not_clobber_first(tmp_path, monkeypatch):

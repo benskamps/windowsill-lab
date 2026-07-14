@@ -5,7 +5,7 @@
   "description": "The sanitized snapshot the lab publishes and the /windowsill/ page consumes. Every field is optional so the page degrades to a procedural seed; this schema describes the shape when present. Shared by windowsill-lab (producer) and brokenbranchdevwebsite (consumer).",
   "type": "object",
   "properties": {
-    "schema_version": { "type": "integer", "minimum": 1 },
+    "schema_version": { "type": "integer", "minimum": 1, "maximum": 4 },
     "source": { "type": "string" },
     "milestones": { "type": "array", "items": { "$ref": "#/definitions/milestone" } },
     "total": { "type": "integer", "minimum": 0 },
@@ -45,19 +45,20 @@
       "properties": {
         "id": { "type": "string", "pattern": "^[A-Z]{1,3}[0-9]+$" },
         "title": { "type": "string" },
-        "status": { "type": "string", "enum": ["verified", "null", "open", "pending"] },
+        "status": { "type": "string", "enum": ["verified", "review", "null", "open", "pending"] },
         "track": { "type": "string", "enum": ["physics", "compute", "astronomy", "instrument", "boinc", "misc"] },
         "growth_form": {
           "type": "string",
           "description": "Render-strategy hint derived from `track` (see BACKLOG.md §Growth forms): the *form* of the green thing — same pot, palette, and contract, only the form changes — so the kind of science is legible at a glance. Unknown/absent track falls back to the homogeneous default seedling.",
           "enum": ["fern", "vine", "creeper", "succulent", "moss", "sprout"]
         },
+        "runner_available": { "type": "boolean", "description": "true only when `lab next` can dispatch this milestone instead of the M01 heartbeat" },
         "progress": { "type": "number", "minimum": 0, "maximum": 1 },
         "result": { "type": "string", "description": "the technical result string, lifted from the MILESTONES.md '(done … — …)' parenthetical" },
         "short_label": { "type": "string", "description": "story layer (src/lab/stories.py): 2-4 plain words naming the experiment" },
         "question_plain": { "type": "string", "description": "story layer: the experiment's question in everyday, jargon-free language" },
         "why_it_matters": { "type": "string", "description": "story layer: one sentence on why a curious non-expert should care" },
-        "result_plain": { "type": ["string", "null"], "description": "story layer: one plain-language sentence stating the verified outcome; null for open/pending" },
+        "result_plain": { "type": ["string", "null"], "description": "story layer: a bounded plain-language finding; review/null language must preserve its non-promoted or failed status" },
         "venue": { "type": "string" },
         "url": { "type": "string", "pattern": "^https?://" },
         "doi": { "type": "string" }
@@ -65,8 +66,10 @@
     },
     "report": {
       "type": "object",
-      "description": "One run on record — a node on the seedling stem (verified) or a folded grey leaf (null / unscored / unreadable). All fields optional so old consumers degrade. The archive ledger emits {date, milestone, verdict, headline, href}; the older compact record adds {experiment, peak_t, wall_s, url, code_sha, status}.",
+      "description": "One run on record — a node on the seedling stem (verified) or a folded grey leaf (null / unscored / unreadable). All fields optional so old consumers degrade. The archive ledger emits {date, milestone, verdict, headline, href, receipt_url}; the older compact record adds {experiment, peak_t, wall_s, url, code_sha, status}.",
       "properties": {
+        "report_schema_version": { "type": "integer", "minimum": 1 },
+        "generated_at": { "type": "string" },
         "date": { "type": ["string", "null"] },
         "milestone": { "type": ["string", "null"], "pattern": "^[A-Z]{1,3}[0-9]+$" },
         "experiment": { "type": ["string", "null"] },
@@ -75,7 +78,27 @@
         "wall_s": { "type": ["number", "null"] },
         "url": { "type": "string", "pattern": "^https?://" },
         "href": { "type": ["string", "null"], "pattern": "^https?://" },
+        "receipt_url": { "type": ["string", "null"], "pattern": "^https?://", "description": "Stable compact evidence retaining checker inputs and provenance while explicitly hashing omitted heavy snapshots" },
         "code_sha": { "type": ["string", "null"] },
+        "provenance": {
+          "type": "object",
+          "properties": {
+            "source_commit": { "type": ["string", "null"] },
+            "source_clean": { "type": "boolean" },
+            "source_diff_sha256": { "type": ["string", "null"] },
+            "source_tree_sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+            "python": { "type": "string" },
+            "platform": { "type": "string" },
+            "dependencies": { "type": "object" }
+          }
+        },
+        "reproduction": {
+          "type": "object",
+          "properties": {
+            "regrade": { "type": "string" },
+            "rerun": { "type": ["string", "null"] }
+          }
+        },
         "status": { "type": "string", "enum": ["verified", "null", "unscored"] },
         "verdict": { "type": "string", "enum": ["verified", "null", "unscored", "unreadable"] }
       }

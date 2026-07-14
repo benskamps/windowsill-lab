@@ -1,0 +1,107 @@
+{
+  "schema_version": "windowsill.verification-receipt.v1",
+  "release_id": "m14-nishimori-v1",
+  "packaged_on": "2026-07-11",
+  "objective": "Regrade one committed aggregate M14 report offline while preserving its evidentiary limits.",
+  "classification": {
+    "mode": "saved_aggregate_regrade",
+    "evidence_grade": "computed_statistical_agreement",
+    "novelty_claimed": false,
+    "formal_proof_claimed": false,
+    "precise_mnp_location_claimed": false,
+    "independent_simulation_rerun": false,
+    "raw_per_realization_samples_included": false,
+    "peer_review_claimed": false
+  },
+  "claim": {
+    "scope": "eight_saved_gate_l_energy_points",
+    "notation": "max_i |E_i/N + 2*tanh(1/T_i)| <= 0.05",
+    "plain_language": "For each of eight saved L=24 aggregate measurements at p from 0.04 through 0.16, the measured energy per spin is within 0.05 of the exact Nishimori-line target derived from that point's temperature.",
+    "model": "2D square-lattice random-bond Ising, bimodal plus-or-minus J with J=1",
+    "gate_l": 24,
+    "point_count": 8,
+    "p_min": 0.04,
+    "p_max": 0.16,
+    "target": "-2*tanh(1/T)",
+    "energy_abs_tolerance": 0.05,
+    "nishimori_line_abs_tolerance": 0.01
+  },
+  "decision": {
+    "status": "pass",
+    "grade": "saved_aggregate_data_recalculation",
+    "formal_proof": false,
+    "points_graded": 8,
+    "measured_max_abs_deviation": 0.015110101699829181,
+    "reason": "The bundled standard-library verifier independently derives the line condition and exact energy target from each persisted p and T, links each calibration point to the L=24 aggregate arrays, and finds every measured energy inside the fixed 0.05 gate."
+  },
+  "evidence": {
+    "artifact": "evidence/2026-07-05-m14.json",
+    "kind": "committed_aggregate_report_json",
+    "packaged_bytes": 5351,
+    "packaged_sha256": "a6ed8abaccf25dfd3d1bacd0f519df17c9de19944e171557818e4f57dfc33677",
+    "source_git_blob_bytes": 5350,
+    "source_git_blob_sha1": "960284db926ed3ed1f74e47b866c4943d0492384",
+    "source_git_blob_sha256": "b3c605d86af074fe66b6c846c763c01004f1660da30f4d971bfadbe7d907c7be",
+    "packaging_transform": "The committed UTF-8 JSON blob is preserved byte-for-byte with one terminal LF appended; removing exactly that LF reproduces the recorded Git blob SHA-256."
+  },
+  "source_history": {
+    "repository": "https://github.com/benskamps/windowsill-lab",
+    "report_path": "reports/2026-07-05-m14.json",
+    "first_commit_containing_report": "d64c4c88cc92e960c522c86e6f3db7fbd63a508e",
+    "first_commit_subject": "M14: random-bond Ising — exact Nishimori-line energy [x] + swap nightly to lab next (#49)",
+    "first_commit_authored_at": "2026-07-05T12:45:13-04:00",
+    "first_commit_is_run_start_commit": false,
+    "report_unchanged_through_commit": "b4dc9041d5a8246b1d6d94bb0d045ce52581e0fb"
+  },
+  "recorded_run_fields": {
+    "wall_seconds": 204.23782515525818,
+    "device": "cpu",
+    "base_seed": 42,
+    "n_realizations": 64,
+    "n_sweeps": 10000,
+    "n_burnin": 4000,
+    "l_values": [12, 24],
+    "updater": "checkerboard-metropolis"
+  },
+  "unrecorded_run_provenance": {
+    "run_start_commit": null,
+    "clean_tree_at_start": null,
+    "run_timestamp": null,
+    "command_line": null,
+    "operating_system": null,
+    "cpu_model": null,
+    "python_version": null,
+    "numpy_version": null,
+    "torch_version": null,
+    "per_point_seed_schedule_artifact": null,
+    "per_realization_samples_artifact": null,
+    "literature_citation_artifact": null
+  },
+  "verification": {
+    "status": "pass",
+    "arithmetic": "ieee_754_binary64",
+    "target_is_exact_identity": true,
+    "measurement_is_statistical": true,
+    "verifier": "verify_release.py",
+    "runtime_dependencies": "python_standard_library_only",
+    "manifest": "manifest.json",
+    "cached_report_pass_fields_are_not_trusted": true,
+    "mnp_fields_are_not_gated": true
+  },
+  "limits": [
+    "This is a recalculation from committed aggregate measurements, not a Monte Carlo rerun.",
+    "The exact theoretical target is re-derived; the measured energies and reported standard errors remain statistical outputs.",
+    "Agreement at eight sampled points within an absolute 0.05 gate does not prove the identity or cover the continuous line.",
+    "The report's p approximately 0.126 magnetization-half marker is not a precision critical-point estimate and has no uncertainty analysis.",
+    "The two-size Binder crossing is unresolved and the precise multicritical Nishimori point is explicitly outside the verified claim.",
+    "No raw per-realization samples, trajectories, bonds, spins, RNG states, or independent rerun are included.",
+    "The report did not record a run-start code commit, clean-tree state, environment, hardware details, package versions, command line, or exact run timestamp.",
+    "The first commit containing the report is an archival anchor only; it is not asserted to be the code checkout that generated the measurements.",
+    "No primary-literature snapshot or citation was persisted with the run, so this bundle does not manufacture one after the fact.",
+    "This receipt does not claim novelty, peer review, formal proof, or bit-for-bit simulation reproducibility."
+  ],
+  "reproduce": {
+    "verify_bundle": "python verify_release.py receipt.json --strict",
+    "check_packaging": "python build_archive.py --check"
+  }
+}

@@ -5,7 +5,8 @@ ladder becomes a node on the seedling's stem at
 https://www.brokenbranch.dev/windowsill/ ; a failed calibration is a folded
 grey leaf (an honest null). This module builds a small, sanitized ``pot.json``
 (milestones, run cadence, CPU heat — no private data, no project internals) and
-optionally pushes it to a public gist the site reads via ``/api/pot``.
+optionally pushes it to a legacy public gist.  The canonical page and its
+``snapshot.json`` link both read this repository's raw ``pot.json`` directly.
 
 Kept deliberately import-light (standard library only) so the pure functions
 ``parse_milestones`` / ``build_snapshot`` are unit-tested without pulling in
@@ -22,20 +23,24 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from .stories import STORIES   # durable plain-language story layer (stdlib-only dict)
+from .curriculum import RUNNERS
 
 # Mirror render.LAB_HOME without importing it (render pulls matplotlib).
 LAB_HOME = Path.home() / ".lab"
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MILESTONES_MD = REPO_ROOT / "MILESTONES.md"
 REPORTS_DIR = REPO_ROOT / "reports"
+RECEIPTS_DIR = REPORTS_DIR / "receipts"
 POT_JSON = REPO_ROOT / "pot.json"   # committed live feed the windowsill reads
 
 # Bump when the snapshot contract changes in a way consumers must adapt to. The
 # /windowsill/ page and schema/pot.schema.json track this number.
 # v3: pot.json gains a newest-first ``reports`` array (every run, incl. honest
 # nulls) so the page can deep-link each node on the seedling stem; the single
-# ``latest_report`` stays as ``reports[0]`` for back-compat.
-SCHEMA_VERSION = 3
+# ``latest_report`` stays as ``reports[0]`` for back-compat. v4 distinguishes
+# machine-checked ``review`` milestones from human-promoted ``verified`` ones
+# and declares whether each curriculum step has a runnable implementation.
+SCHEMA_VERSION = 4
 
 # Onsager's exact 2D Ising critical temperature, 1944 — the lab's calibration target.
 ONSAGER_TC = 2.0 / math.log(1.0 + math.sqrt(2.0))   # ≈ 2.2692
@@ -57,13 +62,17 @@ REPORT_URL = REPORT_URL_BASE + "latest.html"
 # REPORT_URL (htmlpreview over the committed reports/index.html), so the
 # windowsill page's "see all N runs" link resolves with no extra hosting.
 ARCHIVE_URL = REPORT_URL_BASE + "index.html"
+RECEIPT_URL_BASE = (
+    "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/"
+    "reports/receipts/"
+)
 
 # A checklist line: "- [x] **M01** — 2D Ising verification. ..."
 # IDs are letter-prefixed by track: M=physics, C=compute/number-theory,
 # A=astronomy, I=instrument, B=BOINC. An optional trailing "{venue=…; url=…;
 # doi=…}" tag links a contribution to its official record.
 _MILESTONE_RE = re.compile(
-    r"^\s*-\s*\[(?P<box>[ xX~\->])\]\s*\*\*(?P<id>[A-Z]{1,3}\d+)\*\*\s*[—\-]\s*(?P<body>.*\S)\s*$"
+    r"^\s*-\s*\[(?P<box>[ xX~?\->])\]\s*\*\*(?P<id>[A-Z]{1,3}\d+)\*\*\s*[—\-]\s*(?P<body>.*\S)\s*$"
 )
 _TAG_RE = re.compile(r"\{([^}]*)\}\s*$")
 TRACKS = {"M": "physics", "C": "compute", "A": "astronomy", "I": "instrument", "B": "boinc"}
@@ -119,13 +128,38 @@ def _parse_tags(body: str) -> tuple[str, dict]:
     return body[: m.start()].strip(), tags
 
 
+def _parenthetical_groups(text: str) -> list[str]:
+    """Return balanced top-level parenthetical contents.
+
+    Milestone receipts routinely contain nested notation such as ``tanh(1/T)``
+    and ``O(3)``. A regex ending at the first ``)`` silently truncated those
+    public technical results, so parse the tiny balanced structure directly.
+    """
+
+    groups: list[str] = []
+    depth = 0
+    start: int | None = None
+    for i, char in enumerate(text):
+        if char == "(":
+            if depth == 0:
+                start = i + 1
+            depth += 1
+        elif char == ")" and depth:
+            depth -= 1
+            if depth == 0 and start is not None:
+                groups.append(text[start:i])
+                start = None
+    return groups
+
+
 def parse_milestones(text: str) -> list[dict]:
     """Parse MILESTONES.md checklist lines into milestone dicts.
 
     ``[x]`` → verified, ``[~]``/``[-]`` → null (failed calibration, kept on the
-    books), ``[>]`` → the explicitly-open experiment (any track), ``[ ]`` →
-    pending. If nothing is marked ``[>]``, the first pending milestone is
-    promoted to ``open`` — the experiment running now / next on the bench. Each
+    books), ``[?]`` → measured and awaiting human review, ``[>]`` → the
+    explicitly-open experiment (any track), ``[ ]`` → pending. If nothing is
+    marked ``[>]``, the first pending milestone is promoted to ``open`` — the
+    current question on the bench. Each
     milestone carries its ``track`` (from the id prefix), its ``growth_form``
     (derived from the track — the feed contract's render-strategy hint), an
     optional ``progress`` (0–1), and any ``venue``/``url``/``doi`` linking a
@@ -138,12 +172,14 @@ def parse_milestones(text: str) -> list[dict]:
             continue
         box = m.group("box").lower()
         body, tags = _parse_tags(m.group("body").strip())
-        title = re.split(r"[.:]", body, 1)[0].strip()
+        title = re.split(r"[.:]", body, maxsplit=1)[0].strip()
 
         if box == "x":
             status = "verified"
         elif box in ("~", "-"):
             status = "null"
+        elif box == "?":
+            status = "review"
         elif box == ">":
             status = "open"
         else:
@@ -152,16 +188,23 @@ def parse_milestones(text: str) -> list[dict]:
         mid = m.group("id")
         track = _track_for(mid)
         ms = {"id": mid, "title": title, "status": status, "track": track,
-              "growth_form": growth_form_for(track)}
+              "growth_form": growth_form_for(track),
+              "runner_available": mid in RUNNERS}
 
-        if status == "verified":
-            # Lift the "(done <date> — <result>)" parenthetical. Prose can carry
-            # its own parens (e.g. "M(T)"), so prefer the one that says "done".
-            parens = re.findall(r"\(([^)]*)\)", body)
-            done = next((p for p in parens if p.strip().lower().startswith("done")), None)
-            chosen = done if done is not None else (parens[-1] if parens else None)
+        if status in ("verified", "review"):
+            # Lift the balanced "(done/attempted <date> — <result>)" receipt.
+            # Technical prose contains nested parentheses, so regex extraction
+            # would truncate e.g. M14 at ``tanh(1/T``.
+            parens = _parenthetical_groups(body)
+            prefixes = ("done",) if status == "verified" else ("attempted", "measured")
+            receipt = next(
+                (p for p in parens if p.strip().lower().startswith(prefixes)), None
+            )
+            chosen = receipt if receipt is not None else (parens[-1] if parens else None)
             if chosen:
-                result = re.sub(r"^done\s+\S+\s*[—\-]\s*", "", chosen).strip()
+                result = re.sub(
+                    r"^(?:done|attempted|measured)\s+\S+\s*[—\-]\s*", "", chosen
+                ).strip()
                 if result:
                     ms["result"] = result
 
@@ -175,7 +218,7 @@ def parse_milestones(text: str) -> list[dict]:
                 v = story.get(k)
                 if v:
                     ms[k] = v
-            if status == "verified" and story.get("result_plain"):
+            if status in ("verified", "review", "null") and story.get("result_plain"):
                 ms["result_plain"] = story["result_plain"]
 
         ms.update(tags)   # venue / url / doi / progress when present
@@ -563,6 +606,12 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
     old consumers degrade cleanly. ``archive_url`` deep-links the index page.
     """
     rows = reports_ledger if reports_ledger is not None else reports
+    latest = (rows[0] if rows else report)
+    if reports_ledger is not None and latest is not None:
+        # The latest field note has a real full render at latest.html. Archive
+        # rows keep stable record anchors + receipt_url for older runs.
+        latest = dict(latest)
+        latest["href"] = REPORT_URL
     snap = {
         "schema_version": SCHEMA_VERSION,
         "source": "windowsill-lab",
@@ -571,7 +620,7 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
         "last_run": last_run,
         "runs": runs,
         "temp_c": temp_c,
-        "latest_report": (rows[0] if rows else report),
+        "latest_report": latest,
         "archive_url": ARCHIVE_URL,
         "updated": datetime.now(timezone.utc).isoformat(),
         "provenance": provenance(),
@@ -606,6 +655,53 @@ def collect() -> dict:
         parse_milestones(text), last_run, runs, cpu_temp_c(),
         reports=discover_runs(),
     )
+
+
+def _receipt_filename(date: str, slug: str) -> str:
+    """Stable public-receipt name (does not match the dated-report gitignore)."""
+    return f"run-{date}-{slug}.json"
+
+
+def ensure_public_receipts() -> list[Path]:
+    """Create deterministic, compact evidence receipts for every known run.
+
+    Full dated reports stay local/ignored because their embedded lattice images
+    are large.  Receipts retain the numerical measurements, checker inputs,
+    provenance, and reproduction commands while hashing omitted snapshots.  A
+    repo report wins over its ``~/.lab`` twin so provenance-stamped copies are
+    preferred.  Returns every receipt path, whether newly written or unchanged.
+    """
+    from .receipt import receipt_text  # stdlib-only; avoids a heavy render import
+
+    # (date, slug) -> (is_repo, mtime, path, decoded report)
+    selected: dict[tuple[str, str], tuple[bool, float, Path, dict]] = {}
+    for directory in (LAB_HOME, REPORTS_DIR):
+        if not directory.exists():
+            continue
+        is_repo = directory.resolve() == REPORTS_DIR.resolve()
+        for path in directory.glob(f"{_DATE_GLOB}*.json"):
+            try:
+                raw = path.read_bytes()
+                data = json.loads(raw.decode("utf-8"))
+            except (OSError, UnicodeDecodeError, ValueError):
+                continue
+            key = (_date_of(path), _slug_for(data))
+            candidate = (is_repo, path.stat().st_mtime, path, data)
+            current = selected.get(key)
+            if current is None or (is_repo and not current[0]) or \
+                    (is_repo == current[0] and candidate[1] > current[1]):
+                selected[key] = candidate
+
+    paths: list[Path] = []
+    for (date, slug), (_, _, source, data) in sorted(selected.items()):
+        raw = source.read_bytes()
+        destination = RECEIPTS_DIR / _receipt_filename(date, slug)
+        content = receipt_text(data, raw)
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        if not destination.exists() or destination.read_text(encoding="utf-8") != content:
+            destination.write_text(content, encoding="utf-8")
+        paths.append(destination)
+    return paths
 
 
 def backfill(dry_run: bool = False) -> list[Path]:
@@ -689,6 +785,9 @@ def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
     secret required. A nightly run commits + pushes it. ``gist_id`` (or the
     ``POT_GIST_ID`` env var) remains an optional legacy push target.
     """
+    # Receipts must exist before collect(): the archive ledger then publishes a
+    # stable evidence URL for each run in this very snapshot.
+    ensure_public_receipts()
     snap = collect()
     content = json.dumps(snap, indent=2) + "\n"
     POT_JSON.write_text(content, encoding="utf-8")  # canonical, committed live feed

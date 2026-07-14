@@ -1,0 +1,63 @@
+{
+  "L_values": [
+    8,
+    12
+  ],
+  "config": {
+    "T_max": 2.4,
+    "T_min": 2.27,
+    "n_burnin": 80,
+    "n_sweeps": 300,
+    "n_temps": 3,
+    "seed": 42,
+    "updater": "metropolis"
+  },
+  "curves": [
+    {
+      "L": 8,
+      "T": [
+        2.2699999809265137,
+        2.3350000381469727,
+        2.4000000953674316
+      ],
+      "T_peak": 2.4000000953674316,
+      "chi": [
+        0.42657727003097534,
+        0.4111361503601074,
+        2.8881945610046387
+      ],
+      "chi_max": 2.8881945610046387,
+      "wall_seconds": 0.06942176818847656
+    },
+    {
+      "L": 12,
+      "T": [
+        2.2699999809265137,
+        2.3350000381469727,
+        2.4000000953674316
+      ],
+      "T_peak": 2.2699999809265137,
+      "chi": [
+        7.073692321777344,
+        2.6185545921325684,
+        4.16790246963501
+      ],
+      "chi_max": 7.073692321777344,
+      "wall_seconds": 0.07091474533081055
+    }
+  ],
+  "experiment": "M02-finite-size-scaling",
+  "fit_r2": 1.0,
+  "gamma_over_nu_fit": 2.2091938126338184,
+  "gamma_over_nu_theory": 1.75,
+  "headline": "finite-size scaling: χ_max ∝ L^2.209 (2D Ising γ/ν = 7/4 = 1.75) · 0s on GPU",
+  "nu": 1.0,
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "93d02f25877e14adb52297f58424f642e90a46e050c0d24a0e87273567979fd8"
+  },
+  "tc": 2.269185314213022,
+  "wall_seconds": 0.1426219940185547
+}

@@ -120,7 +120,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Domains growing",
         "question_plain": "Cool a hot, scrambled magnet in an instant and watch patches of agreement start to spread — how fast do those patches grow as time ticks on?",
         "why_it_matters": "The same coarsening rhythm governs everything from cooling alloys to separating oil and water, so measuring its pace connects a toy magnet to the everyday physics of things settling down.",
-        "result_plain": None,
+        "result_plain": "The saved curves pass the machine check: the patches grew with a measured power between about 0.47 and 0.49, consistent with the expected one-half growth law once early-time bias is included. It remains amber, not green, until a human promotes the claim.",
     },
     "M16": {
         "short_label": "Aging memory",

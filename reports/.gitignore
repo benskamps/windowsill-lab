@@ -11,5 +11,6 @@
 # KEPT tracked (they don't start with a digit, so the rule below can't match them):
 #   - latest.html  : back-compat pointer, a copy of the newest render (report-under-visual)
 #   - index.html   : the committed every-run archive ledger
+#   - receipts/run-*.json : compact, provenance-stamped evidence for every run
 20*-*.html
 20*-*.json
