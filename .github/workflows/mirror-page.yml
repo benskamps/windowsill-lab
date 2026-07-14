@@ -30,10 +30,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the lab (source of truth)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Check out the website (mirror target)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           repository: benskamps/brokenbranchdevwebsite
           token: ${{ secrets.SITE_SYNC_TOKEN }}
