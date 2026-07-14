@@ -383,21 +383,21 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-07-12T07:00:43.175712+00:00",
-  "runs": 24,
+  "last_run": "2026-07-14T07:00:35.058395+00:00",
+  "runs": 25,
   "temp_c": null,
   "latest_report": {
-    "date": "2026-07-12",
+    "date": "2026-07-14",
     "milestone": "M01",
     "verdict": "verified",
-    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 33s on GPU",
+    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-12-m01.json"
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-m01.json"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-07-14T03:09:32.291527+00:00",
+  "updated": "2026-07-14T07:00:39.787863+00:00",
   "provenance": {
-    "code_sha": "36f7ae3-dirty",
+    "code_sha": "dd0552c",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -406,6 +406,14 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-07-14",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-m01.json"
+    },
     {
       "date": "2026-07-12",
       "milestone": "M01",
