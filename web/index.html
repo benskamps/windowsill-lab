@@ -407,18 +407,72 @@
     .phase-rail li.reached strong { color:var(--text); }
     .phase-rail em { display:block; margin-top:0.35rem; color:var(--text-muted); font:normal 0.67rem/1.45 var(--font-mono); }
 
-    .garden-row { display:grid; grid-template-columns:repeat(4,1fr); gap:0; margin-top:2.5rem; border-top:1px solid var(--border); }
-    .garden-specimen { min-height:245px; padding:1.1rem; border-right:1px solid var(--border); color:var(--text-muted); }
-    .garden-specimen:first-child { padding-left:0; }
+    .garden-row {
+      list-style:none; display:grid; grid-template-columns:repeat(4,1fr); gap:0;
+      margin-top:2.5rem; border-top:1px solid var(--border); border-bottom:1px solid var(--border);
+    }
+    .garden-specimen {
+      --specimen:#7fae6b; position:relative; min-width:0; min-height:390px;
+      border-right:1px solid var(--border); color:var(--text-muted); overflow:hidden;
+    }
+    .garden-specimen[data-track="compute"] { --specimen:#d2aa67; }
+    .garden-specimen[data-track="astronomy"] { --specimen:#6e97b3; }
+    .garden-specimen[data-track="instrument"] { --specimen:#b882a2; }
     .garden-specimen:last-child { border-right:none; }
-    .garden-specimen svg { display:block; width:100%; height:150px; overflow:visible; }
-    .garden-specimen path { fill:none; stroke:rgba(250,248,244,0.36); stroke-width:1.8; stroke-linecap:round; }
-    .garden-specimen ellipse, .garden-specimen circle { fill:rgba(127,174,107,0.7); }
-    .garden-specimen:nth-child(2) ellipse, .garden-specimen:nth-child(2) circle { fill:rgba(210,170,103,0.68); }
-    .garden-specimen:nth-child(3) ellipse, .garden-specimen:nth-child(3) circle { fill:rgba(110,151,179,0.68); }
-    .garden-specimen:nth-child(4) ellipse, .garden-specimen:nth-child(4) circle { fill:rgba(184,130,162,0.68); }
-    .garden-specimen strong { display:block; color:var(--text-secondary); font-size:0.9rem; font-weight:520; }
-    .garden-specimen small { display:block; margin-top:0.3rem; color:var(--text-muted); font:0.66rem/1.45 var(--font-mono); }
+    .specimen-action {
+      width:100%; min-height:390px; display:flex; flex-direction:column; align-items:stretch;
+      padding:1rem clamp(0.85rem, 1.8vw, 1.2rem) 1.15rem; border:0; border-radius:0;
+      background:linear-gradient(180deg, color-mix(in srgb, var(--specimen) 0%, transparent), transparent 42%);
+      color:inherit; font:inherit; text-align:left; cursor:pointer; isolation:isolate;
+      transition:background 0.45s ease, color 0.3s ease;
+    }
+    .specimen-action::before {
+      content:''; position:absolute; inset:0; z-index:-1; opacity:0;
+      background:linear-gradient(180deg, color-mix(in srgb, var(--specimen) 8%, transparent), transparent 58%);
+      transition:opacity 0.45s ease;
+    }
+    .specimen-action:hover::before, .specimen-action:focus-visible::before { opacity:1; }
+    .specimen-action:focus-visible { outline:1px solid var(--specimen); outline-offset:-3px; }
+    .specimen-head { display:flex; align-items:center; justify-content:space-between; gap:0.7rem; min-height:1.2rem; }
+    .specimen-index { color:var(--text-muted); font:0.62rem var(--font-mono); letter-spacing:0.12em; text-transform:uppercase; }
+    .specimen-status {
+      display:inline-flex; align-items:center; gap:0.35rem; color:var(--text-muted);
+      font:0.59rem var(--font-mono); letter-spacing:0.08em; text-transform:uppercase;
+    }
+    .specimen-status::before { content:''; width:5px; height:5px; border-radius:50%; background:currentColor; }
+    .specimen-status.review { color:var(--review); }
+    .specimen-status.null { color:var(--null); }
+    .specimen-status.verified { color:var(--specimen); }
+    .specimen-status.open { color:var(--review); }
+    .garden-specimen.is-open .specimen-status::before { animation:specimen-pulse 2.8s ease-in-out infinite; }
+    @keyframes specimen-pulse { 50% { box-shadow:0 0 0 5px color-mix(in srgb, var(--review) 0%, transparent); } }
+    .specimen-figure { height:174px; margin:0.25rem 0 0.65rem; display:grid; place-items:center; }
+    .garden-specimen svg {
+      display:block; width:100%; height:174px; overflow:visible;
+      transform-origin:50% 90%; transition:transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94);
+    }
+    .specimen-action:hover svg, .specimen-action:focus-visible svg { transform:translateY(-4px) scale(1.018); }
+    .garden-specimen path.specimen-stem { fill:none; stroke:color-mix(in srgb, var(--specimen) 52%, #faf8f4); stroke-width:1.65; stroke-linecap:round; opacity:0.72; }
+    .garden-specimen path.specimen-branch { fill:none; stroke:var(--specimen); stroke-width:1.1; stroke-linecap:round; opacity:0.52; }
+    .garden-specimen path.specimen-branch.review { stroke:var(--review); opacity:0.72; }
+    .garden-specimen path.specimen-branch.null { stroke:var(--null); stroke-dasharray:2 2; opacity:0.8; }
+    .garden-specimen .specimen-leaf { fill:var(--specimen); opacity:0.82; }
+    .garden-specimen .specimen-leaf.review { fill:var(--review); opacity:0.92; }
+    .garden-specimen .specimen-leaf.null { fill:var(--bg); stroke:var(--null); stroke-width:1.5; stroke-dasharray:2 2; opacity:0.92; }
+    .specimen-tip { fill:var(--bg); stroke:var(--text-muted); stroke-width:1.4; }
+    .specimen-tip.open { stroke:var(--review); fill:color-mix(in srgb, var(--review) 18%, var(--bg)); }
+    .specimen-tip.review { stroke:var(--review); }
+    .specimen-tip.null { stroke:var(--null); stroke-dasharray:2 2; }
+    .specimen-name { color:var(--text); font-size:1.18rem; line-height:1.1; font-weight:520; }
+    .specimen-domain { display:block; margin-top:0.34rem; color:var(--text-muted); font:0.61rem/1.45 var(--font-mono); }
+    .specimen-evidence { margin-top:0.85rem; min-height:3.55em; color:var(--text-secondary); font-size:0.75rem; line-height:1.55;
+                         display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+    .specimen-evidence b { display:block; margin-bottom:0.18rem; color:var(--specimen); font:0.58rem var(--font-mono); letter-spacing:0.1em; text-transform:uppercase; }
+    .specimen-foot { display:flex; flex-wrap:wrap; gap:0.35rem 0.75rem; margin-top:auto; padding-top:0.9rem;
+                     border-top:1px solid color-mix(in srgb, var(--specimen) 20%, var(--border)); color:var(--text-muted); font:0.59rem/1.4 var(--font-mono); }
+    .specimen-foot .next { margin-left:auto; color:var(--specimen); }
+    .garden-row[data-ready="true"] .garden-specimen { animation:specimen-rise 0.7s both cubic-bezier(0.2,0.7,0.2,1); animation-delay:calc(var(--i, 0) * 90ms); }
+    @keyframes specimen-rise { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:none; } }
 
     .explainer {
       max-width:780px; margin-top:5rem; font-size:0.85rem; color:var(--text-muted); line-height:1.7;
@@ -469,10 +523,10 @@
       .pebble-label { font-size: 13px; }
       .section-intro { grid-template-columns:1fr; gap:0.6rem; }
       .section-intro h2 { max-width:520px; }
-      .phase-rail, .garden-row { display:flex; overflow-x:auto; scroll-snap-type:x proximity; }
+      .phase-rail, .garden-row { display:flex; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
       .phase-rail li { flex:0 0 210px; scroll-snap-align:start; }
-      .garden-specimen { flex:0 0 220px; scroll-snap-align:start; }
-      .garden-specimen:first-child { padding-left:1.1rem; }
+      .garden-specimen { flex:0 0 min(82vw, 292px); min-height:370px; scroll-snap-align:start; }
+      .specimen-action { min-height:370px; }
       .portable-release { grid-template-columns:1fr; gap:0.65rem; }
     }
 
@@ -480,7 +534,9 @@
       body { transition: none; }
       #plant, .dust, .star, .clouds { animation: none; }
       .dust { opacity: 0.22; }
-      .fieldnote { animation:none; }
+      .fieldnote, .garden-specimen { animation:none !important; }
+      .garden-specimen.is-open .specimen-status::before { animation:none; }
+      .garden-specimen svg, .specimen-action::before { transition:none; }
     }
   </style>
 </head>
@@ -751,9 +807,9 @@
 
     <section class="garden" aria-labelledby="garden-title">
       <div class="section-intro">
-        <span class="section-kicker">One machine, many sciences</span>
-        <h2 id="garden-title">The plant changes with the question.</h2>
-        <p>Every track keeps the same pot and evidence rules. Only the growth form changes.</p>
+        <span class="section-kicker">The conservatory</span>
+        <h2 id="garden-title">Four instruments. One standard of proof.</h2>
+        <p>Growth is proportional to work completed. Amber waits for review; grey keeps the boundary visible.</p>
       </div>
       <ul class="garden-row" id="garden-row"></ul>
     </section>
@@ -1711,48 +1767,187 @@
       });
     }
 
-    function drawGarden() {
+    var GARDEN_SPECS = [
+      { track:'physics', form:'fern', label:'Physics', domain:'matter · disorder · time', expected:18 },
+      { track:'compute', form:'vine', label:'Compute', domain:'proofs · exact arithmetic', expected:4 },
+      { track:'astronomy', form:'creeper', label:'Astronomy', domain:'public light · long baselines', expected:4 },
+      { track:'instrument', form:'succulent', label:'Instruments', domain:'dark noise · patient counts', expected:3 }
+    ];
+
+    function gardenStatus(m, open) {
+      if (open) return { key:'open', label:open.runner_available ? 'runner ready' : 'on the bench' };
+      if (!m) return { key:'pending', label:'not started' };
+      if (m.status === 'review') return { key:'review', label:'in review' };
+      if (m.status === 'null') return { key:'null', label:'boundary kept' };
+      return { key:'verified', label:'calibrated' };
+    }
+
+    function reportForMilestone(reports, id) {
+      if (!id) return null;
+      return (reports || []).find(function (r) { return r && r.milestone === id; }) || null;
+    }
+
+    // A living specimen index, not a decorative sampler. Height and leaf count
+    // come from the actual track; leaf colour carries the same promotion/review/
+    // null contract as the hero plant. Selecting one opens its latest field note.
+    function drawGarden(milestones, reports) {
       var row = $('garden-row');
-      if (!row || row.childNodes.length) return;
-      var specimens = [
-        { form:'fern', label:'Physics', note:'phase changes · disorder' },
-        { form:'vine', label:'Compute', note:'proofs · number searches' },
-        { form:'creeper', label:'Astronomy', note:'signals unfolding in time' },
-        { form:'succulent', label:'Instruments', note:'calibration · patient counts' }
-      ];
-      specimens.forEach(function (spec) {
+      if (!row) return [];
+      row.textContent = '';
+      row.removeAttribute('data-ready');
+      var summary = [];
+
+      GARDEN_SPECS.forEach(function (spec, index) {
+        var track = (milestones || []).filter(function (m) { return m && m.track === spec.track; });
+        var closed = track.filter(isClosed);
+        var latest = closed.length ? closed[closed.length - 1] : null;
+        var open = track.find(function (m) { return m.status === 'open'; }) || null;
+        var pending = track.find(function (m) { return m.status === 'pending'; }) || null;
+        var promoted = closed.filter(function (m) { return m.status === 'verified'; }).length;
+        var reviews = closed.filter(function (m) { return m.status === 'review'; }).length;
+        var nulls = closed.filter(function (m) { return m.status === 'null'; }).length;
+        var total = track.length || spec.expected;
+        var status = gardenStatus(latest, open);
+        var focusMilestone = latest || open || pending;
+        var report = reportForMilestone(reports, latest && latest.id);
+        var evidence = report && report.headline
+          ? report.headline
+          : (latest && latest.result_plain
+              ? latest.result_plain
+              : 'The calibration bench is ready for its first measured leaf.');
+        var next = open
+          ? open.id + (open.runner_available ? ' ready' : ' on bench')
+          : (reviews ? 'review pending'
+              : (latest && latest.status === 'null' ? 'input needed' : (pending ? pending.id + ' next' : 'track complete')));
+
         var item = document.createElement('li');
-        item.className = 'garden-specimen';
+        item.className = 'garden-specimen is-' + status.key;
+        item.dataset.track = spec.track;
+        item.style.setProperty('--i', index);
+
+        var action = document.createElement('button');
+        action.type = 'button';
+        action.className = 'specimen-action';
+        action.setAttribute('aria-label', spec.label + ': ' + closed.length + ' of ' + total +
+          ' milestones measured; ' + promoted + ' promoted, ' + reviews + ' in review, ' + nulls +
+          ' null. ' + status.label + (focusMilestone ? '. Open ' + focusMilestone.id + ' field note.' : '.'));
+        if (focusMilestone) {
+          action.addEventListener('click', function () {
+            openFieldNote(focusMilestone, action);
+            var note = $('fieldnote');
+            if (note) note.scrollIntoView({
+              behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
+              block: 'nearest'
+            });
+          });
+        } else {
+          action.disabled = true;
+        }
+
+        var head = document.createElement('span');
+        head.className = 'specimen-head';
+        var specimenIndex = document.createElement('span');
+        specimenIndex.className = 'specimen-index';
+        specimenIndex.textContent = String(index + 1).padStart(2, '0') + ' · ' + spec.form;
+        var state = document.createElement('span');
+        state.className = 'specimen-status ' + status.key;
+        state.textContent = status.label;
+        head.appendChild(specimenIndex);
+        head.appendChild(state);
+        action.appendChild(head);
+
+        var figure = document.createElement('span');
+        figure.className = 'specimen-figure';
         var svg = document.createElementNS(SVGNS, 'svg');
         svg.setAttribute('viewBox', '315 10 170 145');
         svg.setAttribute('aria-hidden', 'true');
-        var geo = GF.build(spec.form, { count:5, total:8, openProg:0.35, base:142, rise:112 });
+        var progress = open && Number.isFinite(Number(open.progress)) ? Number(open.progress) : (open ? 0.32 : 0.16);
+        var geo = GF.build(spec.form, {
+          count:closed.length, total:total, openProg:progress, base:142, rise:112
+        });
         var stem = document.createElementNS(SVGNS, 'path');
+        stem.setAttribute('class', 'specimen-stem');
         stem.setAttribute('d', geo.stem);
         svg.appendChild(stem);
         geo.nodes.forEach(function (node, i) {
-          var leaf = document.createElementNS(SVGNS, i % 3 === 2 ? 'circle' : 'ellipse');
-          leaf.setAttribute('cx', (node.x + node.dir * 8).toFixed(1));
-          leaf.setAttribute('cy', (node.y - 4).toFixed(1));
-          if (leaf.tagName.toLowerCase() === 'circle') {
-            leaf.setAttribute('r', '5');
-          } else {
-            leaf.setAttribute('rx', '10');
-            leaf.setAttribute('ry', '4.2');
+          var milestone = closed[i] || {};
+          var round = spec.form === 'succulent' || (spec.form === 'creeper' && i % 3 === 2);
+          var lx = node.x + node.dir * 8;
+          var ly = node.y - 4;
+          var branchX = spec.form === 'succulent' ? geo.tip.x : node.x;
+          var branch = document.createElementNS(SVGNS, 'path');
+          branch.setAttribute('class', 'specimen-branch ' + (milestone.status || 'verified'));
+          branch.setAttribute('d', 'M ' + branchX.toFixed(1) + ' ' + node.y.toFixed(1) +
+            ' L ' + lx.toFixed(1) + ' ' + ly.toFixed(1));
+          svg.appendChild(branch);
+          var leaf = document.createElementNS(SVGNS, round ? 'circle' : 'ellipse');
+          leaf.setAttribute('class', 'specimen-leaf ' + (milestone.status || 'verified'));
+          leaf.setAttribute('cx', lx.toFixed(1));
+          leaf.setAttribute('cy', ly.toFixed(1));
+          if (round) leaf.setAttribute('r', spec.form === 'succulent' ? '6.2' : '5');
+          else {
+            leaf.setAttribute('rx', spec.form === 'fern' ? '8.5' : '10');
+            leaf.setAttribute('ry', spec.form === 'fern' ? '3.7' : '4.2');
             leaf.setAttribute('transform', 'rotate(' + (node.dir < 0 ? -24 : 24) + ' ' +
-              (node.x + node.dir * 8).toFixed(1) + ' ' + (node.y - 4).toFixed(1) + ')');
+              lx.toFixed(1) + ' ' + ly.toFixed(1) + ')');
           }
           svg.appendChild(leaf);
         });
-        item.appendChild(svg);
-        var label = document.createElement('strong');
-        label.textContent = spec.label;
-        item.appendChild(label);
-        var note = document.createElement('small');
-        note.textContent = spec.note;
-        item.appendChild(note);
+        var tip = document.createElementNS(SVGNS, 'circle');
+        tip.setAttribute('class', 'specimen-tip ' + status.key);
+        tip.setAttribute('cx', geo.tip.x.toFixed(1));
+        tip.setAttribute('cy', geo.tip.y.toFixed(1));
+        tip.setAttribute('r', open ? '4.2' : '3.2');
+        svg.appendChild(tip);
+        figure.appendChild(svg);
+        action.appendChild(figure);
+
+        var name = document.createElement('strong');
+        name.className = 'specimen-name';
+        name.textContent = spec.label;
+        action.appendChild(name);
+        var domain = document.createElement('span');
+        domain.className = 'specimen-domain';
+        domain.textContent = spec.domain;
+        action.appendChild(domain);
+
+        var finding = document.createElement('span');
+        finding.className = 'specimen-evidence';
+        var findingLabel = document.createElement('b');
+        findingLabel.textContent = latest ? 'latest · ' + latest.id : 'first calibration';
+        finding.appendChild(findingLabel);
+        finding.appendChild(document.createTextNode(evidence));
+        action.appendChild(finding);
+
+        var foot = document.createElement('span');
+        foot.className = 'specimen-foot';
+        var measured = document.createElement('span');
+        measured.textContent = closed.length + '/' + total + ' measured';
+        foot.appendChild(measured);
+        var leafText = document.createElement('span');
+        var tally = [];
+        if (promoted) tally.push(promoted + ' green');
+        if (reviews) tally.push(reviews + ' amber');
+        if (nulls) tally.push(nulls + ' grey');
+        leafText.textContent = tally.length ? tally.join(' · ') : 'no measured leaves';
+        foot.appendChild(leafText);
+        var nextText = document.createElement('span');
+        nextText.className = 'next';
+        nextText.textContent = next;
+        foot.appendChild(nextText);
+        action.appendChild(foot);
+
+        item.appendChild(action);
         row.appendChild(item);
+        summary.push({
+          track:spec.track, form:spec.form, measured:closed.length, total:total,
+          promoted:promoted, review:reviews, nulls:nulls, status:status.key,
+          latest:latest ? latest.id : null, next:open ? open.id : (pending ? pending.id : null)
+        });
       });
+
+      requestAnimationFrame(function () { row.dataset.ready = 'true'; });
+      return summary;
     }
 
     function updateInstrumentRecord(state, freshness) {
@@ -1813,6 +2008,7 @@
       var n = drawPebbles(state.offerings);
       drawMilestoneRail(milestones);
       paintCurriculum(milestones);
+      var garden = drawGarden(milestones, state.reports);
       updateInstrumentRecord(state, freshness);
 
       var verifiedList = milestones.filter(function (m) { return m && m.status === 'verified'; });
@@ -1875,6 +2071,7 @@
         schema_version: state.schema_version || null,
         last_run: state.last_run || null,
         runs: state.runs == null ? null : state.runs,
+        garden: garden,
         plant: {
           growth_form: GF.pageGrowthForm(milestones),
           promoted_leaves: verifiedList.length,
@@ -1901,7 +2098,6 @@
     applyPhase(now);
     seedStars();
     seedDust();
-    drawGarden();
     render({ empty:true, reason:'boot' });
 
     // Wire the field note: close button, Escape to dismiss, and the bud (the

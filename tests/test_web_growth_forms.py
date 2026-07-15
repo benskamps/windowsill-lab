@@ -88,3 +88,16 @@ def test_host_only_walk_does_not_404_in_local_file_mode():
     html = PAGE.read_text(encoding="utf-8")
     assert '<script defer src="/walk/walk.js"></script>' not in html
     assert "brokenbranch\\.dev" in html
+
+
+def test_conservatory_is_feed_driven_and_opens_real_field_notes():
+    """The four specimens must report the feed, not repeat decorative sample plants."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert "Four instruments. One standard of proof." in html
+    assert "function drawGarden(milestones, reports)" in html
+    assert "count:closed.length, total:total" in html
+    assert "reportForMilestone(reports, latest && latest.id)" in html
+    assert "specimen-leaf ' + (milestone.status" in html
+    assert "openFieldNote(focusMilestone, action)" in html
+    assert "garden: garden" in html
+    assert "count:5, total:8" not in html
