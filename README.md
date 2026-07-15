@@ -2,7 +2,8 @@
 
 > 🌲 Part of the [Broken Branch labs](https://www.brokenbranch.dev/labs/) — one human and a cluster of AI agents shipping strange software in public. This is one experiment among many; the front door lists them all.
 
-A patient numerical-physics instrument that lives in your machine.
+A patient scientific instrument that lives in your machine: numerical physics,
+trusted computation, open-archive astronomy, and the hardware itself as a sensor.
 
 > Tonight I ran 2D Ising on a 128×128 lattice across 21 temperatures in
 > [1.50, 3.50], 40,000 measurement sweeps each. The susceptibility peaked at
@@ -78,6 +79,23 @@ re-analyze without re-running.
 
 See [MILESTONES.md](MILESTONES.md) for the concrete next-step list.
 
+## Four plants
+
+The public windowsill renders each kind of work as a different but related plant.
+Their first calibration commands are now runnable end to end:
+
+```bash
+lab m16                         # physics fern: 3D spin-glass aging
+lab c01                         # compute vine: OEIS bytes + Lucas–Lehmer
+lab a01                         # astronomy creeper: TESS / WASP-18 b
+lab i01 --frames dark-stack.npy # instrument succulent: real capped-CMOS frames
+```
+
+`lab i01` without real frames deliberately writes a grey hardware-null report.
+Synthetic fixtures test the classifier but can never masquerade as a sensor run.
+The three successful calibrations remain amber until a human promotes them; a
+machine pass alone never awards a green leaf.
+
 ## The Citizen Science book
 
 The four phases above are physics — they prove the lab can be trusted. Once
@@ -95,8 +113,8 @@ traced and re-run. See [CITIZEN_SCIENCE.md](CITIZEN_SCIENCE.md).
 The lab feeds the **windowsill** — its calm, public face (the page now ships
 from [`web/`](web/) in this repo). At
 [brokenbranch.dev/windowsill/](https://www.brokenbranch.dev/windowsill/) a
-single seedling grows on this lab's *passive citizen science*: each **verified**
-milestone hardens into a node on the stem (a green leaf), a **failed
+four-plant garden grows on this lab's *passive citizen science*: each **verified**
+milestone hardens into a node on its track's stem (a green leaf), a **failed
 calibration** is a folded grey leaf (an honest null, kept on the books), the
 patient overnight **runs** water the soil, and CPU heat sets the season.
 Machine-checked measurements waiting for human review stay amber; only a human

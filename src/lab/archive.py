@@ -50,6 +50,14 @@ _HTTP_RE = re.compile(r"^https?://", re.IGNORECASE)
 # (M03), ising = the single-lattice χ-sweep (M01 / legacy bare dumps).
 def _kind_for(report: dict) -> str:
     exp = str(report.get("experiment", ""))
+    if exp.startswith("M16"):
+        return "aging"
+    if exp.startswith("C01"):
+        return "arithmetic"
+    if exp.startswith("A01"):
+        return "astronomy"
+    if exp.startswith("I01"):
+        return "instrument"
     if exp.startswith("M02") or "finite-size" in exp:
         return "fss"
     if exp.startswith("M03") or "collapse" in exp:
@@ -64,6 +72,27 @@ def _numbers_for(report: dict, kind: str) -> str:
     collapse → β/ν + residual ; falls back to wall-time / lattice size. Always
     a string, HTML-escaped at render time, never raw arrays.
     """
+    if kind == "aging":
+        ratio = report.get("collapse_ratio")
+        separation = report.get("fixed_lag_separation")
+        if ratio is not None and separation is not None:
+            return f"scaled/fixed scatter={ratio:.2f}× · ΔC={separation:+.3f}"
+    if kind == "arithmetic":
+        terms = report.get("n_terms")
+        residue = report.get("lucas_lehmer_residue")
+        if terms is not None and residue is not None:
+            return f"{terms} OEIS terms exact · LL residue={residue}"
+    if kind == "astronomy":
+        period = report.get("period_days")
+        depth = report.get("depth_fraction")
+        if period is not None and depth is not None:
+            return f"P={period:.8f} d · depth={100*depth:.3f}%"
+    if kind == "instrument":
+        analysis = report.get("analysis")
+        if not analysis:
+            return "hardware unavailable · no frames measured"
+        return (f"{analysis['shape'][0]} frames · {analysis['hot_pixel_count']} hot · "
+                f"{analysis['track_candidate_count']} track-like")
     if kind == "fss":
         slope = report.get("gamma_over_nu_fit")
         r2 = report.get("fit_r2")

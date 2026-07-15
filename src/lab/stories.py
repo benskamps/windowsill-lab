@@ -126,7 +126,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Aging memory",
         "question_plain": "After a tangled magnet is suddenly chilled, does it keep changing in a way that depends on how long ago it was chilled — in other words, does it carry a memory of its own age?",
         "why_it_matters": "This 'getting older' behaviour is how real glasses and disordered solids quietly evolve for years, and catching it would show the lab can study things that never fully settle.",
-        "result_plain": None,
+        "result_plain": "Yes — when the lab compared the same tangled magnet at different ages, the older version held onto its past more strongly and all four histories lined up on the clock that measures time relative to age. The machine check passed; it remains amber until a human reviews it.",
     },
     "M17": {
         "short_label": "Roughening surface",
@@ -145,7 +145,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Trust the arithmetic",
         "question_plain": "Before we hunt for new numbers, can we prove our machine even does math we can trust?",
         "why_it_matters": "Every later number-hunting result is worthless unless the basic arithmetic is provably correct first.",
-        "result_plain": None,
+        "result_plain": "Yes — the machine rebuilt the first 40 Fibonacci entries exactly as the official catalog stores them, byte for byte, and independently confirmed a known prime-number test with a final remainder of zero. It remains amber until human review.",
     },
     "C02": {
         "short_label": "Hunt a giant prime",
@@ -170,7 +170,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Weigh starlight",
         "question_plain": "From free telescope data, can we catch a known planet dimming its star and measure its year correctly?",
         "why_it_matters": "It proves our analysis of real survey data lands inside the numbers professional astronomers already published.",
-        "result_plain": None,
+        "result_plain": "Yes — across eight public telescope visits and 177 crossings, the lab recovered the known planet's 0.941452-day year and roughly one-percent starlight dip inside the professional published uncertainties. It remains amber until human review.",
     },
     "A02": {
         "short_label": "Track a pulsing star",
@@ -195,7 +195,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Camera as detector",
         "question_plain": "Can an ordinary computer camera, with its lens capped in the dark, actually feel particles passing through it?",
         "why_it_matters": "It turns a piece of everyday hardware into a real physics instrument, the first step to detecting things you cannot see.",
-        "result_plain": None,
+        "result_plain": "No real camera frames were available on this machine today, so the lab recorded a grey hardware boundary and made no particle claim. The real-frame analyzer is ready for a capped sensor instead of pretending test data came from the sky.",
     },
     "I02": {
         "short_label": "Counting cosmic rays",

@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "windowsill-lab"
 version = "0.1.0"
-description = "A patient numerical-physics instrument that lives in your machine."
+description = "A patient scientific instrument for physics, compute, archives, and sensors."
 requires-python = ">=3.11"
 dependencies = [
     "torch>=2.4",
