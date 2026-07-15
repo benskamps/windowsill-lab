@@ -198,18 +198,20 @@
     {
       "id": "M16",
       "title": "Aging in spin glasses",
-      "status": "open",
+      "status": "review",
       "track": "physics",
       "growth_form": "fern",
-      "runner_available": false,
+      "runner_available": true,
+      "result": "machine check passed, awaiting human review. A 3D \u00b1J Edwards\u2013Anderson glass was quenched from T=\u221e to T=0.60 and evolved with local single-spin Metropolis dynamics on L=12 across 64 independent disorder realizations. The saved C(t_w+\u0394t,t_w) table spans t_w=16,32,64,128 and \u0394t=8\u2026256. Regrading the table gives a within-group RMS scatter for the aging variable \u0394t/t_w only **0.24\u00d7** the time-translation-invariant \u0394t scatter (5 shared ratio groups vs 6 shared lag groups); independently, at fixed \u0394t=64 the correlation rises **0.714\u21920.818** as t_w grows, \u0394C=+0.104, so the older glass decorrelates more slowly. This is the expected breaking of time-translation invariance. **Boundary:** finite L/time and one low temperature establish an aging calibration, not a universal scaling function; cluster updates and parallel-tempering swaps were deliberately forbidden because they would corrupt the physical clock. `check_m16` re-derives both collapse residuals and the fixed-lag separation from the saved table. **[?] means machine-passed, awaiting Ben's green-leaf review.**",
       "short_label": "Aging memory",
       "question_plain": "After a tangled magnet is suddenly chilled, does it keep changing in a way that depends on how long ago it was chilled \u2014 in other words, does it carry a memory of its own age?",
-      "why_it_matters": "This 'getting older' behaviour is how real glasses and disordered solids quietly evolve for years, and catching it would show the lab can study things that never fully settle."
+      "why_it_matters": "This 'getting older' behaviour is how real glasses and disordered solids quietly evolve for years, and catching it would show the lab can study things that never fully settle.",
+      "result_plain": "Yes \u2014 when the lab compared the same tangled magnet at different ages, the older version held onto its past more strongly and all four histories lined up on the clock that measures time relative to age. The machine check passed; it remains amber until a human reviews it."
     },
     {
       "id": "M17",
       "title": "KPZ growth on circular geometry \u2014 interfaces wrapping around a torus, GUE-Tracy-Widom distribution of fluctuations",
-      "status": "pending",
+      "status": "open",
       "track": "physics",
       "growth_form": "fern",
       "runner_available": false,
@@ -231,13 +233,15 @@
     {
       "id": "C01",
       "title": "Calibrate the number stack",
-      "status": "pending",
+      "status": "review",
       "track": "compute",
       "growth_form": "vine",
-      "runner_available": false,
+      "runner_available": true,
+      "result": "machine check passed, awaiting human review. The runner generated the first **40** Fibonacci entries locally and matched their exact UTF-8 bytes against the official OEIS A000045 b-file prefix, then independently ran Lucas\u2013Lehmer for M31=2^31\u22121 and reached final residue **0**. The receipt pins the retrieved 429,385-byte OEIS source by SHA-256 and retains the exact compared prefix; `check_c01` regenerates the bytes and reruns Lucas\u2013Lehmer rather than trusting cached pass fields. **Boundary:** this calibrates integer arithmetic and source-byte handling; it is not a new OEIS extension, GIMPS assignment, or submitted contribution. **[?] means machine-passed, awaiting Ben's green-leaf review.**",
       "short_label": "Trust the arithmetic",
       "question_plain": "Before we hunt for new numbers, can we prove our machine even does math we can trust?",
-      "why_it_matters": "Every later number-hunting result is worthless unless the basic arithmetic is provably correct first."
+      "why_it_matters": "Every later number-hunting result is worthless unless the basic arithmetic is provably correct first.",
+      "result_plain": "Yes \u2014 the machine rebuilt the first 40 Fibonacci entries exactly as the official catalog stores them, byte for byte, and independently confirmed a known prime-number test with a final remainder of zero. It remains amber until human review."
     },
     {
       "id": "C02",
@@ -278,13 +282,15 @@
     {
       "id": "A01",
       "title": "Calibrate photometry",
-      "status": "pending",
+      "status": "review",
       "track": "astronomy",
       "growth_form": "creeper",
-      "runner_available": false,
+      "runner_available": true,
+      "result": "machine check passed, awaiting human review. Eight official mission-produced TESS SPOC light curves for confirmed WASP-18 b / TIC 100100827 were downloaded from MAST and SHA-256 pinned. A dependency-free FITS reader selected quality-zero PDCSAP cadences; a blind Sector-2 transit search seeded an ephemeris, then the multi-year baseline across Sectors 2,3,29,30,69,96,103,104 refined **177** accepted transit timings without using the catalog value in the fit. Regrading those timings gives **P=0.94145236 d** vs NASA Exoplanet Archive **0.94145223\u00b10.00000024 d** (\u0394=0.00000013 d); the median local transit depth is **1.022%** vs **1.041\u00b10.022%** (\u0394=0.019%). Both fall inside the published error bars. `check_a01` refits the saved timings and depth samples. **Boundary:** calibration on public archive photometry, not a new planet detection, independent observation, or ExoFOP submission; raw FITS bytes remain at MAST and are pinned by URI/size/hash. **[?] means machine-passed, awaiting Ben's green-leaf review.**",
       "short_label": "Weigh starlight",
       "question_plain": "From free telescope data, can we catch a known planet dimming its star and measure its year correctly?",
-      "why_it_matters": "It proves our analysis of real survey data lands inside the numbers professional astronomers already published."
+      "why_it_matters": "It proves our analysis of real survey data lands inside the numbers professional astronomers already published.",
+      "result_plain": "Yes \u2014 across eight public telescope visits and 177 crossings, the lab recovered the known planet's 0.941452-day year and roughly one-percent starlight dip inside the professional published uncertainties. It remains amber until human review."
     },
     {
       "id": "A02",
@@ -325,13 +331,14 @@
     {
       "id": "I01",
       "title": "Calibrate the CMOS as a particle detector",
-      "status": "pending",
+      "status": "null",
       "track": "instrument",
       "growth_form": "succulent",
-      "runner_available": false,
+      "runner_available": true,
       "short_label": "Camera as detector",
       "question_plain": "Can an ordinary computer camera, with its lens capped in the dark, actually feel particles passing through it?",
-      "why_it_matters": "It turns a piece of everyday hardware into a real physics instrument, the first step to detecting things you cannot see."
+      "why_it_matters": "It turns a piece of everyday hardware into a real physics instrument, the first step to detecting things you cannot see.",
+      "result_plain": "No real camera frames were available on this machine today, so the lab recorded a grey hardware boundary and made no particle claim. The real-frame analyzer is ready for a capped sensor instead of pretending test data came from the sky."
     },
     {
       "id": "I02",
@@ -383,21 +390,21 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-07-12T07:00:43.175712+00:00",
-  "runs": 24,
+  "last_run": "2026-07-15T02:56:54.457877+00:00",
+  "runs": 25,
   "temp_c": null,
   "latest_report": {
-    "date": "2026-07-12",
-    "milestone": "M01",
-    "verdict": "verified",
-    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 33s on GPU",
+    "date": "2026-07-14",
+    "milestone": "I01",
+    "verdict": "null",
+    "headline": "CMOS calibration not run: no real dark-frame stack available",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-12-m01.json"
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-i01.json"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-07-14T03:09:32.291527+00:00",
+  "updated": "2026-07-15T02:57:50.991110+00:00",
   "provenance": {
-    "code_sha": "36f7ae3-dirty",
+    "code_sha": "9436efc",
     "env": "python 3.13.6 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -406,6 +413,38 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-07-14",
+      "milestone": "I01",
+      "verdict": "null",
+      "headline": "CMOS calibration not run: no real dark-frame stack available",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-i01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-i01.json"
+    },
+    {
+      "date": "2026-07-14",
+      "milestone": "A01",
+      "verdict": "verified",
+      "headline": "TESS recovered WASP-18 b: P=0.94145236 d, depth=1.022% from 177 timed transits",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-a01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-a01.json"
+    },
+    {
+      "date": "2026-07-14",
+      "milestone": "C01",
+      "verdict": "verified",
+      "headline": "OEIS A000045: 40 terms matched byte-for-byte; Lucas\u2013Lehmer residue for 2^31\u22121 is 0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-c01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-c01.json"
+    },
+    {
+      "date": "2026-07-14",
+      "milestone": "M16",
+      "verdict": "verified",
+      "headline": "3D glass aging: t/t_w collapse residual is 0.24\u00d7 the fixed-lag residual; \u0394C=+0.104 at \u0394t=64",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-m16",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-m16.json"
+    },
     {
       "date": "2026-07-12",
       "milestone": "M01",

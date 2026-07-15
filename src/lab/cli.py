@@ -56,6 +56,10 @@ Usage:
   lab m13             run M13: frustrated triangular AFM — residual entropy S0/N≈0.3383 via C/T integration
   lab m14             run M14: random-bond Ising — exact Nishimori-line energy, map toward the MNP p_c≈0.109
   lab m15             run M15: Glauber dynamics — domain growth L(t)∼t^(1/2) after a quench (Phase 4)
+  lab m16             run M16: 3D spin-glass aging — compare t/t_w with t−t_w collapse
+  lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
+  lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
+  lab i01             run I01: calibrate a real capped-CMOS dark-frame stack
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -420,6 +424,42 @@ def _parse_m15(args):
                    help="log-spaced measurement times (default 52)")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m16(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--L", type=int, default=12)
+    p.add_argument("--quick", action="store_true",
+                   help="small CPU aging pass for pipeline validation")
+    p.add_argument("--T", type=float, default=0.60)
+    p.add_argument("--realizations", type=int, default=64)
+    p.add_argument("--waiting-times", default="16,32,64,128")
+    p.add_argument("--delta-times", default="8,16,32,64,128,256")
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_c01(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--terms", type=int, default=40)
+    return p.parse_args(args)
+
+
+def _parse_a01(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--sectors", type=int, default=8,
+                   help="maximum number of official SPOC sectors (default 8)")
+    p.add_argument("--cache-dir", default=None,
+                   help="optional FITS cache; defaults to ~/.lab/cache/a01")
+    return p.parse_args(args)
+
+
+def _parse_i01(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--frames", default=None,
+                   help="real .npy/.npz dark stack or directory of 2-D .npy frames")
     return p.parse_args(args)
 
 
@@ -1068,6 +1108,116 @@ def main(argv=None):
             snap = publish_mod.publish(quiet=True)
             print(f"  ✓ snapshot: {snap}")
         except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m16":
+        ns = _parse_m16(args[1:])
+        from . import m16
+        from . import render as render_mod
+        waiting = [int(x) for x in ns.waiting_times.split(",") if x.strip()]
+        deltas = [int(x) for x in ns.delta_times.split(",") if x.strip()]
+        L, realizations, device = ns.L, ns.realizations, ns.device
+        if ns.quick:
+            L, realizations, device = 6, 8, "cpu"
+            waiting, deltas = [4, 8, 16], [2, 4, 8, 16, 32]
+        print(f"M16 3D ±J spin-glass aging · L={L} · T={ns.T:.2f} · "
+              f"{realizations} disorder realizations · t_w={waiting} · Δt={deltas} "
+              f"on {device} (single-spin clock; no cluster/PT shortcuts)")
+
+        def _progress_m16(sweep, last):
+            print(f"  · clock {sweep:>4}/{last} sweeps")
+
+        result = m16.run_m16(
+            L=L, T=ns.T, n_realizations=realizations, waiting_times=waiting,
+            delta_times=deltas, seed=ns.seed, device=device, progress=_progress_m16,
+        )
+        report = m16.to_report(result)
+        print(f"  → ratio-collapse residual = {result.collapse_ratio:.2f}× fixed-lag "
+              f"residual · ΔC={result.fixed_lag_separation:+.3f} at Δt={result.fixed_lag} · "
+              f"{'aging resolved' if result.aging_resolved else 'honest null'} · "
+              f"{result.wall_seconds:.1f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "c01":
+        ns = _parse_c01(args[1:])
+        from . import c01
+        from . import render as render_mod
+        print(f"C01 arithmetic calibration · OEIS A000045 first {ns.terms} terms · "
+              "Lucas–Lehmer for 2^31−1")
+        result = c01.run_c01(n_terms=ns.terms)
+        report = c01.to_report(result)
+        print(f"  → OEIS bytes {'match' if result.bfile_exact_match else 'DO NOT match'} · "
+              f"Lucas–Lehmer residue={result.lucas_lehmer_residue} · "
+              f"{'calibrated' if result.calibration_passed else 'honest null'} · "
+              f"{result.wall_seconds:.2f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "a01":
+        ns = _parse_a01(args[1:])
+        from . import a01
+        from . import render as render_mod
+        cache = Path(ns.cache_dir) if ns.cache_dir else a01.CACHE_DIR
+        print(f"A01 archive photometry · {a01.TARGET_NAME} / TIC {a01.TIC_ID} · "
+              f"up to {ns.sectors} official TESS SPOC sectors")
+
+        def _progress_a01(done, total, product):
+            source = "cache" if product["cached"] else "MAST"
+            print(f"  ✓ sector {product['sector']:<3} {product['bytes']/1e6:.1f} MB from {source} "
+                  f"({done}/{total})")
+
+        result = a01.run_a01(max_sectors=ns.sectors, cache_dir=cache,
+                             progress=_progress_a01)
+        report = a01.to_report(result)
+        print(f"  → P={result.period_days:.8f} d (Δ={result.period_error_days:.2g} d) · "
+              f"depth={100*result.depth_fraction:.3f}% "
+              f"(Δ={100*result.depth_error_fraction:.3f}%) · "
+              f"{sum(result.kept_transits)} timed transits · "
+              f"{'calibrated' if result.calibration_passed else 'honest null'} · "
+              f"{result.wall_seconds:.1f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "i01":
+        ns = _parse_i01(args[1:])
+        from . import i01
+        from . import render as render_mod
+        print("I01 CMOS particle-detector calibration · real capped-sensor dark frames only")
+        result = i01.run_i01(frames_path=ns.frames)
+        report = i01.to_report(result)
+        if result.analysis:
+            print(f"  → {result.analysis['shape'][0]} frames · "
+                  f"{result.analysis['hot_pixel_count']} hot pixels · "
+                  f"{result.analysis['track_candidate_count']} track-like components · "
+                  f"{'calibrated' if result.calibration_passed else 'honest null'}")
+        else:
+            print(f"  → hardware-null: {result.reason}")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
             print(f"  (snapshot skipped: {e})")
         return 0
 

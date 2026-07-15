@@ -1,0 +1,46 @@
+{
+  "bfile_exact_match": true,
+  "calibration_passed": true,
+  "claim_boundary": "This calibrates local integer arithmetic and source-byte handling. It does not constitute new OEIS terms, a GIMPS assignment, or a submitted contribution.",
+  "experiment": "C01-arithmetic-calibration",
+  "generated_at": "2026-07-15T02:56:22.704559+00:00",
+  "generated_prefix_sha256": "aedd7bebde955ca26c2f7930877ee16f2a369177047a350407ce3c8f7b6c7c92",
+  "headline": "OEIS A000045: 40 terms matched byte-for-byte; Lucas–Lehmer residue for 2^31−1 is 0",
+  "lucas_lehmer_residue": 0,
+  "mersenne_candidate": 2147483647,
+  "mersenne_exponent": 31,
+  "mersenne_prime_verified": true,
+  "n_terms": 40,
+  "oeis_bfile_url": "https://oeis.org/A000045/b000045.txt",
+  "oeis_sequence": "A000045",
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.0",
+      "numpy": "2.4.6",
+      "torch": "2.6.0+cu124"
+    },
+    "platform": "windows-amd64",
+    "python": "3.13.6",
+    "source_clean": true,
+    "source_commit": "9436efca2b720a95786577030ac5703e68b16875",
+    "source_diff_sha256": null,
+    "source_tree_sha256": "9423023b42884caeebca14ba06166b8944b0b394f3fabc7a8c126664372a6f3d"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "5a930bfb0ed9bef351a8e4d921b36cfe45d844f2ce707ba5bbafaaba03059615"
+  },
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify C01",
+    "rerun": "python -m lab.cli c01"
+  },
+  "source_bytes": 429385,
+  "source_prefix_sha256": "aedd7bebde955ca26c2f7930877ee16f2a369177047a350407ce3c8f7b6c7c92",
+  "source_prefix_text": "0 0\n1 1\n2 1\n3 2\n4 3\n5 5\n6 8\n7 13\n8 21\n9 34\n10 55\n11 89\n12 144\n13 233\n14 377\n15 610\n16 987\n17 1597\n18 2584\n19 4181\n20 6765\n21 10946\n22 17711\n23 28657\n24 46368\n25 75025\n26 121393\n27 196418\n28 317811\n29 514229\n30 832040\n31 1346269\n32 2178309\n33 3524578\n34 5702887\n35 9227465\n36 14930352\n37 24157817\n38 39088169\n39 63245986\n",
+  "source_sha256": "fb52264d1faa56aa9d3bc9f52eb42fe5c9beaba71cef4a0e50689bbbbeb923e4",
+  "status": "pass",
+  "wall_seconds": 0.3478868007659912
+}

@@ -79,7 +79,11 @@ def test_runner_availability_is_feed_visible():
     ms = {m["id"]: m for m in parse_milestones(SAMPLE)}
     assert ms["M01"]["runner_available"] is True
     assert ms["M15"]["runner_available"] is True
-    later = parse_milestones("- [ ] **M16** — Aging memory.\n")[0]
+    assert parse_milestones("- [ ] **M16** — Aging memory.\n")[0]["runner_available"] is True
+    assert parse_milestones("- [ ] **C01** — Number calibration.\n")[0]["runner_available"] is True
+    assert parse_milestones("- [ ] **A01** — TESS calibration.\n")[0]["runner_available"] is True
+    assert parse_milestones("- [ ] **I01** — CMOS calibration.\n")[0]["runner_available"] is True
+    later = parse_milestones("- [ ] **M17** — KPZ growth.\n")[0]
     assert later["status"] == "open"
     assert later["runner_available"] is False
 

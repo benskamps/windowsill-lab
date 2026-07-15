@@ -1,0 +1,113 @@
+{
+  "aging_resolved": true,
+  "claim_boundary": "A finite-size, finite-time nonequilibrium calibration: it distinguishes aging from time-translation invariance but is not a universal scaling-function claim.",
+  "collapse_ratio": 0.2390434439807128,
+  "config": {
+    "L": 12,
+    "T": 0.6,
+    "delta_times": [
+      8,
+      16,
+      32,
+      64,
+      128,
+      256
+    ],
+    "device": "cuda",
+    "n_realizations": 64,
+    "seed": 42,
+    "waiting_times": [
+      16,
+      32,
+      64,
+      128
+    ]
+  },
+  "correlations": {
+    "128": [
+      0.8805519342422485,
+      0.8696650862693787,
+      0.8485604524612427,
+      0.8182147145271301,
+      0.7788809537887573,
+      0.7369610667228699
+    ],
+    "16": [
+      0.8250687122344971,
+      0.7951569557189941,
+      0.7505244612693787,
+      0.71435546875,
+      0.6550564169883728,
+      0.5993019342422485
+    ],
+    "32": [
+      0.8579643964767456,
+      0.8344907760620117,
+      0.8114510774612427,
+      0.7644133567810059,
+      0.7141203880310059,
+      0.6544958353042603
+    ],
+    "64": [
+      0.8760489225387573,
+      0.8624493479728699,
+      0.8298430442810059,
+      0.7949580550193787,
+      0.7479022145271301,
+      0.6902307868003845
+    ]
+  },
+  "delta_times": [
+    8,
+    16,
+    32,
+    64,
+    128,
+    256
+  ],
+  "difference_residual": 0.037165306961160514,
+  "experiment": "M16-spin-glass-aging",
+  "fixed_lag": 64,
+  "fixed_lag_correlations": [
+    0.71435546875,
+    0.7644133567810059,
+    0.7949580550193787,
+    0.8182147145271301
+  ],
+  "fixed_lag_separation": 0.10385924577713013,
+  "generated_at": "2026-07-15T02:56:11.213862+00:00",
+  "headline": "3D glass aging: t/t_w collapse residual is 0.24× the fixed-lag residual; ΔC=+0.104 at Δt=64",
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.0",
+      "numpy": "2.4.6",
+      "torch": "2.6.0+cu124"
+    },
+    "platform": "windows-amd64",
+    "python": "3.13.6",
+    "source_clean": true,
+    "source_commit": "9436efca2b720a95786577030ac5703e68b16875",
+    "source_diff_sha256": null,
+    "source_tree_sha256": "9423023b42884caeebca14ba06166b8944b0b394f3fabc7a8c126664372a6f3d"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "17bb52b6d803d35f81243333e96e3274e4ff37ec45541a324e064309fd92f78e"
+  },
+  "ratio_residual": 0.00888412297259617,
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify M16",
+    "rerun": "python -m lab.cli m16"
+  },
+  "status": "pass",
+  "waiting_times": [
+    16,
+    32,
+    64,
+    128
+  ],
+  "wall_seconds": 0.6841301918029785
+}

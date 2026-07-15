@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 import math
+import statistics
 from pathlib import Path
 
 from .publish import LAB_HOME, MILESTONES_MD, REPORTS_DIR, parse_milestones
@@ -956,13 +957,168 @@ def check_m15(report: dict) -> tuple[bool | None, str]:
     return ok, detail
 
 
+def _group_rms(xs, ys) -> tuple[float, int]:
+    groups: dict[float, list[float]] = {}
+    for x, y in zip(xs, ys):
+        groups.setdefault(round(float(x), 8), []).append(float(y))
+    residuals = []
+    for values in groups.values():
+        if len(values) < 3:
+            continue
+        mean = sum(values) / len(values)
+        residuals.append(math.sqrt(sum((v - mean) ** 2 for v in values) / len(values)))
+    return ((sum(residuals) / len(residuals), len(residuals))
+            if residuals else (float("inf"), 0))
+
+
+def check_m16(report: dict) -> tuple[bool | None, str]:
+    """Re-derive whether a quenched 3D glass ages on the ``dt/t_w`` clock."""
+    if report.get("experiment") != "M16-spin-glass-aging":
+        return None, "not an M16 spin-glass aging report"
+    tws, dts = report.get("waiting_times"), report.get("delta_times")
+    rows = report.get("correlations")
+    if not isinstance(tws, list) or not isinstance(dts, list) or not isinstance(rows, dict):
+        return None, "M16 report missing waiting-time correlation table"
+    if len(tws) < 3 or len(dts) < 4:
+        return False, "M16 needs >=3 waiting times and >=4 lag times"
+    ratios, differences, values = [], [], []
+    for tw in tws:
+        row = rows.get(str(int(tw)))
+        if not isinstance(row, list) or len(row) != len(dts):
+            return False, f"M16 incomplete row for t_w={tw}"
+        for dt, value in zip(dts, row):
+            if not isinstance(value, (int, float)) or not -1.0 <= float(value) <= 1.0:
+                return False, "M16 correlation outside [-1,1]"
+            ratios.append(float(dt) / float(tw))
+            differences.append(float(dt))
+            values.append(float(value))
+    ratio_resid, ratio_groups = _group_rms(ratios, values)
+    diff_resid, diff_groups = _group_rms(differences, values)
+    collapse_ratio = ratio_resid / diff_resid if diff_resid > 0 else float("inf")
+    fixed_lag = dts[len(dts) // 2]
+    j = dts.index(fixed_lag)
+    fixed = [float(rows[str(int(tw))][j]) for tw in tws]
+    separation = fixed[-1] - fixed[0]
+    ok = bool(collapse_ratio <= 0.80 and separation >= 0.03
+              and ratio_groups >= 2 and diff_groups >= 4)
+    return ok, (
+        f"3D EA two-time correlation: t/t_w collapse residual is {collapse_ratio:.2f}× "
+        f"the t−t_w residual ({ratio_groups} ratio groups, {diff_groups} lag groups); "
+        f"at fixed Δt={fixed_lag}, C rises {fixed[0]:.3f}→{fixed[-1]:.3f} "
+        f"(Δ={separation:+.3f}) — " +
+        ("aging/time-translation breaking resolved" if ok else "aging gate not resolved")
+    )
+
+
+def _fib_segment(n_terms: int) -> str:
+    a, b = 0, 1
+    lines = []
+    for i in range(n_terms):
+        lines.append(f"{i} {a}\n")
+        a, b = b, a + b
+    return "".join(lines)
+
+
+def _lucas_lehmer_residue(exponent: int) -> int:
+    modulus = (1 << exponent) - 1
+    residue = 4
+    for _ in range(exponent - 2):
+        residue = (residue * residue - 2) % modulus
+    return residue
+
+
+def check_c01(report: dict) -> tuple[bool | None, str]:
+    if report.get("experiment") != "C01-arithmetic-calibration":
+        return None, "not a C01 arithmetic calibration"
+    n = report.get("n_terms")
+    prefix = report.get("source_prefix_text")
+    p = report.get("mersenne_exponent")
+    candidate = report.get("mersenne_candidate")
+    if not isinstance(n, int) or not isinstance(prefix, str) or not isinstance(p, int):
+        return None, "C01 report missing b-file bytes or Mersenne exponent"
+    exact = prefix == _fib_segment(n)
+    residue = _lucas_lehmer_residue(p)
+    candidate_ok = candidate == (1 << p) - 1
+    ok = bool(exact and candidate_ok and residue == 0)
+    return ok, (
+        f"OEIS A000045 first {n} terms " + ("match byte-for-byte" if exact else "do not match") +
+        f"; Lucas–Lehmer final residue for 2^{p}−1 is {residue} — " +
+        ("arithmetic calibration reproduced" if ok else "arithmetic calibration failed")
+    )
+
+
+def _linear_slope(xs, ys) -> float:
+    xbar, ybar = sum(xs) / len(xs), sum(ys) / len(ys)
+    denom = sum((x - xbar) ** 2 for x in xs)
+    if denom <= 0:
+        raise ValueError("degenerate ephemeris epochs")
+    return sum((x - xbar) * (y - ybar) for x, y in zip(xs, ys)) / denom
+
+
+def check_a01(report: dict) -> tuple[bool | None, str]:
+    if report.get("experiment") != "A01-tess-hot-jupiter-calibration":
+        return None, "not an A01 TESS calibration"
+    times, epochs = report.get("transit_times"), report.get("transit_epochs")
+    depths, kept = report.get("transit_depths"), report.get("kept_transits")
+    benchmark = report.get("benchmark")
+    products = report.get("products")
+    if not all(isinstance(x, list) for x in (times, epochs, depths, kept)) or not isinstance(benchmark, dict):
+        return None, "A01 report missing timed transits or benchmark"
+    if not (len(times) == len(epochs) == len(depths) == len(kept)):
+        return False, "A01 transit arrays are not parallel"
+    selected = [i for i, use in enumerate(kept) if use]
+    if len(selected) < 8:
+        return False, "A01 has fewer than eight accepted transit timings"
+    xs = [float(epochs[i]) for i in selected]
+    ys = [float(times[i]) for i in selected]
+    period = _linear_slope(xs, ys)
+    depth = statistics.median(float(depths[i]) for i in selected)
+    p_ref, p_tol = float(benchmark["period_days"]), float(benchmark["period_err_days"])
+    d_ref, d_tol = float(benchmark["depth_fraction"]), float(benchmark["depth_err_fraction"])
+    p_err, d_err = abs(period - p_ref), abs(depth - d_ref)
+    hashes_ok = bool(products) and all(
+        isinstance(p.get("sha256"), str) and len(p["sha256"]) == 64 for p in products
+    )
+    ok = bool(p_err <= p_tol and d_err <= d_tol and hashes_ok)
+    return ok, (
+        f"WASP-18 b from {len(products or [])} TESS SPOC products / {len(selected)} transits: "
+        f"P={period:.8f} d vs {p_ref:.8f} (Δ={p_err:.2g}, tol {p_tol:.2g}); "
+        f"depth={100*depth:.3f}% vs {100*d_ref:.3f}% "
+        f"(Δ={100*d_err:.3f}%, tol {100*d_tol:.3f}%) — " +
+        ("archive photometry calibration reproduced" if ok else "published error bars not both recovered")
+    )
+
+
+def check_i01(report: dict) -> tuple[bool | None, str]:
+    if report.get("experiment") != "I01-cmos-particle-detector-calibration":
+        return None, "not an I01 CMOS calibration"
+    if not report.get("hardware_available"):
+        return False, "no real capped-sensor dark frames were available; hardware-null recorded"
+    analysis = report.get("analysis") or {}
+    evidence = report.get("input_evidence") or []
+    shape = analysis.get("shape") or []
+    enough = len(shape) == 3 and int(shape[0]) >= 16
+    noise = float(analysis.get("temporal_noise_sigma", 0)) > 0
+    hashes = bool(evidence) and all(len(str(x.get("sha256", ""))) == 64 for x in evidence)
+    ok = bool(enough and noise and hashes)
+    return ok, (
+        f"CMOS dark stack: {shape[0] if shape else 0} frames, "
+        f"noise σ={analysis.get('temporal_noise_sigma', 0):.3g}, "
+        f"{analysis.get('hot_pixel_count', 0)} persistent hot pixels, "
+        f"{analysis.get('track_candidate_count', 0)} transient track-like components — " +
+        ("instrument calibration operational" if ok else "instrument calibration incomplete")
+    )
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
           "M10": check_m10, "M11": check_m11, "M12": check_m12,
-          "M13": check_m13, "M14": check_m14, "M15": check_m15}
+          "M13": check_m13, "M14": check_m14, "M15": check_m15,
+          "M16": check_m16, "C01": check_c01, "A01": check_a01,
+          "I01": check_i01}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:
