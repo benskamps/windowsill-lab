@@ -1,0 +1,37 @@
+{
+  "analysis": null,
+  "calibration_passed": false,
+  "claim_boundary": "A pass calibrates dark noise and event separation only. Candidate components are not identified as cosmic rays without exposure metadata, controls, and a sustained rate/geometry study. A hardware-null is evidence of no measurement, not a failure of the classifier.",
+  "experiment": "I01-cmos-particle-detector-calibration",
+  "generated_at": "2026-07-15T02:56:54.435044+00:00",
+  "hardware_available": false,
+  "headline": "CMOS calibration not run: no real dark-frame stack available",
+  "input_evidence": [],
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.0",
+      "numpy": "2.4.6",
+      "torch": "2.6.0+cu124"
+    },
+    "platform": "windows-amd64",
+    "python": "3.13.6",
+    "source_clean": true,
+    "source_commit": "9436efca2b720a95786577030ac5703e68b16875",
+    "source_diff_sha256": null,
+    "source_tree_sha256": "9423023b42884caeebca14ba06166b8944b0b394f3fabc7a8c126664372a6f3d"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "1e6488cf347534c2fe54bb4037d23deb644b51c459c796b0d6d3eb528b6ed9d0"
+  },
+  "reason": "No real capped-sensor dark-frame stack was configured. Set WINDOWSILL_I01_FRAMES or pass --frames; synthetic data is not accepted as an instrument measurement.",
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify I01",
+    "rerun": "python -m lab.cli i01"
+  },
+  "status": "null",
+  "wall_seconds": 5.4836273193359375e-06
+}
