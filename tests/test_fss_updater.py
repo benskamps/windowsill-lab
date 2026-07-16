@@ -115,3 +115,28 @@ def test_wolff_metropolis_agree_in_m02_window():
 def test_default_L_documents_cluster_extension():
     """DEFAULT_L is the historical Metropolis-safe tuple; Wolff lifts the cap."""
     assert DEFAULT_L == (32, 64, 128, 256)
+
+
+# --------------------------------------------------------------------------- #
+# wiring: the wolff_init passthrough (ordered start for large-L burn-in)
+# --------------------------------------------------------------------------- #
+def test_run_fss_default_wolff_init_is_ordered():
+    """run_fss defaults the Wolff start to 'ordered' — the practical large-L start."""
+    import inspect
+    sig = inspect.signature(run_fss)
+    assert sig.parameters["wolff_init"].default == "ordered"
+
+
+def test_run_fss_records_wolff_init():
+    """The chosen start is recorded in the report config (provenance)."""
+    res = run_fss(
+        L_values=(8,), T_min=2.25, T_max=2.35, n_temps=3,
+        n_sweeps=80, n_burnin=30, seed=9, device="cpu",
+        updater="wolff", wolff_init="random",
+    )
+    assert res.config["wolff_init"] == "random"
+    res2 = run_fss(
+        L_values=(8,), T_min=2.25, T_max=2.35, n_temps=3,
+        n_sweeps=80, n_burnin=30, seed=9, device="cpu", updater="wolff",
+    )
+    assert res2.config["wolff_init"] == "ordered"
