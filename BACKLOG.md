@@ -13,22 +13,32 @@ spectrum in a tractable number of sweeps — χ_max gets under-measured and the
 slope sags. This caps every critical-point milestone (M02 finite-size scaling,
 M03 β/ν, M04 specific heat, and the spin-glass runs M11+) at modest L.
 
-- [ ] **Wolff single-cluster updates** (z ≈ 0.25 — essentially no critical
+- [x] **Wolff single-cluster updates** (z ≈ 0.25 — essentially no critical
       slowing). Grow a cluster by adding aligned neighbours with probability
       p = 1 − exp(−2β), flip it whole. GPU-friendly as an iterative
       frontier-expansion (parallel BFS) across the batched lattices. This is the
       correct instrument for criticality and unlocks clean FSS to L ≥ 512 and
       sharp exponents for M03/M04. Keep Metropolis as the default for
       off-critical sweeps; pick the updater by regime.
+      (done 2026-06-16 — `wolff.py` landed with M03 (#13): batched parallel-BFS
+      frontier expansion over frozen bond fields, each undirected bond activated
+      exactly once. Validated against Metropolis on ⟨|m|⟩ and energy below and
+      above T_c plus Onsager sanity (`test_wolff.py`), and AT criticality via
+      the M02 wiring tests (`test_fss_updater.py`). Regime/flag selection landed
+      2026-07-05 (#47): `run_fss(updater='wolff'|'metropolis')`, Wolff the
+      default in the critical window, Metropolis still selectable off-critical.
+      The 3D generalisation `wolff3d.py` landed 2026-06-27 (#32).)
 - [ ] Once Wolff lands, re-run M02 to L = 512/1024 and tighten the measured γ/ν.
+      (Wolff has landed and `run_fss` defaults to it — this re-run is now the
+      live next step; nothing blocks it but GPU time.)
 - [ ] **Sharpen M06's 3D T_c via an L-extrapolation.** The Phase-2 M06 run lands
       the χ-peak at T_c(L=12) = 4.504 (0.17% from the MC benchmark 4.5115), but a
       single small lattice carries an O(L^−1/ν) finite-size shift in its
       pseudo-critical peak. Sweep several L (8, 10, 12, 16…) and extrapolate
       T_c(L) → T_c(∞) to turn a calibration pass into a precision number. The 3D
-      checkerboard engine (`ising3d.py`) already batches over temperatures; a 3D
-      Wolff updater (once the 2D one is generalized) would let this reach L ≥ 24
-      without critical slowing.
+      checkerboard engine (`ising3d.py`) already batches over temperatures; the
+      3D Wolff updater (`wolff3d.py`, #32) lets this reach L ≥ 24 without
+      critical slowing.
 
 ## Growth forms — different plants for different experiments
 
