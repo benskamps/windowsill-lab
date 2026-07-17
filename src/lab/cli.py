@@ -563,6 +563,22 @@ def main(argv=None):
                 rc = 1
         return rc
 
+    if cmd == "scoreboard":
+        from . import scoreboard as scoreboard_mod
+        from . import archive as archive_mod
+        entries = scoreboard_mod.collect_entries()
+        png = scoreboard_mod.write_scoreboard(entries=entries)
+        n_pass = sum(1 for e in entries if e.passed)
+        print(f"  ✓ scoreboard: {len(entries)} milestones, {n_pass} within tolerance → {png}")
+        for e in entries:
+            mark = "✓" if e.passed else "✗"
+            print(f"    {mark} {e.milestone} {e.observable}: {e.value_label()}  (z={e.z:+.2f})")
+        index = archive_mod.write_index()
+        print(f"  ✓ embedded into {index}")
+        if "--open" in args:
+            webbrowser.open(index.as_uri())
+        return 0 if n_pass == len(entries) else 1
+
     if cmd == "setup":
         from . import setup as setup_mod
         flags = args[1:]
