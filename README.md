@@ -123,6 +123,8 @@ promotion turns them green.
 ```bash
 lab publish                 # write the committed pot.json (the live feed)
 lab verify [IDs]            # re-derive verified milestones from their reports
+lab verify --rerun-smoke    # + prove the engine reproduces itself (determinism gate)
+lab scoreboard              # render the calibration scoreboard (measured vs theory)
 ```
 
 The snapshot is built by parsing `MILESTONES.md` (the single source of truth) plus
@@ -142,6 +144,38 @@ so producer and page can't silently drift.
 headline number from the run report it shipped (e.g. M01's susceptibility peak
 vs Onsager's exact `T_c`) and fails if it doesn't reproduce. CI runs it, so a
 milestone can't wear a green leaf on the honor system.
+
+**The instrument reproduces itself.** `lab verify` only regrades *saved* JSON —
+it never re-runs the engine. `lab verify --rerun-smoke` closes that gap: it
+re-runs a tiny pinned CPU config (`L=16`, `seed=42`, a handful of temperatures)
+twice and proves the two runs are byte-for-byte identical (SHA-256), then checks
+them against a committed golden artifact
+([`tests/golden/determinism-l16-seed42.json`](tests/golden/determinism-l16-seed42.json)).
+Self-determinism is enforced hard on every platform; the golden is bit-exact on
+the platform that blessed it and graded within a tight, check-owned tolerance
+across torch builds. CI runs this too, so a silently nondeterministic instrument
+reds the build instead of shipping green.
+
+**Controls, not prose.** `lab controls` runs two re-derivable probes and grades
+them with `checks.check_controls`. A **positive** control: single-spin Metropolis
+and single-cluster Wolff — two independent correct algorithms — must agree on
+⟨|m|⟩ and energy at the same temperatures (they land within ~0.03 on a tiny CPU
+lattice). A **negative** control: with the coupling switched off (`J=0`, free
+spins) the *same* susceptibility estimator and peak-finder M01 uses must show a
+**flat** χ with no prominent peak — the control's job is to *fail* the "there's a
+T_c peak" gate, proving M01's peak is physics, not an artifact the pipeline
+manufactures from noise. (CPU-toy scale; a GPU-scale control battery — e.g. a
+bond-reshuffled spin glass that loses its aging signal — is a documented
+follow-up.)
+
+**One picture of everything vs theory.** `lab scoreboard` renders a single
+house-style "money plot" — every verified milestone's measured value against its
+exact/benchmark theory (Onsager `T_c`, γ/ν=7/4, β/ν=1/8, the Potts `T_c` ladder,
+the XY universal-jump crossing, Wannier's residual entropy, the Nishimori-line
+energy, the Allen–Cahn coarsening exponent), each in units of that milestone's own
+check tolerance, with a shaded band at `|z| ≤ 1`. It reads the same committed
+reports and the same benchmark constants `lab verify` grades against, and is
+embedded at the top of the [archive index](reports/index.html).
 
 **Receipts.** Every snapshot carries `provenance` — the code SHA (`-dirty` when
 the tree has uncommitted changes), a sanitized environment string, and the

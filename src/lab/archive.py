@@ -27,6 +27,7 @@ and the *index HTML*.
 """
 from __future__ import annotations
 
+import base64
 import html
 import json
 import re
@@ -41,6 +42,36 @@ from .publish import (
 # Where the index lands. The nightly already ``git add -A reports/`` so writing
 # reports/index.html here makes it the committed, deep-linkable archive page.
 INDEX_HTML = REPORTS_DIR / "index.html"
+
+# The calibration scoreboard "money plot" (rendered by scoreboard.py, committed as
+# a PNG). Embedded here by reading the committed file and inlining it as base64 —
+# so this module stays stdlib-only (no matplotlib) and the nightly's index regen
+# preserves the figure as long as the PNG is committed. Resolved at call time so a
+# test that repoints REPORTS_DIR is honoured.
+def _scoreboard_png() -> Path:
+    return REPORTS_DIR / "scoreboard.png"
+
+
+def _scoreboard_section() -> str:
+    """The scoreboard figure as an HTML section, or '' when the PNG isn't committed."""
+    png = _scoreboard_png()
+    if not png.exists():
+        return ""
+    try:
+        b64 = base64.b64encode(png.read_bytes()).decode("ascii")
+    except OSError:
+        return ""
+    return (
+        '  <h2>calibration scoreboard</h2>\n'
+        '  <p class="note">Every verified milestone\'s measured value against the exact '
+        'or benchmark theory, in units of that milestone\'s own check tolerance '
+        '(<code>z = (measured − theory) / tol</code>). A point inside the shaded band '
+        'reproduced theory within its gate. One picture of everything the lab has '
+        'claimed vs what statistical mechanics says.</p>\n'
+        f'  <figure class="scoreboard"><img src="data:image/png;base64,{b64}" '
+        'alt="calibration scoreboard: each milestone\'s measured value vs exact theory, '
+        'in units of its check tolerance"></figure>\n'
+    )
 
 # htmlpreview deep-link for a dated HTML report (resolves once pushed).
 _HTTP_RE = re.compile(r"^https?://", re.IGNORECASE)
@@ -359,12 +390,17 @@ INDEX_TEMPLATE = """<!doctype html>
   .flag {{ font-size: 11px; opacity: 0.55; margin-left: 6px; }}
   .footer {{ margin-top: 56px; padding-top: 18px; border-top: 1px solid #d6c0a2;
              opacity: 0.55; font-size: 12px; }}
+  figure.scoreboard {{ margin: 8px 0 4px; }}
+  figure.scoreboard img {{ width: 100%; max-width: 100%; height: auto;
+                           border-radius: 4px; border: 1px solid #e2d4ba; }}
+  code {{ font-family: 'SF Mono', ui-monospace, Menlo, monospace; font-size: 12.5px; }}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>windowsill-lab · the archive</h1>
   <div class="lede">{summary}</div>
+{scoreboard}
   <p class="note">Two honesties live here. A milestone's <b>green leaf</b> on the
   <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a> grades the
   <em>stem</em> — the curriculum. A <b>folded grey leaf</b> below grades a single
@@ -466,7 +502,8 @@ def render_index(runs: list[dict] | None = None) -> str:
     # regen must not stamp the archive "tomorrow" in UTC.
     generated = today_local()
     return INDEX_TEMPLATE.format(
-        summary=summary, groups=groups_html, count=len(runs), generated=generated,
+        summary=summary, scoreboard=_scoreboard_section(), groups=groups_html,
+        count=len(runs), generated=generated,
     )
 
 
