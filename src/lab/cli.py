@@ -69,6 +69,7 @@ Usage:
                       also re-run the pinned L=16 CPU smoke config and prove it
                       reproduces itself + the committed golden (determinism gate)
   lab scoreboard      render the calibration scoreboard (measured vs theory) + archive
+  lab controls        run published controls: cross-updater agreement + a J=0 null
   lab setup           install the nightly job (run → publish → push)
   lab help            show this message
 
@@ -578,6 +579,22 @@ def main(argv=None):
         if "--open" in args:
             webbrowser.open(index.as_uri())
         return 0 if n_pass == len(entries) else 1
+
+    if cmd == "controls":
+        import json as _json
+        from . import controls as controls_mod
+        from . import checks
+        from .publish import today_local
+        rep = controls_mod.build_controls_report()
+        ok, detail = checks.check_controls(rep)
+        # The receipt lands in ~/.lab (not the committed archive): a published control
+        # that would ride into pot.json is a separate promotion step.
+        LAB_HOME.mkdir(parents=True, exist_ok=True)
+        out = LAB_HOME / f"{today_local()}-controls.json"
+        out.write_text(_json.dumps(rep, indent=2), encoding="utf-8")
+        print(f"  {'✓' if ok else '✗'} controls — {detail}")
+        print(f"  receipt: {out}")
+        return 0 if ok else 1
 
     if cmd == "setup":
         from . import setup as setup_mod

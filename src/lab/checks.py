@@ -1110,6 +1110,66 @@ def check_i01(report: dict) -> tuple[bool | None, str]:
     )
 
 
+def check_controls(report: dict) -> tuple[bool | None, str]:
+    """Grade a published-controls report: cross-updater agreement + a null that must fail.
+
+    Returns ``None`` unless this is a controls report. Otherwise grades two
+    independent probes (a receipt, not prose):
+
+    * **Cross-updater agreement** (positive control): every ``controls`` entry
+      compares an observable measured by two independent correct algorithms
+      (single-spin Metropolis vs single-cluster Wolff). Each must agree within the
+      entry's own ``tol`` — two updaters, one number. A silently broken updater
+      makes ``delta`` blow past ``tol`` and this fails.
+    * **Null-coupling baseline** (negative control): with ``J=0`` there is no
+      transition, so χ(T) must be flat — its peak/median prominence stays below
+      ``ratio_max`` (a real critical peak is many times its baseline; a flat noisy
+      1/T curve is ≈1×). The control's job is to **fail** the "there is a T_c peak"
+      gate; PASS here means that failure was reproduced — proving M01's peak is
+      physics, not an artifact the analysis manufactures from noise. (Prominence,
+      not the noisy argmax *location*, is the discriminator: a flat curve's argmax
+      wanders, but its peak never towers over its baseline.)
+    """
+    if report.get("experiment") != "CTRL-published-controls":
+        return None, "not a published-controls report"
+    entries = report.get("controls") or []
+    null = report.get("null_control") or {}
+    if len(entries) < 2 or not null:
+        return None, "controls report missing cross-updater entries or the null control"
+
+    parts: list[str] = []
+    all_ok = True
+    for e in entries:
+        delta, tol = e.get("delta"), e.get("tol")
+        if delta is None or tol is None:
+            continue
+        ok = delta <= tol
+        all_ok = all_ok and ok
+        parts.append(
+            f"{e.get('observable')}@T={e.get('T'):.1f}: |Δ|={delta:.3f}≤{tol}"
+            + ("" if ok else " ✗")
+        )
+
+    # The negative control must NOT show a prominent peak: a flat χ has a peak/median
+    # ratio near 1, while a genuine critical peak towers many× over its baseline. If
+    # the null grew a prominent peak, the pipeline is manufacturing one.
+    ratio = null.get("peak_to_median_ratio")
+    ratio_max = null.get("ratio_max")
+    null_flat = ratio is not None and ratio_max is not None and ratio <= ratio_max
+    all_ok = all_ok and null_flat
+    null_str = (f"J=0 null χ flat (peak/median={ratio:.2f}≤{ratio_max})"
+                if ratio is not None else "J=0 null missing χ")
+
+    detail = (
+        "cross-updater [" + "; ".join(parts) + "] · " + null_str + " — "
+        + ("two independent updaters agree and the J=0 null shows no peak — the M01 "
+           "transition is physics, not an analysis artifact"
+           if all_ok else
+           "a control failed: the updaters disagree or the J=0 null grew a spurious peak")
+    )
+    return all_ok, detail
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
@@ -1118,7 +1178,7 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M10": check_m10, "M11": check_m11, "M12": check_m12,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
           "M16": check_m16, "C01": check_c01, "A01": check_a01,
-          "I01": check_i01}
+          "I01": check_i01, "CTRL": check_controls}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:

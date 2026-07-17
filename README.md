@@ -156,6 +156,18 @@ the platform that blessed it and graded within a tight, check-owned tolerance
 across torch builds. CI runs this too, so a silently nondeterministic instrument
 reds the build instead of shipping green.
 
+**Controls, not prose.** `lab controls` runs two re-derivable probes and grades
+them with `checks.check_controls`. A **positive** control: single-spin Metropolis
+and single-cluster Wolff — two independent correct algorithms — must agree on
+⟨|m|⟩ and energy at the same temperatures (they land within ~0.03 on a tiny CPU
+lattice). A **negative** control: with the coupling switched off (`J=0`, free
+spins) the *same* susceptibility estimator and peak-finder M01 uses must show a
+**flat** χ with no prominent peak — the control's job is to *fail* the "there's a
+T_c peak" gate, proving M01's peak is physics, not an artifact the pipeline
+manufactures from noise. (CPU-toy scale; a GPU-scale control battery — e.g. a
+bond-reshuffled spin glass that loses its aging signal — is a documented
+follow-up.)
+
 **One picture of everything vs theory.** `lab scoreboard` renders a single
 house-style "money plot" — every verified milestone's measured value against its
 exact/benchmark theory (Onsager `T_c`, γ/ν=7/4, β/ν=1/8, the Potts `T_c` ladder,

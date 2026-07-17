@@ -49,11 +49,28 @@ def test_tiny_perturbation_within_tolerance_passes():
 def test_large_perturbation_fails_as_regression():
     fresh = _fake_measurement()
     golden = copy.deepcopy(fresh)
-    # A 50% shift on the susceptibility peak — a regression, far beyond platform drift.
-    golden["chi"][2] *= 0.5
+    # A 50% shift on a self-averaging observable (energy) — a regression, far beyond
+    # platform drift.
+    golden["energy"][2] *= 0.5
     ok, detail, _max_rel = d._numeric_agreement(fresh, golden)
     assert ok is False
     assert "diverged from the golden beyond tolerance" in detail
+
+
+def test_fluctuation_observable_drift_is_tolerated_structurally():
+    # χ/C are variances the chaotic trajectory can decorrelate cross-platform, so the
+    # golden gate checks them for STRUCTURE only (length) — their exact values are
+    # pinned by the byte-identical self-rerun on-platform, not the cross-platform band.
+    fresh = _fake_measurement()
+    golden = copy.deepcopy(fresh)
+    golden["chi"][2] *= 0.5          # big χ swing, same length → tolerated
+    ok, _detail, _ = d._numeric_agreement(fresh, golden)
+    assert ok is True
+    # But a length change to χ is a structural regression and still fails.
+    golden["chi"] = golden["chi"][:-1]
+    ok2, detail2, _ = d._numeric_agreement(fresh, golden)
+    assert ok2 is False
+    assert "structural regression" in detail2
 
 
 def test_structural_mismatch_fails_hard():
@@ -127,10 +144,10 @@ def test_gate_passes_against_committed_golden():
 
 
 def test_gate_fails_against_a_perturbed_golden(tmp_path):
-    # Bless a golden, corrupt its peak susceptibility well beyond tolerance, and
-    # prove the gate rejects it end to end.
+    # Bless a golden, corrupt a self-averaging observable (energy) well beyond
+    # tolerance, and prove the gate rejects it end to end.
     golden = d.build_golden()
-    golden["measurement"]["chi"] = [c * 0.25 for c in golden["measurement"]["chi"]]
+    golden["measurement"]["energy"] = [e - 0.5 for e in golden["measurement"]["energy"]]
     golden["sha256"] = d.canonical_sha(golden["measurement"])
     bad = tmp_path / "bad-golden.json"
     bad.write_text(json.dumps(golden), encoding="utf-8")
