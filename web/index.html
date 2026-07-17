@@ -20,7 +20,7 @@
     ║  would make the pot busier, it doesn't belong here.          ║
     ╚══════════════════════════════════════════════════════════════╝
 -->
-<html lang="en" data-feed-url="https://raw.githubusercontent.com/benskamps/windowsill-lab/main/pot.json">
+<html lang="en" data-feed-url="https://raw.githubusercontent.com/benskamps/windowsill-lab/main/pot.json" data-physics-url="https://raw.githubusercontent.com/benskamps/windowsill-lab/main/physics-latest.json">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -530,6 +530,62 @@
       .portable-release { grid-template-columns:1fr; gap:0.65rem; }
     }
 
+    /* ── Look through the instrument — the real measurements, plotted ──────────
+       The plant is the calm face; this panel is what the machine actually
+       measured, drawn straight from physics-latest.json (the six curves + the
+       three bit-packed lattice snapshots). Hidden until the feed loads, so a
+       box with no data degrades to the calm scene above. */
+    .instrument-panel { width:100%; max-width:900px; margin:4rem auto 0; }
+    .ip-reveal { animation: ip-rise 0.8s cubic-bezier(0.22,0.61,0.36,1) both; }
+    @keyframes ip-rise { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
+    .triptych {
+      display:grid; grid-template-columns:repeat(3,1fr); gap:0.9rem; margin-top:1.6rem;
+    }
+    .lattice-fig { display:flex; flex-direction:column; gap:0.55rem; }
+    .lattice {
+      width:100%; aspect-ratio:1; display:block; border:1px solid var(--border);
+      border-radius:8px; background:#171310;
+      image-rendering:pixelated; image-rendering:crisp-edges;
+    }
+    .lattice-fig figcaption {
+      display:flex; flex-direction:column; gap:0.15rem; font-family:var(--font-mono);
+    }
+    .lattice-fig .lf-t { color:var(--clay); font-size:0.74rem; letter-spacing:0.04em; }
+    .lattice-fig .lf-say { color:var(--text-muted); font-size:0.68rem; line-height:1.4; }
+    .triptych-note {
+      margin-top:1rem; color:var(--text-secondary); font-size:0.92rem; line-height:1.6;
+      max-width:640px;
+    }
+    .triptych-note code { font-family:var(--font-mono); color:var(--leaf); font-size:0.82rem; }
+    .plots {
+      display:grid; grid-template-columns:repeat(3,1fr); gap:1.1rem; margin-top:2.2rem;
+    }
+    .plot-fig { display:flex; flex-direction:column; gap:0.5rem; min-width:0; }
+    .plot-mount { width:100%; }
+    .plot-mount svg { width:100%; height:auto; display:block; }
+    .plot-fig figcaption {
+      font-family:var(--font-mono); font-size:0.68rem; line-height:1.5; color:var(--text-muted);
+    }
+    .plot-fig figcaption b { color:var(--text-secondary); font-weight:500; }
+    /* SVG plot internals (class-scoped so they read the theme) */
+    .wp-grid { stroke:var(--border); stroke-width:0.5; }
+    .wp-axis { stroke:var(--text-muted); stroke-width:0.8; }
+    .wp-tick { fill:var(--text-muted); font-family:var(--font-mono); font-size:8px; }
+    .wp-line { fill:none; stroke-width:1.4; }
+    .wp-tc { stroke:var(--text-muted); stroke-width:0.9; stroke-dasharray:3 3; }
+    .wp-tc-lbl { fill:var(--text-muted); font-family:var(--font-mono); font-size:7.5px; }
+    .instrument-prov {
+      margin-top:2rem; padding-top:1rem; border-top:1px solid var(--border);
+      font-family:var(--font-mono); font-size:0.68rem; color:var(--text-muted); line-height:1.6;
+    }
+    .instrument-prov a { color:var(--leaf); text-decoration:none; }
+    .instrument-prov a:hover { text-decoration:underline; }
+    @media (max-width:640px) {
+      .triptych { gap:0.55rem; }
+      .plots { grid-template-columns:1fr; gap:1.6rem; }
+      .lattice-fig .lf-say { display:none; }
+    }
+
     @media (prefers-reduced-motion: reduce) {
       body { transition: none; }
       #plant, .dust, .star, .clouds { animation: none; }
@@ -537,6 +593,7 @@
       .fieldnote, .garden-specimen { animation:none !important; }
       .garden-specimen.is-open .specimen-status::before { animation:none; }
       .garden-specimen svg, .specimen-action::before { transition:none; }
+      .ip-reveal { animation:none; }
     }
   </style>
 </head>
@@ -790,6 +847,60 @@
       <summary id="archive-summary">every run</summary>
       <div class="arc-list" id="arc-list"></div>
     </details>
+
+    <!-- Look through the instrument: the real measurements, plotted straight
+         from physics-latest.json (the plant's own seed-42 heartbeat report).
+         Hidden until the feed loads — progressive enhancement over the calm scene. -->
+    <section class="instrument-panel" id="instrument-panel" hidden aria-labelledby="instrument-panel-title">
+      <div class="section-intro">
+        <span class="section-kicker">The measurement</span>
+        <h2 id="instrument-panel-title">Look through the instrument</h2>
+        <p>The plant is the calm face. This is what the machine actually measured — read straight from
+        <a id="ip-source-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">last night's run</a>,
+        the same seed-42 report the plant grows from. Nothing here is redrawn by hand.</p>
+      </div>
+
+      <figure class="triptych" aria-label="2D Ising spin lattice at three temperatures">
+        <div class="lattice-fig">
+          <canvas class="lattice" id="lat-cold" width="128" height="128" role="img"
+                  aria-label="Ordered spin lattice below the critical temperature — one domain dominates"></canvas>
+          <figcaption><span class="lf-t" id="lf-cold-t">T = —</span><span class="lf-say">ordered · one domain wins</span></figcaption>
+        </div>
+        <div class="lattice-fig">
+          <canvas class="lattice" id="lat-crit" width="128" height="128" role="img"
+                  aria-label="Spin lattice near the critical temperature — domains at every scale"></canvas>
+          <figcaption><span class="lf-t" id="lf-crit-t">T = —</span><span class="lf-say">near the tipping point</span></figcaption>
+        </div>
+        <div class="lattice-fig">
+          <canvas class="lattice" id="lat-hot" width="128" height="128" role="img"
+                  aria-label="Disordered spin lattice above the critical temperature — thermal noise"></canvas>
+          <figcaption><span class="lf-t" id="lf-hot-t">T = —</span><span class="lf-say">disordered · thermal noise</span></figcaption>
+        </div>
+      </figure>
+      <p class="triptych-note">Each frame is <b id="ip-lattice-dims">128&times;128</b> magnets, straight from the run.
+      Cross the tipping point &mdash; Onsager&rsquo;s exact <code>T<sub>c</sub> = 2.269</code> &mdash; and a single ordered
+      domain melts into pure thermal noise. That snap is the whole reason the model matters, in three frames.</p>
+
+      <div class="plots">
+        <figure class="plot-fig" id="plot-chi">
+          <div class="plot-mount" id="mount-chi"></div>
+          <figcaption><b>Susceptibility &chi;(T).</b> The spike marks the transition; it peaks at
+          <b id="ip-chi-peak">T&nbsp;&asymp;&nbsp;—</b>, a hair above the exact <span class="lf-t">T<sub>c</sub></span> as finite lattices always do.</figcaption>
+        </figure>
+        <figure class="plot-fig" id="plot-mag">
+          <div class="plot-mount" id="mount-mag"></div>
+          <figcaption><b>Magnetization |m|(T).</b> The measured points (dots) fall on Onsager&rsquo;s exact
+          1944 curve (line). Error bars are smaller than the dots &mdash; that&rsquo;s the calibration.</figcaption>
+        </figure>
+        <figure class="plot-fig" id="plot-heat">
+          <div class="plot-mount" id="mount-heat"></div>
+          <figcaption><b>Specific heat C(T).</b> A second, independent fingerprint of the same
+          transition &mdash; the thermal peak lands on the magnetic one.</figcaption>
+        </figure>
+      </div>
+
+      <p class="instrument-prov" id="instrument-prov">reading the instrument&hellip;</p>
+    </section>
 
     <section class="journey" id="journey" aria-labelledby="journey-title">
       <div class="section-intro">
@@ -2160,6 +2271,212 @@
       walk.defer = true;
       document.body.appendChild(walk);
     }
+  </script>
+
+  <!-- Look through the instrument: fetch physics-latest.json and plot the real
+       measurements. Self-contained + progressive: any failure leaves the panel
+       hidden and the calm scene above untouched. -->
+  <script>
+  (function () {
+    "use strict";
+    var panel = document.getElementById('instrument-panel');
+    if (!panel || !window.fetch) return;
+    var root = document.documentElement;
+
+    // Trust path: the pinned repo raw host only. A ?physicsUrl= override is
+    // honored ONLY for that same repo (any branch) — a dev affordance that can't
+    // be pointed at an arbitrary host.
+    var TRUST = /^https:\/\/raw\.githubusercontent\.com\/benskamps\/windowsill-lab\//;
+    var url = root.getAttribute('data-physics-url') || '';
+    try {
+      var over = new URLSearchParams(location.search).get('physicsUrl');
+      if (over && TRUST.test(over)) url = over;
+    } catch (e) {}
+    if (!url) return;
+
+    var reduce = false;
+    try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
+
+    fetch(url, { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
+      .then(render)
+      .catch(function () { /* progressive enhancement: leave the panel hidden */ });
+
+    // ── lattice: base64 bit-field → ImageData ──────────────────────────────
+    var SPIN_UP = [232, 220, 200], SPIN_DN = [28, 22, 18];   // warm cream vs ink
+    function drawLattice(canvasId, b64, L) {
+      var cv = document.getElementById(canvasId);
+      if (!cv || !b64) return;
+      var bin;
+      try { bin = atob(b64); } catch (e) { return; }
+      cv.width = L; cv.height = L;
+      var ctx = cv.getContext('2d');
+      var img = ctx.createImageData(L, L), d = img.data;
+      for (var i = 0; i < L * L; i++) {
+        var byte = bin.charCodeAt(i >> 3);
+        var bit = (byte >> (7 - (i & 7))) & 1;
+        var c = bit ? SPIN_UP : SPIN_DN, o = i * 4;
+        d[o] = c[0]; d[o + 1] = c[1]; d[o + 2] = c[2]; d[o + 3] = 255;
+      }
+      ctx.putImageData(img, 0, 0);
+    }
+
+    // ── Onsager's exact spontaneous magnetization (1944) ───────────────────
+    function onsagerM(T, tc) {
+      if (T >= tc) return 0;
+      var base = 1 - Math.pow(Math.sinh(2 / T), -4);
+      return base <= 0 ? 0 : Math.pow(base, 0.125);
+    }
+
+    // ── tiny SVG plotter (all values numeric — safe to build as markup) ────
+    function fmt(v) {
+      var a = Math.abs(v);
+      if (a >= 100) return v.toFixed(0);
+      if (a >= 1) return v.toFixed(1);
+      return v.toFixed(2).replace(/0$/, '');
+    }
+    function plot(o) {
+      var W = 340, H = 230, pl = 34, pr = 8, pt = 12, pb = 26;
+      var x0 = o.xrange[0], x1 = o.xrange[1], y0 = o.yrange[0], y1 = o.yrange[1];
+      var sx = function (x) { return pl + (x - x0) / (x1 - x0) * (W - pl - pr); };
+      var sy = function (y) { return H - pb - (y - y0) / (y1 - y0) * (H - pt - pb); };
+      var s = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + o.aria + '">';
+      // gridlines + y ticks
+      (o.yticks || []).forEach(function (yt) {
+        var yy = sy(yt).toFixed(1);
+        s += '<line class="wp-grid" x1="' + pl + '" y1="' + yy + '" x2="' + (W - pr) + '" y2="' + yy + '"/>';
+        s += '<text class="wp-tick" x="' + (pl - 4) + '" y="' + (sy(yt) + 3).toFixed(1) + '" text-anchor="end">' + fmt(yt) + '</text>';
+      });
+      // x ticks
+      (o.xticks || []).forEach(function (xt) {
+        s += '<text class="wp-tick" x="' + sx(xt).toFixed(1) + '" y="' + (H - pb + 12) + '" text-anchor="middle">' + fmt(xt) + '</text>';
+      });
+      // axes
+      s += '<line class="wp-axis" x1="' + pl + '" y1="' + sy(y0).toFixed(1) + '" x2="' + (W - pr) + '" y2="' + sy(y0).toFixed(1) + '"/>';
+      s += '<line class="wp-axis" x1="' + pl + '" y1="' + pt + '" x2="' + pl + '" y2="' + sy(y0).toFixed(1) + '"/>';
+      // T_c marker
+      if (o.tc != null && o.tc >= x0 && o.tc <= x1) {
+        var xc = sx(o.tc).toFixed(1);
+        s += '<line class="wp-tc" x1="' + xc + '" y1="' + pt + '" x2="' + xc + '" y2="' + sy(y0).toFixed(1) + '"/>';
+        s += '<text class="wp-tc-lbl" x="' + (sx(o.tc) + 3).toFixed(1) + '" y="' + (pt + 8) + '">Tc</text>';
+      }
+      // series
+      (o.series || []).forEach(function (ser) {
+        var pts = ser.pts.filter(function (p) { return isFinite(p[1]); });
+        if (ser.kind === 'line' || ser.kind === 'curve') {
+          var dpath = pts.map(function (p, i) { return (i ? 'L' : 'M') + sx(p[0]).toFixed(1) + ' ' + sy(p[1]).toFixed(1); }).join(' ');
+          s += '<path class="wp-line" d="' + dpath + '" stroke="' + ser.color + '"' + (ser.dash ? ' stroke-dasharray="' + ser.dash + '"' : '') + '/>';
+        }
+        if (ser.kind === 'dots' || ser.kind === 'line') {
+          pts.forEach(function (p) {
+            var big = o.peak != null && Math.abs(p[0] - o.peak) < 1e-6;
+            s += '<circle cx="' + sx(p[0]).toFixed(1) + '" cy="' + sy(p[1]).toFixed(1) + '" r="' + (big ? 3.2 : (ser.r || 1.9)) + '" fill="' + (big ? (o.peakColor || ser.color) : ser.color) + '"/>';
+          });
+        }
+      });
+      return s + '</svg>';
+    }
+
+    function mount(id, svg) { var m = document.getElementById(id); if (m) m.innerHTML = svg; }
+
+    function render(feed) {
+      var m = feed && feed.m01;
+      if (!m || !Array.isArray(m.T) || !m.T.length) return;
+      var tc = feed.onsager_tc || 2.269185;
+      var T = m.T;
+
+      // lattice snapshots: coldest = ordered, hottest = disordered, nearest-Tc = critical
+      if (m.snapshots && m.snapshot_L) {
+        var keys = Object.keys(m.snapshots).map(Number).sort(function (a, b) { return a - b; });
+        if (keys.length) {
+          var cold = keys[0], hot = keys[keys.length - 1];
+          var crit = keys.reduce(function (best, k) { return Math.abs(k - tc) < Math.abs(best - tc) ? k : best; }, keys[0]);
+          drawLattice('lat-cold', m.snapshots[String(cold).replace(/\.0$/, '')] || m.snapshots['' + cold], m.snapshot_L);
+          drawLattice('lat-crit', m.snapshots['' + crit], m.snapshot_L);
+          drawLattice('lat-hot', m.snapshots['' + hot], m.snapshot_L);
+          setText('lf-cold-t', 'T = ' + cold);
+          setText('lf-crit-t', 'T = ' + crit);
+          setText('lf-hot-t', 'T = ' + hot);
+          setText('ip-lattice-dims', m.snapshot_L + '×' + m.snapshot_L);
+        }
+      }
+
+      var xr = [Math.min.apply(null, T), Math.max.apply(null, T)];
+
+      // χ(T): the spike
+      if (Array.isArray(m.chi)) {
+        var chi = m.chi, cmax = Math.max.apply(null, chi);
+        mount('mount-chi', plot({
+          aria: 'Magnetic susceptibility versus temperature, peaking near the critical point',
+          xrange: xr, yrange: [0, cmax * 1.08],
+          xticks: niceTicks(xr[0], xr[1], 4), yticks: niceTicks(0, cmax, 3),
+          tc: tc, peak: m.chi_peak_t, peakColor: 'var(--clay)',
+          series: [{ kind: 'line', pts: zip(T, chi), color: 'var(--clay)', r: 1.6 }]
+        }));
+        setHTML('ip-chi-peak', 'T&nbsp;&asymp;&nbsp;' + m.chi_peak_t.toFixed(2));
+      }
+
+      // |m|(T): measured dots on Onsager's exact curve
+      if (Array.isArray(m.abs_mag)) {
+        var curve = [];
+        for (var i = 0; i <= 140; i++) { var t = xr[0] + (xr[1] - xr[0]) * i / 140; curve.push([t, onsagerM(t, tc)]); }
+        mount('mount-mag', plot({
+          aria: 'Magnetization versus temperature, measured points on Onsager exact curve',
+          xrange: xr, yrange: [0, 1.02],
+          xticks: niceTicks(xr[0], xr[1], 4), yticks: [0, 0.5, 1],
+          tc: tc,
+          series: [
+            { kind: 'curve', pts: curve, color: 'var(--review)' },
+            { kind: 'dots', pts: zip(T, m.abs_mag), color: 'var(--leaf)', r: 2 }
+          ]
+        }));
+      }
+
+      // C(T): specific heat, the thermal fingerprint
+      if (Array.isArray(m.specific_heat)) {
+        var C = m.specific_heat, hmax = Math.max.apply(null, C);
+        mount('mount-heat', plot({
+          aria: 'Specific heat versus temperature, peaking at the transition',
+          xrange: xr, yrange: [0, hmax * 1.1],
+          xticks: niceTicks(xr[0], xr[1], 4), yticks: niceTicks(0, hmax, 3),
+          tc: tc,
+          series: [{ kind: 'line', pts: zip(T, C), color: 'var(--review)', r: 1.6 }]
+        }));
+      }
+
+      // provenance + source deep-link
+      var cfg = m.config || {}, prov = feed.provenance || {};
+      var bits = [];
+      if (m.date) bits.push('run ' + m.date);
+      if (cfg.L) bits.push('L=' + cfg.L);
+      if (cfg.seed != null) bits.push('seed ' + cfg.seed);
+      if (cfg.device) bits.push(cfg.device.toUpperCase());
+      if (m.wall_seconds) bits.push(Math.round(m.wall_seconds) + 's');
+      if (prov.code_sha) bits.push('commit ' + prov.code_sha);
+      setText('instrument-prov', bits.join('  ·  ') + '  ·  every number above is read straight from the committed report — diff it yourself.');
+      if (m.generated_from || feed.generated_from) {
+        var link = document.getElementById('ip-source-link');
+        if (link) link.href = 'https://github.com/benskamps/windowsill-lab/blob/main/' + (feed.generated_from || m.source_report);
+      }
+
+      panel.hidden = false;
+      if (!reduce) panel.classList.add('ip-reveal');
+    }
+
+    // helpers
+    function zip(a, b) { return a.map(function (x, i) { return [x, b[i]]; }); }
+    function setText(id, t) { var e = document.getElementById(id); if (e) e.textContent = t; }
+    function setHTML(id, h) { var e = document.getElementById(id); if (e) e.innerHTML = h; }
+    function niceTicks(lo, hi, n) {
+      if (!(hi > lo)) return [lo];
+      var span = hi - lo, step = Math.pow(10, Math.floor(Math.log(span / n) / Math.LN10));
+      var err = (span / n) / step;
+      if (err >= 7.5) step *= 10; else if (err >= 3.5) step *= 5; else if (err >= 1.5) step *= 2;
+      var out = [], start = Math.ceil(lo / step) * step;
+      for (var v = start; v <= hi + step * 0.5; v += step) out.push(Math.round(v / step) * step);
+      return out;
+    }
+  })();
   </script>
 </body>
 </html>

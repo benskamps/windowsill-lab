@@ -804,6 +804,17 @@ def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
     except Exception:  # noqa: BLE001 — the index is never allowed to break publish
         pass
 
+    # Refresh physics-latest.json — the compact, plottable feed the windowsill's
+    # "look through the instrument" panel reads (the real χ(T)/|m|(T) curves and
+    # the ordered/critical/disordered lattice snapshots). Best-effort, same
+    # guard: the physics face is never allowed to break the run, and a box with
+    # no snapshot report yet simply writes nothing.
+    try:
+        from . import physics_feed
+        physics_feed.build_physics_feed(provenance=snap.get("provenance"))
+    except Exception:  # noqa: BLE001 — the physics feed never breaks publish
+        pass
+
     gist_id = gist_id or os.environ.get("POT_GIST_ID")
     if gist_id:
         try:
