@@ -49,6 +49,8 @@ def test_build_feed_lifts_curves_and_peak(tmp_path):
     assert m01["abs_mag_err"] == [1e-4, 5e-3, 8e-3]
     # χ peaks at the middle temperature.
     assert m01["chi_peak_t"] == 2.5
+    # The run date is derived from the report filename, not a bad string slice.
+    assert m01["date"] == "2026-07-14"
     # Onsager's exact T_c rides along for the calibration line.
     assert abs(feed["onsager_tc"] - 2.269185) < 1e-5
 

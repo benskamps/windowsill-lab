@@ -134,7 +134,7 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
 
     m01: dict = {
         "source_report": source_rel,
-        "date": rep.get("_date") or source_rel[-15:-5],
+        "date": rep.get("_date") or Path(source_rel).name[:10],
         "config": {
             k: cfg.get(k)
             for k in ("L", "seed", "device", "n_sweeps", "n_burnin", "n_temps")
