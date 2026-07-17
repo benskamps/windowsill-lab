@@ -62,6 +62,7 @@ class WolffConfig:
     sample_every: int = 10
     seed: int = 42
     device: str = "cpu"
+    init: str = "random"        # "random" (hot, T=∞) or "ordered" (cold, all-up)
 
     def n_samples(self) -> int:
         return self.n_updates // self.sample_every
@@ -242,11 +243,26 @@ def wolff_run(cfg: WolffConfig) -> WolffResult:
     T = torch.linspace(cfg.T_min, cfg.T_max, cfg.n_temps, device=device, dtype=torch.float32)
     beta = 1.0 / T
 
-    spins = (
-        torch.randint(0, 2, (cfg.n_temps, cfg.L, cfg.L), generator=g_init, device=device, dtype=torch.int8)
-        * 2
-        - 1
-    )
+    # Initial condition. "random" is the historical hot (T=∞) start. "ordered"
+    # (all spins up) matters at scale: from a hot start the aligned-bond field
+    # percolates only weakly (p_bond = ½·(1−e^(−2β)) ≈ 0.29 < ½ near T_c), so
+    # single-cluster moves flip O(10)-site clusters and the lattice inches
+    # toward equilibrium — measured on GPU, L=256/512 stay at cluster
+    # fraction ~1e-4 even after 2000 updates. From the ordered side the
+    # aligned-bond probability is 1−e^(−2β) ≈ 0.59 > ½, clusters span, and a
+    # few hundred updates disorder the lattice into equilibrium. Both starts
+    # sample the same equilibrium distribution once burned in (tested); the
+    # ordered start is simply the practical one for large-L critical runs.
+    if cfg.init == "ordered":
+        spins = torch.ones((cfg.n_temps, cfg.L, cfg.L), device=device, dtype=torch.int8)
+    elif cfg.init == "random":
+        spins = (
+            torch.randint(0, 2, (cfg.n_temps, cfg.L, cfg.L), generator=g_init, device=device, dtype=torch.int8)
+            * 2
+            - 1
+        )
+    else:
+        raise ValueError(f"unknown init {cfg.init!r} (use 'random' or 'ordered')")
 
     t0 = time.time()
     # Burn-in

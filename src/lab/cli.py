@@ -122,6 +122,8 @@ def _parse_m02(args):
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--updater", default="wolff",
                    help="'wolff' (cluster, near-T_c; unlocks L≥512) or 'metropolis'")
+    p.add_argument("--wolff-init", default="ordered",
+                   help="wolff start: 'ordered' (fast burn-in at scale) or 'random'")
     return p.parse_args(args)
 
 
@@ -581,7 +583,7 @@ def main(argv=None):
         result = fss.run_fss(
             L_values=L_values, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
             n_sweeps=ns.sweeps, n_burnin=ns.burnin, seed=ns.seed, device=ns.device,
-            updater=ns.updater, progress=_progress,
+            updater=ns.updater, wolff_init=ns.wolff_init, progress=_progress,
         )
         report = fss.to_report(result)
         print(f"  → χ_max ∝ L^{result.slope:.3f}  (theory γ/ν = 7/4 = 1.75, "

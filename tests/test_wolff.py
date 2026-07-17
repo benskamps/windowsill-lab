@@ -362,3 +362,52 @@ def test_cluster_fraction_monotone_in_T():
     assert cf[0] > cf[-1]
     # highest-T cluster is small (few bonds activate)
     assert cf[-1] < 0.5
+
+
+# --------------------------------------------------------------------------- #
+# init: the ordered (cold) start — the practical start for large-L criticality
+# --------------------------------------------------------------------------- #
+def test_wolffconfig_init_default_random():
+    """Back-compat: the default starting configuration is the historical hot start."""
+    assert WolffConfig().init == "random"
+
+
+def test_ordered_init_smoke_and_sane():
+    """An ordered-start run produces the same observable shapes and sane physics."""
+    cfg = WolffConfig(
+        L=12, T_min=2.2, T_max=2.4, n_temps=3,
+        n_burnin=150, n_updates=600, sample_every=2, seed=11, device="cpu",
+        init="ordered",
+    )
+    r = wolff_run(cfg)
+    assert r.T.shape == (3,) and r.chi_abs.shape == (3,)
+    for i in range(3):
+        assert -2.0 <= r.energy[i] <= 0.0
+        assert 0.0 <= r.abs_mag[i] <= 1.0 + 1e-6
+        assert r.chi_abs[i] > 0.0
+
+
+def test_ordered_and_random_init_agree_at_equilibrium():
+    """Both starts sample the same equilibrium: ⟨|m|⟩ and energy agree once burned in.
+
+    Tiny lattice + generous burn-in so BOTH inits are fully equilibrated; the
+    tolerance matches the other short-run cross-checks in this module. This is
+    the correctness guarantee behind run_fss's ordered default: the init is a
+    burn-in cost knob, not a physics knob.
+    """
+    kw = dict(
+        L=12, T_min=2.25, T_max=2.40, n_temps=2,
+        n_burnin=400, n_updates=1600, sample_every=2, seed=3, device="cpu",
+    )
+    r_hot = wolff_run(WolffConfig(**kw, init="random"))
+    r_cold = wolff_run(WolffConfig(**kw, init="ordered"))
+    for i in range(2):
+        assert abs(r_hot.abs_mag[i] - r_cold.abs_mag[i]) < 0.15
+        assert abs(r_hot.energy[i] - r_cold.energy[i]) < 0.15
+
+
+def test_unknown_init_raises():
+    """A typo'd init fails loudly rather than silently starting from garbage."""
+    cfg = WolffConfig(L=8, n_temps=2, n_burnin=2, n_updates=4, init="cold")
+    with pytest.raises(ValueError, match="unknown init"):
+        wolff_run(cfg)

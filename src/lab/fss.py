@@ -108,6 +108,7 @@ def run_fss(
     seed: int = 42,
     device: str = "cuda",
     updater: str = "wolff",
+    wolff_init: str = "ordered",
     progress=None,
 ) -> FSSResult:
     """Run the Ising sweep at each lattice size and fit the peak scaling.
@@ -131,6 +132,15 @@ def run_fss(
     the units difference: in the Wolff branch ``n_sweeps``/``n_burnin`` are
     counted in *cluster updates*, not Metropolis sweeps (far fewer needed).
 
+    ``wolff_init`` picks the Wolff starting configuration and defaults to
+    ``'ordered'``: M02 sweeps T > T_c where a hot (random) start leaves the
+    single-cluster algorithm flipping O(10)-site clusters for tens of
+    thousands of updates at L ≥ 256 (the aligned-bond field doesn't percolate
+    on an uncorrelated lattice), while the ordered start crosses INTO the
+    disordered equilibrium within a few hundred updates. Equilibrium
+    observables agree between the two starts (tested); only the burn-in cost
+    differs. Ignored by the metropolis branch.
+
     GPU-SAFETY CONTRACT: this production driver is for the actual milestone
     night — it is NOT invoked by the test suite (the tests exercise only the
     numpy analysis layer and a tiny CPU Wolff/Metropolis agreement smoke). Any
@@ -145,6 +155,7 @@ def run_fss(
             cfg = WolffConfig(
                 L=L, T_min=T_min, T_max=T_max, n_temps=n_temps,
                 n_updates=n_sweeps, n_burnin=n_burnin, seed=seed, device=device,
+                init=wolff_init,
             )
             r = wolff_run(cfg)
         elif updater == "metropolis":
@@ -175,7 +186,7 @@ def run_fss(
         config={
             "T_min": T_min, "T_max": T_max, "n_temps": n_temps,
             "n_sweeps": n_sweeps, "n_burnin": n_burnin, "seed": seed,
-            "updater": updater,
+            "updater": updater, "wolff_init": wolff_init,
         },
     )
 
