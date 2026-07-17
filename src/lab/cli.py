@@ -65,6 +65,10 @@ Usage:
   lab publish         write the committed pot.json — feeds the windowsill
   lab backfill        copy ~/.lab history into reports/ under permanent names
   lab verify [IDs]    re-derive verified milestones from their reports (CI gate)
+  lab verify --rerun-smoke
+                      also re-run the pinned L=16 CPU smoke config and prove it
+                      reproduces itself + the committed golden (determinism gate)
+  lab scoreboard      render the calibration scoreboard (measured vs theory) + archive
   lab setup           install the nightly job (run → publish → push)
   lab help            show this message
 
@@ -520,22 +524,44 @@ def main(argv=None):
 
     if cmd == "verify":
         from . import checks
+        rerun_smoke = "--rerun-smoke" in args
+        bless = "--bless" in args
         ids = [a for a in args[1:] if not a.startswith("-")] or None
         results = checks.verify(ids)
-        if not results:
+        rc = 0
+        if results:
+            mark = {"pass": "✓", "fail": "✗", "unchecked": "·", "no-report": "?"}
+            for r in results:
+                print(f"  {mark.get(r['status'], '?')} {r['id']} [{r['status']}] — {r['detail']}")
+            blocked = [r for r in results if r["status"] != "pass"]
+            if blocked:
+                summary = ", ".join(f"{r['id']} ({r['status']})" for r in blocked)
+                print(f"\nVERIFICATION INCOMPLETE: {summary}", file=sys.stderr)
+                print("Every promoted milestone must have a registered check and a readable passing report.",
+                      file=sys.stderr)
+                rc = 1
+        elif not rerun_smoke:
             print("no verified milestones to check.", file=sys.stderr)
             return 1
-        mark = {"pass": "✓", "fail": "✗", "unchecked": "·", "no-report": "?"}
-        for r in results:
-            print(f"  {mark.get(r['status'], '?')} {r['id']} [{r['status']}] — {r['detail']}")
-        blocked = [r for r in results if r["status"] != "pass"]
-        if blocked:
-            summary = ", ".join(f"{r['id']} ({r['status']})" for r in blocked)
-            print(f"\nVERIFICATION INCOMPLETE: {summary}", file=sys.stderr)
-            print("Every promoted milestone must have a registered check and a readable passing report.",
-                  file=sys.stderr)
-            return 1
-        return 0
+
+        if bless and not rerun_smoke:
+            print("--bless only applies with --rerun-smoke.", file=sys.stderr)
+            return 2
+
+        if rerun_smoke:
+            from . import determinism
+            if bless:
+                path = determinism.write_golden()
+                print(f"  ✓ blessed determinism golden → {path}")
+                return 0
+            gate = determinism.run_gate()
+            glyph = "✓" if gate["ok"] else "✗"
+            print(f"  {glyph} determinism (golden-seed L=16 smoke, {gate['golden']}) — {gate['detail']}")
+            if not gate["ok"]:
+                print("\nDETERMINISM GATE FAILED: the pinned CPU smoke run did not reproduce.",
+                      file=sys.stderr)
+                rc = 1
+        return rc
 
     if cmd == "setup":
         from . import setup as setup_mod

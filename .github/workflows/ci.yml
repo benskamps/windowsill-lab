@@ -69,3 +69,10 @@ jobs:
           pip install -e ".[dev]"
       - name: Full CPU test suite
         run: PYTHONPATH=src pytest -q
+      # Determinism gate: re-run the pinned L=16 seed=42 CPU smoke config and prove
+      # it reproduces itself byte-for-byte AND agrees with the committed golden. This
+      # is the one step that actually exercises the engine end-to-end (the pipeline
+      # job only regrades saved JSON), so a silently nondeterministic instrument reds
+      # here instead of shipping green.
+      - name: Determinism gate (golden-seed smoke rerun)
+        run: PYTHONPATH=src python -m lab.cli verify --rerun-smoke
