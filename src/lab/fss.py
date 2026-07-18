@@ -17,6 +17,7 @@ The pure analysis functions here (`chi_peak`, `fit_gamma_over_nu`,
 drives the GPU sweep across lattice sizes.
 """
 from __future__ import annotations
+from .hw import hw
 
 import time
 from dataclasses import dataclass
@@ -201,7 +202,7 @@ def to_report(fss: FSSResult) -> dict:
         "experiment": "M02-finite-size-scaling",
         "headline": (
             f"finite-size scaling: χ_max ∝ L^{fss.slope:.3f} "
-            f"(2D Ising γ/ν = 7/4 = {GAMMA_OVER_NU:.2f}) · {fss.wall_seconds:.0f}s on GPU"
+            f"(2D Ising γ/ν = 7/4 = {GAMMA_OVER_NU:.2f}) · {fss.wall_seconds:.0f}s on {hw(fss.config)}"
         ),
         "L_values": [c.L for c in fss.curves],
         "curves": [

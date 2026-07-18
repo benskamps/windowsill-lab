@@ -38,6 +38,7 @@ milestone asks for either way.
 refinement reuses m06's NumPy-only ``refine_peak``.
 """
 from __future__ import annotations
+from .hw import hw
 
 import math
 import time
@@ -255,7 +256,7 @@ def to_report(result: M07Result) -> dict:
             for qr in result.per_q
         )
         + f" · worst rel. err {worst.rel_error*100:.1f}% (q={worst.q})"
-        + f" · {result.wall_seconds:.0f}s on GPU"
+        + f" · {result.wall_seconds:.0f}s on {hw(result.config)}"
     )
 
     return {

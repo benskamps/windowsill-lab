@@ -1,5 +1,6 @@
 """Render a daily report HTML + plots from an Ising RunResult."""
 from __future__ import annotations
+from .hw import hw
 
 import base64
 import hashlib
@@ -308,7 +309,7 @@ def render(result: RunResult, date: str | None = None) -> Path:
     # A compact headline the windowsill page shows under the seedling.
     report["headline"] = (
         f"χ peaked at T≈{T_peak:.3f} vs Onsager {T_C:.4f}"
-        f" · {result.wall_seconds:.0f}s on GPU"
+        f" · {result.wall_seconds:.0f}s on {hw(result.config)}"
     )
     json_dump = json.dumps(report, indent=2)
 

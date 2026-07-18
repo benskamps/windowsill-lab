@@ -32,6 +32,7 @@ spontaneous order would extrapolate to a positive intercept as 1/L → 0. Both a
 re-derivable from the report's (L, ⟨|m|⟩) arrays — receipts, not echoes.
 """
 from __future__ import annotations
+from .hw import hw
 
 import time
 from dataclasses import dataclass
@@ -177,7 +178,7 @@ def to_report(result: M09Result) -> dict:
         f"2D Heisenberg (T={result.T}): ⟨|m|⟩ drifts "
         f"{', '.join(f'{m:.3f}' for m in result.abs_mag)} across L="
         f"{', '.join(map(str, result.L_values))} (ratios {ratio_str}) — "
-        f"{verdict}: no finite-T order · {result.wall_seconds:.0f}s on GPU"
+        f"{verdict}: no finite-T order · {result.wall_seconds:.0f}s on {hw(result.config)}"
     )
     return {
         "experiment": "M09-heisenberg",

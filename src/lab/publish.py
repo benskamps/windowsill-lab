@@ -13,6 +13,7 @@ Kept deliberately import-light (standard library only) so the pure functions
 torch or matplotlib.
 """
 from __future__ import annotations
+from .hw import hw
 
 import json
 import math
@@ -466,7 +467,7 @@ def latest_report() -> dict | None:
     if not headline and peak_t is not None:
         headline = f"χ peaked at T≈{peak_t:.3f} vs Onsager {ONSAGER_TC:.4f}"
         if wall:
-            headline += f" · {wall:.0f}s on GPU"
+            headline += f" · {wall:.0f}s on {hw((rep.get('config') or {}))}"
     return {
         "date": rep.get("_date"),
         "headline": headline,

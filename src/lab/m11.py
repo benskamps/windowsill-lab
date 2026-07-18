@@ -26,6 +26,7 @@ points are not trustworthy the milestone says so rather than overclaiming a T = 
 result it cannot equilibrate to.
 """
 from __future__ import annotations
+from .hw import hw
 
 import time
 from dataclasses import dataclass
@@ -173,7 +174,7 @@ def to_report(result: M11Result) -> dict:
         f"disorder realizations): ⟨q²⟩ grows {result.q2_hot:.3f} → {result.q2_cold:.3f} "
         f"as T falls {result.T[int(np.argmax(result.T))]:.2f} → "
         f"{result.T[int(np.argmin(result.T))]:.2f} — {verdict} (T_c=0 in 2D, no "
-        f"finite-T glass phase) · {result.wall_seconds:.0f}s on GPU"
+        f"finite-T glass phase) · {result.wall_seconds:.0f}s on {hw(result.config)}"
     )
     return {
         "experiment": "M11-spin-glass-2d",

@@ -24,6 +24,7 @@ a BKT-appropriate, log-correction-tolerant window (±0.07), wider than a
 sharp-peak check.
 """
 from __future__ import annotations
+from .hw import hw
 
 import math
 import time
@@ -156,7 +157,7 @@ def to_report(result: M08Result) -> dict:
     headline = (
         f"2D XY BKT (L={result.L}): helicity Υ(T) crosses the (2/π)T jump line at "
         f"T_BKT={tc_str} vs benchmark {result.tc_benchmark:.4f} (rel. err {err_str}) "
-        f"· {result.wall_seconds:.0f}s on GPU"
+        f"· {result.wall_seconds:.0f}s on {hw(result.config)}"
     )
     return {
         "experiment": "M08-xy-bkt",

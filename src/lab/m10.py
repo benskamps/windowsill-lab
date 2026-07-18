@@ -27,6 +27,7 @@ The analysis reuses m06's NumPy-only peak finders; ``run_m10`` drives the
 antiferromagnetic sweep ``ising_afm.run``.
 """
 from __future__ import annotations
+from .hw import hw
 
 import math
 import time
@@ -139,7 +140,7 @@ def to_report(result: M10Result) -> dict:
             f"T_N={result.tc_chi_refined:.3f} vs Onsager exact {result.tc_benchmark:.4f} "
             f"(rel. err {result.rel_error*100:.1f}%); C-peak cross-check "
             f"{result.tc_cv_refined:.3f}; uniform ⟨|m|⟩ stays ≤{result.max_abs_mag:.3f} "
-            f"· {result.wall_seconds:.0f}s on GPU"
+            f"· {result.wall_seconds:.0f}s on {hw(result.config)}"
         ),
         "L": result.L,
         "T": result.T,

@@ -24,6 +24,7 @@ The analysis reuses m06's NumPy-only peak finders; ``run_m05`` drives the
 triangular sweep ``ising_tri.run``.
 """
 from __future__ import annotations
+from .hw import hw
 
 import math
 import time
@@ -128,7 +129,7 @@ def to_report(result: M05Result) -> dict:
             f"Triangular-lattice 2D Ising (L={result.L}): χ peaks at "
             f"T_c={result.tc_chi_refined:.3f} vs exact 4/ln3 = {result.tc_benchmark:.4f} "
             f"(rel. err {result.rel_error*100:.1f}%); C-peak cross-check "
-            f"{result.tc_cv_refined:.3f} · {result.wall_seconds:.0f}s on GPU"
+            f"{result.tc_cv_refined:.3f} · {result.wall_seconds:.0f}s on {hw(result.config)}"
         ),
         "L": result.L,
         "T": result.T,
