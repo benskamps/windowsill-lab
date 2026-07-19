@@ -719,7 +719,7 @@
     "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
     "omitted": [],
     "schema": "windowsill.measurement-receipt.v1",
-    "source_report_sha256": "c743a2680a6b652f48eb23b4e36a4e56cf58465df5a59e8233a1716bdccc2792"
+    "source_report_sha256": "ab1a44a9ce4e1484170a401b04827a05183f78236a66ff5a232a2231aca78e0d"
   },
   "transition_order": {
     "3": "continuous",

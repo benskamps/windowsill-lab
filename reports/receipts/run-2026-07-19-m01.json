@@ -149,8 +149,8 @@
     -0.6596799492835999
   ],
   "experiment": "M01-ising-verification",
-  "generated_at": "2026-07-18T16:58:10.130423+00:00",
-  "headline": "χ peaked at T≈2.300 vs Onsager 2.2692 · 11s on GPU",
+  "generated_at": "2026-07-19T07:00:53.507694+00:00",
+  "headline": "χ peaked at T≈2.300 vs Onsager 2.2692 · 10s on GPU",
   "provenance": {
     "dependencies": {
       "matplotlib": "3.11.1",
@@ -160,7 +160,7 @@
     "platform": "linux-x86_64",
     "python": "3.14.4",
     "source_clean": true,
-    "source_commit": "25035ff658751d733f8dae30ce571f6b4c4d2270",
+    "source_commit": "66c8e1695b3fd61cd536e97fdda4c57b8663897e",
     "source_diff_sha256": null,
     "source_tree_sha256": "aec0f7a61aff0e44dc393bfb082009741fd555484206066a60479a121ceaf9b3"
   },
@@ -174,7 +174,7 @@
       }
     ],
     "schema": "windowsill.measurement-receipt.v1",
-    "source_report_sha256": "c1ff968564093500bc2afd9be62665cbf946fecaa795cce2ce7c2d7cf5c7adc3"
+    "source_report_sha256": "4d24d507314f544f1b9aeeffd6afc159038451851396fea83cfe3008f160cc80"
   },
   "report_schema_version": 1,
   "reproduction": {
@@ -204,5 +204,5 @@
     0.28312888741493225,
     0.25501129031181335
   ],
-  "wall_seconds": 10.745702743530273
+  "wall_seconds": 10.363991260528564
 }

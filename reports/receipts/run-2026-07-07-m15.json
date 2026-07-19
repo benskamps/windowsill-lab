@@ -263,7 +263,7 @@
       }
     ],
     "schema": "windowsill.measurement-receipt.v1",
-    "source_report_sha256": "f4c06a7f2355a58149c42ac8ebe5905ffb5ac7269f17ed760ca194fde69965fa"
+    "source_report_sha256": "5c5b988b650d9cde56ff66fad094a8567f7bc1a16a06ab2444c21bad9896b14b"
   },
   "r2": 0.9999214654402953,
   "sat_frac": 0.2,
