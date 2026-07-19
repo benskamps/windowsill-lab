@@ -585,3 +585,30 @@ def test_backfill_renders_m03_reports(tmp_path, monkeypatch):
     written = backfill()
     assert (reports / "2026-06-16-m03.json").exists()
     assert (reports / "2026-06-16-m03.html").exists()   # re-rendered, not skipped
+
+
+def test_backfill_preserves_source_mtime(tmp_path, monkeypatch):
+    """A backfilled old run must not masquerade as the newest (2026-07-19).
+
+    scan_runs orders newest-first by mtime; backfill used to stamp copies
+    with 'now', which pushed weeks-old runs to the top of the public feed.
+    """
+    import os as _os
+    reports = tmp_path / "reports"
+    lab_home = tmp_path / "lab"
+    lab_home.mkdir(parents=True)
+    monkeypatch.setattr(publish, "REPORTS_DIR", reports)
+    monkeypatch.setattr(publish, "LAB_HOME", lab_home)
+
+    src = lab_home / "2026-06-14.json"
+    src.write_text(
+        json.dumps({"experiment": "M01-ising-verification",
+                    "T": [2.2, 2.3, 2.4], "chi": [1.0, 9.0, 1.0]}),
+        encoding="utf-8",
+    )
+    old = 1_718_000_000  # 2024-era stamp, clearly not 'now'
+    _os.utime(src, (old, old))
+
+    written = publish.backfill()
+    dest = next(p for p in written if p.suffix == ".json")
+    assert abs(dest.stat().st_mtime - old) < 2

@@ -740,8 +740,13 @@ def backfill(dry_run: bool = False) -> list[Path]:
             continue
 
         REPORTS_DIR.mkdir(parents=True, exist_ok=True)
-        # Copy the machine-readable report verbatim (never move — keep ~/.lab).
+        # Copy the machine-readable report verbatim (never move — keep ~/.lab),
+        # PRESERVING the source mtime: scan_runs orders newest-first by mtime,
+        # so a today-stamped copy of an old run would masquerade as the
+        # latest and scramble the public feed's order (bit on 2026-07-19).
+        src_mtime = src.stat().st_mtime
         json_dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        os.utime(json_dest, (src_mtime, src_mtime))
         written.append(json_dest)
 
         # Re-render the HTML from the EXISTING JSON. Lazy import so the JSON
