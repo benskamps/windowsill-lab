@@ -315,3 +315,71 @@ def test_write_index_writes_reports_index_html(tmp_path, monkeypatch):
     assert path == reports / "index.html"
     assert path.exists()
     assert "2026-06-15" in path.read_text(encoding="utf-8")
+
+
+# ── receipts fallback: a committed receipt keeps a run on the books ──────────
+# Multi-box regression (2026-07-19): loam's nightly published a 10-row
+# pot.json because most dated report JSONs live only on win's disk (gitignored
+# by design — too heavy for git). Receipts ARE committed, one per run, and
+# carry the regradeable measurements. A box that has only the receipt must
+# still keep the run on the public books with working http links.
+
+def test_receipt_only_run_survives_on_a_box_without_the_dated_json(
+    tmp_path, monkeypatch
+):
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    receipts = reports / "receipts"
+    receipts.mkdir(parents=True)
+    (receipts / "run-2026-06-14-m01.json").write_text(
+        json.dumps({
+            "experiment": "M01-ising-verification",
+            "headline": "ising sweep",
+            "T": [2.2, 2.3, 2.4],
+            "chi": [1.0, 9.0, 1.0],
+        }),
+        encoding="utf-8",
+    )
+
+    rows = scan_runs()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["date"] == "2026-06-14"
+    assert row["milestone"] == "M01"
+    assert row["verdict"] == "verified"
+    assert row["local_only"] is False
+    assert str(row["report_href"]).startswith("http")
+    assert str(row["receipt_href"]).startswith("http")
+
+
+def test_dated_json_still_beats_its_own_receipt(tmp_path, monkeypatch):
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    _write_report(reports, "2026-06-14-m01", mtime=1_700_000_000,
+                  experiment="M01-ising-verification",
+                  headline="the richer dated report")
+    receipts = reports / "receipts"
+    receipts.mkdir(parents=True)
+    (receipts / "run-2026-06-14-m01.json").write_text(
+        json.dumps({
+            "experiment": "M01-ising-verification",
+            "headline": "the thin receipt",
+            "T": [2.2, 2.3, 2.4],
+            "chi": [1.0, 9.0, 1.0],
+        }),
+        encoding="utf-8",
+    )
+
+    rows = scan_runs()
+    assert len(rows) == 1
+    assert rows[0]["headline"] == "the richer dated report"
+
+
+def test_corrupt_receipt_is_an_honest_gap_row(tmp_path, monkeypatch):
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    receipts = reports / "receipts"
+    receipts.mkdir(parents=True)
+    (receipts / "run-2026-06-15-m02.json").write_text("{not json", encoding="utf-8")
+
+    rows = scan_runs()
+    assert len(rows) == 1
+    assert rows[0]["verdict"] == "unreadable"
+    assert rows[0]["date"] == "2026-06-15"

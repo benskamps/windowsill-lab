@@ -299,6 +299,45 @@ def scan_runs() -> list[dict]:
                (is_repo == cur_is_repo and mtime > cur[0]):
                 by_key[key] = (mtime, row)
 
+    # Receipts fallback — the multi-box safety net (2026-07-19). Dated report
+    # JSONs are gitignored by design (heavy) and mostly live on the box that
+    # ran them; receipts are committed for EVERY run and carry the regradeable
+    # measurements. A box that has only the receipt (a fresh clone, or the
+    # other nightly host) must still keep the run on the public books —
+    # otherwise the feed's history shrinks to whichever box published last.
+    if RECEIPTS_DIR.exists():
+        for p in RECEIPTS_DIR.glob(f"run-{_DATE_GLOB}-*.json"):
+            stem = p.stem[len("run-"):]          # <date>-<slug>
+            date, slug = stem[:10], stem[11:]
+            if not slug or (date, slug) in by_key:
+                continue
+            key = (date, slug)
+            mtime = p.stat().st_mtime
+            try:
+                data = json.loads(p.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                # Same honesty as a corrupt dated report: a kept gap row.
+                by_key[key] = (mtime, {
+                    "date": date, "milestone": None, "kind": "unreadable",
+                    "slug": slug,
+                    "experiment": None, "headline": None,
+                    "verdict": "unreadable", "detail": "receipt JSON is corrupt",
+                    "numbers": "—", "code_sha": None,
+                    "has_dated_html": False, "local_only": False,
+                    "receipt_href": None,
+                    "report_href": f"{ARCHIVE_URL}#{_anchor_for(date, slug)}",
+                })
+                continue
+            row = classify_run(data)
+            row["date"] = date
+            row["slug"] = slug
+            row["has_dated_html"] = False
+            # Receipts are committed — this run is repo-backed, not local-only.
+            row["local_only"] = False
+            row["report_href"] = f"{ARCHIVE_URL}#{_anchor_for(date, slug)}"
+            row["receipt_href"] = RECEIPT_URL_BASE + p.name
+            by_key[key] = (mtime, row)
+
     # Newest-first by (mtime, date_stem): the date breaks an mtime tie so a
     # fresh git clone (which loses mtimes) still orders by the run's own date.
     ordered = sorted(by_key.items(), key=lambda kv: (kv[1][0], kv[0][0]), reverse=True)
