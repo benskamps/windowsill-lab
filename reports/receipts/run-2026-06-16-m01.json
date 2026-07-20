@@ -159,7 +159,7 @@
       }
     ],
     "schema": "windowsill.measurement-receipt.v1",
-    "source_report_sha256": "2f965de7f46d85e775571e019eb29a6332e6d3b3b8bb168ae0a3f8877f34488e"
+    "source_report_sha256": "a7a9c4518b702cfc305185e29ba2a023b4143cda6d8e612f2d2c6214ff9d0c37"
   },
   "wall_seconds": 37.25092053413391
 }
