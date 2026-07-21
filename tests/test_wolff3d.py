@@ -48,8 +48,11 @@ def test_cpu_run_smoke():
     r = wolff_run(cfg)
     assert isinstance(r, Wolff3DResult)
     assert r.T.shape == (3,)
-    for arr in (r.abs_mag, r.abs_mag_err, r.chi, r.chi_abs, r.energy, r.mean_cluster_fraction):
+    for arr in (r.abs_mag, r.abs_mag_err, r.chi, r.chi_abs, r.energy,
+                r.specific_heat, r.mean_cluster_fraction):
         assert arr.shape == (3,)
+    # specific heat is a variance-based observable ⇒ non-negative
+    assert (r.specific_heat >= -1e-9).all()
     assert (r.abs_mag >= 0).all() and (r.abs_mag <= 1.0 + 1e-6).all()
     assert (r.chi_abs >= -1e-9).all()
     # cluster fraction is a fraction of L^3 sites
