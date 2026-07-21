@@ -162,6 +162,12 @@ def _parse_m06(args):
     p.add_argument("--sweeps", type=int, default=8000)
     p.add_argument("--burnin", type=int, default=3000)
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument("--updater", default="metropolis",
+                   choices=("metropolis", "wolff"),
+                   help="sampler: 'metropolis' (default, verified checkerboard) or "
+                        "'wolff' (3D cluster updater, beats critical slowing for larger L)")
+    p.add_argument("--device", default="cpu",
+                   help="torch device for the wolff updater (ignored by metropolis)")
     return p.parse_args(args)
 
 
@@ -764,15 +770,17 @@ def main(argv=None):
         L = 6 if ns.quick else ns.L
         sweeps = 1500 if ns.quick else ns.sweeps
         burnin = 800 if ns.quick else ns.burnin
+        unit = "cluster updates" if ns.updater == "wolff" else "sweeps"
         print(f"M06 3D simple-cubic Ising · L={L} · {ns.n_temps} temps in "
-              f"[{ns.t_min}, {ns.t_max}] · {sweeps:,} sweeps (CPU)")
+              f"[{ns.t_min}, {ns.t_max}] · {sweeps:,} {unit} · {ns.updater}")
 
         def _progress(result):
             print(f"  ✓ swept {len(result.T)} temps  ({result.wall_seconds:.1f}s)")
 
         result = m06.run_m06(
             L=L, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
-            n_sweeps=sweeps, n_burnin=burnin, seed=ns.seed, progress=_progress,
+            n_sweeps=sweeps, n_burnin=burnin, seed=ns.seed,
+            updater=ns.updater, device=ns.device, progress=_progress,
         )
         report = m06.to_report(result)
         print(f"  → χ-peak T_c = {result.tc_chi_refined:.3f}  (MC benchmark "

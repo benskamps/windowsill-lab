@@ -31,9 +31,10 @@ it depends only on the single-bond Boltzmann weight, not on the dimension.
 The pure mechanics (``_neighbor_sum``, ``_bond_field``, ``_seed_mask``,
 ``_grow_cluster``, ``wolff_update``) are torch but device-agnostic and unit-tested
 on CPU. ``wolff_run`` is the temperature-sweep driver; its equilibrium observables
-(``abs_mag``, ``energy``) are directly comparable to the verified ``ising3d.run``
-Metropolis engine — which is exactly how the test suite proves this updater samples
-the correct Boltzmann distribution.
+(``abs_mag``, ``energy``, ``specific_heat``) are directly comparable to the verified
+``ising3d.run`` Metropolis engine — which is exactly how the test suite proves this
+updater samples the correct Boltzmann distribution. It exposes the same observable
+set as ``ising3d.run`` so M06 can select either engine behind one ``updater`` switch.
 """
 from __future__ import annotations
 
@@ -69,6 +70,7 @@ class Wolff3DResult:
     chi: np.ndarray                    # signed-m susceptibility per spin, (n_temps,)
     chi_abs: np.ndarray                # |m|-based susceptibility (FSS observable), (n_temps,)
     energy: np.ndarray                 # mean energy per spin, (n_temps,)
+    specific_heat: np.ndarray          # C per spin = N·(⟨e²⟩−⟨e⟩²)/T², (n_temps,)
     mean_cluster_fraction: np.ndarray  # ⟨cluster size⟩/L³ per T, (n_temps,) diagnostic
     snapshots: dict                    # {temperature_key: 2D int8 mid-plane slice}
     wall_seconds: float
@@ -82,6 +84,7 @@ class Wolff3DResult:
             "chi": self.chi.tolist(),
             "chi_abs": self.chi_abs.tolist(),
             "energy": self.energy.tolist(),
+            "specific_heat": self.specific_heat.tolist(),
             "mean_cluster_fraction": self.mean_cluster_fraction.tolist(),
             "snapshots": {k: v.astype(int).tolist() for k, v in self.snapshots.items()},
             "wall_seconds": self.wall_seconds,
@@ -296,6 +299,10 @@ def wolff_run(cfg: Wolff3DConfig) -> Wolff3DResult:
         mag.pow(2).mean(dim=0) - abs_mag_per_sample.mean(dim=0).pow(2)
     ).numpy() / T_np
     energy_mean = energy.mean(dim=0).numpy()
+    # Specific heat per spin C = N·Var(e)/T² — an equilibrium fluctuation observable,
+    # so it is defined identically regardless of the updater (matches ising3d.run so
+    # the two engines expose the same observable set for M06's C_v cross-check).
+    specific_heat = (N) * energy.var(dim=0, unbiased=False).numpy() / (T_np ** 2)
     mean_cluster_fraction = cluster_frac.mean(dim=0).numpy()
 
     pick_idx = [0, cfg.n_temps // 2, cfg.n_temps - 1]
@@ -314,6 +321,7 @@ def wolff_run(cfg: Wolff3DConfig) -> Wolff3DResult:
         chi=chi,
         chi_abs=chi_abs,
         energy=energy_mean,
+        specific_heat=specific_heat,
         mean_cluster_fraction=mean_cluster_fraction,
         snapshots=snapshots,
         wall_seconds=wall,
