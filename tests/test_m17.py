@@ -309,6 +309,46 @@ def test_report_shape_and_boundary(tiny_run):
         assert len(rep["growth"][name]["times"]) == len(rep["growth"][name]["width"])
 
 
+def test_moment_resolution_reports_gaps_in_sampling_sigmas():
+    """Gaps must be expressed in sampling sigmas (``sqrt(6/n)`` and ``sqrt(24/n)``) so 'did it
+    resolve' is a derived number rather than an opinion — and a multi-site flat sample must be
+    flagged as non-independent so its sigma is read as a floor."""
+    sample = {"tw_law": "GUE", "n_samples": 6000, "skewness": PREDICTED_SKEW["droplet"],
+              "excess_kurtosis": 0.0935, "n_sites": 1, "site_spacing_over_xi": None}
+    from lab.m17 import moment_resolution
+    r = moment_resolution(sample)
+    assert r["skew_gap"] == pytest.approx(0.0, abs=1e-9)
+    assert r["skew_sampling_sigma"] == pytest.approx(math.sqrt(6 / 6000))
+    assert r["kurt_sampling_sigma"] == pytest.approx(math.sqrt(24 / 6000))
+    assert r["independent_samples"] is True
+    multi = moment_resolution({**sample, "n_sites": 8, "site_spacing_over_xi": 4.7})
+    assert multi["independent_samples"] is False
+
+
+def test_claim_boundary_is_derived_from_this_run_not_hand_written(tiny_run):
+    """The honesty text must be built FROM the measurement. If it were prose, it would go stale
+    the first time the run changed — the exact failure mode that makes two surfaces disagree.
+    So: the boundary must quote this run's own beta and its own moment gaps, and must change
+    when the underlying numbers change."""
+    rep = to_report(tiny_run)
+    boundary = rep["claim_boundary"]
+    assert f"{tiny_run.beta:.4f}" in boundary, "boundary does not quote this run's beta"
+    for ic in ("droplet", "flat"):
+        gap = tiny_run.resolution[ic]["skew_gap"]
+        assert f"{gap:.4f}" in boundary, f"boundary does not quote the {ic} skewness gap"
+    assert "NOT graded" in boundary
+
+    # Move the measurement; the sentence must move with it.
+    import dataclasses
+    from lab.m17 import moment_resolution
+    worse = dataclasses.replace(
+        tiny_run,
+        distributions={ic: {**d, "skewness": 0.0}
+                       for ic, d in tiny_run.distributions.items()})
+    worse.resolution = {ic: moment_resolution(d) for ic, d in worse.distributions.items()}
+    assert to_report(worse)["claim_boundary"] != boundary
+
+
 def test_check_rejects_a_foreign_report():
     ok, _ = check_m17({"experiment": "M15-glauber-domain-growth"})
     assert ok is None

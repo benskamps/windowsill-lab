@@ -49,13 +49,19 @@ the model rather than fitted to the data. See ``kpz.slope_velocity``.
 ### Where it is honest about falling short
 
 At the sizes one patient machine reaches overnight the *effective* β sits a few percent
-**below** 1/3 — the documented preasymptotic approach from below, seen identically in the EW
-control (0.24 against an exact 1/4), which is the tell that it is a property of the finite
-fit window and not of the KPZ measurement. And the fourth moment does **not** resolve: the
-excess kurtosis is a factor of a few away from Tracy–Widom for the flat geometry, because at
-this ``t`` the lattice height granularity (heights move in steps of 2) is not negligible
-against the fluctuation scale. Both are reported as measured, and ``check_m17`` grades the
-exponents and the *assignment* — never the kurtosis.
+**below** 1/3 — the documented preasymptotic approach from below. The tell that this is the
+finite fit window rather than a defect in the KPZ measurement is that the Edwards–Wilkinson
+control misses its own exact 1/4 by the same few percent **in the same direction**, while
+random deposition — which has no correlation time to be preasymptotic about — lands on 1/2
+essentially exactly.
+
+The distributional half is where the run is furthest from converged, so M17 does not write
+that down as prose: ``moment_resolution`` **derives** the gap between each measured moment and
+its Tracy–Widom target *in units of the sampling error*, and ``to_report`` builds the claim
+boundary from those numbers. A hand-written sentence about which moment resolved would go
+stale the first time the run changed; a derived one cannot disagree with the data it ships
+next to. ``check_m17`` grades the exponents and the class *assignment* — never the kurtosis,
+which is carried as reported evidence and not as a claim.
 """
 from __future__ import annotations
 
@@ -162,6 +168,38 @@ def rd_exact_deviation(times, width_sq, p: float) -> dict:
             "exact_w2": [float(x) for x in exact], "p": p}
 
 
+def moment_resolution(sample: dict) -> dict:
+    """How far each measured moment sits from its Tracy–Widom target, **in sampling sigmas**.
+
+    Derived, never restated. A hand-written sentence about which moment did or did not resolve
+    goes stale the moment the run changes; this computes it from the sample every time, so the
+    report's honesty claim and its numbers cannot disagree.
+
+    The sampling standard errors of the third and fourth standardised moments of ``n`` i.i.d.
+    draws are ``sqrt(6/n)`` and ``sqrt(24/n)``. For the flat geometry the draws are *not* fully
+    independent — several sites of one ring are sampled — so the quoted sigma is a floor and
+    ``site_spacing_over_xi`` (how many correlation lengths apart those sites sit) is carried
+    alongside it rather than being quietly ignored.
+    """
+    n = max(int(sample.get("n_samples", 1)), 1)
+    is_gue = sample["tw_law"] == "GUE"
+    skew_target = PREDICTED_SKEW["droplet"] if is_gue else PREDICTED_SKEW["flat"]
+    kurt_target = TW_GUE_EXKURT if is_gue else TW_GOE_EXKURT
+    se_skew = math.sqrt(6.0 / n)
+    se_kurt = math.sqrt(24.0 / n)
+    d_skew = abs(float(sample["skewness"]) - skew_target)
+    d_kurt = abs(float(sample["excess_kurtosis"]) - kurt_target)
+    return {
+        "n_samples": n,
+        "skew_target": skew_target, "skew_gap": d_skew,
+        "skew_sampling_sigma": se_skew, "skew_gap_in_sigma": d_skew / se_skew,
+        "kurt_target": kurt_target, "kurt_gap": d_kurt,
+        "kurt_sampling_sigma": se_kurt, "kurt_gap_in_sigma": d_kurt / se_kurt,
+        "site_spacing_over_xi": sample.get("site_spacing_over_xi"),
+        "independent_samples": sample.get("n_sites", 1) == 1,
+    }
+
+
 def assign_tw_class(sample: dict) -> dict:
     """Which Tracy–Widom law does this sample's *shape* actually sit closer to?
 
@@ -193,6 +231,7 @@ class M17Result:
     alpha_fit: ExponentFit | None
     distributions: dict          # ic -> sample dict
     assignments: dict            # ic -> assign_tw_class(...)
+    resolution: dict             # ic -> moment_resolution(...), gaps in sampling sigmas
     rd_exact: dict
     beta: float                  # headline: the KPZ growth exponent
     beta_stderr: float
@@ -267,8 +306,10 @@ def run_m17(
     say(f"flat L={flat_L} t={dist_t} N={flat_batch}×{flat_sites}")
     distributions["flat"] = run_height_distribution(
         "flat", L=flat_L, t=dist_t, batch=flat_batch, seed=seed + 4, p=p, n_sites=flat_sites)
+    resolution = {}
     for ic, sample in distributions.items():
         assignments[ic] = assign_tw_class(sample)
+        resolution[ic] = moment_resolution(sample)
 
     rd_exact = rd_exact_deviation(growth["rd"]["times"], growth["rd"]["width_sq"], p)
 
@@ -290,7 +331,8 @@ def run_m17(
 
     return M17Result(
         growth=growth, saturation=saturation, alpha_fit=alpha_fit,
-        distributions=distributions, assignments=assignments, rd_exact=rd_exact,
+        distributions=distributions, assignments=assignments, resolution=resolution,
+        rd_exact=rd_exact,
         beta=float(beta), beta_stderr=float(beta_se), alpha=alpha, z=z, inv_z=inv_z,
         controls_separate=controls_separate, tw_assignment_correct=tw_ok,
         supports_kpz=supports, wall_seconds=time.time() - t0,
@@ -379,6 +421,7 @@ def to_report(result: M17Result) -> dict:
         # distributions
         "distributions": e.distributions,
         "assignments": e.assignments,
+        "moment_resolution": e.resolution,
         "tw_assignment_correct": e.tw_assignment_correct,
         "tw_targets": {
             "gue_skewness": TW_GUE_SKEW, "gue_excess_kurtosis": TW_GUE_EXKURT,
@@ -392,20 +435,51 @@ def to_report(result: M17Result) -> dict:
         "supports_kpz": e.supports_kpz,
         "wall_seconds": e.wall_seconds,
         "config": e.config,
-        "claim_boundary": (
-            "A finite-size, finite-time measurement of the 1+1d KPZ exponents and of which "
-            "Tracy–Widom law each geometry's fluctuations sit nearer. The effective β sits a "
-            "few percent BELOW the exact 1/3 — the documented preasymptotic approach from "
-            "below, confirmed by the Edwards–Wilkinson control missing its own exact 1/4 by "
-            "the same few percent in the same direction, which locates the deficit in the "
-            "finite fit window rather than in the KPZ measurement. The distributional claim "
-            "is CLASS ASSIGNMENT by skewness (a shape statistic invariant under the unfitted "
-            "(v_inf, Gamma) rescaling), not a full Tracy–Widom distribution collapse: the "
-            "fourth moment does NOT resolve at this scale — the flat geometry's excess "
-            "kurtosis is a factor of a few off GOE, dominated by the lattice height "
-            "granularity (heights move in steps of 2) against a fluctuation scale of only a "
-            "few lattice units. Nothing here claims the exact Tracy-Widom constants "
-            "v_inf or Gamma, which are not measured."
-        ),
+        "claim_boundary": _claim_boundary(e),
     }
     return report
+
+
+def _claim_boundary(e: M17Result) -> str:
+    """Build the claim boundary FROM the measurement, so prose and data cannot drift apart.
+
+    Every number in the sentence below is re-read from this run's own fits and moment gaps.
+    Nothing about how well the distribution converged is asserted by hand.
+    """
+    ew_b = (e.growth["ew"]["fit"] or {}).get("exponent", float("nan"))
+    rd_b = (e.growth["rd"]["fit"] or {}).get("exponent", float("nan"))
+    beta_gap = e.beta - KPZ_BETA
+    ew_gap = ew_b - EW_BETA
+    same_direction = (beta_gap < 0) == (ew_gap < 0)
+
+    bits = []
+    for ic in ("droplet", "flat"):
+        r = e.resolution[ic]
+        law = "GUE" if ic == "droplet" else "GOE"
+        note = "" if r["independent_samples"] else (
+            f" (sampled at {r['n_samples']} points, {r['site_spacing_over_xi']:.1f} correlation "
+            f"lengths apart, so this sigma is a floor)")
+        bits.append(
+            f"{ic}/{law}: skewness {r['skew_gap']:.4f} from target "
+            f"({r['skew_gap_in_sigma']:.1f}x its sampling sigma), excess kurtosis "
+            f"{r['kurt_gap']:.4f} from target ({r['kurt_gap_in_sigma']:.1f}x){note}"
+        )
+
+    return (
+        "A finite-size, finite-time measurement of the 1+1d KPZ exponents and of which "
+        "Tracy-Widom law each geometry's fluctuations sit nearer. "
+        f"The effective beta = {e.beta:.4f} sits {abs(beta_gap):.4f} "
+        f"{'BELOW' if beta_gap < 0 else 'ABOVE'} the exact 1/3 — the documented preasymptotic "
+        f"approach from below. That this is the finite fit window and not a defect in the KPZ "
+        f"measurement is evidenced by the Edwards-Wilkinson control, which misses its own "
+        f"exact 1/4 by {abs(ew_gap):.4f} "
+        f"{'in the SAME direction' if same_direction else 'in the OPPOSITE direction'}, while "
+        f"random deposition — which has no correlation time to be preasymptotic about — lands "
+        f"at {rd_b:.4f} against an exact 1/2. "
+        "The distributional claim is CLASS ASSIGNMENT by skewness — a shape statistic "
+        "invariant under the unfitted (v_inf, Gamma) rescaling — and NOT a full Tracy-Widom "
+        "distribution collapse. Measured moment gaps this run: " + "; ".join(bits) + ". "
+        "The kurtosis is carried as evidence and is deliberately NOT graded by check_m17. "
+        "Nothing here claims the Tracy-Widom constants v_inf or Gamma, which are not measured, "
+        "nor the exponents' asymptotic values, which this window cannot reach."
+    )
