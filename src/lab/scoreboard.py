@@ -131,7 +131,10 @@ def _arr(report: dict, key: str) -> list[float] | None:
 
 # ── per-milestone extractors: each returns 0+ ScoreEntry ─────────────────────
 def _m01(reports):
-    # 2D Ising: χ-peak T_c vs Onsager (check_m01 uses the raw argmax, tol ±0.1).
+    # 2D Ising: χ-peak T_c vs Onsager (tol ±0.1). Peak candidacy excludes samples
+    # that provably did not equilibrate — shared with check_m01 rather than
+    # re-derived here, so the scoreboard and `lab verify` cannot disagree about
+    # what the archive says.
     for r in reports:
         exp = str(r.get("experiment") or "")
         if exp and not exp.startswith("M01"):
@@ -139,7 +142,11 @@ def _m01(reports):
         T, chi = _arr(r, "T"), _arr(r, "chi")
         if not T or not chi or len(T) != len(chi):
             continue
-        peak = T[max(range(len(chi)), key=lambda i: chi[i])]
+        excluded = set(checks.nonequilibrated_indices(r))
+        candidates = [i for i in range(len(chi)) if i not in excluded]
+        if not candidates:
+            continue
+        peak = T[max(candidates, key=lambda i: chi[i])]
         return [ScoreEntry("M01", "2D Ising T_c (χ peak)", peak, ONSAGER_TC, 0.1)]
     return []
 
