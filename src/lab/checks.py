@@ -165,6 +165,53 @@ def _reports_newest_first() -> list[Path]:
     return sorted(paths, key=sort_key, reverse=True)
 
 
+# A sample is non-equilibrated when |M| RISES with temperature. In equilibrium
+# |M|(T) is non-increasing, so a rise is thermodynamically *impossible* rather
+# than merely unlikely — which is what lets this be a physics statement instead
+# of a tuned outlier filter. The bar is the run's own reported error, so no
+# absolute magnetization scale is baked in here.
+#
+# Why it exists: on 2026-07-23 (campaign pass 6, seed=1006) the T=1.8 sample
+# failed to equilibrate into a metastable domain state. |M| came out 0.7756
+# between neighbours of 0.9701 and 0.9383 — a 24σ rise — and both χ and χ_abs
+# exploded to ~10⁴× their neighbours. The bare argmax crowned it, and M01
+# reported T_c = 1.800 vs Onsager 2.2692.
+_EQUIL_SIGMA = 5.0
+# The guard rescues an isolated bad sample. More than this and the sweep itself
+# is untrustworthy, and saying so is more useful than repairing it.
+_EQUIL_MAX_EXCLUDED = 2
+
+
+def nonequilibrated_indices(report: dict) -> list[int]:
+    """Indices of χ-sweep samples that provably did not equilibrate.
+
+    Flags any adjacent pair where |M| rises with temperature by more than
+    ``_EQUIL_SIGMA`` combined sigma. Of the two, the offender is the one with
+    the larger reported error — a sampler wandering between metastable states
+    reports a wide error, which is what distinguishes a bad point from a
+    spuriously-high neighbour.
+
+    Returns ``[]`` for reports carrying no ``abs_mag``/``abs_mag_err`` (legacy
+    receipts), so historical archive entries grade exactly as they always have.
+    """
+    T = report.get("T")
+    mag = report.get("abs_mag")
+    err = report.get("abs_mag_err")
+    if not T or not mag or not err:
+        return []
+    if not (len(T) == len(mag) == len(err)):
+        return []
+
+    bad: set[int] = set()
+    for i in range(len(T) - 1):
+        sigma = math.hypot(err[i] or 0.0, err[i + 1] or 0.0)
+        if sigma <= 0:
+            continue
+        if (mag[i + 1] - mag[i]) / sigma > _EQUIL_SIGMA:
+            bad.add(i if (err[i] or 0.0) >= (err[i + 1] or 0.0) else i + 1)
+    return sorted(bad)
+
+
 def check_m01(report: dict) -> tuple[bool | None, str]:
     """2D Ising: the susceptibility χ peaks at the (finite-size) critical point.
 
@@ -172,6 +219,10 @@ def check_m01(report: dict) -> tuple[bool | None, str]:
     Otherwise recovers T at max(χ) and asserts it sits near Onsager's exact T_c
     — a generous tolerance, since this catches a broken simulation, not a
     high-precision exponent claim.
+
+    Samples that provably did not equilibrate are excluded from peak candidacy
+    (see ``nonequilibrated_indices``) and named in the returned message, so the
+    exclusion is disclosed rather than quietly applied.
     """
     # M06 (3D Ising) also carries top-level T+chi but a different experiment tag
     # and a different T_c — it has its own check; don't grade it against Onsager.
@@ -183,13 +234,27 @@ def check_m01(report: dict) -> tuple[bool | None, str]:
     T, chi = report.get("T"), report.get("chi")
     if not T or not chi or len(T) != len(chi):
         return None, "not an Ising χ-sweep"
-    peak_T = T[max(range(len(chi)), key=lambda i: chi[i])]
+    excluded = nonequilibrated_indices(report)
+    if len(excluded) > _EQUIL_MAX_EXCLUDED:
+        return False, (
+            f"sweep not equilibrated: {len(excluded)} of {len(T)} samples show |M| "
+            f"rising with temperature by >{_EQUIL_SIGMA:g}σ — no T_c claimed"
+        )
+    candidates = [i for i in range(len(chi)) if i not in set(excluded)]
+    if not candidates:
+        return False, "sweep not equilibrated: no usable samples — no T_c claimed"
+
+    peak_T = T[max(candidates, key=lambda i: chi[i])]
     # The default sweep's 0.1-spaced grid can resolve the peak to roughly one
     # bin.  ±0.1 remains a regression/calibration gate, not a precision claim,
     # but no longer passes a result two whole bins away from Onsager.
     tol = 0.1
     ok = abs(peak_T - ONSAGER_TC) <= tol
-    return ok, f"χ peak at T={peak_T:.3f} vs Onsager {ONSAGER_TC:.3f} (tol ±{tol})"
+    msg = f"χ peak at T={peak_T:.3f} vs Onsager {ONSAGER_TC:.3f} (tol ±{tol})"
+    if excluded:
+        where = ", ".join(f"T={T[i]:.3f}" for i in excluded)
+        msg += f" · {len(excluded)} non-equilibrated sample(s) excluded ({where})"
+    return ok, msg
 
 
 def _loglog_slope(xs: list[float], ys: list[float]) -> tuple[float, float]:

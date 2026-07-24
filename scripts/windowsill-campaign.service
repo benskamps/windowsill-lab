@@ -1,0 +1,23 @@
+# Windowsill "run constantly" — systemd USER service.
+# Install:  cp to ~/.config/systemd/user/ ; systemctl --user daemon-reload ;
+#           systemctl --user enable --now windowsill-campaign.service
+# Stop:     touch ~/.lab/campaign.stop   (graceful, after current pass)
+#           systemctl --user stop windowsill-campaign.service   (hard)
+# It supersedes the nightly timer — disable that when this is on:
+#           systemctl --user disable --now windowsill-lab.timer
+[Unit]
+Description=Windowsill Lab — continuous physics campaign (run constantly)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+Environment=TMPDIR=%h/.cache/wtmp
+Environment=LAB_CAMPAIGN_DEVICE=cuda
+Environment=LAB_CAMPAIGN_INTERVAL=14400
+ExecStart=/home/benslinuxbox/projects/windowsill-lab/scripts/campaign.sh
+Restart=always
+RestartSec=30
+
+[Install]
+WantedBy=default.target

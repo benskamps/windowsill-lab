@@ -113,6 +113,8 @@ def run_m06(
     n_sweeps: int = 8000,
     n_burnin: int = 3000,
     seed: int = 42,
+    updater: str = "metropolis",
+    device: str = "cpu",
     progress=None,
 ) -> M06Result:
     """Run the 3D Ising sweep at one lattice size and locate T_c from the χ peak.
@@ -122,26 +124,57 @@ def run_m06(
     callback, and a ``to_report``-ready result. The χ-peak gives the headline
     T_c(L); the specific-heat peak is reported as an independent cross-check.
 
-    Defaults are CPU-modest (L=10, 8k sweeps) so the milestone finishes in a few
-    minutes with no GPU — see the device-safety reasoning in ``ising3d``.
+    ``updater`` picks the sampler, mirroring ``run_fss(updater=...)`` (M02):
+
+    - ``'metropolis'`` (default) drives the verified ``ising3d.run`` checkerboard
+      engine — the algorithm that landed M06's benchmark and the golden reports,
+      kept as the default so single-L calibration reproduces exactly.
+    - ``'wolff'`` drives the ``wolff3d.wolff_run`` single-cluster engine (z ≈ 0.3
+      vs Metropolis' z ≈ 2 near criticality). This is the correct instrument for
+      the L-extrapolation: it beats the critical slowing down that caps the
+      Metropolis engine, so larger L become tractable. NOTE the units difference —
+      in the Wolff branch ``n_sweeps``/``n_burnin`` are counted in *cluster
+      updates*, not Metropolis sweeps (far fewer needed for the same decorrelation).
+
+    Both engines expose the same observables with identical shapes, so the
+    peak-fit path below is updater-agnostic. The one subtlety the branch handles:
+    ``ising3d.run.chi`` is already the |m|-based (FSS-appropriate) susceptibility,
+    whereas ``wolff3d`` exposes that as ``chi_abs`` (its ``chi`` is the signed one).
+    We select the |m|-based observable from each so the χ peak means the same thing.
+
+    ``device`` is passed to the Wolff (torch) engine; the Metropolis engine is
+    NumPy-CPU and ignores it. Defaults are CPU-modest (L=10, 8k sweeps) so the
+    milestone finishes in a few minutes with no GPU — see the device-safety
+    reasoning in ``ising3d``.
     """
-    from .ising3d import Run3DConfig, run
-
     t0 = time.time()
-    cfg = Run3DConfig(
-        L=L, T_min=T_min, T_max=T_max, n_temps=n_temps,
-        n_sweeps=n_sweeps, n_burnin=n_burnin, seed=seed,
-    )
-    r = run(cfg)
+    if updater == "metropolis":
+        from .ising3d import Run3DConfig, run
+        cfg = Run3DConfig(
+            L=L, T_min=T_min, T_max=T_max, n_temps=n_temps,
+            n_sweeps=n_sweeps, n_burnin=n_burnin, seed=seed,
+        )
+        r = run(cfg)
+        chi_obs = r.chi                      # ising3d.chi IS the |m|-based susceptibility
+    elif updater == "wolff":
+        from .wolff3d import Wolff3DConfig, wolff_run
+        cfg = Wolff3DConfig(
+            L=L, T_min=T_min, T_max=T_max, n_temps=n_temps,
+            n_updates=n_sweeps, n_burnin=n_burnin, seed=seed, device=device,
+        )
+        r = wolff_run(cfg)
+        chi_obs = r.chi_abs                  # the |m|-based observable in the Wolff result
+    else:
+        raise ValueError(f"unknown updater {updater!r} (use 'metropolis' or 'wolff')")
 
-    _, tc_chi = susceptibility_peak(r.T, r.chi)
-    tc_chi_refined = refine_peak(r.T, r.chi)
+    _, tc_chi = susceptibility_peak(r.T, chi_obs)
+    tc_chi_refined = refine_peak(r.T, chi_obs)
     _, tc_cv = specific_heat_peak(r.T, r.specific_heat)
     rel_err = relative_error(tc_chi_refined)
 
     result = M06Result(
         T=r.T.tolist(),
-        chi=r.chi.tolist(),
+        chi=chi_obs.tolist(),
         abs_mag=r.abs_mag.tolist(),
         abs_mag_err=r.abs_mag_err.tolist(),
         energy=r.energy.tolist(),
@@ -156,6 +189,7 @@ def run_m06(
         config={
             "L": L, "T_min": T_min, "T_max": T_max, "n_temps": n_temps,
             "n_sweeps": n_sweeps, "n_burnin": n_burnin, "seed": seed,
+            "updater": updater, "device": device,
         },
     )
     if progress is not None:
@@ -298,6 +332,8 @@ def run_m06_l_extrapolation(
     n_burnin: int = 2000,
     seed: int = 42,
     nu: float = NU_3D,
+    updater: str = "metropolis",
+    device: str = "cpu",
     progress=None,
 ) -> M06ExtrapResult:
     """Run M06 at several lattice sizes and extrapolate ``T_c(L) → T_c(∞)``.
@@ -308,6 +344,13 @@ def run_m06_l_extrapolation(
     around the benchmark (the pseudo-critical peaks for these small L sit just
     above 4.5115) so a modest CPU sweep budget concentrates on resolving the peak.
     ``extrapolate_tc`` then reads the intercept.
+
+    ``updater`` is forwarded to ``run_m06`` for every lattice: ``'metropolis'``
+    (default) keeps the verified checkerboard engine, ``'wolff'`` swaps in the 3D
+    single-cluster updater (``wolff3d``) whose z ≈ 0.3 beats the critical slowing
+    that otherwise caps the reachable L — the whole reason BACKLOG points this
+    extrapolation at the Wolff instrument. ``device`` is forwarded too (used only
+    by the Wolff/torch branch).
 
     CPU-modest by default ({8,10,12,16}³, 6k sweeps) — finishes in a few minutes
     with no GPU, mirroring ``run_m06``'s device-safety reasoning.
@@ -320,6 +363,7 @@ def run_m06_l_extrapolation(
         r = run_m06(
             L=L, T_min=T_min, T_max=T_max, n_temps=n_temps,
             n_sweeps=n_sweeps, n_burnin=n_burnin, seed=seed + i,
+            updater=updater, device=device,
         )
         per_L.append(r)
         tc_of_L.append(r.tc_chi_refined)
@@ -351,6 +395,7 @@ def run_m06_l_extrapolation(
         config={
             "Ls": list(Ls), "T_min": T_min, "T_max": T_max, "n_temps": n_temps,
             "n_sweeps": n_sweeps, "n_burnin": n_burnin, "seed": seed, "nu": nu,
+            "updater": updater, "device": device,
         },
     )
 
