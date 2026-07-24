@@ -57,6 +57,7 @@ Usage:
   lab m14             run M14: random-bond Ising — exact Nishimori-line energy, map toward the MNP p_c≈0.109
   lab m15             run M15: Glauber dynamics — domain growth L(t)∼t^(1/2) after a quench (Phase 4)
   lab m16             run M16: 3D spin-glass aging — compare t/t_w with t−t_w collapse
+  lab m17             run M17: KPZ growth on a ring — β=1/3, α=1/2, z=3/2 + Tracy–Widom class
   lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
   lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
   lab i01             run I01: calibrate a real capped-CMOS dark-frame stack
@@ -450,6 +451,36 @@ def _parse_m16(args):
     p.add_argument("--waiting-times", default="16,32,64,128")
     p.add_argument("--delta-times", default="8,16,32,64,128,256")
     p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m17(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M17 is NON-equilibrium and watches a SURFACE, not spins: a 1+1d interface grown on a
+    # periodic ring. There is no temperature — the control parameter is the corner-flip
+    # probability p, which must stay strictly inside (0,1) (at p=1 the sublattice-parallel
+    # rule is deterministic and stops being stochastically rough, i.e. stops being KPZ).
+    # The x-axis is Monte-Carlo time. L must be large enough that the ring never saturates
+    # inside t_max (the runner asserts w(t_max) ≤ 0.20·√L). --quick proves the pipeline on CPU.
+    p.add_argument("--L", type=int, default=4096,
+                   help="KPZ ring size (default 4096; bigger ring = later saturation)")
+    p.add_argument("--quick", action="store_true",
+                   help="small fast pass — proves growth + controls + distributions end to end")
+    p.add_argument("--batch", type=int, default=64,
+                   help="independent rings averaged for the width (default 64)")
+    p.add_argument("--t-max", type=int, default=8000,
+                   help="final Monte-Carlo time in sweeps for the KPZ run (default 8000)")
+    p.add_argument("--n-times", type=int, default=44,
+                   help="log-spaced measurement sweeps (default 44)")
+    p.add_argument("--dist-t", type=int, default=400,
+                   help="sweeps for the Tracy-Widom distribution runs (default 400)")
+    p.add_argument("--droplet-batch", type=int, default=6000,
+                   help="independent droplets sampled for the GUE test (default 6000)")
+    p.add_argument("--flat-batch", type=int, default=3000,
+                   help="independent flat rings sampled for the GOE test (default 3000)")
+    p.add_argument("--p-flip", type=float, default=0.5,
+                   help="corner-flip probability, strictly in (0,1) (default 0.5)")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
 
@@ -1212,6 +1243,54 @@ def main(argv=None):
             from . import publish as publish_mod
             print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
         except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m17":
+        ns = _parse_m17(args[1:])
+        from . import m17
+        from . import render as render_mod
+        if ns.quick:
+            # A small pass: proves growth → controls → saturation → both geometries → report
+            # end to end and writes HTML+JSON. The scaling window and the sample sizes are
+            # short at this scale, so the exponents are coarse and the third moments noisy —
+            # a miss still ships an honest null, per the lab's convention.
+            kw = dict(L=1024, batch=16, t_max=600, n_times=24,
+                      ew_L=512, ew_t_max=300, rd_L=512, rd_t_max=300,
+                      sat_L=(8, 16, 32), sat_batch=16,
+                      dist_t=60, droplet_batch=400, flat_L=512, flat_batch=300, flat_sites=4)
+        else:
+            kw = dict(L=ns.L, batch=ns.batch, t_max=ns.t_max, n_times=ns.n_times,
+                      dist_t=ns.dist_t, droplet_batch=ns.droplet_batch,
+                      flat_batch=ns.flat_batch)
+        print(f"M17 KPZ growth on a ring · L={kw['L']} · {kw['batch']} rings · "
+              f"t_max={kw['t_max']:,} sweeps · p={ns.p_flip} · fitting β vs the exact KPZ 1/3, "
+              f"with Edwards–Wilkinson (¼) and random deposition (½) as negative controls "
+              f"on the same pipeline")
+
+        result = m17.run_m17(p=ns.p_flip, seed=ns.seed, progress=lambda m: print(f"  · {m}"), **kw)
+        report = m17.to_report(result)
+        ew_b = (result.growth["ew"]["fit"] or {}).get("exponent")
+        rd_b = (result.growth["rd"]["fit"] or {}).get("exponent")
+        print(f"  → β = {result.beta:.4f} ± {result.beta_stderr:.4f} (stat) vs exact 1/3 · "
+              f"α = {result.alpha:.4f} vs ½ · z = {result.z:.3f} vs 3/2 · "
+              f"1/z = {result.inv_z:.3f} vs 2/3")
+        print(f"  → controls: EW β={ew_b:.4f} (exact ¼) · RD β={rd_b:.4f} (exact ½), "
+              f"w² within {100 * result.rd_exact['max_rel_dev']:.1f}% of the exact p(1−p)t · "
+              f"{'separated' if result.controls_separate else 'CONTROL FAILED'}")
+        for ic, a in result.assignments.items():
+            print(f"  → {ic:>7}: skew {a['skewness']:+.4f} → nearer {a['nearer']} "
+                  f"(expected {a['expected']}, {a['decisiveness']:.1f}×) "
+                  f"{'✓' if a['correct'] else '✗'}")
+        verdict = ("KPZ exponents + Tracy–Widom assignment reproduced"
+                   if report["status"] == "pass" else "honest [~] null — see the report")
+        print(f"  → {verdict} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
             print(f"  (snapshot skipped: {e})")
         return 0
 

@@ -97,6 +97,47 @@ M15_MIN_R2 = 0.99
 M15_T_FIT_MIN = 20
 M15_L_MIN_FIT = 4.0
 M15_SAT_FRAC = 0.20
+# ── M17: 1+1d kinetic roughening. Three growth classes, three EXACT exponents. ────────────
+# Kardar–Parisi–Zhang (1986): w(t) ∼ t^β with β = 1/3, w_sat ∼ L^α with α = 1/2, so the
+# dynamic exponent z = α/β = 3/2 and the correlation length ξ(t) ∼ t^{1/z} = t^{2/3}.
+KPZ_BETA = 1.0 / 3.0
+KPZ_ALPHA = 0.5
+KPZ_Z = 1.5
+# Edwards–Wilkinson (the linear theory — KPZ minus the (∇h)² term): β = 1/4 exactly.
+EW_BETA = 0.25
+# Random deposition (independent columns, no relaxation): β = 1/2 exactly, and stronger — a
+# CLOSED FORM w²(t) = p(1−p)·t at every t, with nothing fitted.
+RD_BETA = 0.5
+# Tolerances, OWNED BY THE CHECK (never read from the report, so a run can't widen its own
+# band). Physically justified, not fudges: like M15's Allen–Cahn band, the finite fit window
+# makes the effective exponent land a few percent BELOW its asymptotic value — measured at
+# ≈0.316 for KPZ and ≈0.239 for EW, both low by the same ~5%, which is the tell that the
+# deficit is the window and not the physics. The bands still separate the three classes by a
+# wide margin: KPZ's ±0.04 admits [0.293, 0.373], which excludes EW's ¼ and RD's ½ outright.
+KPZ_BETA_TOL = 0.04
+EW_BETA_TOL = 0.03
+RD_BETA_TOL = 0.02
+KPZ_ALPHA_TOL = 0.05
+# Random deposition is graded against its exact CURVE, point by point — max relative
+# deviation of the measured w² from p(1−p)t. A pipeline with a broken width estimator or a
+# mis-scaled time axis fails here before any exponent is fitted.
+RD_EXACT_TOL = 0.05
+# The log-log roughening line is essentially perfect over ≥2 decades; a genuine power law
+# clears a high R². Guards against grading a slope off a curved or noisy line.
+M17_MIN_R2 = 0.99
+# M17 scaling-window rule — re-derived here (a receipt). Preferred from the report when it
+# stored them (so producer and grader can't silently drift), else these.
+M17_T_FIT_MIN = 20
+M17_W_FIT_MIN = 1.5
+# λ < 0 for the single-step model (v(u) = (p/2)(1−u²) ⇒ λ = ∂²v/∂u² = −p), so KPZ predicts
+# the MIRRORED Tracy–Widom law. These signed skewness targets are what a correct run matches;
+# a positive skewness would mean the growth direction or the map was inverted.
+TW_GUE_SKEW = -0.2241   # curved / droplet geometry
+TW_GOE_SKEW = -0.2935   # flat geometry
+# Skewness band. Third moments converge slowly (O(t^{-1/3}) corrections ≈ 0.15 at reachable
+# t) and carry a sampling error ≈ sqrt(6/N); ±0.06 admits that without admitting a Gaussian
+# (skew 0) or the wrong Tracy–Widom class.
+TW_SKEW_TOL = 0.06
 
 
 def _reports_newest_first() -> list[Path]:
@@ -1075,6 +1116,157 @@ def check_m16(report: dict) -> tuple[bool | None, str]:
     )
 
 
+def _refit_growth_exponent(times, width, t_fit_min: float, w_fit_min: float):
+    """Re-select M17's scaling window from the stored rule and re-fit ``log w`` vs ``log t``.
+
+    Stdlib-only twin of ``m17.fit_exponent`` — the check must arrive at the exponent from the
+    raw curve, never by reading the reported one. Returns ``(slope, r2, n, t_lo, t_hi)`` or
+    ``None`` when fewer than four points survive the window.
+    """
+    xs, ys = [], []
+    for t, w in zip(times or [], width or []):
+        if t is None or w is None:
+            continue
+        t, w = float(t), float(w)
+        if not (math.isfinite(t) and math.isfinite(w)) or w <= 0:
+            continue
+        if t >= t_fit_min and w >= w_fit_min:
+            xs.append(t); ys.append(w)
+    if len(xs) < 4:
+        return None
+    slope, r2, n = _loglog_slope_r2(xs, ys)
+    return slope, r2, n, min(xs), max(xs)
+
+
+def check_m17(report: dict) -> tuple[bool | None, str]:
+    """KPZ growth on a ring: β = 1/3, α = 1/2, z = 3/2 — and the controls must NOT agree.
+
+    Returns ``None`` unless this is an M17 report. Otherwise **re-derives** every graded
+    number from the report's own raw arrays and grades five things, all of which must hold:
+
+    1. **β = 1/3 for the KPZ model**, re-fit from ``growth.kpz.{times,width}`` with the stored
+       window rule, inside the check-owned ±0.04 band, on a clean power law (R² ≥ 0.99).
+    2. **The controls separate.** The *same* re-fit applied to the Edwards–Wilkinson and
+       random-deposition curves must land on *their* exact exponents (1/4 and 1/2) — this is
+       the negative control in the strict sense. A pipeline that manufactured 1/3 from any
+       curve would report 1/3 three times and fail here; three exponents landing on three
+       different exact values is what makes the KPZ number a measurement.
+    3. **Random deposition matches its closed form** ``w²(t) = p(1−p)t`` point by point, to
+       within ``RD_EXACT_TOL``. Re-computed here from the stored ``width_sq``, so it grades an
+       exact curve with nothing fitted — the strongest single anchor in the milestone.
+    4. **α = 1/2 from saturation**, re-fit from the stored ``(L, w_sat)`` table, giving
+       ``z = α/β`` near 3/2.
+    5. **Tracy–Widom class assignment.** The droplet sample's skewness must sit nearer the
+       (λ<0-mirrored) GUE value and the flat sample's nearer GOE, each within ``TW_SKEW_TOL``.
+       Grading the *assignment* — not merely "non-Gaussian" — is what makes the geometry
+       dependence falsifiable. The fourth moment is deliberately NOT graded: it does not
+       resolve at reachable ``t`` and the report says so.
+    """
+    if report.get("experiment") != "M17-kpz-growth":
+        return None, "not an M17 KPZ growth report"
+    growth = report.get("growth")
+    if not isinstance(growth, dict) or "kpz" not in growth:
+        return None, "M17 report missing the per-model growth curves"
+
+    t_fit_min = float(report.get("t_fit_min", M17_T_FIT_MIN))
+    w_fit_min = float(report.get("w_fit_min", M17_W_FIT_MIN))
+
+    fits = {}
+    for name in ("kpz", "ew", "rd"):
+        block = growth.get(name)
+        if not isinstance(block, dict):
+            return None, f"M17 report missing the {name} growth curve"
+        got = _refit_growth_exponent(block.get("times"), block.get("width"),
+                                     t_fit_min, w_fit_min)
+        if got is None:
+            return None, f"M17 {name} curve has <4 points inside the scaling window"
+        fits[name] = got
+
+    beta, beta_r2, beta_n, t_lo, t_hi = fits["kpz"]
+    ew_beta = fits["ew"][0]
+    rd_beta = fits["rd"][0]
+
+    # (1) the KPZ exponent, on a clean line spanning at least a decade
+    beta_near = abs(beta - KPZ_BETA) <= KPZ_BETA_TOL
+    clean = beta_r2 >= M17_MIN_R2
+    decade = t_hi / t_lo >= 10.0
+
+    # (2) the controls land on *their* exact exponents — the negative control
+    ew_ok = abs(ew_beta - EW_BETA) <= EW_BETA_TOL
+    rd_ok = abs(rd_beta - RD_BETA) <= RD_BETA_TOL
+    # …and the three are genuinely distinct, not three noisy copies of one slope.
+    separated = (abs(beta - ew_beta) > 0.04 and abs(rd_beta - beta) > 0.10)
+
+    # (3) random deposition against its closed form w² = p(1−p)t, recomputed here
+    rd_block = growth["rd"]
+    p = float(report.get("config", {}).get("p_flip", 0.5))
+    rd_dev, rd_pts = 0.0, 0
+    for t, w2 in zip(rd_block.get("times") or [], rd_block.get("width_sq") or []):
+        exact = p * (1.0 - p) * float(t)
+        if exact > 0:
+            rd_dev = max(rd_dev, abs(float(w2) - exact) / exact)
+            rd_pts += 1
+    rd_exact_ok = rd_pts >= 5 and rd_dev <= RD_EXACT_TOL
+
+    # (4) α from the saturation table, and z = α/β
+    sat = report.get("saturation")
+    alpha = None
+    if isinstance(sat, list) and len(sat) >= 3:
+        Ls = [float(s["L"]) for s in sat]
+        ws = [float(s["w_sat"]) for s in sat]
+        alpha = _loglog_slope_r2(Ls, ws)[0]
+    alpha_ok = alpha is not None and abs(alpha - KPZ_ALPHA) <= KPZ_ALPHA_TOL
+    z = (alpha / beta) if (alpha is not None and beta > 0) else None
+
+    # (5) Tracy–Widom class assignment from the skewness of each geometry
+    dists = report.get("distributions") or {}
+    targets = {"droplet": TW_GUE_SKEW, "flat": TW_GOE_SKEW}
+    tw_ok, tw_bits = True, []
+    for ic, target in targets.items():
+        s = (dists.get(ic) or {}).get("skewness")
+        if s is None:
+            tw_ok = False
+            tw_bits.append(f"{ic}: missing")
+            continue
+        s = float(s)
+        other = targets["flat"] if ic == "droplet" else targets["droplet"]
+        nearer_own = abs(s - target) < abs(s - other)
+        within = abs(s - target) <= TW_SKEW_TOL
+        tw_ok = tw_ok and nearer_own and within
+        tw_bits.append(
+            f"{ic} skew {s:+.4f} vs {'GUE' if ic == 'droplet' else 'GOE'} {target:+.4f}"
+            f" (Δ={abs(s - target):.4f}{'' if nearer_own else ', WRONG CLASS'})"
+        )
+
+    ok = bool(beta_near and clean and decade and ew_ok and rd_ok and separated
+              and rd_exact_ok and alpha_ok and tw_ok)
+
+    if ok:
+        why = ("three growth classes separate on one pipeline and the KPZ exponents, "
+               "saturation and Tracy–Widom class assignment all reproduce")
+    elif not (beta_near and clean and decade):
+        why = ("the KPZ growth exponent is off 1/3, the log-log line is not clean, or the "
+               "fit window spans under a decade")
+    elif not (ew_ok and rd_ok and separated and rd_exact_ok):
+        why = ("a CONTROL failed: the EW/RD exponents did not land on their own exact values, "
+               "the three classes did not separate, or random deposition drifted off its "
+               "exact w²=p(1−p)t curve — the exponent pipeline is not trustworthy")
+    elif not alpha_ok:
+        why = "the roughness exponent α from saturation is off the exact 1/2"
+    else:
+        why = ("the height-fluctuation skewness did not land on the λ<0-mirrored Tracy–Widom "
+               "law its geometry predicts")
+
+    detail = (
+        f"β = {beta:.4f} vs KPZ 1/3 (tol ±{KPZ_BETA_TOL}, R²={beta_r2:.4f}, {beta_n} pts, "
+        f"t∈[{t_lo:.0f},{t_hi:.0f}]); controls on the same pipeline: EW β={ew_beta:.4f} vs 1/4, "
+        f"RD β={rd_beta:.4f} vs 1/2 and w² within {100 * rd_dev:.1f}% of the exact p(1−p)t; "
+        f"α={alpha:.4f} vs 1/2" + (f", z=α/β={z:.3f} vs 3/2" if z else "") + "; "
+        + "; ".join(tw_bits) + " — " + why
+    )
+    return ok, detail
+
+
 def _fib_segment(n_terms: int) -> str:
     a, b = 0, 1
     lines = []
@@ -1242,7 +1434,7 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
           "M10": check_m10, "M11": check_m11, "M12": check_m12,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
-          "M16": check_m16, "C01": check_c01, "A01": check_a01,
+          "M16": check_m16, "M17": check_m17, "C01": check_c01, "A01": check_a01,
           "I01": check_i01, "CTRL": check_controls}
 
 

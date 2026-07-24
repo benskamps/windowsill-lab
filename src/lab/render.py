@@ -3199,7 +3199,46 @@ CALIBRATION_HTML_TEMPLATE = """<!doctype html>
 
 def _plot_calibration(report: dict) -> str:
     exp = str(report.get("experiment", ""))
-    if exp.startswith("M16"):
+    if exp.startswith("M17"):
+        # Left: the three growth classes on one log-log axis — the separation IS the control.
+        # Right: the saturated width vs ring size, whose slope is the roughness exponent α.
+        fig, axes = plt.subplots(1, 2, figsize=(9.4, 3.9))
+        colors = {"kpz": "#7a5c3e", "ew": "#667c86", "rd": "#7d8f68"}
+        labels = {"kpz": "KPZ (single-step)  β=1/3",
+                  "ew": "Edwards–Wilkinson  β=1/4",
+                  "rd": "random deposition  β=1/2"}
+        for name, block in (report.get("growth") or {}).items():
+            t = np.asarray(block.get("times", []), dtype=float)
+            w = np.asarray(block.get("width", []), dtype=float)
+            if t.size == 0:
+                continue
+            fit = block.get("fit") or {}
+            measured = fit.get("exponent")
+            lab = labels.get(name, name)
+            if measured is not None:
+                lab += f"  (measured {measured:.3f})"
+            axes[0].plot(t, w, "o-", ms=3, lw=1.1, color=colors.get(name, "#8d8175"), label=lab)
+        axes[0].set_xscale("log"); axes[0].set_yscale("log")
+        axes[0].set_xlabel("Monte-Carlo time  t  (sweeps)")
+        axes[0].set_ylabel("interface width  w(t)")
+        axes[0].set_title("three classes, one pipeline")
+        axes[0].legend(frameon=False, fontsize=7)
+        sat = report.get("saturation") or []
+        if sat:
+            Ls = np.asarray([s["L"] for s in sat], dtype=float)
+            ws = np.asarray([s["w_sat"] for s in sat], dtype=float)
+            axes[1].plot(Ls, ws, "o", ms=5, color="#7a5c3e")
+            a = report.get("alpha")
+            if a:
+                ref = ws[0] * (Ls / Ls[0]) ** a
+                axes[1].plot(Ls, ref, "-", lw=1.0, color="#b88963",
+                             label=f"slope α = {a:.3f}  (exact ½)")
+                axes[1].legend(frameon=False, fontsize=8)
+            axes[1].set_xscale("log"); axes[1].set_yscale("log")
+        axes[1].set_xlabel("ring size  L")
+        axes[1].set_ylabel("saturated width  w_sat")
+        axes[1].set_title("roughness exponent")
+    elif exp.startswith("M16"):
         fig, axes = plt.subplots(1, 2, figsize=(9, 3.8))
         tws = [int(x) for x in report["waiting_times"]]
         dts = np.asarray(report["delta_times"], dtype=float)
