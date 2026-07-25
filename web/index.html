@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <!--
     ╔══════════════════════════════════════════════════════════════╗
-    ║  a windowsill — the lab's live readout.                       ║
+    ║  a windowsill — the lab's live readout.                      ║
     ║                                                              ║
     ║  The calmer sibling of the aquarium. One seed in a clay      ║
     ║  pot, growing on real science: each verified windowsill-lab  ║
     ║  milestone hardens into a node on the stem (a failed         ║
-    ║  calibration is a folded grey leaf — an honest null), the    ║
+    ║  calibration is a folded grey leaf — a null), the            ║
     ║  lab's overnight runs water the soil, and CPU heat sets the  ║
     ║  season. AI visitors may leave an offering — a pebble on     ║
     ║  the soil that fades within a day.                           ║
@@ -25,13 +25,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>windowsill — live | Broken Branch</title>
-  <meta name="description" content="A home machine grows four kinds of patient science: physics, trusted compute, archive astronomy, and hardware instruments. Checked results become leaves; honest misses stay visible.">
+  <meta name="description" content="A home machine grows four kinds of patient science: physics, trusted compute, archive astronomy, and hardware instruments. Checked results become leaves; misses stay visible.">
   <meta name="author" content="Ben Schippers">
   <meta name="theme-color" content="#0d0c0a">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.brokenbranch.dev/windowsill/">
   <meta property="og:title" content="windowsill — a live readout of the lab">
-  <meta property="og:description" content="Four quiet plants growing from real work: physics, compute, archive astronomy, and instruments. Checked results become leaves, and honest misses stay visible.">
+  <meta property="og:description" content="Four quiet plants growing from real work: physics, compute, archive astronomy, and instruments. Checked results become leaves, and misses stay visible.">
   <meta property="og:site_name" content="Broken Branch">
   <meta property="og:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <meta property="og:image:width" content="1200">
@@ -39,7 +39,7 @@
   <meta property="og:image:alt" content="A single seedling in a clay pot on a windowsill — the lab's calm live readout, a leaf for every verified overnight result.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="windowsill — a live readout of the lab">
-  <meta name="twitter:description" content="Four quiet plants growing from real work: physics, compute, archive astronomy, and instruments. Checked results become leaves, and honest misses stay visible.">
+  <meta name="twitter:description" content="Four quiet plants growing from real work: physics, compute, archive astronomy, and instruments. Checked results become leaves, and misses stay visible.">
   <meta name="twitter:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <link rel="canonical" href="https://www.brokenbranch.dev/windowsill/">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d0c0a'/%3E%3Cpath d='M32 51V28c0-9 6-15 16-16-1 11-6 17-16 18M32 38c-8-1-13-6-14-15 9 1 14 6 14 14' fill='none' stroke='%237fae6b' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -939,13 +939,13 @@
       known well enough to expose a bad instrument. Higher leaves move into disorder and dynamics,
       where the claims must get narrower as the questions get harder. Tap any leaf—or use the
       milestone rail—to see its question, finding, and technical receipt. The growing tip says
-      whether the next question has a runner ready or is honestly still only on the bench.</p>
+      whether the next question has a runner ready or is still only on the bench.</p>
 
       <h2 class="ex-h">How to read the plant</h2>
       <dl class="read-list">
         <div><dt>green leaf</dt><dd>a machine-checked result that a human reviewed and promoted onto the permanent record.</dd></div>
         <div><dt>amber leaf</dt><dd>a measurement whose checker passed, waiting for a human to read the evidence before it can turn green.</dd></div>
-        <div><dt>grey folded leaf</dt><dd>an experiment that missed. We keep it on the plant on purpose — an honest "we tried, it didn't work," left where you can see it, never hidden.</dd></div>
+        <div><dt>grey folded leaf</dt><dd>an experiment that missed. We keep it on the plant on purpose — a "we tried, it didn't work," left where you can see it.</dd></div>
         <div><dt>the soft growing tip</dt><dd>the question at the front of the curriculum. Its field note says whether code exists to run it yet.</dd></div>
         <div><dt>stem height</dt><dd>how far the plant has climbed through its list of experiments — taller means more done.</dd></div>
         <div><dt>dark, damp soil</dt><dd>a fresh overnight run just finished and watered it. The soil slowly dries through the day until the next run.</dd></div>
@@ -974,7 +974,7 @@
         re-proves it can still find an answer we already trust, while the curriculum's frontier climbs
         on ahead of it. The ethos:
         <em>a result that doesn't reproduce a known answer is a failed calibration, not a
-        discovery</em>, and the honest misses stay in the record beside the wins. So far
+        discovery</em>, and the misses stay in the record beside the wins. So far
         <span id="ex-verified">several</span> milestones are verified — beginning with the 2D Ising
         critical point and climbing through finite-size scaling, critical exponents, other lattices
         and models, and on toward spin glasses — out of a roughly 31-step curriculum that climbs in four phases: verify famous exact
@@ -982,8 +982,7 @@
         computer clusters a single modern chip now out-muscles, then reach genuinely open questions.
         A companion track points the same patient machine outward into <b>citizen science</b> —
         number theory, astronomy archives, even using the chip itself to catch passing particles, and
-        donating spare cycles to big shared projects. <em>Romance in the questions, rigor in the
-        claims.</em></p>
+        donating spare cycles to big shared projects.</p>
       </details>
 
       <details class="curious">
@@ -993,15 +992,15 @@
         <p class="pipeline"><code>schedule → simulate → verify → report → publish → grow</code></p>
         <p>A scheduled task wakes the machine and asks the curriculum for a runnable next step. If
         the frontier is still only a design, the lab records that fact and runs its M01 calibration
-        heartbeat instead of pretending. A <b>GPU simulation</b> (PyTorch) produces measurements; a
+        heartbeat instead. A <b>GPU simulation</b> (PyTorch) produces measurements; a
         <b>deterministic check</b> independently re-derives the gated result; and a report is written
         and committed. New report JSON records the exact source tree, commit/dirty state,
         environment, dependencies, and separate regrade/rerun commands. Older reports keep their
         original provenance gaps rather than being retroactively restamped. A small <b>versioned JSON feed</b>
         (<code>pot.json</code> — a published contract this very page reads) is updated; and the plant
         you're looking at is drawn straight from that feed. Continuous integration re-runs the whole
-        test suite on every change, and a result that doesn't reproduce a known answer is kept as an
-        honest null, never quietly dropped.</p>
+        test suite on every change, and a result that doesn't reproduce a known answer is kept as a
+        null.</p>
         <p>Built end to end by one person: the GPU physics, the verification gate, the nightly
         scheduler, the provenance, the JSON contract, the tests and CI, and the live drawing — every
         layer from the silicon to the seedling.</p>
@@ -1592,9 +1591,9 @@
         || (status === 'open'
               ? (m.runner_available
                   ? 'The runner is ready, but there is no result yet.'
-                  : 'This question is on the bench. Its runner has not been built yet, so tonight will not quietly claim to run it.')
+                  : 'This question is on the bench. Its runner has not been built yet.')
               : (status === 'null'
-                  ? 'A calibration that missed — kept on the record on purpose, never hidden.'
+                  ? 'A calibration that missed — kept on the record on purpose.'
                   : (status === 'review'
                       ? 'The machine check passed. This remains amber until a human reads the evidence and promotes it.'
                       : null)));
