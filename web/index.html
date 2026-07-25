@@ -856,7 +856,7 @@
         <span class="section-kicker">The measurement</span>
         <h2 id="instrument-panel-title">Look through the instrument</h2>
         <p>The plant is the calm face. This is what the machine actually measured — read straight from
-        <a id="ip-source-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">last night's run</a>,
+        <a id="ip-source-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">the latest committed run</a>,
         the same seed-42 report the plant grows from. Nothing here is redrawn by hand.</p>
       </div>
 
@@ -868,7 +868,7 @@
         </figure>
         <figure class="lattice-fig">
           <canvas class="lattice" id="lat-crit" width="128" height="128" role="img"
-                  aria-label="Spin lattice near the critical temperature — domains at every scale"></canvas>
+                  aria-label="Spin lattice at the sweep temperature nearest the critical point"></canvas>
           <figcaption><span class="lf-t" id="lf-crit-t">T = —</span><span class="lf-say">near the tipping point</span></figcaption>
         </figure>
         <figure class="lattice-fig">
@@ -920,7 +920,7 @@
       <div class="section-intro">
         <span class="section-kicker">The conservatory</span>
         <h2 id="garden-title">Four instruments. One standard of proof.</h2>
-        <p>Growth is proportional to work completed. Amber waits for review; grey keeps the boundary visible.</p>
+        <p>Height tracks how far each track has climbed. Amber waits for review; grey keeps the boundary visible.</p>
       </div>
       <ul class="garden-row" id="garden-row"></ul>
     </section>
@@ -949,7 +949,7 @@
         <div><dt>the soft growing tip</dt><dd>the question at the front of the curriculum. Its field note says whether code exists to run it yet.</dd></div>
         <div><dt>stem height</dt><dd>how far the plant has climbed through its list of experiments — taller means more done.</dd></div>
         <div><dt>dark, damp soil</dt><dd>a fresh overnight run just finished and watered it. The soil slowly dries through the day until the next run.</dd></div>
-        <div><dt>the season</dt><dd>how hard the computer is working: hard work heats it up, and that heat sets the season — cool and quiet reads as winter, busy and warm as summer.</dd></div>
+        <div><dt>the season</dt><dd>how hard the computer is working: hard work heats it up, and that heat sets the season — cool and quiet reads as winter, busy and warm as summer. It shows spring when a run doesn't report a temperature.</dd></div>
         <div><dt>the sky &amp; light</dt><dd>your own time of day, in real time — dawn, noon, dusk, night. The plant keeps the same hours you do, wherever you are.</dd></div>
         <div><dt>a pebble on the soil</dt><dd>a short note someone left. Anyone — human or AI — can leave one (<code>POST</code> a short string to <code>/api/offer</code>); it rests on the soil and quietly fades within a day.</dd></div>
       </dl>
@@ -957,7 +957,7 @@
       <h2 class="ex-h">Why do this?</h2>
       <p>A home computer has something a busy university supercomputer doesn't: slow, patient time,
       and no line of people waiting on it. So it takes the unglamorous jobs nobody's in a hurry to
-      run — one small experiment a night, every night, filling a real notebook over months. First it
+      run — one small experiment a night, most nights, filling a real notebook over months. First it
       re-checks answers we already know, to earn its trust; once it's proven steady, it can wander
       toward corners of science nobody has gotten around to mapping yet.</p>
 
@@ -970,7 +970,7 @@
         be trusted by re-finding that number on its own. Each night it sweeps across temperatures and
         watches for the moment the magnets line up, where a measurement called the <b>magnetic
         susceptibility</b> spikes. Last run it landed near <code>2.30 ± 0.05</code> — a clean match —
-        in 11–30 seconds on the GPU (the graphics chip that also runs video games). That nightly re-check is the lab's <b>heartbeat</b> — every night it
+        in well under a minute on the GPU (the graphics chip that also runs video games). That nightly re-check is the lab's <b>heartbeat</b> — most nights it
         re-proves it can still find an answer we already trust, while the curriculum's frontier climbs
         on ahead of it. The ethos:
         <em>a result that doesn't reproduce a known answer is a failed calibration, not a
@@ -988,7 +988,7 @@
       <details class="curious">
         <summary>How the machine works — the engineering under the calm</summary>
         <p>The calm surface is the last mile of a real instrument. Underneath, one automated
-        pipeline runs itself every night:</p>
+        pipeline runs itself on a nightly schedule:</p>
         <p class="pipeline"><code>schedule → simulate → verify → report → publish → grow</code></p>
         <p>A scheduled task wakes the machine and asks the curriculum for a runnable next step. If
         the frontier is still only a design, the lab records that fact and runs its M01 calibration
@@ -1001,7 +1001,7 @@
         you're looking at is drawn straight from that feed. Continuous integration re-runs the whole
         test suite on every change, and a result that doesn't reproduce a known answer is kept as a
         null.</p>
-        <p>Built end to end by one person: the GPU physics, the verification gate, the nightly
+        <p>Built by one person and a fleet of agents: the GPU physics, the verification gate, the nightly
         scheduler, the provenance, the JSON contract, the tests and CI, and the live drawing — every
         layer from the silicon to the seedling.</p>
       </details>
@@ -2250,7 +2250,7 @@
     var snapshotLink = $('record-snapshot');
     if (snapshotLink && feedUrl) snapshotLink.href = feedUrl;
 
-    // Try the live feed. Failure leaves a beautiful but explicitly local seed;
+    // Try the live feed. Failure leaves an explicitly local seed;
     // it never resurrects stale scientific claims as a decorative fallback.
     fetch(feedUrl, { cache: 'no-store' })
       .then(function (r) {
@@ -2452,7 +2452,7 @@
       if (cfg.device) bits.push(cfg.device.toUpperCase());
       if (m.wall_seconds) bits.push(Math.round(m.wall_seconds) + 's');
       if (prov.code_sha) bits.push('commit ' + prov.code_sha);
-      setText('instrument-prov', bits.join('  ·  ') + '  ·  every number above is read straight from the committed report — diff it yourself.');
+      setText('instrument-prov', bits.join('  ·  ') + '  ·  the measured points above are read straight from the committed report — diff it yourself.');
       if (m.generated_from || feed.generated_from) {
         var link = document.getElementById('ip-source-link');
         if (link) link.href = 'https://github.com/benskamps/windowsill-lab/blob/main/' + (feed.generated_from || m.source_report);
