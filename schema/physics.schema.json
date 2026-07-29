@@ -1,0 +1,50 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://www.brokenbranch.dev/windowsill/physics.schema.json",
+  "title": "windowsill physics-latest.json",
+  "description": "Compact, plottable M01 receipt. Schema v2 distinguishes the raw susceptibility argmax from the equilibrium-qualified scientific claim.",
+  "type": "object",
+  "required": ["schema", "onsager_tc", "source", "generated_from", "m01"],
+  "properties": {
+    "schema": { "type": "integer", "enum": [2] },
+    "onsager_tc": { "type": "number" },
+    "source": { "type": "string" },
+    "generated_from": { "type": "string" },
+    "provenance": { "type": "object" },
+    "m01": {
+      "type": "object",
+      "required": [
+        "source_report",
+        "T",
+        "chi",
+        "chi_peak_t",
+        "raw_chi_peak_t",
+        "quality_status",
+        "quality_note",
+        "excluded_indices",
+        "valid_indices"
+      ],
+      "properties": {
+        "source_report": { "type": "string" },
+        "date": { "type": ["string", "null"] },
+        "config": { "type": "object" },
+        "wall_seconds": { "type": ["number", "null"] },
+        "T": { "type": "array", "items": { "type": "number" } },
+        "chi": { "type": "array", "items": { "type": "number" } },
+        "chi_peak_t": { "type": ["number", "null"] },
+        "raw_chi_peak_t": { "type": "number" },
+        "quality_status": { "type": "string", "enum": ["ok", "degraded", "invalid"] },
+        "quality_note": { "type": "string" },
+        "excluded_indices": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+        "valid_indices": { "type": "array", "items": { "type": "integer", "minimum": 0 } },
+        "abs_mag": { "type": "array", "items": { "type": "number" } },
+        "abs_mag_err": { "type": "array", "items": { "type": "number" } },
+        "chi_abs": { "type": "array", "items": { "type": "number" } },
+        "energy": { "type": "array", "items": { "type": "number" } },
+        "specific_heat": { "type": "array", "items": { "type": "number" } },
+        "snapshots": { "type": "object" },
+        "snapshot_L": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

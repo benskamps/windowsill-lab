@@ -6,11 +6,12 @@ exact 1944 curve, and — the iconic image — the 128×128 spin lattice ordered
 near-critical, and disordered, all sit unplotted inside a 600 KB report JSON.
 
 This module distills the newest M01 heartbeat report into a tiny (~8 KB) feed
-the page can fetch and render: the six measured arrays, the located χ-peak, and
-the three lattice snapshots bit-packed to base64 (each 128×128 ±1 lattice → one
-bit per site → 2 KB → base64). Nothing is fabricated — every number is copied
-straight from a provenance-stamped run and the source report is named in the
-feed so a reader can diff it against the raw JSON.
+the page can fetch and render: the six measured arrays, both the raw and
+equilibrium-qualified χ peaks, disclosed quality exclusions, and the three
+lattice snapshots bit-packed to base64 (each 128×128 ±1 lattice → one bit per
+site → 2 KB → base64). Nothing is fabricated — measurements are copied from a
+provenance-stamped run, while the quality decision is re-derived by the same
+shared guard as the checker. The source report is named so a reader can diff it.
 
 Kept standard-library-only (no torch, no matplotlib) so it stays cheap and the
 pure builder is unit-tested without the scientific stack. Written by ``publish``
@@ -19,9 +20,12 @@ on every run, so the nightly keeps the physics face as fresh as the plant.
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import math
 from pathlib import Path
+
+from .m01_quality import assess_m01_quality
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTS_DIR = REPO_ROOT / "reports"
@@ -29,12 +33,13 @@ LAB_HOME = Path.home() / ".lab"
 PHYSICS_JSON = REPO_ROOT / "physics-latest.json"   # committed feed the page reads
 
 # Bump when the feed contract changes in a way the page must adapt to.
-PHYSICS_SCHEMA = 1
+PHYSICS_SCHEMA = 2
 
 # Onsager's exact 2D Ising critical temperature (1944) — the calibration target.
 ONSAGER_TC = 2.0 / math.log(1.0 + math.sqrt(2.0))   # ≈ 2.269185
 
 _DATE_GLOB = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+_M01_EXPERIMENT = "M01-ising-verification"
 
 # The measured arrays we lift verbatim (name in report → name in feed). Each is
 # a per-temperature list parallel to ``T``; a missing one is simply omitted.
@@ -42,18 +47,68 @@ _CURVES = ("abs_mag", "abs_mag_err", "chi", "chi_abs", "energy", "specific_heat"
 
 
 def _date_of(path: Path) -> str:
-    return path.stem[:10]
+    stem = path.stem
+    return stem[4:14] if stem.startswith("run-") else stem[:10]
 
 
-def _is_snapshot_report(data: dict) -> bool:
-    """True for an M01-shape report carrying lattice snapshots + a χ-sweep."""
+def _is_m01_report(data: dict) -> bool:
+    """True for an M01 χ-sweep, including legacy reports without an identity."""
     return (
-        isinstance(data.get("snapshots"), dict)
+        ("experiment" not in data or data.get("experiment") == _M01_EXPERIMENT)
         and isinstance(data.get("T"), list)
         and isinstance(data.get("chi"), list)
         and len(data["T"]) == len(data["chi"])
         and len(data["T"]) > 1
     )
+
+
+def _is_snapshot_report(data: dict) -> bool:
+    """True for an M01 report that also carries full lattice snapshots."""
+    return _is_m01_report(data) and isinstance(data.get("snapshots"), dict)
+
+
+def _source_rel(path: Path, reports_dir: Path) -> str:
+    try:
+        within_reports = path.relative_to(reports_dir)
+    except ValueError:
+        return path.name
+    return (Path("reports") / within_reports).as_posix()
+
+
+def _newest_m01_report(reports_dir: Path = REPORTS_DIR,
+                       lab_home: Path = LAB_HOME) -> tuple[dict, str] | None:
+    """Newest M01 sweep from full local reports or durable public receipts."""
+    paths: list[tuple[Path, Path]] = []
+    for directory in (reports_dir, lab_home):
+        if directory.exists():
+            paths.extend((path, directory) for path in directory.glob(f"{_DATE_GLOB}*.json"))
+    receipts_dir = reports_dir / "receipts"
+    if receipts_dir.exists():
+        paths.extend(
+            (path, reports_dir)
+            for path in receipts_dir.glob(f"run-{_DATE_GLOB}*.json")
+        )
+
+    best: tuple[float, str, dict, Path, Path] | None = None
+    for path, source_root in paths:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if not _is_m01_report(data):
+            continue
+        key = (path.stat().st_mtime, _date_of(path))
+        if best is None or key > (best[0], best[1]):
+            best = (key[0], key[1], data, path, source_root)
+    if best is None:
+        return None
+    _, _, data, path, source_root = best
+    source_rel = (
+        _source_rel(path, reports_dir)
+        if source_root == reports_dir
+        else path.name
+    )
+    return data, source_rel
 
 
 def _newest_snapshot_report(reports_dir: Path = REPORTS_DIR,
@@ -86,6 +141,108 @@ def _newest_snapshot_report(reports_dir: Path = REPORTS_DIR,
     return data, rel
 
 
+def _snapshot_digest(snapshots: dict) -> str:
+    canonical = json.dumps(
+        snapshots, sort_keys=True, separators=(",", ":"), ensure_ascii=False,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _attested_snapshot_digest(report: dict) -> str | None:
+    receipt = report.get("public_receipt")
+    if not isinstance(receipt, dict):
+        return None
+    omitted = receipt.get("omitted")
+    if not isinstance(omitted, list):
+        return None
+    for item in omitted:
+        if (
+            isinstance(item, dict)
+            and item.get("path") == "snapshots"
+            and isinstance(item.get("sha256"), str)
+        ):
+            return item["sha256"]
+    return None
+
+
+def _attested_raw_snapshots(report: dict, source_rel: str,
+                            reports_dir: Path, lab_home: Path) -> dict | None:
+    """Load receipt-omitted snapshots only when their recorded digest matches."""
+    expected = _attested_snapshot_digest(report)
+    source_name = Path(source_rel).name
+    if expected is None or not source_name.startswith("run-"):
+        return None
+    raw_name = source_name[4:]
+    for directory in (reports_dir, lab_home):
+        path = directory / raw_name
+        try:
+            candidate = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        snapshots = candidate.get("snapshots")
+        if (
+            _is_snapshot_report(candidate)
+            and isinstance(snapshots, dict)
+            and _snapshot_digest(snapshots) == expected
+        ):
+            return snapshots
+    return None
+
+
+def _unpack_snapshots(packed: dict, lattice_L: int) -> dict | None:
+    """Reconstruct the canonical raw snapshot object for receipt verification."""
+    if lattice_L < 1:
+        return None
+    raw_snapshots: dict[str, list[list[int]]] = {}
+    n_sites = lattice_L * lattice_L
+    expected_bytes = (n_sites + 7) // 8
+    padding_bits = expected_bytes * 8 - n_sites
+    for key, encoded in packed.items():
+        if not isinstance(encoded, str):
+            return None
+        try:
+            temp = float(key)
+            blob = base64.b64decode(encoded, validate=True)
+        except (TypeError, ValueError):
+            return None
+        if len(blob) != expected_bytes:
+            return None
+        if padding_bits and blob[-1] & ((1 << padding_bits) - 1):
+            return None
+        spins = [
+            1 if blob[i // 8] & (1 << (7 - (i % 8))) else -1
+            for i in range(n_sites)
+        ]
+        raw_snapshots[f"T={temp:.3f}"] = [
+            spins[start:start + lattice_L]
+            for start in range(0, n_sites, lattice_L)
+        ]
+    return raw_snapshots
+
+
+def _attested_packed_snapshots(report: dict,
+                               previous_feed: dict | None) -> tuple[dict, int] | None:
+    """Reuse an existing compact lattice only when the receipt attests it."""
+    expected = _attested_snapshot_digest(report)
+    if expected is None or not isinstance(previous_feed, dict):
+        return None
+    previous_m01 = previous_feed.get("m01")
+    if not isinstance(previous_m01, dict):
+        return None
+    packed = previous_m01.get("snapshots")
+    lattice_L = previous_m01.get("snapshot_L")
+    if (
+        not isinstance(packed, dict)
+        or not isinstance(lattice_L, int)
+        or isinstance(lattice_L, bool)
+    ):
+        return None
+    reconstructed = _unpack_snapshots(packed, lattice_L)
+    if reconstructed is None or _snapshot_digest(reconstructed) != expected:
+        return None
+    return packed, lattice_L
+
+
 def pack_lattice(rows: list[list[int]]) -> str:
     """Bit-pack a square ±1 spin lattice (row-major) to base64.
 
@@ -109,21 +266,20 @@ def pack_lattice(rows: list[list[int]]) -> str:
     return base64.b64encode(bytes(bits)).decode("ascii")
 
 
-def _peak_t(T: list, chi: list) -> float:
-    return round(T[max(range(len(chi)), key=lambda i: chi[i])], 4)
-
-
 def build_feed(reports_dir: Path = REPORTS_DIR,
                lab_home: Path = LAB_HOME,
-               provenance: dict | None = None) -> dict | None:
-    """Assemble the physics feed dict from the newest snapshot report.
+               provenance: dict | None = None,
+               previous_feed: dict | None = None) -> dict | None:
+    """Assemble the physics feed dict from the newest M01 report or receipt.
 
     ``provenance`` (e.g. ``publish.provenance()``) rides along verbatim so the
-    feed records the exact code that produced the run. Returns ``None`` when
-    there is no snapshot report yet (the caller then writes nothing and the page
-    simply omits its physics section).
+    feed records the exact code that produced the run. When omitted, provenance
+    recorded by the selected report is preserved. A public receipt may reuse
+    packed snapshots from ``previous_feed``, but only when its omission digest
+    attests the reconstructed lattice exactly. Returns ``None`` when no M01
+    sweep exists.
     """
-    found = _newest_snapshot_report(reports_dir, lab_home)
+    found = _newest_m01_report(reports_dir, lab_home)
     if found is None:
         return None
     rep, source_rel = found
@@ -131,10 +287,13 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
     T = [round(float(t), 4) for t in rep["T"]]
     chi = [float(c) for c in rep["chi"]]
     cfg = rep.get("config", {}) or {}
+    quality = assess_m01_quality(rep)
+    peak_t = quality["peak_t"]
+    raw_peak_t = T[max(range(len(chi)), key=lambda i: chi[i])]
 
     m01: dict = {
         "source_report": source_rel,
-        "date": rep.get("_date") or Path(source_rel).name[:10],
+        "date": rep.get("_date") or _date_of(Path(source_rel)),
         "config": {
             k: cfg.get(k)
             for k in ("L", "seed", "device", "n_sweeps", "n_burnin", "n_temps")
@@ -142,7 +301,12 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
         },
         "wall_seconds": rep.get("wall_seconds"),
         "T": T,
-        "chi_peak_t": _peak_t(T, chi),
+        "chi_peak_t": round(peak_t, 4) if peak_t is not None else None,
+        "raw_chi_peak_t": round(raw_peak_t, 4),
+        "quality_status": quality["status"],
+        "quality_note": quality["note"],
+        "excluded_indices": quality["excluded_indices"],
+        "valid_indices": quality["valid_indices"],
     }
     for name in _CURVES:
         arr = rep.get(name)
@@ -150,7 +314,11 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
             m01[name] = [float(x) for x in arr]
 
     # Lattice snapshots: report keys look like "T=1.500" → feed keys "1.5".
-    snaps = rep.get("snapshots") or {}
+    # Receipts omit this heavy field, so recover the matching local source or an
+    # already-packed feed only after verifying the receipt's SHA-256 attestation.
+    snaps = rep.get("snapshots") or _attested_raw_snapshots(
+        rep, source_rel, reports_dir, lab_home,
+    ) or {}
     packed: dict[str, str] = {}
     lattice_L = None
     for key, rows in snaps.items():
@@ -165,13 +333,19 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
     if packed:
         m01["snapshots"] = packed
         m01["snapshot_L"] = lattice_L
+    else:
+        retained = _attested_packed_snapshots(rep, previous_feed)
+        if retained is not None:
+            m01["snapshots"], m01["snapshot_L"] = retained
 
     return {
         "schema": PHYSICS_SCHEMA,
         "onsager_tc": round(ONSAGER_TC, 6),
         "source": "windowsill-lab",
         "generated_from": source_rel,
-        "provenance": provenance or {},
+        "provenance": (
+            provenance if provenance is not None else (rep.get("provenance") or {})
+        ),
         "m01": m01,
     }
 
@@ -179,13 +353,19 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
 def build_physics_feed(out_path: Path = PHYSICS_JSON,
                        reports_dir: Path = REPORTS_DIR,
                        lab_home: Path = LAB_HOME,
-                       provenance: dict | None = None) -> Path | None:
+                       provenance: dict | None = None,
+                       previous_feed: dict | None = None) -> Path | None:
     """Write ``physics-latest.json``; return its path (or ``None`` if no data).
 
     Best-effort by contract: the caller (``publish``) wraps it so a missing
     report or a write error never breaks the run.
     """
-    feed = build_feed(reports_dir, lab_home, provenance)
+    if previous_feed is None:
+        try:
+            previous_feed = json.loads(out_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            previous_feed = None
+    feed = build_feed(reports_dir, lab_home, provenance, previous_feed)
     if feed is None:
         return None
     out_path.write_text(json.dumps(feed, indent=2) + "\n", encoding="utf-8")

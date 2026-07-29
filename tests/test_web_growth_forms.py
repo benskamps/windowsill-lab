@@ -84,6 +84,19 @@ def test_review_pending_runs_are_not_painted_as_promoted():
     assert "ARC_GLYPH = { verified:'●', review:'◆'" in html
 
 
+def test_field_notes_and_rail_fail_closed_for_unknown_milestone_status():
+    html = PAGE.read_text(encoding="utf-8")
+    assert "function milestoneStatusOrPending(status)" in html
+    assert (
+        "return /^(verified|review|null|open|pending)$/.test(status) "
+        "? status : 'pending';"
+    ) in html
+    assert "var status = milestoneStatusOrPending(m.status);" in html
+    assert "var allowed = milestoneStatusOrPending(m.status);" in html
+    assert "pending: 'ahead · unscored'" in html
+    assert "m.status || 'verified'" not in html
+
+
 def test_host_only_walk_does_not_404_in_local_file_mode():
     html = PAGE.read_text(encoding="utf-8")
     assert '<script defer src="/walk/walk.js"></script>' not in html
@@ -91,9 +104,9 @@ def test_host_only_walk_does_not_404_in_local_file_mode():
 
 
 def test_conservatory_is_feed_driven_and_opens_real_field_notes():
-    """The four specimens must report the feed, not repeat decorative sample plants."""
+    """Every specimen must report the feed, not repeat decorative sample plants."""
     html = PAGE.read_text(encoding="utf-8")
-    assert "Four instruments. One standard of proof." in html
+    assert "Five instruments. One standard of proof." in html
     assert "function drawGarden(milestones, reports)" in html
     assert "count:closed.length, total:total" in html
     assert "reportForMilestone(reports, latest && latest.id)" in html

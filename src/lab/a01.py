@@ -14,6 +14,7 @@ import json
 import math
 import re
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from dataclasses import dataclass
@@ -28,18 +29,92 @@ MAST_INVOKE = "https://mast.stsci.edu/api/v0/invoke"
 MAST_DOWNLOAD = "https://mast.stsci.edu/api/v0.1/Download/file?uri="
 NASA_TAP = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
 CACHE_DIR = Path.home() / ".lab" / "cache" / "a01"
+DEFAULT_DEADLINE_SECONDS = 10 * 60
+DEFAULT_REQUEST_RETRIES = 2
 
 
-def _request(url: str, *, data: bytes | None = None, timeout: int = 90) -> bytes:
+class A01Error(RuntimeError):
+    """Base class for actionable A01 acquisition failures."""
+
+
+class A01NetworkError(A01Error):
+    """An archive request failed after the bounded retry budget."""
+
+
+class A01DeadlineExceeded(A01Error, TimeoutError):
+    """The end-to-end A01 wall-clock budget was exhausted."""
+
+
+def _time_left(deadline: float | None, phase: str) -> float | None:
+    if deadline is None:
+        return None
+    remaining = deadline - time.monotonic()
+    if remaining <= 0:
+        raise A01DeadlineExceeded(
+            f"A01 deadline exceeded during {phase}; try fewer sectors or use the FITS cache"
+        )
+    return remaining
+
+
+def _emit_phase(callback, phase: str, **details) -> None:
+    """Emit optional phase events without changing the legacy product callback."""
+    if callback is not None:
+        callback(phase, details)
+
+
+def _request(
+    url: str,
+    *,
+    data: bytes | None = None,
+    timeout: float = 90,
+    deadline: float | None = None,
+    retries: int = DEFAULT_REQUEST_RETRIES,
+) -> bytes:
+    if retries < 0:
+        raise ValueError("retries must be non-negative")
     req = urllib.request.Request(
         url, data=data,
         headers={"User-Agent": "windowsill-lab/0.1 A01 calibration"},
     )
-    with urllib.request.urlopen(req, timeout=timeout) as response:
-        return response.read()
+    attempts = retries + 1
+    for attempt in range(attempts):
+        remaining = _time_left(deadline, "archive request")
+        request_timeout = min(float(timeout), remaining) if remaining is not None else float(timeout)
+        try:
+            with urllib.request.urlopen(req, timeout=request_timeout) as response:
+                payload = response.read()
+            _time_left(deadline, "archive response")
+            return payload
+        except A01DeadlineExceeded:
+            raise
+        except urllib.error.HTTPError as exc:
+            retryable = exc.code in {408, 429, 500, 502, 503, 504}
+            failure = exc
+        except (urllib.error.URLError, TimeoutError, OSError) as exc:
+            retryable = True
+            failure = exc
+
+        # A deadline takes precedence over a generic final network error.
+        remaining = _time_left(deadline, "archive retry")
+        if not retryable or attempt + 1 >= attempts:
+            raise A01NetworkError(
+                f"A01 archive request failed after {attempt + 1}/{attempts} "
+                f"attempts: {failure}"
+            ) from failure
+        delay = min(0.5 * (2 ** attempt), remaining) if remaining is not None else 0.5 * (2 ** attempt)
+        if delay > 0:
+            time.sleep(delay)
+
+    raise AssertionError("unreachable")
 
 
-def _mast(service: str, params: dict) -> list[dict]:
+def _mast(
+    service: str,
+    params: dict,
+    *,
+    deadline: float | None = None,
+    retries: int = DEFAULT_REQUEST_RETRIES,
+) -> list[dict]:
     payload = {
         "service": service,
         "params": params,
@@ -48,13 +123,33 @@ def _mast(service: str, params: dict) -> list[dict]:
         "page": 1,
     }
     data = urllib.parse.urlencode({"request": json.dumps(payload)}).encode("ascii")
-    result = json.loads(_request(MAST_INVOKE, data=data))
+    result = json.loads(
+        _request(MAST_INVOKE, data=data, deadline=deadline, retries=retries)
+    )
     if result.get("status") != "COMPLETE":
         raise RuntimeError(f"MAST query incomplete: {result.get('msg', result.get('status'))}")
     return result.get("data", [])
 
 
-def discover_spoc_light_curves(tic_id: str = TIC_ID, max_sectors: int = 8) -> list[dict]:
+def discover_spoc_light_curves(
+    tic_id: str = TIC_ID,
+    max_sectors: int = 8,
+    *,
+    deadline: float | None = None,
+    retries: int = DEFAULT_REQUEST_RETRIES,
+    phase_progress=None,
+) -> list[dict]:
+    """Find a bounded, deterministic set of official SPOC light curves.
+
+    MAST can return duplicate and out-of-order observation rows.  Querying the
+    product table for every row before applying ``max_sectors`` made A01 appear
+    hung on targets with long observing histories.  We instead sort and
+    de-duplicate observations first, then stop as soon as enough valid unique
+    light-curve products have been found.
+    """
+    if not isinstance(max_sectors, int) or isinstance(max_sectors, bool) or max_sectors < 1:
+        raise ValueError("max_sectors must be a positive integer")
+    _time_left(deadline, "MAST observation discovery")
     observations = _mast("Mast.Caom.Filtered", {
         "columns": "obsid,obs_collection,provenance_name,target_name,sequence_number,dataproduct_type",
         "filters": [
@@ -62,40 +157,93 @@ def discover_spoc_light_curves(tic_id: str = TIC_ID, max_sectors: int = 8) -> li
             {"paramName": "target_name", "values": [tic_id]},
             {"paramName": "dataproduct_type", "values": ["timeseries"]},
         ],
-    })
-    products: dict[str, dict] = {}
+    }, deadline=deadline, retries=retries)
+
+    candidates: dict[str, tuple[int, dict]] = {}
     for obs in observations:
         if str(obs.get("provenance_name", "")).upper() != "SPOC":
             continue
-        sector = int(obs.get("sequence_number") or 0)
-        rows = _mast("Mast.Caom.Products", {"obsid": str(obs["obsid"])})
-        for row in rows:
+        obsid = str(obs.get("obsid", "")).strip()
+        try:
+            sector = int(obs.get("sequence_number") or 0)
+        except (TypeError, ValueError):
+            continue
+        if not obsid or sector <= 0:
+            continue
+        # One product-table query per observation id, even if MAST duplicated it.
+        candidates.setdefault(obsid, (sector, obs))
+
+    ordered_observations = sorted(
+        candidates.values(),
+        key=lambda item: (item[0], str(item[1].get("obsid", ""))),
+    )
+    products: dict[str, dict] = {}
+    queried = 0
+    for sector, obs in ordered_observations:
+        _time_left(deadline, f"MAST sector {sector} discovery")
+        rows = _mast(
+            "Mast.Caom.Products",
+            {"obsid": str(obs["obsid"])},
+            deadline=deadline,
+            retries=retries,
+        )
+        queried += 1
+        for row in sorted(
+            rows,
+            key=lambda item: (
+                str(item.get("productFilename", "")),
+                str(item.get("dataURI", "")),
+            ),
+        ):
             name = str(row.get("productFilename", ""))
-            if row.get("productSubGroupDescription") != "LC" or not name.endswith("_lc.fits"):
+            raw_uri = row.get("dataURI")
+            uri = raw_uri.strip() if isinstance(raw_uri, str) else ""
+            if (
+                row.get("productSubGroupDescription") != "LC"
+                or not name.lower().endswith("_lc.fits")
+                or not uri
+            ):
                 continue
-            uri = str(row.get("dataURI"))
-            products[uri] = {
-                "sector": sector,
-                "filename": name,
-                "uri": uri,
-                "size": int(row.get("size") or 0),
-            }
+            if uri not in products:
+                products[uri] = {
+                    "sector": sector,
+                    "filename": name,
+                    "uri": uri,
+                    "size": int(row.get("size") or 0),
+                }
+            if len(products) >= max_sectors:
+                break
+        _emit_phase(
+            phase_progress,
+            "discovery",
+            queried_observations=queried,
+            candidate_observations=len(ordered_observations),
+            products_found=len(products),
+            products_requested=max_sectors,
+            sector=sector,
+        )
+        if len(products) >= max_sectors:
+            break
+
     ordered = sorted(products.values(), key=lambda p: (p["sector"], p["filename"]))
-    if max_sectors:
-        ordered = ordered[:max_sectors]
     if not ordered:
         raise RuntimeError(f"No official SPOC light curves found for TIC {tic_id}")
-    return ordered
+    return ordered[:max_sectors]
 
 
-def fetch_benchmark(target: str = TARGET_NAME) -> dict:
+def fetch_benchmark(
+    target: str = TARGET_NAME,
+    *,
+    deadline: float | None = None,
+    retries: int = DEFAULT_REQUEST_RETRIES,
+) -> dict:
     query = (
         "select pl_name,pl_orbper,pl_orbpererr1,pl_orbpererr2,"
         "pl_trandep,pl_trandeperr1,pl_trandeperr2 from pscomppars "
         f"where pl_name='{target}'"
     )
     url = NASA_TAP + "?" + urllib.parse.urlencode({"query": query, "format": "json"})
-    rows = json.loads(_request(url))
+    rows = json.loads(_request(url, deadline=deadline, retries=retries))
     if len(rows) != 1:
         raise RuntimeError(f"NASA benchmark lookup returned {len(rows)} rows for {target}")
     row = rows[0]
@@ -201,7 +349,14 @@ def read_tess_light_curve(blob: bytes) -> dict[str, np.ndarray]:
             for name in needed}
 
 
-def _download_product(product: dict, cache_dir: Path = CACHE_DIR) -> tuple[bytes, dict]:
+def _download_product(
+    product: dict,
+    cache_dir: Path = CACHE_DIR,
+    *,
+    deadline: float | None = None,
+    retries: int = DEFAULT_REQUEST_RETRIES,
+) -> tuple[bytes, dict]:
+    _time_left(deadline, f"sector {product.get('sector', '?')} download")
     cache_dir.mkdir(parents=True, exist_ok=True)
     path = cache_dir / product["filename"]
     if path.exists() and (not product.get("size") or path.stat().st_size == product["size"]):
@@ -209,7 +364,7 @@ def _download_product(product: dict, cache_dir: Path = CACHE_DIR) -> tuple[bytes
         cached = True
     else:
         url = MAST_DOWNLOAD + urllib.parse.quote(product["uri"], safe=":/")
-        blob = _request(url, timeout=180)
+        blob = _request(url, timeout=180, deadline=deadline, retries=retries)
         path.write_bytes(blob)
         cached = False
     meta = dict(product)
@@ -359,29 +514,95 @@ class A01Result:
     wall_seconds: float
 
 
-def run_a01(max_sectors: int = 8, cache_dir: Path = CACHE_DIR,
-            progress=None) -> A01Result:
+def run_a01(
+    max_sectors: int = 8,
+    cache_dir: Path = CACHE_DIR,
+    progress=None,
+    *,
+    deadline_seconds: float | None = DEFAULT_DEADLINE_SECONDS,
+    request_retries: int = DEFAULT_REQUEST_RETRIES,
+    phase_progress=None,
+) -> A01Result:
+    """Run the archive calibration inside a bounded network/analysis budget.
+
+    ``progress`` retains its original ``(done, total, product)`` contract.
+    ``phase_progress``, when supplied, receives ``(phase, details)`` events for
+    discovery and analysis, so callers can distinguish useful work from a stall.
+    """
+    if deadline_seconds is not None and deadline_seconds <= 0:
+        raise ValueError("deadline_seconds must be positive or None")
+    if request_retries < 0:
+        raise ValueError("request_retries must be non-negative")
     t0 = time.time()
-    benchmark = fetch_benchmark()
-    products = discover_spoc_light_curves(max_sectors=max_sectors)
+    deadline = (
+        time.monotonic() + float(deadline_seconds)
+        if deadline_seconds is not None
+        else None
+    )
+    _emit_phase(phase_progress, "benchmark", state="started")
+    benchmark = fetch_benchmark(deadline=deadline, retries=request_retries)
+    _emit_phase(phase_progress, "benchmark", state="complete")
+    _emit_phase(phase_progress, "discovery", state="started", requested=max_sectors)
+    products = discover_spoc_light_curves(
+        max_sectors=max_sectors,
+        deadline=deadline,
+        retries=request_retries,
+        phase_progress=phase_progress,
+    )
+    _emit_phase(phase_progress, "discovery", state="complete", found=len(products))
     curves, evidence = [], []
     for i, product in enumerate(products):
-        blob, meta = _download_product(product, cache_dir)
+        _time_left(deadline, f"sector {product['sector']} processing")
+        blob, meta = _download_product(
+            product,
+            cache_dir,
+            deadline=deadline,
+            retries=request_retries,
+        )
         curves.append(_normalise(read_tess_light_curve(blob)))
         evidence.append(meta)
         if progress is not None:
-            progress(i + 1, len(products), meta)
+            progress(i + 1, len(products), {**meta, "phase": "download"})
+        _emit_phase(
+            phase_progress,
+            "download",
+            state="complete",
+            done=i + 1,
+            total=len(products),
+            sector=product["sector"],
+            cached=meta["cached"],
+        )
 
+    _time_left(deadline, "blind period search")
+    _emit_phase(phase_progress, "period-search", state="started")
     search_p, search_score = search_period(*curves[0])
+    _emit_phase(
+        phase_progress,
+        "period-search",
+        state="complete",
+        period_days=search_p,
+        score=search_score,
+    )
     # The blind one-sector search is intentionally coarse.  Iterate the timing
     # fit so its improved period can reach sectors years away without ever
     # consulting the catalog ephemeris: first sectors establish P, then the long
     # baseline sharpens it by orders of magnitude.
     fitted_p = search_p
-    for _ in range(3):
+    for iteration in range(3):
+        _time_left(deadline, f"ephemeris iteration {iteration + 1}")
         times, depths, epochs = _transits(curves, fitted_p)
         fit = fit_ephemeris(times, epochs)
         fitted_p = fit["period_days"]
+        _emit_phase(
+            phase_progress,
+            "ephemeris",
+            state="iteration",
+            iteration=iteration + 1,
+            iterations=3,
+            transit_count=len(times),
+            period_days=fitted_p,
+        )
+    _time_left(deadline, "report assembly")
     keep = np.asarray(fit["kept"], dtype=bool)
     kept_depths = np.asarray(depths, dtype=float)[keep]
     depth = float(np.median(kept_depths))

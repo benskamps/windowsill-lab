@@ -85,7 +85,8 @@ def test_runner_availability_is_feed_visible():
     assert parse_milestones("- [ ] **I01** — CMOS calibration.\n")[0]["runner_available"] is True
     later = parse_milestones("- [ ] **M17** — KPZ growth.\n")[0]
     assert later["status"] == "open"
-    assert later["runner_available"] is False
+    assert later["runner_available"] is True
+    assert parse_milestones("- [ ] **M18** — Contact process.\n")[0]["runner_available"] is False
 
 
 def test_build_snapshot_shape():
@@ -277,6 +278,22 @@ def test_newest_report_breaks_mtime_tie_by_date_stem(tmp_path, monkeypatch):
     _write_report(lab_home, "2026-06-15", mtime=1000)
     rep = _newest_report()
     assert rep["_date"] == "2026-06-15"
+
+
+def test_latest_report_reconciles_degraded_m01_raw_headline(monkeypatch):
+    monkeypatch.setattr(publish, "_newest_report", lambda: {
+        "_date": "2026-07-25",
+        "experiment": "M01-ising-verification",
+        "T": [1.5, 1.6, 2.3],
+        "chi": [1900.0, 2.0, 81.0],
+        "abs_mag": [0.62, 0.98, 0.65],
+        "abs_mag_err": [0.02, 0.001, 0.005],
+        "headline": "χ peaked at T≈1.500",
+    })
+    latest = publish.latest_report()
+    assert latest["peak_t"] == 2.3
+    assert "T≈2.300" in latest["headline"]
+    assert "quality warning" in latest["headline"]
 
 
 def test_run_cadence_last_breaks_mtime_tie_by_date_stem(tmp_path, monkeypatch):

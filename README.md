@@ -79,16 +79,18 @@ re-analyze without re-running.
 
 See [MILESTONES.md](MILESTONES.md) for the concrete next-step list.
 
-## Four plants
+## The garden
 
 The public windowsill renders each kind of work as a different but related plant.
-Their first calibration commands are now runnable end to end:
+The first four calibration commands are runnable end to end; the fifth, BOINC
+moss, is visible on the public bench while its runner is still ahead:
 
 ```bash
 lab m16                         # physics fern: 3D spin-glass aging
 lab c01                         # compute vine: OEIS bytes + Lucas–Lehmer
 lab a01                         # astronomy creeper: TESS / WASP-18 b
 lab i01 --frames dark-stack.npy # instrument succulent: real capped-CMOS frames
+lab i01 --camera 0              # bounded live capture (install .[camera])
 ```
 
 `lab i01` without real frames deliberately writes a grey hardware-null report.
@@ -139,6 +141,10 @@ A nightly run commits and pushes it. (`--gist <id>` / `POT_GIST_ID` remain an
 optional legacy push target.) The shape is pinned by
 [`schema/pot.schema.json`](schema/pot.schema.json) and carries a `schema_version`
 so producer and page can't silently drift.
+The richer M01 plot feed is separately pinned by
+[`schema/physics.schema.json`](schema/physics.schema.json); its v2 contract
+publishes both the raw argmax and the equilibrium-qualified peak, including
+every excluded sample and the quality note shown by the page.
 
 **Verified means checked.** `lab verify` re-derives each verified milestone's
 headline number from the run report it shipped (e.g. M01's susceptibility peak

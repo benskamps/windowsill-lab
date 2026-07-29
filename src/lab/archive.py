@@ -197,11 +197,21 @@ def classify_run(report: dict) -> dict:
     milestone = _milestone_for(report)
     kind = _kind_for(report)
     verdict, detail = _verdict_for(report, milestone)
+    headline = report.get("headline")
+    # M01's checker may exclude a disclosed metastable sample.  Historical
+    # reports can therefore carry a stale raw-argmax headline even though their
+    # verdict was derived from the usable peak.  The public ledger must repeat
+    # the checked result, not the contradicted raw claim.
+    if milestone == "M01" and verdict in {"verified", "null"}:
+        from .m01_quality import assess_m01_quality
+        quality = assess_m01_quality(report)
+        if quality["status"] != "ok":
+            headline = detail
     return {
         "milestone": milestone,
         "kind": kind,
         "experiment": report.get("experiment"),
-        "headline": report.get("headline"),
+        "headline": headline,
         "verdict": verdict,
         "detail": detail,
         "numbers": _numbers_for(report, kind),

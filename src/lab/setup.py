@@ -102,7 +102,7 @@ mkdir -p "$(dirname "$LOG")"
   "{PY}" -m lab.cli next || "{PY}" -m lab.cli publish
   # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
   # per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.
-  git add pot.json 2>/dev/null || true
+  git add pot.json physics-latest.json 2>/dev/null || true
   git add -A reports/ 2>/dev/null || true
   if git diff --cached --quiet; then
     echo "nothing changed"
@@ -198,7 +198,7 @@ git pull --rebase --autostash 2>&1 | LogCmd
 if ($LASTEXITCODE -ne 0) { & '__PY__' -m lab.cli publish 2>&1 | LogCmd }
 # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
 # per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.
-git add pot.json 2>&1 | LogCmd
+git add pot.json physics-latest.json 2>&1 | LogCmd
 git add -A reports/ 2>&1 | LogCmd
 git diff --cached --quiet
 if ($LASTEXITCODE -ne 0) {

@@ -15,12 +15,15 @@ from __future__ import annotations
 import math
 import time
 from dataclasses import dataclass, asdict
-
-import numpy as np
+from collections.abc import Mapping, Sequence
 
 
 AGING_COLLAPSE_RATIO_MAX = 0.80
 MIN_FIXED_LAG_SEPARATION = 0.03
+MIN_WAITING_TIMES = 3
+MIN_DELTA_TIMES = 4
+MIN_RATIO_GROUPS = 2
+MIN_DIFFERENCE_GROUPS = 4
 
 
 @dataclass
@@ -67,6 +70,86 @@ def _group_residual(xs, ys, *, digits: int = 8) -> tuple[float, int]:
     return sum(scatters) / len(scatters), len(scatters)
 
 
+def _positive_int(value, *, name: str) -> int:
+    """Return an exact positive integer, rejecting booleans and truncation."""
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be a positive integer")
+    try:
+        number = float(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"{name} must be a positive integer") from exc
+    if not math.isfinite(number) or not number.is_integer() or number <= 0:
+        raise ValueError(f"{name} must be a positive integer")
+    return int(number)
+
+
+def _time_grid(values, *, name: str, minimum: int) -> list[int]:
+    """Validate a receipt time axis without silently sorting or deduplicating it."""
+    if isinstance(values, (str, bytes)) or not isinstance(values, Sequence):
+        raise ValueError(f"{name} must be a sequence of positive integers")
+    grid = [_positive_int(value, name=f"{name} value") for value in values]
+    if len(grid) < minimum:
+        raise ValueError(f"M16 needs >={minimum} {name.replace('_', ' ')}")
+    if len(set(grid)) != len(grid):
+        raise ValueError(f"{name} must contain distinct times")
+    if grid != sorted(grid):
+        raise ValueError(f"{name} must be strictly increasing")
+    return grid
+
+
+def validate_time_grids(waiting_times, delta_times) -> tuple[list[int], list[int]]:
+    """Validate that an M16 clock can support both collapse diagnostics.
+
+    Besides positive, ordered, distinct axes, the chosen grid must create at
+    least two ``dt/t_w`` groups and four fixed-``dt`` groups containing three or
+    more waiting-time curves. Otherwise the aging gate is impossible to resolve,
+    so the runner fails before spending simulation time.
+    """
+    tws = _time_grid(
+        waiting_times, name="waiting_times", minimum=MIN_WAITING_TIMES
+    )
+    dts = _time_grid(delta_times, name="delta_times", minimum=MIN_DELTA_TIMES)
+    _, ratio_groups = _group_residual(
+        [dt / tw for tw in tws for dt in dts],
+        [0.0] * (len(tws) * len(dts)),
+    )
+    _, difference_groups = _group_residual(
+        [dt for _tw in tws for dt in dts],
+        [0.0] * (len(tws) * len(dts)),
+    )
+    if ratio_groups < MIN_RATIO_GROUPS:
+        raise ValueError(
+            "M16 time grids need >=2 repeated dt/t_w ratio groups "
+            "containing >=3 curves"
+        )
+    if difference_groups < MIN_DIFFERENCE_GROUPS:
+        raise ValueError(
+            "M16 time grids need >=4 repeated delta-time groups "
+            "containing >=3 curves"
+        )
+    return tws, dts
+
+
+def validate_run_inputs(
+    L, T, n_realizations, waiting_times, delta_times
+) -> tuple[int, float, int, list[int], list[int]]:
+    """Validate all parameters that determine M16's allocation and clock."""
+    lattice_size = _positive_int(L, name="L")
+    if lattice_size % 2:
+        raise ValueError("M16 requires a positive even L for the periodic 3D checkerboard")
+    if isinstance(T, bool):
+        raise ValueError("T must be finite and > 0")
+    try:
+        temperature = float(T)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError("T must be finite and > 0") from exc
+    if not math.isfinite(temperature) or temperature <= 0:
+        raise ValueError("T must be finite and > 0")
+    realizations = _positive_int(n_realizations, name="n_realizations")
+    tws, dts = validate_time_grids(waiting_times, delta_times)
+    return lattice_size, temperature, realizations, tws, dts
+
+
 def aging_metrics(waiting_times, delta_times, correlations) -> dict:
     """Re-derive the ratio-collapse and fixed-lag aging diagnostics.
 
@@ -74,20 +157,31 @@ def aging_metrics(waiting_times, delta_times, correlations) -> dict:
     ``delta_times``.  The function is NumPy-free by design so CI can grade a
     public receipt without the simulation stack.
     """
-    tws = [int(x) for x in waiting_times]
-    dts = [int(x) for x in delta_times]
-    if len(tws) < 3 or len(dts) < 4:
-        raise ValueError("M16 needs >=3 waiting times and >=4 lag times")
+    tws, dts = validate_time_grids(waiting_times, delta_times)
+    if not isinstance(correlations, Mapping):
+        raise ValueError("M16 correlations must be a waiting-time table")
 
     ratios, differences, values = [], [], []
     for tw in tws:
         row = correlations.get(str(tw), correlations.get(tw))
-        if row is None or len(row) != len(dts):
+        if (
+            isinstance(row, (str, bytes))
+            or not isinstance(row, Sequence)
+            or len(row) != len(dts)
+        ):
             raise ValueError(f"M16 missing a complete correlation row for t_w={tw}")
         for dt, value in zip(dts, row):
+            if isinstance(value, bool):
+                raise ValueError("M16 correlations must be finite numbers")
+            try:
+                correlation = float(value)
+            except (TypeError, ValueError, OverflowError) as exc:
+                raise ValueError("M16 correlations must be finite numbers") from exc
+            if not math.isfinite(correlation):
+                raise ValueError("M16 correlations must be finite numbers")
             ratios.append(dt / tw)
             differences.append(dt)
-            values.append(float(value))
+            values.append(correlation)
 
     ratio_residual, ratio_groups = _group_residual(ratios, values)
     difference_residual, difference_groups = _group_residual(differences, values)
@@ -108,7 +202,29 @@ def aging_metrics(waiting_times, delta_times, correlations) -> dict:
         "fixed_lag": fixed_lag,
         "fixed_lag_correlations": fixed,
         "fixed_lag_separation": separation,
+        "correlations_in_range": all(-1.0 <= value <= 1.0 for value in values),
     }
+
+
+def aging_gate(metrics: Mapping) -> bool:
+    """The one M16 pass gate shared by simulation and receipt verification."""
+    try:
+        collapse_ratio = float(metrics["collapse_ratio"])
+        separation = float(metrics["fixed_lag_separation"])
+        ratio_groups = int(metrics["ratio_groups"])
+        difference_groups = int(metrics["difference_groups"])
+        correlations_in_range = metrics["correlations_in_range"] is True
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return False
+    return bool(
+        math.isfinite(collapse_ratio)
+        and collapse_ratio <= AGING_COLLAPSE_RATIO_MAX
+        and math.isfinite(separation)
+        and separation >= MIN_FIXED_LAG_SEPARATION
+        and ratio_groups >= MIN_RATIO_GROUPS
+        and difference_groups >= MIN_DIFFERENCE_GROUPS
+        and correlations_in_range
+    )
 
 
 def run_m16(
@@ -122,18 +238,15 @@ def run_m16(
     progress=None,
 ) -> M16Result:
     """Quench a 3D ±J glass and measure ``C(t_w+dt,t_w)`` on one trajectory."""
+    L, T, n_realizations, tws, dts = validate_run_inputs(
+        L, T, n_realizations, waiting_times, delta_times
+    )
+
     import torch
     from .spin_glass3d import _checkerboard_masks_3d, _half_sweep_3d
 
-    if L % 2:
-        raise ValueError("M16 requires even L for the periodic 3D checkerboard")
-    tws = sorted({int(x) for x in waiting_times})
-    dts = sorted({int(x) for x in delta_times})
-    if not tws or not dts or min(tws) <= 0 or min(dts) <= 0:
-        raise ValueError("waiting and lag times must be positive")
-
     cfg = M16Config(
-        L=L, T=float(T), n_realizations=n_realizations,
+        L=L, T=T, n_realizations=n_realizations,
         waiting_times=tuple(tws), delta_times=tuple(dts), seed=seed, device=device,
     )
     t0 = time.time()
@@ -152,7 +265,7 @@ def run_m16(
 
     Jx, Jy, Jz = bonds(), bonds(), bonds()
     masks = _checkerboard_masks_3d(L, dev)
-    beta = torch.tensor(1.0 / float(T), device=dev)
+    beta = torch.tensor(1.0 / T, device=dev)
     references: dict[int, object] = {}
     wanted = {(tw + dt): [] for tw in tws for dt in dts}
     for tw in tws:
@@ -181,11 +294,7 @@ def run_m16(
         for tw in tws
     }
     metrics = aging_metrics(tws, dts, correlations)
-    resolved = bool(
-        metrics["collapse_ratio"] <= AGING_COLLAPSE_RATIO_MAX
-        and metrics["fixed_lag_separation"] >= MIN_FIXED_LAG_SEPARATION
-        and all(-1.0 <= v <= 1.0 for row in correlations.values() for v in row)
-    )
+    resolved = aging_gate(metrics)
     return M16Result(
         waiting_times=tws,
         delta_times=dts,

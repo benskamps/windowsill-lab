@@ -25,12 +25,16 @@ def test_m16_metrics_prefer_the_age_scaled_clock_and_check_rederives():
 
 
 def test_c01_generates_exact_oeis_bytes_and_retests_mersenne(monkeypatch):
-    expected = c01.fibonacci_bfile_segment(12)
+    expected = c01.fibonacci_bfile_segment(c01.CALIBRATION_TERMS)
     assert expected.startswith(b"0 0\n1 1\n2 1\n")
     assert c01.lucas_lehmer(31) == (True, 0)
     assert c01.lucas_lehmer(11)[0] is False  # 2^11-1 = 23*89
-    monkeypatch.setattr(c01, "_download", lambda *_args, **_kwargs: expected + b"12 144\n")
-    result = c01.run_c01(n_terms=12)
+    monkeypatch.setattr(
+        c01,
+        "_download",
+        lambda *_args, **_kwargs: expected + b"40 102334155\n",
+    )
+    result = c01.run_c01()
     report = c01.to_report(result)
     ok, detail = checks.check_c01(report)
     assert result.calibration_passed and ok, detail

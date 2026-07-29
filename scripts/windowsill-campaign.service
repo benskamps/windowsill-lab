@@ -16,7 +16,7 @@ Environment=TMPDIR=%h/.cache/wtmp
 Environment=LAB_CAMPAIGN_DEVICE=cuda
 Environment=LAB_CAMPAIGN_INTERVAL=14400
 ExecStart=/home/benslinuxbox/projects/windowsill-lab/scripts/campaign.sh
-Restart=always
+Restart=on-failure
 RestartSec=30
 
 [Install]

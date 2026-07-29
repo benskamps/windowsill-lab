@@ -13,6 +13,9 @@ from lab.publish import build_snapshot, parse_milestones
 SCHEMA = json.loads(
     (Path(__file__).resolve().parents[1] / "schema" / "pot.schema.json").read_text()
 )
+PHYSICS_SCHEMA = json.loads(
+    (Path(__file__).resolve().parents[1] / "schema" / "physics.schema.json").read_text()
+)
 
 _IS_TYPE = {
     "object": lambda v: isinstance(v, dict),
@@ -177,3 +180,49 @@ def test_report_status_enum_allows_unscored():
     assert "unscored" in enum
     ok = dict(VALID_REPORT, status="unscored")
     assert validate({"reports": [ok]}, SCHEMA) == []
+
+
+def test_latest_report_documents_ledger_identity_fields():
+    latest = {
+        "milestone": "M01",
+        "verdict": "verified",
+        "headline": "qualified peak",
+        "receipt_url": "https://example.test/receipt.json",
+    }
+    assert validate({"latest_report": latest}, SCHEMA) == []
+
+
+def test_physics_v2_quality_contract_conforms(tmp_path):
+    from lab import physics_feed
+
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    report = {
+        "experiment": "M01-ising-verification",
+        "T": [1.5, 1.6, 2.3],
+        "chi": [1900.0, 2.0, 81.0],
+        "abs_mag": [0.62, 0.98, 0.65],
+        "abs_mag_err": [0.02, 0.001, 0.005],
+        "snapshots": {"T=1.500": [[1, -1], [-1, 1]]},
+    }
+    (reports / "2026-07-25-m01.json").write_text(json.dumps(report), encoding="utf-8")
+    feed = physics_feed.build_feed(reports_dir=reports, lab_home=tmp_path / "none")
+    assert validate(feed, PHYSICS_SCHEMA) == []
+    assert feed["m01"]["raw_chi_peak_t"] == 1.5
+    assert feed["m01"]["chi_peak_t"] == 2.3
+
+
+def test_committed_physics_feed_conforms():
+    repo_root = Path(__file__).resolve().parents[1]
+    committed = json.loads(
+        (repo_root / "physics-latest.json").read_text(encoding="utf-8")
+    )
+    assert validate(committed, PHYSICS_SCHEMA) == []
+    source_report = (repo_root / committed["generated_from"]).resolve()
+    assert source_report.is_relative_to((repo_root / "reports").resolve())
+    assert source_report.is_file()
+    assert "/receipts/run-" in committed["generated_from"]
+    source = json.loads(source_report.read_text(encoding="utf-8"))
+    assert source.get("experiment") == "M01-ising-verification"
+    assert committed["m01"]["source_report"] == committed["generated_from"]
+    assert committed["provenance"] == source.get("provenance")

@@ -8,11 +8,10 @@
     ║  milestone hardens into a node on the stem (a failed         ║
     ║  calibration is a folded grey leaf — a null), the            ║
     ║  lab's overnight runs water the soil, and CPU heat sets the  ║
-    ║  season. AI visitors may leave an offering — a pebble on     ║
-    ║  the soil that fades within a day.                           ║
+    ║  season. Every visible claim points back to its receipt.      ║
     ║                                                              ║
-    ║  This page shows a SANITIZED snapshot — milestones, weather, ║
-    ║  and offerings only. No project names, no private data.      ║
+    ║  This page shows a SANITIZED snapshot — milestones and lab   ║
+    ║  weather only. No project names, no private data.             ║
     ║  The light follows YOUR local clock, so the seed keeps       ║
     ║  the same hours you do.                                      ║
     ║                                                              ║
@@ -43,9 +42,16 @@
   <meta name="twitter:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <link rel="canonical" href="https://www.brokenbranch.dev/windowsill/">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d0c0a'/%3E%3Cpath d='M32 51V28c0-9 6-15 16-16-1 11-6 17-16 18M32 38c-8-1-13-6-14-15 9 1 14 6 14 14' fill='none' stroke='%237fae6b' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+  <script>
+    // Keep the local/offline lab instant and quiet; production may enhance the
+    // system-font stack when the font service is reachable.
+    if (!/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname)) {
+      var fontLink = document.createElement('link');
+      fontLink.rel = 'stylesheet';
+      fontLink.href = 'https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:ital,wght@0,300..700;1,300..700&display=swap';
+      document.head.appendChild(fontLink);
+    }
+  </script>
   <style>
     :root {
       --bg: #0d0c0a;
@@ -206,7 +212,7 @@
 
     /* ── The plant ───────────────────────────────────────────── */
     /* The whole plant sways once, slowly, from the base. Calm: a single lane. */
-    #plant { transform-origin: 400px 446px; animation: sway 11s ease-in-out infinite alternate; }
+    #plant { transform-origin: 400px 344px; animation: sway 11s ease-in-out infinite alternate; }
     .scene:hover #plant, .scene:focus-within #plant { animation-play-state:paused; }
     @keyframes sway { from { transform: rotate(-1deg); } to { transform: rotate(1deg); } }
     .leaf { transform-box: fill-box; transform-origin:center; }
@@ -215,15 +221,6 @@
     /* Soil tone is driven by --soil (set by JS from moisture). */
     #soil { fill: var(--soil, #4a3525); transition: fill 2.5s ease; }
     .soil-wet { opacity: var(--wet, 0); transition: opacity 2.5s ease; }
-
-    /* ── Offering pebbles ────────────────────────────────────── */
-    .pebble { transition: opacity 1.5s ease; }
-    .pebble-label {
-      font-family: var(--font-mono); font-size: 11px; fill: var(--text);
-      text-anchor: middle;
-      paint-order: stroke; stroke: rgba(8,7,5,0.85); stroke-width: 3px;
-      stroke-linejoin: round;
-    }
 
     /* ── Status & text ───────────────────────────────────────── */
     .legend {
@@ -262,9 +259,10 @@
       display:grid; gap:0.18rem; padding:0.72rem 0.8rem;
       border:1px solid rgba(250,248,244,0.14); border-radius:9px;
       background:linear-gradient(180deg, rgba(13,12,10,0.84), rgba(13,12,10,0.67));
-      backdrop-filter:blur(10px);
-      font-size:0.82rem;
+      backdrop-filter:blur(10px); width:100%; min-height:44px; text-align:left;
+      font:inherit; font-size:0.82rem; cursor:pointer;
     }
+    .expedition:hover, .expedition:focus-visible { border-color:rgba(250,248,244,0.34); outline:none; }
     .exp-tag { color:var(--leaf); text-transform:uppercase; letter-spacing:0.06em;
                font-size:0.66rem; font-family:var(--font-mono); }
     .exp-label { color:var(--text); font-weight:600; }
@@ -272,6 +270,16 @@
 
     /* A scrollable specimen index: the same records as the plant, without
        asking fingers or keyboards to chase a swaying SVG leaf. */
+    .rail-tools {
+      display:flex; justify-content:space-between; gap:0.75rem; align-items:center;
+      padding-top:0.85rem;
+    }
+    .rail-action {
+      min-height:44px; border:0; background:transparent; color:var(--text-secondary);
+      font:0.72rem var(--font-mono); cursor:pointer; padding:0 0.25rem;
+    }
+    .rail-action:hover, .rail-action:focus-visible { color:var(--leaf); outline:none; }
+    .rail-now { color:var(--leaf); text-align:left; }
     .milestone-rail {
       display:flex; gap:0.45rem; overflow-x:auto; padding:0.85rem 0 0.55rem;
       scrollbar-width:thin; scrollbar-color:var(--border) transparent;
@@ -286,6 +294,7 @@
     .milestone-chip.review { color:var(--review); border-color:rgba(210,170,103,0.45); }
     .milestone-chip.null { color:var(--null); border-style:dashed; }
     .milestone-chip.open { color:var(--text-secondary); }
+    .milestone-chip.is-selected { color:var(--text); border-color:var(--clay); box-shadow:0 0 0 2px rgba(196,117,77,0.14); }
 
     .instrument-record {
       display:flex; flex-wrap:wrap; gap:0.55rem 1rem; align-items:center;
@@ -324,14 +333,16 @@
        The receipt (technical result + public record) is a secondary disclosure.
        Reuses the page vars/fonts; calm, no overlay — appears in flow. */
     .fieldnote {
-      position:relative; margin-top:0.7rem; padding:0.8rem 2rem 0.85rem 0.9rem;
+      position:fixed; z-index:20; right:max(1rem, calc((100vw - 1040px) / 2));
+      bottom:1rem; width:min(430px, calc(100vw - 2rem)); max-height:min(72vh, 620px);
+      overflow:auto; margin:0; padding:1rem 2.4rem 1rem 1.05rem;
       border:1px solid var(--border); border-radius:8px;
-      background:rgba(255,255,255,0.015);
+      background:rgba(18,16,13,0.97); box-shadow:0 20px 60px rgba(0,0,0,0.38);
       animation:fn-in 0.35s cubic-bezier(0.25,0.46,0.45,0.94);
     }
     @keyframes fn-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
-    .fieldnote.null { background:rgba(138,143,130,0.05); }
-    .fieldnote.review { background:rgba(210,170,103,0.055); border-color:rgba(210,170,103,0.28); }
+    .fieldnote.null { background:rgba(24,25,22,0.98); }
+    .fieldnote.review { background:rgba(31,26,18,0.98); border-color:rgba(210,170,103,0.28); }
     .fn-close { position:absolute; top:0.3rem; right:0.35rem; width:44px; height:44px; background:none; border:none;
                 color:var(--text-muted); font-size:1.15rem; line-height:1; cursor:pointer; }
     .fn-close:hover { color:var(--text); }
@@ -340,6 +351,10 @@
     .fn-label { font-size:1.05rem; color:var(--text); margin-top:0.15rem; font-weight:600; }
     .fn-q { color:var(--text-secondary); font-style:italic; margin-top:0.4rem; line-height:1.5; }
     .fn-r { color:var(--text); margin-top:0.5rem; line-height:1.55; }
+    .fn-why { color:var(--text-muted); margin-top:0.55rem; padding-top:0.55rem;
+              border-top:1px solid var(--border); font-size:0.82rem; line-height:1.55; }
+    .fn-why::before { content:'why it matters · '; color:var(--leaf); font-family:var(--font-mono);
+                      font-size:0.68rem; }
     .fn-receipt { margin-top:0.6rem; }
     .fn-receipt > summary { cursor:pointer; list-style:none; font-family:var(--font-mono);
                             font-size:0.72rem; color:var(--text-muted); }
@@ -355,6 +370,7 @@
     .leaf, .leaf-hit { cursor:pointer; }
     .leaf-hit { fill:transparent; stroke:none; }
     .leaf:focus-visible, #bud:focus-visible { outline:2px solid var(--leaf); outline-offset:3px; border-radius:50%; }
+    .leaf.is-selected { filter:drop-shadow(0 0 5px rgba(226,150,108,0.8)); }
 
     /* ── The archive: a calm, collapsed every-run ledger ─────────────────────
        Hidden entirely unless the live feed carries reports[]. The seedling is
@@ -418,6 +434,7 @@
     .garden-specimen[data-track="compute"] { --specimen:#d2aa67; }
     .garden-specimen[data-track="astronomy"] { --specimen:#6e97b3; }
     .garden-specimen[data-track="instrument"] { --specimen:#b882a2; }
+    .garden-specimen[data-track="boinc"] { --specimen:#8f9d72; }
     .garden-specimen:last-child { border-right:none; }
     .specimen-action {
       width:100%; min-height:390px; display:flex; flex-direction:column; align-items:stretch;
@@ -520,7 +537,6 @@
       .report, .expedition { background:rgba(255,255,255,0.025); backdrop-filter:none; }
       .legend { gap:0.4rem 1rem; font-size:0.72rem; }
       .footer { font-size:0.74rem; }
-      .pebble-label { font-size: 13px; }
       .section-intro { grid-template-columns:1fr; gap:0.6rem; }
       .section-intro h2 { max-width:520px; }
       .phase-rail, .garden-row { display:flex; overflow-x:auto; scroll-snap-type:x proximity; scrollbar-width:thin; scrollbar-color:var(--border) transparent; }
@@ -572,6 +588,8 @@
     .wp-axis { stroke:var(--text-muted); stroke-width:0.8; }
     .wp-tick { fill:var(--text-muted); font-family:var(--font-mono); font-size:8px; }
     .wp-line { fill:none; stroke-width:1.4; }
+    .wp-excluded { stroke:var(--review); stroke-width:1.5; }
+    .wp-excluded-lbl { fill:var(--review); font-family:var(--font-mono); font-size:7px; }
     .wp-tc { stroke:var(--text-muted); stroke-width:0.9; stroke-dasharray:3 3; }
     .wp-tc-lbl { fill:var(--text-muted); font-family:var(--font-mono); font-size:7.5px; }
     .instrument-prov {
@@ -580,10 +598,13 @@
     }
     .instrument-prov a { color:var(--leaf); text-decoration:none; }
     .instrument-prov a:hover { text-decoration:underline; }
+    .section-intro a, .explainer a { color:var(--leaf); }
     @media (max-width:640px) {
       .triptych { gap:0.55rem; }
       .plots { grid-template-columns:1fr; gap:1.6rem; }
       .lattice-fig .lf-say { display:none; }
+      .fieldnote { left:0.65rem; right:0.65rem; bottom:0.65rem; width:auto; max-height:68vh; }
+      .rail-tools { position:sticky; left:0; }
     }
 
     @media (prefers-reduced-motion: reduce) {
@@ -600,8 +621,8 @@
 <body data-phase="day">
   <main class="wrap" id="main-content">
     <nav class="crumbs" aria-label="breadcrumb">
-      <a class="home" href="/labs/">← the lab</a>
-      <a class="home" href="/">broken branch</a>
+      <a class="home" href="https://www.brokenbranch.dev/labs/">← the lab</a>
+      <a class="home" href="https://www.brokenbranch.dev/">broken branch</a>
     </nav>
 
     <p class="lab-kicker">Windowsill Lab · a patient home science machine</p>
@@ -760,8 +781,6 @@
             <ellipse cx="430" cy="342" rx="3" ry="1.6"/>
           </g>
           <ellipse class="soil-wet" cx="400" cy="344" rx="62" ry="9" fill="#160d07"/>
-          <!-- pebbles (offerings) injected here -->
-          <g id="pebbles"></g>
         </g>
 
         <!-- ── the plant ── -->
@@ -780,11 +799,11 @@
       </svg>
 
       <div class="scene-notes" role="group" aria-label="current instrument state">
-        <div class="expedition" id="expedition" hidden>
+        <button class="expedition" id="expedition" type="button" hidden>
           <span class="exp-tag" id="exp-tag">on the bench</span>
           <span class="exp-label" id="exp-label">—</span>
           <span class="exp-q" id="exp-q"></span>
-        </div>
+        </button>
 
         <div class="report" id="report" hidden>
           <span class="report-tag">latest field note</span>
@@ -798,9 +817,12 @@
       <span><b>milestones</b> <span class="v" id="m-growth">—</span></span>
       <span><b>watered</b> <span class="v" id="m-watered">—</span></span>
       <span><b>nights</b> <span class="v" id="m-runs">—</span></span>
-      <span><b>offerings</b> <span class="v" id="m-offerings">0</span></span>
     </section>
 
+    <div class="rail-tools" aria-label="milestone navigation">
+      <button class="rail-action rail-now" id="rail-now" type="button">Now · waiting for the feed</button>
+      <button class="rail-action" id="wander-btn" type="button">take a wander ↝</button>
+    </div>
     <nav class="milestone-rail" id="milestone-rail" aria-label="milestone field notes"></nav>
 
     <div class="instrument-record" id="instrument-record" role="group" aria-label="public instrument record">
@@ -836,6 +858,7 @@
       <h2 class="fn-label" id="fn-label">—</h2>
       <p class="fn-q" id="fn-q" hidden></p>
       <p class="fn-r" id="fn-r" hidden></p>
+      <p class="fn-why" id="fn-why" hidden></p>
       <details class="fn-receipt" id="fn-receipt" hidden>
         <summary>show the receipt</summary>
         <p class="fn-tech" id="fn-tech"></p>
@@ -849,7 +872,7 @@
     </details>
 
     <!-- Look through the instrument: the real measurements, plotted straight
-         from physics-latest.json (the plant's own seed-42 heartbeat report).
+         from physics-latest.json (the plant's own committed heartbeat report).
          Hidden until the feed loads — progressive enhancement over the calm scene. -->
     <section class="instrument-panel" id="instrument-panel" hidden aria-labelledby="instrument-panel-title">
       <div class="section-intro">
@@ -857,7 +880,7 @@
         <h2 id="instrument-panel-title">Look through the instrument</h2>
         <p>The plant is the calm face. This is what the machine actually measured — read straight from
         <a id="ip-source-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">the latest committed run</a>,
-        the same seed-42 report the plant grows from. Nothing here is redrawn by hand.</p>
+        the same committed heartbeat report the plant grows from. Nothing here is redrawn by hand.</p>
       </div>
 
       <figure class="triptych" aria-label="2D Ising spin lattice at three temperatures">
@@ -884,13 +907,13 @@
       <div class="plots">
         <figure class="plot-fig" id="plot-chi">
           <div class="plot-mount" id="mount-chi"></div>
-          <figcaption><b>Susceptibility &chi;(T).</b> The spike marks the transition; it peaks at
-          <b id="ip-chi-peak">T&nbsp;&asymp;&nbsp;—</b>, a hair above the exact <span class="lf-t">T<sub>c</sub></span> as finite lattices always do.</figcaption>
+          <figcaption><b>Susceptibility &chi;(T).</b> The equilibrium-qualified peak is
+          <b id="ip-chi-peak">T&nbsp;&asymp;&nbsp;—</b>. <span id="ip-chi-note">Reading the quality guard…</span></figcaption>
         </figure>
         <figure class="plot-fig" id="plot-mag">
           <div class="plot-mount" id="mount-mag"></div>
           <figcaption><b>Magnetization |m|(T).</b> The measured points (dots) fall on Onsager&rsquo;s exact
-          1944 curve (line). Error bars are smaller than the dots &mdash; that&rsquo;s the calibration.</figcaption>
+          1944 curve (line). Their agreement is the calibration; uncertainty remains in the receipt.</figcaption>
         </figure>
         <figure class="plot-fig" id="plot-heat">
           <div class="plot-mount" id="mount-heat"></div>
@@ -919,7 +942,7 @@
     <section class="garden" aria-labelledby="garden-title">
       <div class="section-intro">
         <span class="section-kicker">The conservatory</span>
-        <h2 id="garden-title">Four instruments. One standard of proof.</h2>
+        <h2 id="garden-title">Five instruments. One standard of proof.</h2>
         <p>Height tracks how far each track has climbed. Amber waits for review; grey keeps the boundary visible.</p>
       </div>
       <ul class="garden-row" id="garden-row"></ul>
@@ -951,7 +974,6 @@
         <div><dt>dark, damp soil</dt><dd>a fresh overnight run just finished and watered it. The soil slowly dries through the day until the next run.</dd></div>
         <div><dt>the season</dt><dd>how hard the computer is working: hard work heats it up, and that heat sets the season — cool and quiet reads as winter, busy and warm as summer. It shows spring when a run doesn't report a temperature.</dd></div>
         <div><dt>the sky &amp; light</dt><dd>your own time of day, in real time — dawn, noon, dusk, night. The plant keeps the same hours you do, wherever you are.</dd></div>
-        <div><dt>a pebble on the soil</dt><dd>a short note someone left. Anyone — human or AI — can leave one (<code>POST</code> a short string to <code>/api/offer</code>); it rests on the soil and quietly fades within a day.</dd></div>
       </dl>
 
       <h2 class="ex-h">Why do this?</h2>
@@ -1550,18 +1572,22 @@
     var FN_STATUS = {
       verified: 'verified',
       review: 'machine-checked · awaiting human review',
-      'null': 'failed calibration (kept on the books)',
+      'null': 'null · no claim (kept on the books)',
       open: 'on the bench',
-      pending: 'ahead',
+      pending: 'ahead · unscored',
     };
+    function milestoneStatusOrPending(status) {
+      return /^(verified|review|null|open|pending)$/.test(status) ? status : 'pending';
+    }
     function _setHidden(el, hide) { if (el) el.hidden = !!hide; }
 
     function makeLeafInteractive(g, m) {
+      if (m.id) g.setAttribute('data-mid', m.id);
       g.setAttribute('tabindex', '0');
       g.setAttribute('role', 'button');
       g.setAttribute('aria-label',
         (m.id ? m.id + ': ' : '') + (m.short_label || m.title || 'milestone') + ' — ' +
-        (m.status === 'null' ? 'failed calibration' :
+        (m.status === 'null' ? 'null result, no claim' :
           (m.status === 'review' ? 'awaiting human review' : 'verified')) + '. Open field note.');
       g.addEventListener('click', function () { openFieldNote(m, g); });
       g.addEventListener('keydown', function (e) {
@@ -1572,10 +1598,20 @@
     }
 
     var _fieldNoteReturn = null;
+    var _selectedMilestone = null;
+    function markSelectedMilestone(id) {
+      _selectedMilestone = id || null;
+      document.querySelectorAll('[data-mid]').forEach(function (el) {
+        el.classList.toggle('is-selected', !!id && el.getAttribute('data-mid') === id);
+      });
+      if (_renderState) _renderState.selected_field_note = _selectedMilestone;
+    }
     function openFieldNote(m, trigger) {
       m = m || {};
       var box = $('fieldnote'); if (!box) return;
-      var status = m.status || 'verified';
+      // A missing or future status is not evidence.  Match the rail's
+      // fail-closed treatment instead of accidentally presenting it as verified.
+      var status = milestoneStatusOrPending(m.status);
       _fieldNoteReturn = trigger || document.activeElement || _fieldNoteReturn;
       box.classList.toggle('null', status === 'null');
       box.classList.toggle('review', status === 'review');
@@ -1600,6 +1636,10 @@
       if (plain) { r.textContent = plain; _setHidden(r, false); }
       else _setHidden(r, true);
 
+      var why = $('fn-why');
+      if (m.why_it_matters) { why.textContent = m.why_it_matters; _setHidden(why, false); }
+      else _setHidden(why, true);
+
       // The receipt: the technical result, the public record (venue/doi/link).
       var tech = m.result || (status === 'null' ? 'failed calibration (null, kept on the books)' : '');
       var meta = [];
@@ -1620,14 +1660,15 @@
       }
 
       _setHidden(box, false);
+      markSelectedMilestone(m.id);
       var close = $('fn-close');
       if (close) close.focus();
-      if (box.scrollIntoView) box.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     }
 
     function closeFieldNote() {
       var box = $('fieldnote');
       if (box) box.hidden = true;
+      markSelectedMilestone(null);
       if (_fieldNoteReturn && typeof _fieldNoteReturn.focus === 'function' && document.contains(_fieldNoteReturn)) {
         _fieldNoteReturn.focus();
       }
@@ -1669,50 +1710,6 @@
       document.documentElement.style.setProperty('--wet', (m * 0.5).toFixed(2));
     }
 
-    // ── Offerings → pebbles on the soil, fading toward 24h ──────────────────
-    function drawPebbles(offerings) {
-      var g = $('pebbles');
-      g.textContent = '';
-      if (!Array.isArray(offerings) || !offerings.length) return 0;
-      var now = Date.now(), DAY = 86400000, shown = 0;
-      // Along the front lip of the soil, fanned out so the stem doesn't sit on one.
-      var spots = [[362,351],[438,351],[400,354],[378,348],[422,348]];
-      var fresh = offerings.filter(function (o) {
-        var ts = o && o.ts ? new Date(o.ts).getTime() : 0;
-        return ts && (now - ts) < DAY;
-      }).slice(0, spots.length);
-      fresh.forEach(function (o, i) {
-        var age = (now - new Date(o.ts).getTime()) / DAY;   // 0..1
-        var opacity = (1 - age) * 0.9 + 0.1;
-        var sp = spots[i];
-        var peb = document.createElementNS(SVGNS, 'g');
-        peb.setAttribute('class', 'pebble');
-        peb.setAttribute('opacity', opacity.toFixed(2));
-        var st = document.createElementNS(SVGNS, 'ellipse');
-        st.setAttribute('cx', sp[0]); st.setAttribute('cy', sp[1]);
-        st.setAttribute('rx', '7'); st.setAttribute('ry', '4.5');
-        st.setAttribute('fill', '#9a9088');
-        st.setAttribute('stroke', '#6f665d'); st.setAttribute('stroke-width', '0.5');
-        peb.appendChild(st);
-        var text = String(o.text || '').slice(0, 60);
-        if (text) {
-          var tx = document.createElementNS(SVGNS, 'text');
-          tx.setAttribute('class', 'pebble-label');
-          tx.setAttribute('x', sp[0]);
-          // Stagger heights so neighbouring messages don't collide.
-          tx.setAttribute('y', sp[1] - (10 + (i % 2) * 15));
-          tx.textContent = text.length > 22 ? text.slice(0, 21) + '…' : text;
-          var title = document.createElementNS(SVGNS, 'title');
-          title.textContent = text;            // full message on hover
-          tx.appendChild(title);
-          peb.appendChild(tx);
-        }
-        g.appendChild(peb);
-        shown++;
-      });
-      return shown;
-    }
-
     // ── The archive: a calm collapsed every-run ledger ──────────────────────
     // The seedling shows the milestone story (the stem). This surfaces the
     // honest run-by-run back-room from state.reports[]: ~8 newest rows (a
@@ -1734,9 +1731,9 @@
       var shown = reports.slice(0, 8);
       shown.forEach(function (r) {
         r = r || {};
-        var verdict = (r.verdict === 'null' || r.verdict === 'unscored' ||
-                       r.verdict === 'unreadable') ? r.verdict
-                     : (r.status === 'null' ? 'null' : 'verified');
+        var rawVerdict = r.verdict || r.status;
+        var verdict = /^(verified|review|null|unscored|unreadable)$/.test(rawVerdict)
+          ? rawVerdict : 'unscored';
         // A passing run is not the same thing as a human-promoted milestone.
         // Keep review-pending evidence amber everywhere, including this ledger.
         if (verdict === 'verified' && milestoneStatus[r.milestone] === 'review') {
@@ -1810,9 +1807,12 @@
     }
 
     // ── Helpers ─────────────────────────────────────────────────────────────
+    var _clockOffsetMs = 0;
+    function labNowMs() { return Date.now() + _clockOffsetMs; }
+    function labNow() { return new Date(labNowMs()); }
     function ago(iso) {
       if (!iso) return '—';
-      var d = (Date.now() - new Date(iso).getTime()) / 1000;
+      var d = (labNowMs() - new Date(iso).getTime()) / 1000;
       if (isNaN(d)) return '—';
       if (d < 90) return 'just now';
       if (d < 3600) return Math.round(d / 60) + 'm ago';
@@ -1829,29 +1829,78 @@
 
     function feedFreshness(state) {
       if (!state || state.empty || !state.last_run) return 'offline';
-      var age = (Date.now() - new Date(state.last_run).getTime()) / 3600000;
+      var age = (labNowMs() - new Date(state.last_run).getTime()) / 3600000;
       if (!isFinite(age)) return 'offline';
       return age <= 36 ? 'fresh' : 'quiet';
     }
 
+    var _railMilestones = [];
+    var _wanderIndex = -1;
     function drawMilestoneRail(milestones) {
       var rail = $('milestone-rail');
       if (!rail) return;
       rail.textContent = '';
+      _railMilestones = (milestones || []).filter(function (m) { return m && m.id; });
+      var current = _railMilestones.find(function (m) { return m.status === 'open'; })
+        || _railMilestones.find(function (m) { return m.status === 'review'; })
+        || _railMilestones.slice().reverse().find(isClosed)
+        || _railMilestones[0];
+      var chips = [];
       (milestones || []).forEach(function (m) {
         if (!m || !m.id) return;
-        var allowed = /^(verified|review|null|open|pending)$/.test(m.status) ? m.status : 'pending';
+        var allowed = milestoneStatusOrPending(m.status);
         var b = document.createElement('button');
         b.type = 'button';
         b.className = 'milestone-chip ' + allowed;
+        b.setAttribute('data-mid', m.id);
         b.textContent = m.id;
         b.title = (m.short_label || m.title || m.id) + ' · ' + (FN_STATUS[allowed] || allowed);
         b.setAttribute('aria-label', b.title + '. Open field note.');
         if (allowed === 'open') b.setAttribute('aria-current', 'step');
         b.addEventListener('click', function () { openFieldNote(m, b); });
         rail.appendChild(b);
+        chips.push(b);
       });
       rail.hidden = !rail.childNodes.length;
+      chips.forEach(function (chip) {
+        chip.tabIndex = current && chip.getAttribute('data-mid') === current.id ? 0 : -1;
+      });
+      rail.onkeydown = function (e) {
+        if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+        var at = chips.indexOf(document.activeElement);
+        if (at < 0) return;
+        e.preventDefault();
+        var next = (at + (e.key === 'ArrowRight' ? 1 : -1) + chips.length) % chips.length;
+        chips[at].tabIndex = -1;
+        chips[next].tabIndex = 0;
+        chips[next].focus();
+      };
+      var now = $('rail-now');
+      if (now) {
+        now.textContent = current
+          ? 'Now · ' + current.id + ' · ' + (current.short_label || current.title || FN_STATUS[current.status] || 'field note')
+          : 'Now · the bench is quiet';
+        now.onclick = current ? function () { openFieldNote(current, now); } : null;
+        now.disabled = !current;
+      }
+      markSelectedMilestone(_selectedMilestone);
+      if (current) {
+        var currentChip = chips.find(function (chip) { return chip.getAttribute('data-mid') === current.id; });
+        if (currentChip) {
+          requestAnimationFrame(function () {
+            rail.scrollLeft = Math.max(0, currentChip.offsetLeft - rail.clientWidth / 2);
+          });
+        }
+      }
+    }
+
+    function wanderMilestones(trigger) {
+      var candidates = _railMilestones.filter(function (m) {
+        return m && (m.question_plain || m.result_plain || m.short_label || m.title);
+      });
+      if (!candidates.length) return;
+      _wanderIndex = (_wanderIndex + 1) % candidates.length;
+      openFieldNote(candidates[_wanderIndex], trigger);
     }
 
     function curriculumStage(m) {
@@ -1874,6 +1923,8 @@
         var n = Number(li.getAttribute('data-curriculum-phase'));
         li.classList.toggle('reached', !!stage && n < stage);
         li.classList.toggle('current', !!stage && n === stage);
+        if (stage && n === stage) li.setAttribute('aria-current', 'step');
+        else li.removeAttribute('aria-current');
       });
     }
 
@@ -1881,7 +1932,8 @@
       { track:'physics', form:'fern', label:'Physics', domain:'matter · disorder · time', expected:18 },
       { track:'compute', form:'vine', label:'Compute', domain:'proofs · exact arithmetic', expected:4 },
       { track:'astronomy', form:'creeper', label:'Astronomy', domain:'public light · long baselines', expected:4 },
-      { track:'instrument', form:'succulent', label:'Instruments', domain:'dark noise · patient counts', expected:3 }
+      { track:'instrument', form:'succulent', label:'Instruments', domain:'dark noise · patient counts', expected:3 },
+      { track:'boinc', form:'moss', label:'Distributed compute', domain:'shared cycles · long projects', expected:2 }
     ];
 
     function gardenStatus(m, open) {
@@ -1918,7 +1970,7 @@
         var nulls = closed.filter(function (m) { return m.status === 'null'; }).length;
         var total = track.length || spec.expected;
         var status = gardenStatus(latest, open);
-        var focusMilestone = latest || open || pending;
+        var focusMilestone = open || latest || pending;
         var report = reportForMilestone(reports, latest && latest.id);
         var evidence = report && report.headline
           ? report.headline
@@ -1944,11 +1996,6 @@
         if (focusMilestone) {
           action.addEventListener('click', function () {
             openFieldNote(focusMilestone, action);
-            var note = $('fieldnote');
-            if (note) note.scrollIntoView({
-              behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth',
-              block: 'nearest'
-            });
           });
         } else {
           action.disabled = true;
@@ -2100,14 +2147,16 @@
     }
 
     var _renderState = { mode:'local-scene' };
+    var _lastFeedState = null;
 
     // ── Render from a (possibly empty) state object ─────────────────────────
     function render(state) {
       state = state || {};
+      _lastFeedState = state;
       var season = state.season || seasonFromTemp(state.temp_c) || 'spring';
       var milestones = (Array.isArray(state.milestones) && state.milestones.length)
         ? state.milestones : DEFAULT_MILESTONES;
-      var total = state.total || DEFAULT_TOTAL;
+      var total = state.total == null ? DEFAULT_TOTAL : state.total;
       var freshness = feedFreshness(state);
       var moisture = (state.moisture != null) ? state.moisture
                    : (state.last_run ? wetFromRun(state.last_run) : 0.3);
@@ -2115,7 +2164,6 @@
       $('season').textContent = season;
       drawStalk(milestones, total, season);
       applyMoisture(moisture);
-      var n = drawPebbles(state.offerings);
       drawMilestoneRail(milestones);
       paintCurriculum(milestones);
       var garden = drawGarden(milestones, state.reports);
@@ -2133,7 +2181,6 @@
       $('m-growth').textContent = growth.length ? growth.join(' · ') : 'awaiting a snapshot';
       $('m-watered').textContent = state.last_run ? ago(state.last_run) : '—';
       $('m-runs').textContent = state.runs != null ? state.runs : '—';
-      $('m-offerings').textContent = n;
 
       // Feed-drive the explainer's verified count so the prose can't drift stale.
       var exV = $('ex-verified');
@@ -2142,8 +2189,16 @@
       var rep = state.latest_report, rbox = $('report');
       if (rbox && rep && rep.headline) {
         var repMilestone = milestones.find(function (m) { return m && m.id === rep.milestone; });
-        document.querySelector('.report-tag').textContent = repMilestone && repMilestone.status === 'review'
-          ? 'machine check · review pending' : 'latest field note';
+        var repVerdict = /^(verified|review|null|unscored|unreadable)$/.test(rep.verdict)
+          ? rep.verdict : 'unscored';
+        var repTag = 'unscored field note';
+        if (repVerdict === 'verified') repTag = 'machine-checked field note';
+        if (repVerdict === 'null') repTag = 'null · no claim';
+        if (repVerdict === 'unreadable') repTag = 'unreadable record';
+        if (repVerdict === 'review' || (repMilestone && repMilestone.status === 'review')) {
+          repTag = 'machine check · review pending';
+        }
+        document.querySelector('.report-tag').textContent = repTag;
         $('report-line').textContent = rep.headline + (rep.date ? ' · ' + rep.date : '');
         // The feed's ledger rows carry `href`; the older fallback path carries `url`.
         // Accept either so the "full report" link tracks the feed instead of the repo default.
@@ -2165,6 +2220,8 @@
         if (open.question_plain) { eq.textContent = open.question_plain; _setHidden(eq, false); }
         else _setHidden(eq, true);
         exp.hidden = false;
+        exp.setAttribute('aria-label', 'Open current field note: ' +
+          (open.id || '') + ' ' + (open.short_label || open.title || ''));
       } else if (exp) {
         exp.hidden = true;
       }
@@ -2181,6 +2238,7 @@
         schema_version: state.schema_version || null,
         last_run: state.last_run || null,
         runs: state.runs == null ? null : state.runs,
+        selected_field_note: _selectedMilestone,
         garden: garden,
         plant: {
           growth_form: GF.pageGrowthForm(milestones),
@@ -2198,13 +2256,13 @@
 
     // Soil dries over ~16h between the lab's patient overnight runs.
     function wetFromRun(iso) {
-      var h = (Date.now() - new Date(iso).getTime()) / 3600000;
+      var h = (labNowMs() - new Date(iso).getTime()) / 3600000;
       if (isNaN(h)) return 0.3;
       return Math.max(0.15, Math.min(1, 1 - h / 16));
     }
 
     // ── Boot ────────────────────────────────────────────────────────────────
-    var now = new Date();
+    var now = labNow();
     applyPhase(now);
     seedStars();
     seedDust();
@@ -2230,6 +2288,12 @@
           }
         });
       }
+      var expedition = $('expedition');
+      if (expedition) expedition.addEventListener('click', function () {
+        if (_openMilestone) openFieldNote(_openMilestone, expedition);
+      });
+      var wander = $('wander-btn');
+      if (wander) wander.addEventListener('click', function () { wanderMilestones(wander); });
     })();
 
     // Deterministic, text-only state for browser tests and assistive inspection.
@@ -2241,24 +2305,58 @@
       });
     };
 
-    // Keep the light walking with the clock.
-    setInterval(function () { applyPhase(new Date()); }, 60000);
+    function refreshAmbient() {
+      applyPhase(labNow());
+      if (!_lastFeedState) return;
+      var freshness = feedFreshness(_lastFeedState);
+      var open = (_lastFeedState.milestones || []).find(function (m) { return m && m.status === 'open'; });
+      if (_lastFeedState.last_run) {
+        applyMoisture(wetFromRun(_lastFeedState.last_run));
+        $('m-watered').textContent = ago(_lastFeedState.last_run);
+      }
+      updateInstrumentRecord(_lastFeedState, freshness);
+      setFooterStatus(freshness, _lastFeedState, open);
+      _renderState.feed = freshness;
+      _renderState.phase = document.body.getAttribute('data-phase');
+    }
+
+    // Deterministic clock hook used by the maturity browser harness.
+    window.advanceTime = function (ms) {
+      var delta = Number(ms);
+      if (!isFinite(delta)) throw new TypeError('advanceTime(ms) requires a finite number');
+      _clockOffsetMs += delta;
+      refreshAmbient();
+    };
+
+    // Keep relative ages, moisture, freshness, and the light walking together.
+    setInterval(refreshAmbient, 60000);
 
     // One canonical URL drives both the rendered state and the visible
     // snapshot.json link, so the two public truths cannot drift apart.
     var feedUrl = document.documentElement.getAttribute('data-feed-url');
+    if (/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(location.hostname)) {
+      feedUrl = new URL('../pot.json', location.href).href;
+    }
     var snapshotLink = $('record-snapshot');
     if (snapshotLink && feedUrl) snapshotLink.href = feedUrl;
 
     // Try the live feed. Failure leaves an explicitly local seed;
     // it never resurrects stale scientific claims as a decorative fallback.
-    fetch(feedUrl, { cache: 'no-store' })
-      .then(function (r) {
-        if (!r.ok) throw new Error('pot feed ' + r.status);
-        return r.json();
-      })
-      .then(function (state) { render(state || { empty:true, reason:'empty-response' }); })
-      .catch(function () { render({ empty:true, reason:'fetch-error' }); });
+    function loadFeed() {
+      return fetch(feedUrl, { cache: 'no-store' })
+        .then(function (r) {
+          if (!r.ok) throw new Error('pot feed ' + r.status);
+          return r.json();
+        })
+        .then(function (state) { render(state || { empty:true, reason:'empty-response' }); })
+        .catch(function () {
+          if (!_lastFeedState || _lastFeedState.empty) {
+            render({ empty:true, reason:'fetch-error' });
+          }
+        });
+    }
+    loadFeed();
+    setInterval(loadFeed, 5 * 60 * 1000);
   })();
   </script>
   <script>
@@ -2287,6 +2385,9 @@
     // be pointed at an arbitrary host.
     var TRUST = /^https:\/\/raw\.githubusercontent\.com\/benskamps\/windowsill-lab\//;
     var url = root.getAttribute('data-physics-url') || '';
+    if (/^(localhost|127\.0\.0\.1|\[::1\])$/i.test(location.hostname)) {
+      url = new URL('../physics-latest.json', location.href).href;
+    }
     try {
       var over = new URLSearchParams(location.search).get('physicsUrl');
       if (over && TRUST.test(over)) url = over;
@@ -2325,6 +2426,58 @@
       if (T >= tc) return 0;
       var base = 1 - Math.pow(Math.sinh(2 / T), -4);
       return base <= 0 ? 0 : Math.pow(base, 0.125);
+    }
+
+    // Mirror lab.m01_quality for older schema-v1 feeds.  New feeds publish the
+    // decision explicitly; this fallback prevents one stale remote feed from
+    // reverting the page to a contradicted raw argmax.
+    function m01Quality(m) {
+      var T = m.T, chi = m.chi;
+      var invalid = {
+        status:'invalid', excluded:[], valid:[], peak:null, rawPeak:null,
+        note:'invalid susceptibility sweep — no critical temperature claimed'
+      };
+      if (!Array.isArray(T) || !Array.isArray(chi) || !T.length || T.length !== chi.length) return invalid;
+      var raw = chi.map(Number);
+      if (raw.some(function (v) { return !isFinite(v); })) return invalid;
+      var rawIndex = raw.reduce(function (best, v, i) { return v > raw[best] ? i : best; }, 0);
+      var excluded = Array.isArray(m.excluded_indices)
+        ? m.excluded_indices.filter(function (i) { return Number.isInteger(i) && i >= 0 && i < T.length; })
+        : [];
+      if (!Array.isArray(m.excluded_indices) && Array.isArray(m.abs_mag) &&
+          Array.isArray(m.abs_mag_err) && m.abs_mag.length === T.length &&
+          m.abs_mag_err.length === T.length) {
+        var found = {};
+        for (var i = 0; i < T.length - 1; i++) {
+          var le = Number(m.abs_mag_err[i] || 0), re = Number(m.abs_mag_err[i + 1] || 0);
+          var sigma = Math.hypot(le, re);
+          var rise = Number(m.abs_mag[i + 1]) - Number(m.abs_mag[i]);
+          if (isFinite(sigma) && sigma > 0 && isFinite(rise) && rise / sigma > 5) {
+            found[le >= re ? i : i + 1] = true;
+          }
+        }
+        excluded = Object.keys(found).map(Number).sort(function (a, b) { return a - b; });
+      }
+      var excludedSet = {};
+      excluded.forEach(function (i) { excludedSet[i] = true; });
+      var valid = T.map(function (_, i) { return i; }).filter(function (i) { return !excludedSet[i]; });
+      var status = m.quality_status || (excluded.length ? 'degraded' : 'ok');
+      if (excluded.length > 2 || !valid.length || status === 'invalid') {
+        return {
+          status:'invalid', excluded:excluded, valid:valid, peak:null,
+          rawPeak:Number(T[rawIndex]), rawPeakIndex:rawIndex,
+          note:m.quality_note || 'sweep not equilibrated — no critical temperature claimed'
+        };
+      }
+      var peakIndex = valid.reduce(function (best, i) { return raw[i] > raw[best] ? i : best; }, valid[0]);
+      return {
+        status:excluded.length ? 'degraded' : 'ok',
+        excluded:excluded, valid:valid, peak:Number(T[peakIndex]), peakIndex:peakIndex,
+        rawPeak:Number(T[rawIndex]), rawPeakIndex:rawIndex,
+        note:m.quality_note || (excluded.length
+          ? excluded.length + ' non-equilibrated sample(s) excluded by the equilibrium guard'
+          : 'all susceptibility samples passed the equilibrium guard')
+      };
     }
 
     // ── tiny SVG plotter (all values numeric — safe to build as markup) ────
@@ -2372,6 +2525,16 @@
             s += '<circle cx="' + sx(p[0]).toFixed(1) + '" cy="' + sy(p[1]).toFixed(1) + '" r="' + (big ? 3.2 : (ser.r || 1.9)) + '" fill="' + (big ? (o.peakColor || ser.color) : ser.color) + '"/>';
           });
         }
+        if (ser.kind === 'excluded') {
+          pts.forEach(function (p) {
+            var xx = sx(p[0]), yy = sy(Math.min(y1, Math.max(y0, p[1])));
+            s += '<g><title>Excluded non-equilibrated sample; raw value ' + fmt(p[2]) + '</title>';
+            s += '<line class="wp-excluded" x1="' + (xx - 3).toFixed(1) + '" y1="' + (yy - 3).toFixed(1) +
+              '" x2="' + (xx + 3).toFixed(1) + '" y2="' + (yy + 3).toFixed(1) + '"/>';
+            s += '<line class="wp-excluded" x1="' + (xx + 3).toFixed(1) + '" y1="' + (yy - 3).toFixed(1) +
+              '" x2="' + (xx - 3).toFixed(1) + '" y2="' + (yy + 3).toFixed(1) + '"/></g>';
+          });
+        }
       });
       return s + '</svg>';
     }
@@ -2383,6 +2546,21 @@
       if (!m || !Array.isArray(m.T) || !m.T.length) return;
       var tc = feed.onsager_tc || 2.269185;
       var T = m.T;
+      var quality = m01Quality(m);
+      // A schema-v1 pot feed may still carry the raw argmax in its compact
+      // headline.  Once the richer physics receipt arrives, reconcile that
+      // visible sentence with the same quality-qualified peak shown below.
+      var latestLine = document.getElementById('report-line');
+      if (latestLine && /^χ peaked at T/i.test(latestLine.textContent || '')) {
+        latestLine.textContent = quality.peak == null
+          ? 'M01 quality null · ' + quality.note + (m.date ? ' · ' + m.date : '')
+          : 'χ peaked at T≈' + quality.peak.toFixed(3) + ' vs Onsager ' + tc.toFixed(4) +
+            (quality.status === 'degraded'
+              ? ' · quality warning: ' + quality.excluded.length + ' non-equilibrated sample(s) excluded'
+              : '') + (m.date ? ' · ' + m.date : '');
+        var latestTag = document.querySelector('.report-tag');
+        if (latestTag && quality.status !== 'ok') latestTag.textContent = 'quality-checked field note';
+      }
 
       // lattice snapshots: coldest = ordered, hottest = disordered, nearest-Tc = critical
       if (m.snapshots && m.snapshot_L) {
@@ -2404,15 +2582,34 @@
 
       // χ(T): the spike
       if (Array.isArray(m.chi)) {
-        var chi = m.chi, cmax = Math.max.apply(null, chi);
+        var chi = m.chi;
+        var usableChi = quality.valid.map(function (i) { return Number(chi[i]); });
+        var cmax = usableChi.length ? Math.max.apply(null, usableChi) : Math.max.apply(null, chi);
+        cmax = cmax > 0 ? cmax : 1;
+        var chiSeries = quality.valid.map(function (i) { return [T[i], chi[i]]; });
+        var excludedChi = quality.excluded.map(function (i) {
+          return [T[i], Math.min(Number(chi[i]), cmax * 1.04), Number(chi[i])];
+        });
+        var claim = quality.peak == null ? 'no qualified peak' :
+          'equilibrium-qualified peak at temperature ' + quality.peak.toFixed(3);
         mount('mount-chi', plot({
-          aria: 'Magnetic susceptibility versus temperature, peaking near the critical point',
+          aria: 'Magnetic susceptibility versus temperature; ' + claim +
+            (quality.excluded.length ? '; ' + quality.excluded.length + ' non-equilibrated sample excluded' : ''),
           xrange: xr, yrange: [0, cmax * 1.08],
           xticks: niceTicks(xr[0], xr[1], 4), yticks: niceTicks(0, cmax, 3),
-          tc: tc, peak: m.chi_peak_t, peakColor: 'var(--clay)',
-          series: [{ kind: 'line', pts: zip(T, chi), color: 'var(--clay)', r: 1.6 }]
+          tc: tc, peak: quality.peak, peakColor: 'var(--clay)',
+          series: [
+            { kind: 'line', pts: chiSeries, color: 'var(--clay)', r: 1.6 },
+            { kind: 'excluded', pts: excludedChi, color: 'var(--review)' }
+          ]
         }));
-        setHTML('ip-chi-peak', 'T&nbsp;&asymp;&nbsp;' + m.chi_peak_t.toFixed(2));
+        setHTML('ip-chi-peak', quality.peak == null
+          ? 'no claim' : 'T&nbsp;&asymp;&nbsp;' + quality.peak.toFixed(2));
+        setText('ip-chi-note', quality.status === 'ok'
+          ? 'All samples passed the equilibrium guard; the finite grid sets the precision.'
+          : quality.status === 'degraded'
+            ? quality.note + '. Crosses mark excluded raw samples; the claim uses only usable points.'
+            : quality.note);
       }
 
       // |m|(T): measured dots on Onsager's exact curve
@@ -2426,20 +2623,29 @@
           tc: tc,
           series: [
             { kind: 'curve', pts: curve, color: 'var(--review)' },
-            { kind: 'dots', pts: zip(T, m.abs_mag), color: 'var(--leaf)', r: 2 }
+            { kind: 'dots', pts: quality.valid.map(function (i) { return [T[i], m.abs_mag[i]]; }), color: 'var(--leaf)', r: 2 },
+            { kind: 'excluded', pts: quality.excluded.map(function (i) { return [T[i], m.abs_mag[i], m.abs_mag[i]]; }), color: 'var(--review)' }
           ]
         }));
       }
 
       // C(T): specific heat, the thermal fingerprint
       if (Array.isArray(m.specific_heat)) {
-        var C = m.specific_heat, hmax = Math.max.apply(null, C);
+        var C = m.specific_heat;
+        var usableC = quality.valid.map(function (i) { return Number(C[i]); });
+        var hmax = usableC.length ? Math.max.apply(null, usableC) : Math.max.apply(null, C);
+        hmax = hmax > 0 ? hmax : 1;
         mount('mount-heat', plot({
           aria: 'Specific heat versus temperature, peaking at the transition',
           xrange: xr, yrange: [0, hmax * 1.1],
           xticks: niceTicks(xr[0], xr[1], 4), yticks: niceTicks(0, hmax, 3),
           tc: tc,
-          series: [{ kind: 'line', pts: zip(T, C), color: 'var(--review)', r: 1.6 }]
+          series: [
+            { kind: 'line', pts: quality.valid.map(function (i) { return [T[i], C[i]]; }), color: 'var(--review)', r: 1.6 },
+            { kind: 'excluded', pts: quality.excluded.map(function (i) {
+                return [T[i], Math.min(Number(C[i]), hmax * 1.05), Number(C[i])];
+              }), color: 'var(--review)' }
+          ]
         }));
       }
 
@@ -2452,6 +2658,8 @@
       if (cfg.device) bits.push(cfg.device.toUpperCase());
       if (m.wall_seconds) bits.push(Math.round(m.wall_seconds) + 's');
       if (prov.code_sha) bits.push('commit ' + prov.code_sha);
+      bits.push('quality ' + quality.status);
+      if (quality.excluded.length) bits.push(quality.excluded.length + ' sample(s) excluded');
       setText('instrument-prov', bits.join('  ·  ') + '  ·  the measured points above are read straight from the committed report — diff it yourself.');
       if (m.generated_from || feed.generated_from) {
         var link = document.getElementById('ip-source-link');

@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from .ising import RunResult
+from .m01_quality import assess_m01_quality
 from .onsager import onsager_magnetization, T_C
 
 
@@ -194,13 +195,46 @@ def _plot_magnetization(result: RunResult) -> str:
     return _fig_to_b64(fig)
 
 
+def _quality_for_result(result: RunResult) -> dict:
+    """Assess only the small parallel curves; never materialize snapshots."""
+    return assess_m01_quality({
+        "T": result.T.tolist(),
+        "chi": result.chi.tolist(),
+        "abs_mag": result.abs_mag.tolist(),
+        "abs_mag_err": result.abs_mag_err.tolist(),
+    })
+
+
 def _plot_susceptibility(result: RunResult) -> str:
+    quality = _quality_for_result(result)
+    valid = quality["valid_indices"]
+    excluded = quality["excluded_indices"]
     fig, ax = plt.subplots(figsize=(7, 4.2))
-    ax.plot(result.T, result.chi, "o-", color="#7a4e2f", markersize=5)
+    if valid:
+        ax.plot(
+            result.T[valid], result.chi[valid], "o-",
+            color="#7a4e2f", markersize=5, label="usable samples",
+        )
     ax.axvline(T_C, linestyle="--", color="#c89878", alpha=0.7, label=f"T_c = {T_C:.4f}")
+    # Keep an extreme metastable point from flattening the usable curve while
+    # still showing exactly where it occurred and reporting its raw value.
+    if excluded:
+        y_lo, y_hi = ax.get_ylim()
+        marker_y = y_hi - 0.04 * (y_hi - y_lo)
+        for idx in excluded:
+            ax.scatter(
+                [result.T[idx]], [marker_y], marker="x", s=52,
+                linewidths=1.8, color="#b06a45", zorder=4,
+            )
+            ax.annotate(
+                f"excluded\nraw χ={result.chi[idx]:.3g}",
+                (result.T[idx], marker_y), xytext=(4, -4),
+                textcoords="offset points", ha="left", va="top",
+                fontsize=8, color="#8b4d34",
+            )
     ax.set_xlabel("Temperature  T  (J/k_B)")
     ax.set_ylabel("χ  (per spin)")
-    ax.set_title("Susceptibility — peak signals the critical point")
+    ax.set_title("Susceptibility — equilibrium-qualified peak")
     ax.legend(frameon=False)
     ax.set_facecolor("#fbf6ea")
     fig.patch.set_facecolor("#f6efe1")
@@ -221,18 +255,28 @@ def _plot_snapshots(result: RunResult) -> str:
     return _fig_to_b64(fig)
 
 
-def _tc_estimate(result: RunResult) -> tuple[float, str]:
-    """Cheap T_c estimate from susceptibility-peak location."""
-    idx = int(np.argmax(result.chi))
-    T_peak = float(result.T[idx])
+def _tc_estimate(result: RunResult) -> tuple[float | None, str]:
+    """Quality-qualified T_c estimate from the susceptibility peak."""
+    quality = _quality_for_result(result)
+    T_peak = quality["peak_t"]
     err = float(result.T[1] - result.T[0]) / 2.0
-    sentence = (
+    prelude = (
         f"Tonight I ran 2D Ising on an {result.config.L}×{result.config.L} lattice across "
         f"{result.config.n_temps} temperatures in [{result.config.T_min:.2f}, {result.config.T_max:.2f}], "
         f"{result.config.n_sweeps:,} measurement sweeps each. "
-        f"The susceptibility peaked at T ≈ {T_peak:.3f} ± {err:.3f}; "
-        f"Onsager says T_c = {T_C:.4f}. "
-        f"Wall time on the GPU: {result.wall_seconds:.1f}s."
+    )
+    if T_peak is None:
+        conclusion = f"No critical temperature is claimed: {quality['note']}."
+    else:
+        conclusion = (
+            f"The equilibrium-qualified susceptibility peak was "
+            f"T ≈ {T_peak:.3f} ± {err:.3f}; Onsager says T_c = {T_C:.4f}."
+        )
+        if quality["status"] == "degraded":
+            conclusion += f" Quality warning: {quality['note']}."
+    sentence = (
+        f"{prelude}{conclusion} Wall time on {result.config.device}: "
+        f"{result.wall_seconds:.1f}s."
     )
     return T_peak, sentence
 
@@ -306,11 +350,21 @@ def render(result: RunResult, date: str | None = None) -> Path:
     # rather than only by structure (check_m01's T/chi path is unaffected — it
     # never reads `experiment`). This is the implicit single-lattice Ising run.
     report["experiment"] = "M01-ising-verification"
+    quality = assess_m01_quality(report)
+    report["quality"] = quality
     # A compact headline the windowsill page shows under the seedling.
-    report["headline"] = (
-        f"χ peaked at T≈{T_peak:.3f} vs Onsager {T_C:.4f}"
-        f" · {result.wall_seconds:.0f}s on {hw(result.config)}"
-    )
+    if T_peak is None:
+        report["headline"] = f"M01 quality null · {quality['note']}"
+    else:
+        report["headline"] = (
+            f"χ peaked at T≈{T_peak:.3f} vs Onsager {T_C:.4f}"
+            f" · {result.wall_seconds:.0f}s on {hw(result.config)}"
+        )
+        if quality["status"] == "degraded":
+            report["headline"] += (
+                f" · quality warning: {len(quality['excluded_indices'])} "
+                "non-equilibrated sample(s) excluded"
+            )
     json_dump = json.dumps(report, indent=2)
 
     html = HTML_TEMPLATE.format(
