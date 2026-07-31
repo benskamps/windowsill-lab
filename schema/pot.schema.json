@@ -16,11 +16,14 @@
       "type": ["object", "null"],
       "properties": {
         "date": { "type": ["string", "null"] },
+        "milestone": { "type": ["string", "null"], "pattern": "^[A-Z]{1,3}[0-9]+$" },
         "headline": { "type": ["string", "null"] },
+        "verdict": { "type": "string", "enum": ["verified", "review", "null", "unscored", "unreadable"] },
         "peak_t": { "type": ["number", "null"] },
         "onsager_tc": { "type": ["number", "null"] },
         "wall_s": { "type": ["number", "null"] },
         "href": { "type": ["string", "null"], "description": "canonical report link emitted by the archive ledger; the page reads href, falling back to url" },
+        "receipt_url": { "type": ["string", "null"], "pattern": "^https?://" },
         "url": { "type": ["string", "null"] }
       }
     },

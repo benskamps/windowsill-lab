@@ -25,6 +25,7 @@ from pathlib import Path
 
 from .stories import STORIES   # durable plain-language story layer (stdlib-only dict)
 from .curriculum import RUNNERS
+from .m01_quality import assess_m01_quality
 
 # Mirror render.LAB_HOME without importing it (render pulls matplotlib).
 LAB_HOME = Path.home() / ".lab"
@@ -464,10 +465,31 @@ def latest_report() -> dict | None:
     peak_t = _peak_t(rep)
     wall = rep.get("wall_seconds")
     headline = rep.get("headline")
-    if not headline and peak_t is not None:
-        headline = f"χ peaked at T≈{peak_t:.3f} vs Onsager {ONSAGER_TC:.4f}"
-        if wall:
-            headline += f" · {wall:.0f}s on {hw((rep.get('config') or {}))}"
+    exp = rep.get("experiment")
+    is_m01 = (
+        str(exp).startswith("M01")
+        if exp
+        else (
+            isinstance(rep.get("T"), (list, tuple))
+            and isinstance(rep.get("chi"), (list, tuple))
+            and bool(rep.get("T"))
+            and len(rep["T"]) == len(rep["chi"])
+        )
+    )
+    if is_m01:
+        quality = assess_m01_quality(rep)
+        if quality["status"] != "ok" or not headline:
+            if peak_t is None:
+                headline = f"M01 quality null · {quality['note']}"
+            else:
+                headline = f"χ peaked at T≈{peak_t:.3f} vs Onsager {ONSAGER_TC:.4f}"
+                if wall:
+                    headline += f" · {wall:.0f}s on {hw((rep.get('config') or {}))}"
+                if quality["status"] == "degraded":
+                    headline += (
+                        f" · quality warning: {len(quality['excluded_indices'])} "
+                        "non-equilibrated sample(s) excluded"
+                    )
     return {
         "date": rep.get("_date"),
         "headline": headline,
@@ -514,6 +536,10 @@ def _peak_t(report: dict) -> float | None:
     T, chi = report.get("T"), report.get("chi")
     if (isinstance(T, (list, tuple)) and isinstance(chi, (list, tuple))
             and T and len(T) == len(chi)):
+        exp = report.get("experiment")
+        if not exp or str(exp).startswith("M01"):
+            peak = assess_m01_quality(report)["peak_t"]
+            return round(peak, 3) if peak is not None else None
         return round(T[max(range(len(chi)), key=lambda i: chi[i])], 3)
     return None
 
@@ -546,11 +572,25 @@ def _run_record(path: Path, data: dict) -> dict:
     # so the record stays an http link (page link-guard + schema both want http).
     url = REPORT_URL_BASE + f"{date}-{slug}.html"
     status = "null" if str(data.get("status", "")).lower() == "null" else "unscored"
+    headline = data.get("headline")
+    if slug == "m01":
+        quality = assess_m01_quality(data)
+        peak_t = _peak_t(data)
+        if quality["status"] != "ok" or not headline:
+            if peak_t is None:
+                headline = f"M01 quality null · {quality['note']}"
+            else:
+                headline = f"χ peaked at T≈{peak_t:.3f} vs Onsager {ONSAGER_TC:.4f}"
+                if quality["status"] == "degraded":
+                    headline += (
+                        f" · quality warning: {len(quality['excluded_indices'])} "
+                        "non-equilibrated sample(s) excluded"
+                    )
     return {
         "date": date,
         "milestone": _milestone_for(data),
         "experiment": data.get("experiment"),
-        "headline": data.get("headline"),
+        "headline": headline,
         "peak_t": _peak_t(data),
         "wall_s": data.get("wall_seconds"),
         "url": url,

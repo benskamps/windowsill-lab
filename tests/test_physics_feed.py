@@ -49,10 +49,37 @@ def test_build_feed_lifts_curves_and_peak(tmp_path):
     assert m01["abs_mag_err"] == [1e-4, 5e-3, 8e-3]
     # χ peaks at the middle temperature.
     assert m01["chi_peak_t"] == 2.5
+    assert m01["raw_chi_peak_t"] == 2.5
+    assert m01["quality_status"] == "ok"
+    assert m01["excluded_indices"] == []
     # The run date is derived from the report filename, not a bad string slice.
     assert m01["date"] == "2026-07-14"
     # Onsager's exact T_c rides along for the calibration line.
     assert abs(feed["onsager_tc"] - 2.269185) < 1e-5
+
+
+def test_build_feed_publishes_qualified_peak_and_disclosed_raw_outlier(tmp_path):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    report = _tiny_report()
+    report.update({
+        "T": [1.5, 1.6, 2.3],
+        "abs_mag": [0.62, 0.98, 0.65],
+        "abs_mag_err": [0.02, 0.001, 0.005],
+        "chi": [1900.0, 2.0, 81.0],
+        "energy": [-1.7, -1.9, -1.4],
+        "specific_heat": [0.2, 0.3, 1.1],
+    })
+    (reports / "2026-07-25-m01.json").write_text(json.dumps(report), encoding="utf-8")
+
+    feed = physics_feed.build_feed(reports_dir=reports, lab_home=tmp_path / "nolab")
+    m01 = feed["m01"]
+    assert feed["schema"] == 2
+    assert m01["raw_chi_peak_t"] == 1.5
+    assert m01["chi_peak_t"] == 2.3
+    assert m01["quality_status"] == "degraded"
+    assert m01["excluded_indices"] == [0]
+    assert "excluded" in m01["quality_note"]
 
 
 def test_build_feed_packs_three_snapshots(tmp_path):
@@ -76,6 +103,84 @@ def test_build_feed_returns_none_without_snapshot_report(tmp_path):
         json.dumps({"experiment": "M02", "L_values": [8, 12]}), encoding="utf-8"
     )
     assert physics_feed.build_feed(reports_dir=reports, lab_home=tmp_path / "nolab") is None
+
+
+def test_build_feed_accepts_legacy_m01_but_rejects_other_snapshot_experiments(tmp_path):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+
+    legacy_m01 = _tiny_report()
+    legacy_m01.pop("experiment")
+    (reports / "2026-07-14-m01.json").write_text(
+        json.dumps(legacy_m01), encoding="utf-8"
+    )
+
+    impostor = _tiny_report()
+    impostor["experiment"] = "M02-finite-size-scaling"
+    (reports / "2026-07-15-m02.json").write_text(
+        json.dumps(impostor), encoding="utf-8"
+    )
+
+    feed = physics_feed.build_feed(reports_dir=reports, lab_home=tmp_path / "nolab")
+    assert feed is not None
+    assert feed["generated_from"] == "reports/2026-07-14-m01.json"
+
+
+def test_latest_m01_receipt_wins_and_retains_only_attested_snapshots(tmp_path):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    raw_report = _tiny_report()
+    raw_path = reports / "2026-07-14-m01.json"
+    raw_path.write_text(json.dumps(raw_report), encoding="utf-8")
+    previous_feed = physics_feed.build_feed(
+        reports_dir=reports, lab_home=tmp_path / "nolab"
+    )
+
+    receipts = reports / "receipts"
+    receipts.mkdir()
+    receipt = _tiny_report()
+    snapshots = receipt.pop("snapshots")
+    receipt["chi"] = [0.02, 9.1, 0.3]
+    receipt["provenance"] = {"source_commit": "receipt-source"}
+    receipt["public_receipt"] = {
+        "omitted": [{
+            "path": "snapshots",
+            "sha256": physics_feed._snapshot_digest(snapshots),
+        }]
+    }
+    (receipts / "run-2026-07-15-m01.json").write_text(
+        json.dumps(receipt), encoding="utf-8"
+    )
+
+    other = dict(receipt, experiment="M02-finite-size-scaling")
+    (receipts / "run-2026-07-16-m02.json").write_text(
+        json.dumps(other), encoding="utf-8"
+    )
+
+    feed = physics_feed.build_feed(
+        reports_dir=reports,
+        lab_home=tmp_path / "nolab",
+        previous_feed=previous_feed,
+    )
+    assert feed is not None
+    assert feed["generated_from"] == "reports/receipts/run-2026-07-15-m01.json"
+    assert feed["m01"]["source_report"] == feed["generated_from"]
+    assert feed["m01"]["date"] == "2026-07-15"
+    assert feed["m01"]["chi"] == receipt["chi"]
+    assert feed["provenance"] == receipt["provenance"]
+    assert feed["m01"]["snapshots"] == previous_feed["m01"]["snapshots"]
+
+    oversized = json.loads(json.dumps(previous_feed))
+    encoded = oversized["m01"]["snapshots"]["1.5"]
+    oversized["m01"]["snapshots"]["1.5"] = base64.b64encode(
+        base64.b64decode(encoded) + b"\0"
+    ).decode("ascii")
+    rejected = physics_feed.build_feed(
+        reports_dir=reports,
+        lab_home=tmp_path / "nolab",
+        previous_feed=oversized,
+    )
+    assert "snapshots" not in rejected["m01"]
 
 
 def test_build_physics_feed_writes_file(tmp_path):

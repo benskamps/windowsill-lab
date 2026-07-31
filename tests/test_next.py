@@ -29,15 +29,15 @@ def test_select_next_picks_the_lowest_open_milestone():
 
 
 def test_select_next_flags_missing_runner_for_frontier_without_engine():
-    """When the open milestone has no runner registered (e.g. M17, past the runner
+    """When the open milestone has no runner registered (e.g. M18, past the runner
     frontier), selection still names it but reports has_runner=False so the caller
     can heartbeat."""
     milestones = [
-        {"id": "M16", "status": "verified"},
-        {"id": "M17", "status": "open"},
+        {"id": "M17", "status": "verified"},
+        {"id": "M18", "status": "open"},
     ]
     mid, has_runner = cli._select_next(milestones)
-    assert mid == "M17"
+    assert mid == "M18"
     assert has_runner is False
 
 
@@ -99,18 +99,65 @@ def test_next_dry_run_names_open_milestone_not_m01(monkeypatch, capsys):
 
 
 def test_next_dry_run_falls_back_to_heartbeat_when_no_runner(monkeypatch, capsys):
-    """Open milestone past the runner frontier (M17) → dry-run reports the M01
+    """Open milestone past the runner frontier (M18) → dry-run reports the M01
     heartbeat as the fallback, naming the milestone it's standing in for."""
     from lab import publish as publish_mod
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
-        {"id": "M16", "status": "verified"},
-        {"id": "M17", "status": "open"},
+        {"id": "M17", "status": "verified"},
+        {"id": "M18", "status": "open"},
     ])
     rc = cli.main(["next", "--dry-run"])
     out = capsys.readouterr().out
     assert rc == 0
     assert "would run `lab run`" in out
-    assert "no runner for M17" in out
+    assert "no runner for M18" in out
+
+
+def test_next_dry_run_selects_m17_kpz_runner(monkeypatch, capsys):
+    from lab import publish as publish_mod
+    monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
+        {"id": "M16", "status": "verified"},
+        {"id": "M17", "status": "open"},
+    ])
+    rc = cli.main(["next", "--dry-run", "--seed", "1004", "--device", "cuda"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "would run `lab m17`" in out
+    assert "ignored unsupported scheduler option(s): --device" in out
+
+
+def test_scheduler_options_are_filtered_per_runner():
+    from lab.curriculum import filter_scheduler_options
+
+    args = ["--quick", "--seed", "17", "--device=cuda"]
+    assert filter_scheduler_options("M12", args) == (args, [])
+    assert filter_scheduler_options("M17", args) == (
+        ["--quick", "--seed", "17"], ["--device"],
+    )
+    assert filter_scheduler_options("I01", args) == (
+        ["--quick"], ["--seed", "--device"],
+    )
+
+
+def test_unsupported_malformed_scheduler_option_does_not_swallow_next_option():
+    from lab.curriculum import filter_scheduler_options
+
+    args = [
+        "--seed", "--quick",
+        "--device", "--capture-timeout", "3",
+    ]
+    assert filter_scheduler_options("I01", args) == (
+        ["--quick", "--capture-timeout", "3"],
+        ["--seed", "--device"],
+    )
+    assert filter_scheduler_options("I01", ["--seed", "-q"]) == (
+        ["-q"],
+        ["--seed"],
+    )
+    assert filter_scheduler_options("I01", ["--seed", "-1", "--quick"]) == (
+        ["--quick"],
+        ["--seed"],
+    )
 
 
 def test_next_dry_run_selects_m16_aging_runner(monkeypatch, capsys):

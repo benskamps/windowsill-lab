@@ -16,6 +16,7 @@ def test_nightly_script_is_runnable_and_self_contained():
     assert "git diff --cached --quiet" in sh       # commits only on change
     # The whole reports/ tree is staged so every permanent per-run report lands.
     assert "reports/" in sh
+    assert "git add pot.json physics-latest.json" in sh
     # Guard: nightly publishes ONLY from main. If the clone is left on a feature
     # branch, it must refuse — otherwise the public feed gets stranded.
     assert 'abbrev-ref HEAD' in sh
@@ -65,6 +66,7 @@ def test_nightly_ps1_is_runnable_and_self_contained():
     assert "git push" in ps                            # it pushes the feed
     assert "git diff --cached --quiet" in ps           # commits only on change
     assert "reports/" in ps                            # stages the whole reports/ tree
+    assert "git add pot.json physics-latest.json" in ps
     # Guard: nightly publishes ONLY from main (same as the bash analog).
     assert "abbrev-ref HEAD" in ps
     assert "-ne 'main'" in ps

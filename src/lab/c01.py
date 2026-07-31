@@ -16,6 +16,7 @@ from dataclasses import dataclass
 
 OEIS_SEQUENCE = "A000045"
 OEIS_BFILE_URL = "https://oeis.org/A000045/b000045.txt"
+CALIBRATION_TERMS = 40
 MERSENNE_EXPONENT = 31
 
 
@@ -55,6 +56,7 @@ def _download(url: str, timeout: int = 30) -> bytes:
 @dataclass
 class C01Result:
     n_terms: int
+    source_url: str
     source_bytes: int
     source_sha256: str
     source_prefix_text: str
@@ -69,7 +71,10 @@ class C01Result:
     wall_seconds: float
 
 
-def run_c01(n_terms: int = 40, source_url: str = OEIS_BFILE_URL) -> C01Result:
+def run_c01(
+    n_terms: int = CALIBRATION_TERMS,
+    source_url: str = OEIS_BFILE_URL,
+) -> C01Result:
     t0 = time.time()
     expected = fibonacci_bfile_segment(n_terms)
     source = _download(source_url)
@@ -78,6 +83,7 @@ def run_c01(n_terms: int = 40, source_url: str = OEIS_BFILE_URL) -> C01Result:
     exact = prefix == expected
     return C01Result(
         n_terms=n_terms,
+        source_url=source_url,
         source_bytes=len(source),
         source_sha256=hashlib.sha256(source).hexdigest(),
         source_prefix_text=prefix.decode("utf-8", errors="strict"),
@@ -88,7 +94,15 @@ def run_c01(n_terms: int = 40, source_url: str = OEIS_BFILE_URL) -> C01Result:
         mersenne_candidate=(1 << MERSENNE_EXPONENT) - 1,
         lucas_lehmer_residue=residue,
         mersenne_prime_verified=prime,
-        calibration_passed=bool(exact and prime),
+        # Smaller prefixes are useful for diagnostics, but they are not the
+        # fixed C01 calibration receipt.  Keeping that identity here prevents a
+        # caller from weakening the public gate with ``--terms 2``.
+        calibration_passed=bool(
+            exact
+            and prime
+            and n_terms == CALIBRATION_TERMS
+            and source_url == OEIS_BFILE_URL
+        ),
         wall_seconds=time.time() - t0,
     )
 
@@ -103,7 +117,7 @@ def to_report(result: C01Result) -> dict:
         ),
         "status": "pass" if result.calibration_passed else "null",
         "oeis_sequence": OEIS_SEQUENCE,
-        "oeis_bfile_url": OEIS_BFILE_URL,
+        "oeis_bfile_url": result.source_url,
         "n_terms": result.n_terms,
         "source_bytes": result.source_bytes,
         "source_sha256": result.source_sha256,

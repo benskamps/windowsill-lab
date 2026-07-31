@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from lab.ising import RunConfig, run
+from lab.ising import RunConfig, _initial_spins, run
 from lab.ising_tri import TriRunConfig
 from lab.ising_tri import run as run_tri
 from lab.potts import PottsRunConfig
@@ -27,6 +27,29 @@ def test_runconfig_defaults():
     assert cfg.L == 128
     assert cfg.n_temps == 21
     assert cfg.n_samples() == cfg.n_sweeps // cfg.sample_every
+    assert cfg.initial_state == "random"
+
+
+def test_ordered_initial_state_and_invalid_choice():
+    device = torch.device("cpu")
+    rng = torch.Generator(device=device).manual_seed(7)
+    cfg = RunConfig(L=6, n_temps=2, device="cpu", initial_state="ordered")
+    spins = _initial_spins(cfg, device, rng)
+    assert spins.shape == (2, 6, 6)
+    assert torch.all(spins == 1)
+    with pytest.raises(ValueError, match="initial_state"):
+        _initial_spins(
+            RunConfig(L=4, n_temps=1, device="cpu", initial_state="mystery"),
+            device,
+            rng,
+        )
+
+
+def test_heartbeat_cli_uses_ordered_start_but_allows_reproducible_random():
+    from lab.cli import _parse_run
+
+    assert _parse_run([]).initial_state == "ordered"
+    assert _parse_run(["--initial-state", "random"]).initial_state == "random"
 
 
 @pytest.mark.skipif(not CUDA_AVAILABLE, reason="GPU not available")

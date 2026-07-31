@@ -2,9 +2,10 @@ import argparse
 import os
 import sys
 import webbrowser
+from datetime import datetime, timezone
 from pathlib import Path
 
-from .curriculum import RUNNERS
+from .curriculum import RUNNERS, filter_scheduler_options
 
 # Lightweight commands (open / publish / help) must work without torch or
 # matplotlib, so ising/render are imported lazily inside `run`. LAB_HOME is a
@@ -61,6 +62,7 @@ Usage:
   lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
   lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
   lab i01             run I01: calibrate a real capped-CMOS dark-frame stack
+  lab i01 --camera 0  acquire a bounded live grayscale stack, then calibrate it
   lab open            open the latest report (no run)
   lab web             open your seed-in-the-pot page (web/index.html) locally
   lab publish         write the committed pot.json — feeds the windowsill
@@ -94,6 +96,7 @@ Knobs (only with `run`):
   --burnin INT        burn-in sweeps (default 8000)
   --device STR        'cuda' or 'cpu' (default cuda)
   --seed INT          RNG seed (default 42)
+  --initial-state STR 'ordered' (heartbeat default) or 'random'
 
 Phase 1 reproduces Onsager's 2D Ising result. Later phases will sweep more
 exotic systems. State accumulates under ~/.lab/.
@@ -110,6 +113,10 @@ def _parse_run(args):
     p.add_argument("--burnin", type=int, default=8000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
+    p.add_argument(
+        "--initial-state", choices=("ordered", "random"), default="ordered",
+        help="starting lattice (ordered avoids cold-start metastability at L=128)",
+    )
     return p.parse_args(args)
 
 
@@ -497,6 +504,8 @@ def _parse_a01(args):
                    help="maximum number of official SPOC sectors (default 8)")
     p.add_argument("--cache-dir", default=None,
                    help="optional FITS cache; defaults to ~/.lab/cache/a01")
+    p.add_argument("--deadline", type=float, default=600.0,
+                   help="hard end-to-end deadline in seconds (default 600)")
     return p.parse_args(args)
 
 
@@ -504,6 +513,18 @@ def _parse_i01(args):
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument("--frames", default=None,
                    help="real .npy/.npz dark stack or directory of 2-D .npy frames")
+    p.add_argument("--camera", type=int, default=None,
+                   help="capture from this real camera index in a timeout-bounded child process")
+    p.add_argument("--capture-output", default=None,
+                   help="saved .npy capture path (default ~/.lab/captures/<timestamp>.npy)")
+    p.add_argument("--capture-frames", type=int, default=24,
+                   help="grayscale frames to acquire (default 24; calibration needs at least 16)")
+    p.add_argument("--capture-timeout", type=float, default=30.0,
+                   help="hard acquisition deadline in seconds (default 30)")
+    p.add_argument("--capture-width", type=int, default=None,
+                   help="optional requested frame width")
+    p.add_argument("--capture-height", type=int, default=None,
+                   help="optional requested frame height")
     return p.parse_args(args)
 
 
@@ -1328,8 +1349,35 @@ def main(argv=None):
             print(f"  ✓ sector {product['sector']:<3} {product['bytes']/1e6:.1f} MB from {source} "
                   f"({done}/{total})")
 
-        result = a01.run_a01(max_sectors=ns.sectors, cache_dir=cache,
-                             progress=_progress_a01)
+        def _phase_a01(phase, details):
+            state = details.get("state")
+            if state == "started":
+                labels = {
+                    "benchmark": "fetching the independent NASA benchmark",
+                    "discovery": "finding official SPOC light curves",
+                    "period-search": "blind-searching the first sector for a period",
+                }
+                print(f"  · {labels.get(phase, phase)}")
+            elif phase == "discovery" and "queried_observations" in details:
+                print(
+                    f"    checked {details['queried_observations']}/"
+                    f"{details['candidate_observations']} observations · "
+                    f"{details['products_found']}/{details['products_requested']} products"
+                )
+            elif phase == "ephemeris":
+                print(
+                    f"    ephemeris {details['iteration']}/{details['iterations']} · "
+                    f"{details['transit_count']} transits · "
+                    f"P={details['period_days']:.8f} d"
+                )
+
+        result = a01.run_a01(
+            max_sectors=ns.sectors,
+            cache_dir=cache,
+            progress=_progress_a01,
+            deadline_seconds=ns.deadline,
+            phase_progress=_phase_a01,
+        )
         report = a01.to_report(result)
         print(f"  → P={result.period_days:.8f} d (Δ={result.period_error_days:.2g} d) · "
               f"depth={100*result.depth_fraction:.3f}% "
@@ -1351,7 +1399,42 @@ def main(argv=None):
         from . import i01
         from . import render as render_mod
         print("I01 CMOS particle-detector calibration · real capped-sensor dark frames only")
-        result = i01.run_i01(frames_path=ns.frames)
+        capture_output = ns.capture_output
+        if ns.camera is not None and capture_output is None:
+            stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+            capture_output = LAB_HOME / "captures" / f"i01-camera-{ns.camera}-{stamp}.npy"
+        last_stage = None
+
+        def progress(event):
+            nonlocal last_stage
+            stage = event.get("stage")
+            current, total = event.get("current"), event.get("total")
+            if stage != last_stage:
+                labels = {
+                    "capture_start": "opening isolated camera worker",
+                    "capture": "capturing real grayscale frames",
+                    "capture_complete": "capture saved and hashed",
+                    "preflight": "checking frame bounds and format",
+                    "load": "loading bounded float32 stack",
+                    "analysis_baseline": "measuring dark baseline and temporal noise",
+                    "analysis_frame": "classifying transient components",
+                    "complete": "calibration complete",
+                }
+                print(f"  · {labels.get(stage, stage)}")
+                last_stage = stage
+            if current and total and (current == total or current == 1 or current % 8 == 0):
+                print(f"    {current}/{total}")
+
+        result = i01.run_i01(
+            frames_path=ns.frames,
+            capture_camera=ns.camera,
+            capture_output=capture_output,
+            capture_frames=ns.capture_frames,
+            capture_timeout_seconds=ns.capture_timeout,
+            capture_width=ns.capture_width,
+            capture_height=ns.capture_height,
+            progress=progress,
+        )
         report = i01.to_report(result)
         if result.analysis:
             print(f"  → {result.analysis['shape'][0]} frames · "
@@ -1359,7 +1442,10 @@ def main(argv=None):
                   f"{result.analysis['track_candidate_count']} track-like components · "
                   f"{'calibrated' if result.calibration_passed else 'honest null'}")
         else:
-            print(f"  → hardware-null: {result.reason}")
+            label = result.error_code or "hardware-null"
+            print(f"  → {label}: {result.reason}")
+        if result.capture_metadata:
+            print(f"  ✓ captured stack: {result.capture_metadata.get('output_path')}")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")
         try:
@@ -1392,10 +1478,22 @@ def main(argv=None):
         else:
             subcmd, reason = "run", f"no runner for {mid} yet — heartbeat instead"
         label = mid or "—"
+        target_mid = mid if has_runner and mid is not None else "M01"
+        passthrough, dropped = filter_scheduler_options(target_mid, passthrough)
+        option_note = (
+            f" · ignored unsupported scheduler option(s): {', '.join(dropped)}"
+            if dropped else ""
+        )
         if dry:
-            print(f"lab next → {label}: would run `lab {subcmd}` ({reason})")
+            print(
+                f"lab next → {label}: would run `lab {subcmd}` "
+                f"({reason}){option_note}"
+            )
             return 0
-        print(f"lab next → {label}: running `lab {subcmd}` ({reason})")
+        print(
+            f"lab next → {label}: running `lab {subcmd}` "
+            f"({reason}){option_note}"
+        )
         return main([subcmd, *passthrough])
 
     if cmd == "run" or (cmd not in ("help", "open") and cmd.startswith("--")):
@@ -1406,8 +1504,12 @@ def main(argv=None):
         cfg = ising.RunConfig(
             L=ns.L, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
             n_burnin=ns.burnin, n_sweeps=ns.sweeps, device=ns.device, seed=ns.seed,
+            initial_state=ns.initial_state,
         )
-        print(f"running Ising on {cfg.device} · L={cfg.L} · {cfg.n_temps} temps · {cfg.n_sweeps:,} sweeps ...")
+        print(
+            f"running Ising on {cfg.device} · L={cfg.L} · {cfg.n_temps} temps · "
+            f"{cfg.n_sweeps:,} sweeps · {cfg.initial_state} start ..."
+        )
         result = ising.run(cfg)
         print(f"  ✓ {cfg.n_sweeps:,} sweeps in {result.wall_seconds:.1f}s")
         path = render_mod.render(result)

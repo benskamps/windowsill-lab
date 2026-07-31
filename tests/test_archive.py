@@ -94,6 +94,21 @@ def test_classify_m01_chi_sweep_is_verified():
     assert rec["kind"] == "ising"
 
 
+def test_classify_m01_replaces_stale_raw_headline_with_checked_peak():
+    rec = classify_run({
+        "experiment": "M01-ising-verification",
+        "T": [1.5, 1.6, 2.3],
+        "chi": [1900.0, 2.0, 81.0],
+        "abs_mag": [0.62, 0.98, 0.65],
+        "abs_mag_err": [0.02, 0.001, 0.005],
+        "headline": "χ peaked at T≈1.500",
+    })
+    assert rec["verdict"] == "verified"
+    assert "T=2.300" in rec["headline"]
+    assert "excluded" in rec["headline"]
+    assert "1.500" not in rec["headline"].split(" vs ")[0]
+
+
 def test_classify_m02_good_is_verified():
     rec = classify_run(_m02_good())
     assert rec["milestone"] == "M02"

@@ -25,6 +25,11 @@ class RunConfig:
     sample_every: int = 20
     seed: int = 42
     device: str = "cuda"
+    # Keep the library default random for backwards-compatible reproducibility.
+    # The long-running M01 heartbeat opts into "ordered": local Metropolis
+    # dynamics otherwise leaves cold, large random lattices in metastable
+    # domains long after the nominal burn-in.
+    initial_state: str = "random"
 
     def n_samples(self) -> int:
         return self.n_sweeps // self.sample_every
@@ -74,6 +79,21 @@ def _neighbor_sum(spins: torch.Tensor) -> torch.Tensor:
     )
 
 
+def _initial_spins(cfg: RunConfig, device: torch.device,
+                   rng: torch.Generator) -> torch.Tensor:
+    shape = (cfg.n_temps, cfg.L, cfg.L)
+    if cfg.initial_state == "ordered":
+        return torch.ones(shape, device=device, dtype=torch.int8)
+    if cfg.initial_state == "random":
+        return (
+            torch.randint(0, 2, shape, generator=rng, device=device, dtype=torch.int8)
+            * 2 - 1
+        )
+    raise ValueError(
+        f"initial_state must be 'ordered' or 'random', got {cfg.initial_state!r}"
+    )
+
+
 def _half_sweep(spins: torch.Tensor, beta: torch.Tensor, mask: torch.Tensor, rng: torch.Generator) -> torch.Tensor:
     """Flip spins on `mask` using Metropolis with per-lattice inverse-T `beta`."""
     nbr = _neighbor_sum(spins)                          # (n_temps, L, L)
@@ -92,7 +112,7 @@ def run(cfg: RunConfig) -> RunResult:
     T = torch.linspace(cfg.T_min, cfg.T_max, cfg.n_temps, device=device, dtype=torch.float32)
     beta = 1.0 / T
 
-    spins = (torch.randint(0, 2, (cfg.n_temps, cfg.L, cfg.L), generator=g_init, device=device, dtype=torch.int8) * 2 - 1)
+    spins = _initial_spins(cfg, device, g_init)
     mask_a, mask_b = _checkerboard_masks(cfg.L, cfg.n_temps, device)
 
     t0 = time.time()
