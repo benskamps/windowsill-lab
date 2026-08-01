@@ -1,8 +1,37 @@
-"""Static safety contracts for the unattended campaign."""
+"""Safety contracts for the unattended campaign: static text pins plus a bash parse gate."""
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def _working_bash():
+    """Locate a bash that actually runs (the WSL stub on Windows resolves but errors)."""
+    exe = shutil.which("bash")
+    if exe is None:
+        return None
+    try:
+        probe = subprocess.run([exe, "--version"], capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if probe.returncode != 0 or b"bash" not in probe.stdout.lower():
+        return None
+    return exe
+
+
+def test_campaign_script_parses_under_bash():
+    exe = _working_bash()
+    if exe is None:
+        pytest.skip("no working bash on PATH")
+    source = (ROOT / "scripts" / "campaign.sh").read_bytes()
+    # Feed the script on stdin instead of as a path argument so the same test
+    # runs under Git Bash and WSL, whose filesystem roots disagree on C:\ paths.
+    proc = subprocess.run([exe, "-n"], input=source, capture_output=True, timeout=60)
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
 
 
 def test_graceful_stop_survives_service_restart_policy():
@@ -64,3 +93,29 @@ def test_campaign_git_operations_are_limited_to_owned_paths():
     assert "git reset -q 2>/dev/null" not in script
     assert "git commit -q --only" in script
     assert f"-- {owned} >/dev/null" in script
+
+
+def test_campaign_verify_gates_publication_between_run_and_staging():
+    script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    assert "-m lab.cli verify" in script
+    run = script.index("-m lab.cli next")
+    gate = script.index("-m lab.cli verify")
+    stage = script.index("git add -- pot.json physics-latest.json")
+    assert run < gate < stage
+    assert "verify failed; publishing withheld" in script
+
+
+def test_campaign_withheld_pass_restores_owned_paths_for_the_next_pass():
+    script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    restore = "git checkout -q -- pot.json physics-latest.json reports/"
+    assert restore in script
+    withheld = script.index("verify failed; publishing withheld")
+    stage = script.index("git add -- pot.json physics-latest.json")
+    assert withheld < script.index(restore) < stage
+
+
+def test_campaign_commit_message_dates_in_local_time():
+    script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    assert 'pass_day="$(date +%F)"' in script
+    assert '"campaign: pass $iter $pass_day seed=$seed"' in script
+    assert "$(date -u +%F) seed=$seed" not in script

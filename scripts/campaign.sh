@@ -2,9 +2,10 @@
 # campaign.sh — Windowsill's "run constantly" loop.  (Loam, 2026-07-22 night shift.)
 #
 # Continuously:  sync main → run one experiment (the open milestone via `lab next`,
-# with a FRESH INDEPENDENT SEED each pass) → publish the feed → commit + push-retry →
-# sleep → repeat.  Reuses the nightly's on-main / pull-rebase / push-retry guards so it
-# is safe alongside the other room and the page-mirror bot.
+# with a FRESH INDEPENDENT SEED each pass) → publish the feed → re-grade every
+# promoted milestone (`lab verify`; a red grade withholds the commit) → commit +
+# push-retry → sleep → repeat.  Reuses the nightly's on-main / pull-rebase /
+# push-retry guards so it is safe alongside the other room and the page-mirror bot.
 #
 # HONEST SCOPE: each pass publishes the LATEST independent sample (dated reports
 # overwrite within a day, so the feed shows a fresh result, not an accumulating average).
@@ -94,12 +95,25 @@ while :; do
     log "campaign: pass $iter — pre-existing tracked worktree changes; refusing to pull or run"
   else
     git pull --rebase >/dev/null 2>&1 || true
+    publishable=1
     if ! "$PY" -m lab.cli next --seed "$seed" --device "$DEVICE" >> "$LOG" 2>&1; then
       log "campaign: pass $iter — experiment failed; refreshing existing feed only"
       "$PY" -m lab.cli publish >> "$LOG" 2>&1 \
         || log "campaign: pass $iter — feed refresh also failed"
+    elif ! "$PY" -m lab.cli verify >> "$LOG" 2>&1; then
+      publishable=0
+      log "campaign: pass $iter — verify failed; publishing withheld"
+      # Restore campaign-owned tracked paths to HEAD, or the dirty-worktree guard
+      # would refuse every later pass; the failing grades are in the log above.
+      if git checkout -q -- pot.json physics-latest.json reports/ 2>/dev/null; then
+        log "campaign: pass $iter — campaign-owned paths restored to last committed state"
+      else
+        log "campaign: pass $iter — restore failed; next pass will refuse the dirty worktree"
+      fi
     fi
-    if ! git add -- pot.json physics-latest.json >/dev/null 2>&1 \
+    if [ "$publishable" -eq 0 ]; then
+      : # withheld above — nothing staged this pass
+    elif ! git add -- pot.json physics-latest.json >/dev/null 2>&1 \
       || ! git add -A -- reports/ >/dev/null 2>&1; then
       git reset -q -- pot.json physics-latest.json reports/ 2>/dev/null || true
       log "campaign: pass $iter — staging campaign-owned paths failed"
@@ -112,7 +126,10 @@ while :; do
         log "campaign: pass $iter — DRY, failed to unstage campaign paths"
       fi
     else
-      if ! git commit -q --only -m "campaign: pass $iter $(date -u +%F) seed=$seed" \
+      # Ledger dates in LOCAL time to match report dating (publish.today_local);
+      # log() lines carry the UTC stamp alongside.
+      pass_day="$(date +%F)"
+      if ! git commit -q --only -m "campaign: pass $iter $pass_day seed=$seed" \
         -- pot.json physics-latest.json reports/ >/dev/null 2>&1; then
         log "campaign: pass $iter — commit failed"
       else
