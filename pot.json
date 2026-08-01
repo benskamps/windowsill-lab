@@ -126,7 +126,7 @@
       "track": "physics",
       "growth_form": "fern",
       "runner_available": true,
-      "result": "staggered \u03c7_s-peak T_N(L=128) = 2.282 vs Onsager exact 2.2692, rel. err 0.5%; specific-heat peak independently at 2.276 from the same run, 25 temps in [2.0, 2.6], 40k sweeps, 30s on GPU. J=\u22121 (antiferromagnetic) on the square lattice: by the bipartite sublattice gauge flip s_i\u2192\u2212s_i (on one colour) the AFM is *exactly* the ferromagnet in disguise, so the N\u00e9el point is Onsager's same T_c \u2014 the framework handles negative coupling cleanly. The order parameter is the **staggered** magnetization m_s = (1/N)\u03a3 \u03b5_i s_i with \u03b5=(\u22121)^(x+y); its susceptibility \u03c7_s peaks at T_N. The headline trap: the **uniform** \u27e8|m|\u27e9 stays \u22480 at all T (\u22640.003 across the whole sweep \u2014 the N\u00e9el state carries no net moment), so reading uniform m would show nothing and look broken. The square lattice is bipartite and unfrustrated, so the plain red/black checkerboard is exact \u2014 NO 3-colouring (that was M05's *frustrated* triangular problem; the frustrated triangular AFM is the later M13). Strongest correctness guard: an AFM\u2194FM gauge-duality cross-check test \u2014 the AFM's staggered observables equal an FM run's uniform observables bond-for-bond at the same |J|/seed (catches a silent \u0394E sign-error that would secretly revert to the FM). The only code change from ising.py is the sign of J in \u0394E; ising.py is untouched and its _neighbor_sum reused. The finite-L peak sits just above the infinite-volume value, as expected \u2014 same calibration honesty as M04.",
+      "result": "staggered \u03c7_s-peak T_N(L=128) = 2.282 vs Onsager exact 2.2692, rel. err 0.5%; specific-heat peak independently at 2.276 from the same run, 25 temps in [2.0, 2.6], 40k sweeps, 30s on GPU. J=\u22121 (antiferromagnetic) on the square lattice: by the bipartite sublattice gauge flip s_i\u2192\u2212s_i (on one colour) the AFM is *exactly* the ferromagnet in disguise, so the N\u00e9el point is Onsager's same T_c \u2014 the framework handles negative coupling cleanly. The order parameter is the **staggered** magnetization m_s = (1/N)\u03a3 \u03b5_i s_i with \u03b5=(\u22121)^(x+y); its susceptibility \u03c7_s peaks at T_N. The headline trap: the **uniform** \u27e8|m|\u27e9 stays \u22480 at all T (\u22640.003 across the whole sweep \u2014 the N\u00e9el state carries no net moment), so reading uniform m would show nothing and look broken. The square lattice is bipartite and unfrustrated, so the plain red/black checkerboard is exact \u2014 NO 3-colouring (that was M05's *frustrated* triangular problem; the frustrated triangular AFM is the later M13). Strongest correctness guard: an AFM\u2194FM gauge-duality cross-check test \u2014 the AFM's staggered observables equal an FM run's uniform observables bond-for-bond at the same |J|/seed (catches a silent \u0394E sign-error that would secretly revert to the FM). The only code change from ising.py is the sign of J in \u0394E; ising.py is untouched and its _neighbor_sum reused. The finite-L peak sits just above the infinite-volume value, as expected \u2014 the same finite-L peak caveat as M04 applies.",
       "short_label": "Anti-aligned magnet",
       "question_plain": "If we flip the rule so neighboring magnets want to point opposite ways instead of the same way, does the lab still handle it cleanly?",
       "why_it_matters": "Many real materials are built from opposites pulling against each other, so this proves the lab can handle that mirror-image world too.",
@@ -139,7 +139,7 @@
       "track": "physics",
       "growth_form": "fern",
       "runner_available": true,
-      "result": "the broadening reproduced: the disorder-averaged \u27e8q\u00b2\u27e9 grows monotonically 0.011 \u2192 0.306 (\u00d727, 15/15 temperature steps) as T falls 2.0 \u2192 0.6 on an L=16 \u00b1J lattice, 16 temps \u00d7 64 disorder realizations \u00d7 2 replicas in one batched GPU pass, 60k sweeps, 67s; the overlap stays symmetric (max|\u27e8q\u27e9| = 0.045 \u2248 0, P(q)=P(\u2212q) residual 0.061), and the Binder cumulant rises smoothly 0.01 \u2192 0.71 with no crossing \u2014 single-L, consistent with T_c = 0. This is the rare milestone (like M09's Mermin-Wagner null) whose *correct* answer is an expected behaviour, not a transition temperature \u2014 the known T=0-critical broadening reproduced earns the green leaf. The order parameter is the replica overlap q=(1/N)\u03a3 s_i^\u03b1 s_i^\u03b2 between two replicas sharing the same quenched \u00b1J bonds; the disorder average over many realizations is mandatory. **Honest equilibration floor:** single-spin checkerboard Metropolis cannot equilibrate the L=16 glass below T \u2248 0.5\u20130.6 (verified \u2014 even 4\u00d7 burn-in leaves the coldest points in an under-equilibration *dip* where \u27e8q\u00b2\u27e9 is suppressed, not enhanced; the textbook reason parallel tempering exists), so the trustworthy window starts at the floor T=0.6 and the broadening *trend toward T=0* is the claim, not the un-equilibrable T\u22720.5 tail. Parallel tempering would reach colder \u2014 see BACKLOG/M12. The square lattice stays bipartite under random bonds (frustration is in the bond signs, not the geometry), so the red/black checkerboard update is still exact; the load-bearing bookkeeping is the J-weighted neighbour sum \u2014 left/up bonds come from the *rolled* coupling tensors \u2014 verified against a brute-force bond energy.",
+      "result": "the broadening reproduced: the disorder-averaged \u27e8q\u00b2\u27e9 grows monotonically 0.011 \u2192 0.306 (\u00d727, 15/15 temperature steps) as T falls 2.0 \u2192 0.6 on an L=16 \u00b1J lattice, 16 temps \u00d7 64 disorder realizations \u00d7 2 replicas in one batched GPU pass, 60k sweeps, 67s; the overlap stays symmetric (max|\u27e8q\u27e9| = 0.045 \u2248 0, P(q)=P(\u2212q) residual 0.061), and the Binder cumulant rises smoothly 0.01 \u2192 0.71 with no crossing \u2014 single-L, consistent with T_c = 0. This is the rare milestone (like M09's Mermin-Wagner null) whose *correct* answer is an expected behaviour, not a transition temperature \u2014 the known T=0-critical broadening reproduced earns the green leaf. The order parameter is the replica overlap q=(1/N)\u03a3 s_i^\u03b1 s_i^\u03b2 between two replicas sharing the same quenched \u00b1J bonds; the disorder average over many realizations is mandatory. Equilibration floor: single-spin checkerboard Metropolis cannot equilibrate the L=16 glass below T \u2248 0.5\u20130.6 (verified \u2014 even 4\u00d7 burn-in leaves the coldest points in an under-equilibration *dip* where \u27e8q\u00b2\u27e9 is suppressed, not enhanced; the textbook reason parallel tempering exists), so the trustworthy window starts at the floor T=0.6 and the broadening *trend toward T=0* is the claim, not the un-equilibrable T\u22720.5 tail. Parallel tempering would reach colder \u2014 see BACKLOG/M12. The square lattice stays bipartite under random bonds (frustration is in the bond signs, not the geometry), so the red/black checkerboard update is still exact; the load-bearing bookkeeping is the J-weighted neighbour sum \u2014 left/up bonds come from the *rolled* coupling tensors \u2014 verified against a brute-force bond energy.",
       "short_label": "2D spin glass",
       "question_plain": "If you tangle a magnet so its tiny parts pull in random, conflicting directions, can it ever freeze into a locked pattern at a real, above-zero temperature?",
       "why_it_matters": "It tells us whether messy, frustrated materials behave like ordinary magnets or live by stranger rules, and it shows the lab can honestly report a 'no' as proudly as a 'yes'.",
@@ -189,7 +189,7 @@
       "track": "physics",
       "growth_form": "fern",
       "runner_available": true,
-      "result": "awaiting review \u2014 the lab's first NON-equilibrium milestone. Measured coarsening exponent **n = 0.486 \u00b1 0.001 (stat), R\u00b2 = 0.9999** from the correlation-length estimator (half-height of the equal-time G(r,t), computed by FFT/Wiener-Khinchin), with an independent energy-length cross-check L_e \u221d 1/(E\u2212E_eq) giving **n = 0.469**; L=512, 48 random-quench seeds, single-spin **Glauber / heat-bath** dynamics [P(s\u2192+1)=\u03c3(2\u03b2h)], t up to 8000 sweeps quenched to T=1.498 \u2248 0.66\u00b7T_c, 34s on GPU. The domain length traces a clean power law over ~2.6 decades in t (L_c grows 4 \u2192 73), and the effective exponent drifts UP to **0.494 on the late window** \u2014 the textbook preasymptotic approach to the asymptotic Allen-Cahn \u00bd. **Honesty:** the measured exponent sits a few percent BELOW \u00bd \u2014 the well-documented finite-time correction (2D Ising coarsening approaches t^(1/2) *from below*), NOT a fudged 0.5. The defensible statement is n \u2248 0.47\u20130.49 with a **systematic band of \u00b10.02** dominated by estimator/window choice \u2014 the \u00b10.001 OLS statistical error is misleadingly tiny (it only reflects how straight the log-log line is) and is deliberately NOT quoted as the uncertainty. #1 failure mode: reaching for a **cluster (Wolff) updater** \u2014 it flips whole domains at once and destroys the very coarsening being measured; M15 uses single-spin heat-bath only, and the x-axis IS real Monte-Carlo time. Second guard: a seed frozen into a metastable stripe (rare at 0.66\u00b7T_c) would saturate its L(t) \u2014 mitigated by averaging 48 seeds and excluding the finite-size-saturation tail from the fit window. `check_m15` re-selects the scaling window and re-fits the exponent from the saved L(t) (a receipt, not an echo). Report reports/2026-07-07-m15.html, PR. **[?] means the machine check passed and the measurement is awaiting Ben's green-leaf review; only Ben awards [x].**",
+      "result": "awaiting review \u2014 the lab's first NON-equilibrium milestone. Measured coarsening exponent n = 0.486 \u00b1 0.001 (stat), R\u00b2 = 0.9999 from the correlation-length estimator (half-height of the equal-time G(r,t), computed by FFT/Wiener-Khinchin), with an independent energy-length cross-check L_e \u221d 1/(E\u2212E_eq) giving n = 0.469; L=512, 48 random-quench seeds, single-spin Glauber / heat-bath dynamics [P(s\u2192+1)=\u03c3(2\u03b2h)], t up to 8000 sweeps quenched to T=1.498 \u2248 0.66\u00b7T_c, 34s on GPU. The domain length traces a clean power law over ~2.6 decades in t (L_c grows 4 \u2192 73), and the effective exponent drifts UP to 0.494 on the late window \u2014 the textbook preasymptotic approach to the asymptotic Allen-Cahn \u00bd. The measured exponent sits a few percent BELOW \u00bd \u2014 the well-documented finite-time correction (2D Ising coarsening approaches t^(1/2) *from below*). The defensible statement is n \u2248 0.47\u20130.49 with a systematic band of \u00b10.02 dominated by estimator/window choice \u2014 the \u00b10.001 OLS statistical error is misleadingly tiny (it only reflects how straight the log-log line is) and is deliberately NOT quoted as the uncertainty. #1 failure mode: reaching for a cluster (Wolff) updater \u2014 it flips whole domains at once and destroys the very coarsening being measured; M15 uses single-spin heat-bath only, and the x-axis IS real Monte-Carlo time. Second guard: a seed frozen into a metastable stripe (rare at 0.66\u00b7T_c) would saturate its L(t) \u2014 mitigated by averaging 48 seeds and excluding the finite-size-saturation tail from the fit window. `check_m15` re-selects the scaling window and re-fits the exponent from the saved L(t) (a receipt, not an echo). Report reports/2026-07-07-m15.html, PR. [?] means the machine check passed and the measurement is awaiting Ben's green-leaf review; only Ben awards [x].",
       "short_label": "Domains growing",
       "question_plain": "Cool a hot, scrambled magnet in an instant and watch patches of agreement start to spread \u2014 how fast do those patches grow as time ticks on?",
       "why_it_matters": "The same coarsening rhythm governs everything from cooling alloys to separating oil and water, so measuring its pace connects a toy magnet to the everyday physics of things settling down.",
@@ -215,7 +215,7 @@
       "track": "physics",
       "growth_form": "fern",
       "runner_available": true,
-      "result": "machine check passed, awaiting human review. The lab's first milestone that watches a **surface** rather than spins. A 1+1d interface was grown on a periodic ring under **single-step (corner) growth** \u2014 the textbook lattice KPZ model, equivalent to TASEP under the usual slope\u2194particle map \u2014 with sublattice-parallel updates that are *exact* here rather than approximate (same-parity sites are never adjacent, so no two corner flips can interfere; the same checkerboard argument that makes `ising.py`'s red/black sweep exact). Measured on L=4096 over 64 rings and 8,000 sweeps: **\u03b2 = 0.3127** against the exact KPZ **1/3** (R\u00b2=0.9994 over 29 points spanning t\u2208[23, 8000], ~2.5 decades), **\u03b1 = 0.4840** from the saturated width across L=16\u2026192 against the exact **1/2**, giving **z = \u03b1/\u03b2 = 1.548** vs the exact **3/2** and **1/z = 0.646** vs the exact **2/3** \u2014 the milestone's \"2/3 in space\", *derived* from the two measured exponents rather than assumed. **What makes the 1/3 a measurement rather than a fit:** the same width estimator and the same scaling-window rule were pointed at two more growth rules whose exponents are exactly known and *different* \u2014 Edwards\u2013Wilkinson (KPZ minus the (\u2207h)\u00b2 term) came out **0.2354** against its exact **1/4**, and random deposition **0.5003** against its exact **1/2**. Random deposition is the strongest anchor in the milestone because it is not an exponent but a **closed form**, w\u00b2(t) = p(1\u2212p)t at every t with nothing fitted; the run tracks it to **0.6%**. A pipeline that manufactured \u03b2=1/3 out of any curve would have to report 1/3 three times, and `check_m17` refuses the run unless all three land on their *own* exact values and genuinely separate. **The distribution:** height fluctuations came out skewed **\u22120.1651** (droplet/curved) and **\u22120.2732** (flat) against the Tracy\u2013Widom predictions \u22120.2241 (GUE) and \u22120.2935 (GOE) \u2014 each geometry landing nearer its *own* law by 2.2\u00d7 and 2.4\u00d7. The **negative sign is the prediction, not a bug**: the local-minimum density is exactly q(1\u2212q) (brute-forced in the tests), so v(u) = (p/2)(1\u2212u\u00b2) and the KPZ nonlinearity \u03bb = \u2202\u00b2v/\u2202u\u00b2 = \u2212p < 0, which predicts the *mirrored* Tracy\u2013Widom law. Skewness is the graded statistic because it is invariant under the affine rescaling \u03c7=(h\u2212v_\u221et)/(\u0393t)^{1/3}, so neither model constant has to be fitted. **Boundary:** \u03b2 sits 0.021 *below* the exact 1/3 \u2014 the documented preasymptotic approach from below, and the tell that this is the finite fit window rather than a defect is that EW misses its own exact 1/4 by 0.015 **in the same direction** while RD, which has no correlation time to be preasymptotic about, lands essentially exactly. The distributional claim is **class assignment**, not a full Tracy\u2013Widom collapse: the droplet's third moment is the least-converged graded number in the run (gap 0.059, 1.9\u00d7 its sampling sigma, against a \u00b10.06 band), and the report's honesty text is **derived** from the measured moment gaps rather than hand-written, so prose and data cannot drift apart. Kurtosis is carried as evidence and deliberately **not** graded. Report reports/2026-07-22-m17.html. **[?] means machine-passed, awaiting Ben's green-leaf review.**",
+      "result": "machine check passed, awaiting human review. The lab's first milestone that watches a **surface** rather than spins. A 1+1d interface was grown on a periodic ring under **single-step (corner) growth** \u2014 the textbook lattice KPZ model, equivalent to TASEP under the usual slope\u2194particle map \u2014 with sublattice-parallel updates that are *exact* here rather than approximate (same-parity sites are never adjacent, so no two corner flips can interfere; the same checkerboard argument that makes `ising.py`'s red/black sweep exact). Measured on L=4096 over 64 rings and 8,000 sweeps: **\u03b2 = 0.3127** against the exact KPZ **1/3** (R\u00b2=0.9994 over 29 points spanning t\u2208[23, 8000], ~2.5 decades), **\u03b1 = 0.4840** from the saturated width across L=16\u2026192 against the exact **1/2**, giving **z = \u03b1/\u03b2 = 1.548** vs the exact **3/2** and **1/z = 0.646** vs the exact **2/3** \u2014 the milestone's \"2/3 in space\", *derived* from the two measured exponents rather than assumed. **What makes the 1/3 a measurement rather than a fit:** the same width estimator and the same scaling-window rule were pointed at two more growth rules whose exponents are exactly known and *different* \u2014 Edwards\u2013Wilkinson (KPZ minus the (\u2207h)\u00b2 term) came out **0.2354** against its exact **1/4**, and random deposition **0.5003** against its exact **1/2**. Random deposition is the strongest anchor in the milestone because it is not an exponent but a **closed form**, w\u00b2(t) = p(1\u2212p)t at every t with nothing fitted; the run tracks it to **0.6%**. A pipeline that manufactured \u03b2=1/3 out of any curve would have to report 1/3 three times, and `check_m17` refuses the run unless all three land on their *own* exact values and genuinely separate. **The distribution:** height fluctuations came out skewed **\u22120.1651** (droplet/curved) and **\u22120.2732** (flat) against the Tracy\u2013Widom predictions \u22120.2241 (GUE) and \u22120.2935 (GOE) \u2014 each geometry landing nearer its *own* law by 2.2\u00d7 and 2.4\u00d7. The **negative sign is the prediction, not a bug**: the local-minimum density is exactly q(1\u2212q) (brute-forced in the tests), so v(u) = (p/2)(1\u2212u\u00b2) and the KPZ nonlinearity \u03bb = \u2202\u00b2v/\u2202u\u00b2 = \u2212p < 0, which predicts the *mirrored* Tracy\u2013Widom law. Skewness is the graded statistic because it is invariant under the affine rescaling \u03c7=(h\u2212v_\u221et)/(\u0393t)^{1/3}, so neither model constant has to be fitted. **Boundary:** \u03b2 sits 0.021 *below* the exact 1/3 \u2014 the documented preasymptotic approach from below, and the tell that this is the finite fit window rather than a defect is that EW misses its own exact 1/4 by 0.015 **in the same direction** while RD, which has no correlation time to be preasymptotic about, lands essentially exactly. The distributional claim is **class assignment**, not a full Tracy\u2013Widom collapse: the droplet's third moment is the least-converged graded number in the run (gap 0.059, 1.9\u00d7 its sampling sigma, against a \u00b10.06 band), and the report's boundary text is **derived** from the measured moment gaps rather than hand-written, so prose and data cannot drift apart. Kurtosis is carried as evidence and deliberately **not** graded. Report reports/2026-07-22-m17.html. **[?] means machine-passed, awaiting Ben's green-leaf review.**",
       "short_label": "Roughening surface",
       "question_plain": "When a surface grows by piling up randomly \u2014 like a coffee stain creeping outward or a flame front advancing \u2014 do its bumps and wrinkles follow a hidden universal law?",
       "why_it_matters": "A startling range of growing, spreading things share one mathematical fingerprint, and reproducing it would tie the windowsill lab to one of the deepest patterns in non-equilibrium physics."
@@ -391,9 +391,9 @@
     }
   ],
   "total": 31,
-  "last_run": "2026-07-30T22:34:12.618104+00:00",
-  "runs": 24,
-  "temp_c": 32.0,
+  "last_run": "2026-07-30T22:34:12.607463+00:00",
+  "runs": 39,
+  "temp_c": null,
   "latest_report": {
     "date": "2026-07-30",
     "milestone": "M01",
@@ -403,14 +403,14 @@
     "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-30-m01.json"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-07-30T22:34:12.802810+00:00",
+  "updated": "2026-08-01T14:36:36.552435+00:00",
   "provenance": {
-    "code_sha": "58de1ee",
-    "env": "python 3.14.4 \u00b7 linux",
+    "code_sha": "eeefda5",
+    "env": "python 3.13.6 \u00b7 windows",
     "deps": {
-      "torch": "2.10.0.dev20251031+rocm6.4",
-      "numpy": "2.5.1",
-      "matplotlib": "3.11.1"
+      "torch": "2.6.0+cu124",
+      "numpy": "2.4.6",
+      "matplotlib": "3.11.0"
     }
   },
   "reports": [
@@ -426,7 +426,7 @@
       "date": "2026-07-29",
       "milestone": "M01",
       "verdict": "null",
-      "headline": "\u03c7 peaked at T\u22481.500 vs Onsager 2.2692 \u00b7 11s on GPU",
+      "headline": "\u03c7 peak at T=1.800 vs Onsager 2.269 (tol \u00b10.1) \u00b7 2 non-equilibrated sample(s) excluded (T=1.500, T=1.900)",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-29-m01",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-29-m01.json"
     },
@@ -442,7 +442,7 @@
       "date": "2026-07-27",
       "milestone": "M01",
       "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 11s on GPU",
+      "headline": "\u03c7 peak at T=2.300 vs Onsager 2.269 (tol \u00b10.1) \u00b7 1 non-equilibrated sample(s) excluded (T=1.500)",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-27-m01",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-27-m01.json"
     },
@@ -458,7 +458,7 @@
       "date": "2026-07-25",
       "milestone": "M01",
       "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22481.600 vs Onsager 2.2692 \u00b7 10s on GPU",
+      "headline": "\u03c7 peak at T=2.300 vs Onsager 2.269 (tol \u00b10.1) \u00b7 1 non-equilibrated sample(s) excluded (T=1.600)",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-25-m01",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-25-m01.json"
     },
@@ -466,7 +466,7 @@
       "date": "2026-07-24",
       "milestone": "M01",
       "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22481.600 vs Onsager 2.2692 \u00b7 11s on GPU",
+      "headline": "\u03c7 peak at T=2.300 vs Onsager 2.269 (tol \u00b10.1) \u00b7 2 non-equilibrated sample(s) excluded (T=1.600, T=1.700)",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-24-m01",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-24-m01.json"
     },
@@ -474,7 +474,7 @@
       "date": "2026-07-23",
       "milestone": "M01",
       "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22481.600 vs Onsager 2.2692 \u00b7 10s on GPU",
+      "headline": "\u03c7 peak at T=2.300 vs Onsager 2.269 (tol \u00b10.1) \u00b7 2 non-equilibrated sample(s) excluded (T=1.600, T=1.900)",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-23-m01",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-23-m01.json"
     },
@@ -519,78 +519,6 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-20-m01.json"
     },
     {
-      "date": "2026-07-01",
-      "milestone": "M12",
-      "verdict": "null",
-      "headline": "3D Edwards\u2013Anderson spin glass (L=[4, 6, 8], 8 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 0.558 (benchmark 0.95 \u00b1 0.15) \u2014 no clean crossing near 0.95 \u2014 calibration null \u00b7 8s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-01-m12",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-01-m12.json"
-    },
-    {
-      "date": "2026-07-01",
-      "milestone": "M13",
-      "verdict": "verified",
-      "headline": "Frustrated triangular Ising antiferromagnet (L=24): no ordering transition, a macroscopically degenerate ground state. Integrating C(T)/T from S(\u221e)=ln2 down gives a residual entropy S0/N = 0.3338 k_B vs Wannier's exact 0.3383 (\u0394=0.0045); ground-state energy -1.0000 per spin (exact \u22121) \u2014 residual S0/N \u2248 0.3338 k_B \u2014 Wannier reproduced \u00b7 6s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-01-m13",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-01-m13.json"
-    },
-    {
-      "date": "2026-06-18",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-18-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-18-m01.json"
-    },
-    {
-      "date": "2026-06-17",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-17-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-17-m01.json"
-    },
-    {
-      "date": "2026-06-16",
-      "milestone": "M06",
-      "verdict": "verified",
-      "headline": "3D simple-cubic Ising (L=12): \u03c7 peaks at T_c=4.504 vs MC benchmark 4.5115 (rel. err 0.2%) \u00b7 28s on CPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-16-m06",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-16-m06.json"
-    },
-    {
-      "date": "2026-06-16",
-      "milestone": "M03",
-      "verdict": "verified",
-      "headline": "data collapse: M\u00b7L^(\u03b2/\u03bd) onto one master curve at \u03b2/\u03bd=0.131 (2D Ising \u03b2=1/8 \u2192 \u03b2/\u03bd=0.125, loss=8.2e-03) \u00b7 711s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-16-m03",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-16-m03.json"
-    },
-    {
-      "date": "2026-06-16",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 37s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-16-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-16-m01.json"
-    },
-    {
-      "date": "2026-06-15",
-      "milestone": "M02",
-      "verdict": "verified",
-      "headline": "finite-size scaling: \u03c7_max \u221d L^1.816 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 315s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-15-m02",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-15-m02.json"
-    },
-    {
-      "date": "2026-06-14",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 37s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-14-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-14-m01.json"
-    },
-    {
       "date": "2026-07-19",
       "milestone": "M01",
       "verdict": "verified",
@@ -616,6 +544,30 @@
     },
     {
       "date": "2026-07-14",
+      "milestone": "A01",
+      "verdict": "verified",
+      "headline": "TESS recovered WASP-18 b: P=0.94145236 d, depth=1.022% from 177 timed transits",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-a01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-a01.json"
+    },
+    {
+      "date": "2026-07-14",
+      "milestone": "C01",
+      "verdict": "verified",
+      "headline": "OEIS A000045: 40 terms matched byte-for-byte; Lucas\u2013Lehmer residue for 2^31\u22121 is 0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-c01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-c01.json"
+    },
+    {
+      "date": "2026-07-14",
+      "milestone": "I01",
+      "verdict": "null",
+      "headline": "CMOS calibration not run: no real dark-frame stack available",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-i01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-i01.json"
+    },
+    {
+      "date": "2026-07-14",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
@@ -631,30 +583,6 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-m16.json"
     },
     {
-      "date": "2026-07-14",
-      "milestone": "I01",
-      "verdict": "null",
-      "headline": "CMOS calibration not run: no real dark-frame stack available",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-i01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-i01.json"
-    },
-    {
-      "date": "2026-07-14",
-      "milestone": "C01",
-      "verdict": "verified",
-      "headline": "OEIS A000045: 40 terms matched byte-for-byte; Lucas\u2013Lehmer residue for 2^31\u22121 is 0",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-c01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-c01.json"
-    },
-    {
-      "date": "2026-07-14",
-      "milestone": "A01",
-      "verdict": "verified",
-      "headline": "TESS recovered WASP-18 b: P=0.94145236 d, depth=1.022% from 177 timed transits",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-a01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-a01.json"
-    },
-    {
       "date": "2026-07-12",
       "milestone": "M01",
       "verdict": "verified",
@@ -663,12 +591,28 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-12-m01.json"
     },
     {
+      "date": "2026-07-07",
+      "milestone": "M15",
+      "verdict": "verified",
+      "headline": "2D Ising quenched from T=\u221e to T=1.498 (0.66\u00b7T_c), L=512, 48 seeds: domain length grows as a clean power law L(t)\u223ct^n with n=0.486\u00b10.001 (stat, R\u00b2=0.9999) from the correlation length; energy-length cross-check n=0.469, drifting to n\u22480.496 on the late window. The effective exponent sits a few percent below the asymptotic Allen\u2013Cahn \u00bd \u2014 the documented preasymptotic correction \u2014 so the honest systematic band is \u2248\u00b10.02. Glauber coarsening exponent consistent with Allen\u2013Cahn t^(1/2) \u00b7 34s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-07-m15",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-07-m15.json"
+    },
+    {
       "date": "2026-07-06",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-06-m01",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-06-m01.json"
+    },
+    {
+      "date": "2026-07-05",
+      "milestone": "M14",
+      "verdict": "verified",
+      "headline": "2D random-bond Ising (\u00b1J, 64 disorder realizations) on the Nishimori line: measured disorder-averaged energy matches the exact \u22122\u00b7tanh(1/T) across p\u2208[0.04,0.16] to within \u0394=0.015 (L=24) \u2014 exact Nishimori-line energy reproduced. Ferro order collapses near p\u22480.126, bracketing the multicritical Nishimori point p_c\u22480.1094, T_c\u22480.9528 (precise pinning deferred \u2014 a hero run) \u00b7 204s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-05-m14",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-05-m14.json"
     },
     {
       "date": "2026-07-05",
@@ -685,6 +629,22 @@
       "headline": "finite-size scaling: \u03c7_max \u221d L^2.209 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 0s on GPU",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-05-m02",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-05-m02.json"
+    },
+    {
+      "date": "2026-07-04",
+      "milestone": "M12",
+      "verdict": "null",
+      "headline": "3D Edwards\u2013Anderson spin glass (L=[4, 6, 8], 8 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 0.558 (benchmark 0.95 \u00b1 0.15) \u2014 no clean crossing near 0.95 \u2014 calibration null \u00b7 7s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-04-m12",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-04-m12.json"
+    },
+    {
+      "date": "2026-07-04",
+      "milestone": "M13",
+      "verdict": "verified",
+      "headline": "Frustrated triangular Ising antiferromagnet (L=24): no ordering transition, a macroscopically degenerate ground state. Integrating C(T)/T from S(\u221e)=ln2 down gives a residual entropy S0/N = 0.3338 k_B vs Wannier's exact 0.3383 (\u0394=0.0045); ground-state energy -1.0000 per spin (exact \u22121) \u2014 residual S0/N \u2248 0.3338 k_B \u2014 Wannier reproduced \u00b7 5s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-04-m13",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-04-m13.json"
     },
     {
       "date": "2026-07-04",
@@ -709,6 +669,22 @@
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 29s on GPU",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-02-m01",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-02-m01.json"
+    },
+    {
+      "date": "2026-07-01",
+      "milestone": "M12",
+      "verdict": "null",
+      "headline": "3D Edwards\u2013Anderson spin glass (L=[4, 6, 8], 8 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 0.558 (benchmark 0.95 \u00b1 0.15) \u2014 no clean crossing near 0.95 \u2014 calibration null \u00b7 8s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-01-m12",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-01-m12.json"
+    },
+    {
+      "date": "2026-07-01",
+      "milestone": "M13",
+      "verdict": "verified",
+      "headline": "Frustrated triangular Ising antiferromagnet (L=24): no ordering transition, a macroscopically degenerate ground state. Integrating C(T)/T from S(\u221e)=ln2 down gives a residual entropy S0/N = 0.3338 k_B vs Wannier's exact 0.3383 (\u0394=0.0045); ground-state energy -1.0000 per spin (exact \u22121) \u2014 residual S0/N \u2248 0.3338 k_B \u2014 Wannier reproduced \u00b7 6s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-01-m13",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-01-m13.json"
     },
     {
       "date": "2026-07-01",
@@ -752,6 +728,38 @@
     },
     {
       "date": "2026-06-25",
+      "milestone": "M07",
+      "verdict": "verified",
+      "headline": "2D q-state Potts (L=64): q=3 T_c=1.002(exact 0.995), q=4 T_c=0.907(exact 0.910), q=5 T_c=0.822(exact 0.852), q=6 T_c=0.749(exact 0.808) \u00b7 worst rel. err 7.2% (q=6) \u00b7 471s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m07",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m07.json"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M09",
+      "verdict": "verified",
+      "headline": "2D Heisenberg (T=0.7): \u27e8|m|\u27e9 drifts 0.478, 0.282, 0.142 across L=16, 32, 64 (ratios 0.590 \u2192 0.502) \u2014 Mermin\u2013Wagner confirmed: no finite-T order \u00b7 250s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m09",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m09.json"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M11",
+      "verdict": "verified",
+      "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.306 as T falls 2.00 \u2192 0.60 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase) \u00b7 67s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m11",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m11.json"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 29s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m01.json"
+    },
+    {
+      "date": "2026-06-25",
       "milestone": "M08",
       "verdict": "verified",
       "headline": "2D XY BKT (L=64): helicity \u03a5(T) crosses the (2/\u03c0)T jump line at T_BKT=0.9128 vs benchmark 0.8929 (rel. err 2.2%) \u00b7 94s on GPU",
@@ -767,20 +775,12 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m10.json"
     },
     {
-      "date": "2026-06-25",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 29s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m01.json"
-    },
-    {
       "date": "2026-06-24",
-      "milestone": "M04",
+      "milestone": "M05",
       "verdict": "verified",
-      "headline": "2D Ising specific heat (L=128): C(T) peaks at T_c=2.275 vs Onsager exact 2.2692 (rel. err 0.2%); \u03c7-peak cross-check 2.280 \u00b7 33s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m04",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m04.json"
+      "headline": "Triangular-lattice 2D Ising (L=129): \u03c7 peaks at T_c=3.675 vs exact 4/ln3 = 3.6410 (rel. err 0.9%); C-peak cross-check 3.650 \u00b7 63s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m05",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m05.json"
     },
     {
       "date": "2026-06-24",
@@ -789,6 +789,14 @@
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m01",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m01.json"
+    },
+    {
+      "date": "2026-06-24",
+      "milestone": "M04",
+      "verdict": "verified",
+      "headline": "2D Ising specific heat (L=128): C(T) peaks at T_c=2.275 vs Onsager exact 2.2692 (rel. err 0.2%); \u03c7-peak cross-check 2.280 \u00b7 33s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m04",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m04.json"
     },
     {
       "date": "2026-06-24",
@@ -839,68 +847,60 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-19-m01.json"
     },
     {
-      "date": "2026-07-07",
-      "milestone": "M15",
+      "date": "2026-06-18",
+      "milestone": "M01",
       "verdict": "verified",
-      "headline": "2D Ising quenched from T=\u221e to T=1.498 (0.66\u00b7T_c), L=512, 48 seeds: domain length grows as a clean power law L(t)\u223ct^n with n=0.486\u00b10.001 (stat, R\u00b2=0.9999) from the correlation length; energy-length cross-check n=0.469, drifting to n\u22480.496 on the late window. The effective exponent sits a few percent below the asymptotic Allen\u2013Cahn \u00bd \u2014 the documented preasymptotic correction \u2014 so the honest systematic band is \u2248\u00b10.02. Glauber coarsening exponent consistent with Allen\u2013Cahn t^(1/2) \u00b7 34s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-07-m15",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-07-m15.json"
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-18-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-18-m01.json"
     },
     {
-      "date": "2026-07-05",
-      "milestone": "M14",
+      "date": "2026-06-17",
+      "milestone": "M01",
       "verdict": "verified",
-      "headline": "2D random-bond Ising (\u00b1J, 64 disorder realizations) on the Nishimori line: measured disorder-averaged energy matches the exact \u22122\u00b7tanh(1/T) across p\u2208[0.04,0.16] to within \u0394=0.015 (L=24) \u2014 exact Nishimori-line energy reproduced. Ferro order collapses near p\u22480.126, bracketing the multicritical Nishimori point p_c\u22480.1094, T_c\u22480.9528 (precise pinning deferred \u2014 a hero run) \u00b7 204s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-05-m14",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-05-m14.json"
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-17-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-17-m01.json"
     },
     {
-      "date": "2026-07-04",
-      "milestone": "M13",
+      "date": "2026-06-16",
+      "milestone": "M01",
       "verdict": "verified",
-      "headline": "Frustrated triangular Ising antiferromagnet (L=24): no ordering transition, a macroscopically degenerate ground state. Integrating C(T)/T from S(\u221e)=ln2 down gives a residual entropy S0/N = 0.3338 k_B vs Wannier's exact 0.3383 (\u0394=0.0045); ground-state energy -1.0000 per spin (exact \u22121) \u2014 residual S0/N \u2248 0.3338 k_B \u2014 Wannier reproduced \u00b7 5s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-04-m13",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-04-m13.json"
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 37s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-16-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-16-m01.json"
     },
     {
-      "date": "2026-07-04",
-      "milestone": "M12",
-      "verdict": "null",
-      "headline": "3D Edwards\u2013Anderson spin glass (L=[4, 6, 8], 8 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 0.558 (benchmark 0.95 \u00b1 0.15) \u2014 no clean crossing near 0.95 \u2014 calibration null \u00b7 7s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-04-m12",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-04-m12.json"
+      "date": "2026-06-16",
+      "milestone": "M03",
+      "verdict": "verified",
+      "headline": "data collapse: M\u00b7L^(\u03b2/\u03bd) onto one master curve at \u03b2/\u03bd=0.131 (2D Ising \u03b2=1/8 \u2192 \u03b2/\u03bd=0.125, loss=8.2e-03) \u00b7 711s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-16-m03",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-16-m03.json"
     },
     {
-      "date": "2026-06-25",
-      "milestone": "M11",
+      "date": "2026-06-16",
+      "milestone": "M06",
       "verdict": "verified",
-      "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.306 as T falls 2.00 \u2192 0.60 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase) \u00b7 67s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m11",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m11.json"
+      "headline": "3D simple-cubic Ising (L=12): \u03c7 peaks at T_c=4.504 vs MC benchmark 4.5115 (rel. err 0.2%) \u00b7 28s on CPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-16-m06",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-16-m06.json"
     },
     {
-      "date": "2026-06-25",
-      "milestone": "M09",
+      "date": "2026-06-15",
+      "milestone": "M02",
       "verdict": "verified",
-      "headline": "2D Heisenberg (T=0.7): \u27e8|m|\u27e9 drifts 0.478, 0.282, 0.142 across L=16, 32, 64 (ratios 0.590 \u2192 0.502) \u2014 Mermin\u2013Wagner confirmed: no finite-T order \u00b7 250s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m09",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m09.json"
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.816 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 315s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-15-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-15-m02.json"
     },
     {
-      "date": "2026-06-25",
-      "milestone": "M07",
+      "date": "2026-06-14",
+      "milestone": "M01",
       "verdict": "verified",
-      "headline": "2D q-state Potts (L=64): q=3 T_c=1.002(exact 0.995), q=4 T_c=0.907(exact 0.910), q=5 T_c=0.822(exact 0.852), q=6 T_c=0.749(exact 0.808) \u00b7 worst rel. err 7.2% (q=6) \u00b7 471s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m07",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m07.json"
-    },
-    {
-      "date": "2026-06-24",
-      "milestone": "M05",
-      "verdict": "verified",
-      "headline": "Triangular-lattice 2D Ising (L=129): \u03c7 peaks at T_c=3.675 vs exact 4/ln3 = 3.6410 (rel. err 0.9%); C-peak cross-check 3.650 \u00b7 63s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m05",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m05.json"
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 37s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-14-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-14-m01.json"
     }
   ]
 }
