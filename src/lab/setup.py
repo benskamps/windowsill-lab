@@ -90,6 +90,14 @@ mkdir -p "$(dirname "$LOG")"
     echo "── done (skipped: not on main)"
     exit 0
   fi
+  # Refuse a pre-loaded index: agents work in this clone, and anything staged
+  # at 02:50 must never ship to main under a "nightly:" message. First belt;
+  # the --only commit below is the second. (campaign.sh grew the same guard.)
+  if ! git diff --cached --quiet; then
+    echo "REFUSING: pre-existing staged changes — nightly will not sweep the index. Skipping."
+    echo "── done (skipped: staged changes present)"
+    exit 0
+  fi
   # Sync with remote BEFORE working: PRs and the page-mirror bot push to main on
   # their own schedule, and a bare push from a stale main is rejected ("fetch
   # first") — exactly how the feed stranded for days in June 2026. Rebase on top.
@@ -99,15 +107,17 @@ mkdir -p "$(dirname "$LOG")"
   # so the windowsill climbs the curriculum on its own instead of re-running M01
   # every night. Best-effort; always leave the feed fresh. (Swapped from `lab run`
   # to the milestone-aware scheduler 2026-07-05, together with the M14 runner.)
-  "{PY}" -m lab.cli next || "{PY}" -m lab.cli publish
+  # The UTC-date --seed makes each night an independent sample (a rerun within
+  # the same day repeats deterministically; successive nights differ).
+  "{PY}" -m lab.cli next --seed "$(date -u +%Y%m%d)" || "{PY}" -m lab.cli publish
   # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
   # per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.
   git add pot.json physics-latest.json 2>/dev/null || true
   git add -A reports/ 2>/dev/null || true
-  if git diff --cached --quiet; then
+  if git diff --cached --quiet -- pot.json physics-latest.json reports/; then
     echo "nothing changed"
   else
-    git commit -m "nightly: $(date -u +%F)"
+    git commit --only -m "nightly: $(date -u +%F)" -- pot.json physics-latest.json reports/
     # On rejection, remote advanced under us: rebase and retry, don't hammer a
     # push that can only be rejected again.
     pushed=0
@@ -184,6 +194,15 @@ if ($branch -ne 'main') {
     Log "-- done (skipped: not on main)"
     exit 0
 }
+# Refuse a pre-loaded index: agents work in this clone, and anything staged at
+# 02:50 must never ship to main under a "nightly:" message. First belt; the
+# --only commit below is the second. (Same guard campaign.sh carries.)
+git diff --cached --quiet
+if ($LASTEXITCODE -ne 0) {
+    Log "REFUSING: pre-existing staged changes -- nightly will not sweep the index. Skipping."
+    Log "-- done (skipped: staged changes present)"
+    exit 0
+}
 # Sync with remote BEFORE working. PRs and the page-mirror bot push to main on
 # their own schedule; without this our nightly commit is based on a stale main and
 # the push below is rejected ("fetch first") -- exactly how the feed stranded for
@@ -193,16 +212,18 @@ git pull --rebase --autostash 2>&1 | LogCmd
 # back to the M01 heartbeat when the open milestone has no runner yet), so the windowsill
 # climbs the curriculum on its own instead of re-running M01 every night. Best-effort;
 # always leave the feed fresh. (Swapped from `lab run` to the milestone-aware scheduler
-# 2026-07-05, together with the M14 runner landing.)
-& '__PY__' -m lab.cli next 2>&1 | LogCmd
+# 2026-07-05, together with the M14 runner landing.) The UTC-date --seed makes each
+# night an independent sample (a same-day rerun repeats; successive nights differ).
+$seed = (Get-Date).ToUniversalTime().ToString('yyyyMMdd')
+& '__PY__' -m lab.cli next --seed $seed 2>&1 | LogCmd
 if ($LASTEXITCODE -ne 0) { & '__PY__' -m lab.cli publish 2>&1 | LogCmd }
 # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
 # per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.
 git add pot.json physics-latest.json 2>&1 | LogCmd
 git add -A reports/ 2>&1 | LogCmd
-git diff --cached --quiet
+git diff --cached --quiet -- pot.json physics-latest.json reports/
 if ($LASTEXITCODE -ne 0) {
-    git commit -m "nightly: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd'))" 2>&1 | LogCmd
+    git commit --only -m "nightly: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd'))" -- pot.json physics-latest.json reports/ 2>&1 | LogCmd
     $pushSucceeded = $false
     for ($i = 1; $i -le 4; $i++) {
         git push 2>&1 | LogCmd

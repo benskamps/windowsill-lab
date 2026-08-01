@@ -5,11 +5,21 @@ on:
     branches: [main]
   pull_request:
 
+# Superseded PR pushes cancel their in-flight runs. Pushes to main are NEVER
+# cancelled or coalesced — each campaign commit gets its own verdict, so every
+# push keys its own group (a shared group would let a queued regrade be
+# replaced, and a skipped grade is exactly how a red pass hides between two
+# green neighbors).
+concurrency:
+  group: ${{ github.event_name == 'pull_request' && format('ci-pr-{0}', github.ref) || format('ci-push-{0}', github.run_id) }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   # Fast feedback: the publish/verify pipeline + contract are stdlib-only, so
   # they run in seconds without pulling torch.
   pipeline:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
@@ -39,6 +49,7 @@ jobs:
   # interface). Pure JS, no DOM — runs in node's built-in test runner in seconds.
   web:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -57,6 +68,7 @@ jobs:
   # not a hand-picked 42% subset that omits newer milestone engines.
   physics:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v6
@@ -76,3 +88,40 @@ jobs:
       # here instead of shipping green.
       - name: Determinism gate (golden-seed smoke rerun)
         run: PYTHONPATH=src python -m lab.cli verify --rerun-smoke
+
+  # Red main was invisible: campaign pass 43 pushed a failing receipt, CI went
+  # red at 02:31Z, and the next pass overwrote it green 4h later with no human
+  # ever notified (run 30508711642 sat between two green neighbors). This job
+  # turns a failed push-to-main run into a GitHub notification via one stable
+  # issue: created on first red, commented on repeats.
+  # CONSUMER: Ben, via GitHub notifications. PR failures stay in the PR
+  # conversation, which already notifies — hence the push-only gate.
+  alarm:
+    if: failure() && github.event_name == 'push'
+    needs: [pipeline, web, physics]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      issues: write
+    steps:
+      - name: Create or update the "main is red" issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SHA: ${{ github.sha }}
+        run: |
+          title="main is red"
+          body="CI failed on a push to main.
+
+          - commit: ${SHA}
+          - run: ${RUN_URL}
+
+          A later campaign pass can overwrite the same-day receipt and go green without fixing anything — check the newest runs before closing."
+          num=$(gh issue list --state open --json number,title \
+                --jq '[.[] | select(.title == "main is red")][0].number // empty')
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi

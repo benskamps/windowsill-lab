@@ -334,8 +334,9 @@ def _report_jsons() -> list[Path]:
     """Every daily report JSON on record, across the repo and ``~/.lab``.
 
     Matches both the legacy ``<date>.json`` dumps and the permanent
-    ``<date>-<slug>.json`` files (so run cadence keeps counting after the
-    permanence refactor). ``<date>.html``/``-<slug>.html`` are excluded.
+    ``<date>-<slug>.json`` files. ``<date>.html``/``-<slug>.html`` are
+    excluded. Feeds ``_newest_report``; run cadence reads the committed
+    receipts instead (see ``run_cadence``).
     """
     seen: set = set()
     paths: list[Path] = []
@@ -354,29 +355,46 @@ def _date_of(path: Path) -> str:
     return path.stem[:10]
 
 
-def run_cadence() -> tuple[str | None, int]:
-    """``(last_run ISO, total runs)`` from daily report JSONs.
+def _receipt_date(path: Path) -> str:
+    """The ``YYYY-MM-DD`` inside a ``run-<date>-<slug>.json`` receipt name."""
+    return path.stem[4:14]
 
-    Each ``YYYY-MM-DD.json`` report (in the repo's ``reports/`` and in
-    ``~/.lab``) counts as one patient overnight run. "Last run" is the report
-    written most recently — keyed off file mtime, not the highest date string —
-    so a stale future-dated artifact (or a backfilled date) can't masquerade as
-    the latest. The leading date stem breaks an mtime tie, so a fresh git clone
-    (which resets every mtime identically) still orders stably. ``total`` is the
-    number of *distinct* days observed.
+
+def run_cadence() -> tuple[str | None, int]:
+    """``(last_run ISO, total runs)`` from the committed evidence receipts.
+
+    Receipts (``reports/receipts/run-<date>-<slug>.json``) are committed on
+    every pass, so every clone derives the *same* cadence. The old source —
+    dated report JSONs — was box-local (gitignored in ``reports/``, private in
+    ``~/.lab``), so each box published its own numbers: one box computed
+    ('2026-07-23', 28) while the committed feed said ('2026-07-30', 24) and the
+    shared receipts ledger held 39 distinct days.
+
+    ``last_run`` is the max ``generated_at`` stamp among the receipts of the
+    newest date — committed content, so it survives a fresh clone (which resets
+    every mtime). Receipts predating ``generated_at`` (or unreadable ones)
+    degrade to the bare receipt date, still clone-stable. ``total`` counts
+    *distinct dates*: a day with two milestones is one run day.
     """
-    paths = _report_jsons()
-    if not paths:
+    if not RECEIPTS_DIR.exists():
         return None, 0
-    # Order by (mtime, date_stem): the leading date breaks an mtime tie so a
-    # fresh git clone — which resets every mtime to the same value — still picks
-    # the run with the latest date, not an arbitrary one (mirrors scan_runs).
-    last_path = max(paths, key=lambda p: (p.stat().st_mtime, _date_of(p)))
-    last_iso = datetime.fromtimestamp(last_path.stat().st_mtime, timezone.utc).isoformat()
-    # Distinct *days*, not files: a permanent ``<date>-<slug>.json`` and a legacy
-    # ``<date>.json`` for the same day count once.
-    total = len({_date_of(p) for p in paths})
-    return last_iso, total
+    receipts = sorted(RECEIPTS_DIR.glob(f"run-{_DATE_GLOB}-*.json"))
+    if not receipts:
+        return None, 0
+    dates = {_receipt_date(p) for p in receipts}
+    last_date = max(dates)
+    stamps = []
+    for p in receipts:
+        if _receipt_date(p) != last_date:
+            continue
+        try:
+            stamp = json.loads(p.read_text(encoding="utf-8")).get("generated_at")
+        except (OSError, ValueError):
+            stamp = None
+        if isinstance(stamp, str) and stamp:
+            stamps.append(stamp)
+    last_iso = max(stamps) if stamps else last_date
+    return last_iso, len(dates)
 
 
 def _git(*args: str) -> str | None:
