@@ -38,15 +38,20 @@ BETA_OVER_NU = 1.0 / 8.0    # = 0.125
 INV_NU = 1.0                # 1/ν
 # 3D simple-cubic Ising critical temperature — the MC/series benchmark (M06).
 TC_3D = 4.5115
-# 3D ±J Edwards–Anderson spin-glass transition temperature (M12) — the modern
-# Monte-Carlo benchmark (no closed form; the literature clusters near ≈0.95).
-# Located by the disorder-averaged Binder-cumulant crossing across lattice sizes.
-TC_SG_3D = 0.95
+# 3D Edwards–Anderson spin-glass transition temperature (M12) for the BIMODAL ±J
+# couplings the engine actually draws (spin_glass3d._bonds: randint(0,2)*2−1).
+# Katzgraber–Körner–Young, PRB 73, 224432 (2006) place the ±J transition at
+# T_c = 1.120(4) — their 0.951(9) is the GAUSSIAN-disorder value — and
+# Hasenbusch–Pelissetto–Vicari refine the ±J value to T_c = 1.1019(29). Mirrors
+# m12.T_SG_BENCHMARK: the engine and this check must grade the same model
+# (test_m12_benchmark_mirrors_the_engine_constant pins the pair together).
+TC_SG_3D = 1.102
 # Crossing tolerance for M12: finite-size Binder crossings drift with the size pair
 # and carry corrections-to-scaling, so — like M08's ±0.07 BKT window — a physically
 # justified band is allowed. Owned by the check (not read from the report) so a run
-# can't widen its own tolerance to pass. A broken run still misses by a wide margin.
-TC_SG_3D_TOL = 0.15
+# can't widen its own tolerance to pass. A broken run still misses by a wide margin,
+# and the Gaussian-disorder 0.95 sits outside the band. Mirrors m12.CROSSING_TOL.
+TC_SG_3D_TOL = 0.10
 # Exact triangular-lattice 2D Ising critical temperature (M05): T_c = 4/ln 3.
 TC_TRI = 4.0 / math.log(3.0)   # ≈ 3.6410
 # 2D XY BKT transition temperature (M08) — the square-lattice MC/RG benchmark
@@ -103,7 +108,8 @@ ALLEN_CAHN_TOL = 0.06
 M15_MIN_R2 = 0.99
 # M15 scaling-window rule — re-derived here (a receipt), matching ``m15`` defaults. The check
 # prefers the window params the report stored (so producer and grader can't silently drift),
-# falling back to these if absent.
+# falling back to these if absent — but honours stored values only inside the check-owned
+# bounds defined below (a report can't tune its own window into the band).
 M15_T_FIT_MIN = 20
 M15_L_MIN_FIT = 4.0
 M15_SAT_FRAC = 0.20
@@ -136,7 +142,8 @@ RD_EXACT_TOL = 0.05
 # clears a high R². Guards against grading a slope off a curved or noisy line.
 M17_MIN_R2 = 0.99
 # M17 scaling-window rule — re-derived here (a receipt). Preferred from the report when it
-# stored them (so producer and grader can't silently drift), else these.
+# stored them (so producer and grader can't silently drift), else these — honoured only
+# inside the check-owned bounds defined below.
 M17_T_FIT_MIN = 20
 M17_W_FIT_MIN = 1.5
 # λ < 0 for the single-step model (v(u) = (p/2)(1−u²) ⇒ λ = ∂²v/∂u² = −p), so KPZ predicts
@@ -157,6 +164,42 @@ WASP18_PERIOD_DAYS = 0.94145223
 WASP18_PERIOD_TOL_DAYS = 2.4e-7
 WASP18_DEPTH_FRACTION = 0.01041
 WASP18_DEPTH_TOL_FRACTION = 0.00022
+
+# CTRL tolerances OWNED BY THE CHECK — numerically mirrored from controls.py
+# (its CROSS_UPDATER_TOL / NULL_PEAK_RATIO_MAX, the producer's own gates) so the
+# grader and the producer can't drift apart silently, but never READ from the
+# report: a receipt carrying tol=99 or ratio_max=50 is graded against these.
+CROSS_UPDATER_TOL = 0.15
+NULL_PEAK_RATIO_MAX = 2.5
+
+# Check-owned bounds on the report-carried scaling-window parameters (M15/M17).
+# The window is as powerful a dial as the tolerance on a slightly curved log-log
+# line — an early window lowers the effective exponent, a late one raises it — so
+# a report may pick its window only inside these bands; outside them it is graded
+# FAIL, never honoured. The module defaults above sit comfortably inside.
+M15_T_FIT_MIN_BOUNDS = (10.0, 100.0)
+M15_L_MIN_FIT_BOUNDS = (2.0, 8.0)
+M15_SAT_FRAC_BOUNDS = (0.10, 0.25)
+M17_T_FIT_MIN_BOUNDS = (10.0, 100.0)
+M17_W_FIT_MIN_BOUNDS = (1.0, 3.0)
+
+
+def _window_param(report: dict, key: str, default: float, bounds: tuple) -> float | None:
+    """A report-carried window parameter, honoured only inside the check-owned band.
+
+    Returns the value to use, or ``None`` when the stored value is malformed or
+    out of bounds — the caller grades that FAIL (a run can't tune its own window
+    into the band, and unreadable guard data is a named failure, not a default).
+    """
+    raw = report.get(key, default)
+    try:
+        v = float(raw)
+    except (TypeError, ValueError):
+        return None
+    lo, hi = bounds
+    if not (math.isfinite(v) and lo <= v <= hi):
+        return None
+    return v
 
 
 def _reports_newest_first() -> list[Path]:
@@ -712,9 +755,17 @@ def check_m11(report: dict) -> tuple[bool | None, str]:
 
     # Symmetry / equilibration guard: |⟨q⟩| ≈ 0 by the ±J symmetry. Prefer the
     # re-derivable per-T ⟨q⟩ if present; else fall back to the reported diagnostic.
+    # With NEITHER present the guard has nothing to grade — a named failure, never
+    # a default-0.0 pass (fail closed, not open).
     qm = report.get("q_mean")
-    max_abs_qmean = (max(abs(v) for v in qm) if qm else
-                     report.get("max_abs_q_mean", 0.0))
+    if qm:
+        max_abs_qmean = max(abs(v) for v in qm)
+    elif "max_abs_q_mean" in report:
+        max_abs_qmean = report["max_abs_q_mean"]
+    else:
+        return False, ("M11 report carries no symmetry/equilibration evidence "
+                       "(neither q_mean nor max_abs_q_mean) — the P(q)=P(−q) "
+                       "guard cannot run; failing closed")
     symmetric = max_abs_qmean <= 0.15
 
     ok = broadens and symmetric
@@ -768,23 +819,34 @@ def _binder_crossing_stdlib(Ts, G_by_L) -> tuple[float | None, list[tuple]]:
 
 
 def check_m12(report: dict) -> tuple[bool | None, str]:
-    """3D Edwards–Anderson spin glass: a multi-L Binder crossing locates T_SG ≈ 0.95.
+    """3D Edwards–Anderson spin glass: a multi-L Binder crossing locates T_SG ≈ 1.10.
 
     Returns ``None`` unless this is an M12 report. Unlike M11 (2D, T_c = 0, no finite-T
     phase), the **3D** ±J glass has a genuine finite-temperature spin-glass transition;
     its fingerprint is the disorder-averaged Binder cumulant g_L(T) crossing at a single
     temperature across ≥3 lattice sizes on one shared ladder. The check **re-derives**
     that crossing from the report's per-L ``binder_by_L`` arrays (a receipt, not an echo
-    of the reported ``crossing_T``) and asserts it lands near the ≈0.95 benchmark within
-    the check-owned ±0.15 band, plus two guards so an under-equilibrated run can't pass:
+    of the reported ``crossing_T``) and asserts it lands near the bimodal-±J benchmark
+    ``TC_SG_3D`` within the check-owned ``TC_SG_3D_TOL`` band, plus three guards so an
+    under-equilibrated run can't pass:
 
     * **A crossing must exist**: ≥3 sizes must actually intersect. A smeared, crossing-
       free g_L(T) — the signature of parallel-tempering under-equilibration (M11's
       documented failure mode) — has no crossing and fails, rather than passing on a
       flat curve.
+    * **PT scheduling, from the raw counters**: when the report carries the per-gap
+      ``swap_attempts_by_L`` counters, every ladder must have attempted every gap. A
+      partial pattern (some gaps attempted, some never) is the fragmented-scheduling
+      signature of the even-``swap_every`` parity bug — the ladder decomposed into
+      islands, so its crossing is not evidence. Re-derived from the counters, never
+      from the ``pt_health_by_L`` strings; all-zero counters mean PT was off (the
+      engine's own health rule), which the other guards grade. Reports without
+      counters (pre-counter receipts) skip this guard.
     * **Symmetry / equilibration**: P(q) = P(−q) by the ±J symmetry, so the disorder-
       averaged ⟨q⟩ must stay ≈ 0 across every size and temperature. A large |⟨q⟩| means
       a broken-symmetry replica leaked through, so it fails even if a crossing appeared.
+      With neither ``q_mean_by_L`` nor ``max_abs_q_mean`` present the guard fails
+      closed — missing guard data is a named failure, never a default pass.
     """
     if report.get("experiment") != "M12-spin-glass-3d":
         return None, "not an M12 spin-glass report"
@@ -794,16 +856,43 @@ def check_m12(report: dict) -> tuple[bool | None, str]:
             or any(len(v) != len(T) for v in binder_by_L.values())):
         return None, "M12 report missing a shared T ladder or ≥3 per-L Binder arrays"
 
+    # PT scheduling guard, re-derived from the raw attempt counters when present.
+    attempts = report.get("swap_attempts_by_L")
+    if attempts is not None:
+        try:
+            fragmented = []
+            for L in sorted(attempts, key=lambda k: int(k)):
+                counts = [float(a) for a in attempts[L]]
+                if not counts or any(not math.isfinite(c) or c < 0 for c in counts):
+                    raise ValueError("unreadable attempt counts")
+                dead = [g for g, c in enumerate(counts) if c == 0]
+                if dead and len(dead) < len(counts):     # partial = fragmented; all-zero = PT off
+                    fragmented.append(f"L={L}: gaps {dead}")
+        except (TypeError, ValueError, KeyError):
+            return False, ("M12 swap_attempts_by_L is malformed — the PT scheduling "
+                           "receipt cannot be re-derived; failing closed")
+        if fragmented:
+            return False, ("PT ladder fragmented — swap gaps never attempted "
+                           f"({'; '.join(fragmented)}); the ladder decomposed into "
+                           "islands, so the crossing is not evidence of the transition")
+
     order = sorted(range(len(T)), key=lambda i: T[i])
     Ts = [float(T[i]) for i in order]
     G_by_L = {int(k): [float(v[i]) for i in order] for k, v in binder_by_L.items()}
     crossing_T, pairs = _binder_crossing_stdlib(Ts, G_by_L)
 
     # Symmetry / equilibration guard: |⟨q⟩| ≈ 0 across all sizes and temperatures.
+    # Prefer the re-derivable per-L arrays; else the reported scalar; with neither,
+    # fail closed rather than defaulting the guard value to a pass.
     qm = report.get("q_mean_by_L") or {}
     max_abs_qmean = max((abs(x) for v in qm.values() for x in v), default=None)
     if max_abs_qmean is None:
-        max_abs_qmean = report.get("max_abs_q_mean", 0.0)
+        if "max_abs_q_mean" in report:
+            max_abs_qmean = report["max_abs_q_mean"]
+        else:
+            return False, ("M12 report carries no symmetry/equilibration evidence "
+                           "(neither q_mean_by_L nor max_abs_q_mean) — the "
+                           "P(q)=P(−q) guard cannot run; failing closed")
 
     has_crossing = crossing_T is not None
     near = has_crossing and abs(crossing_T - TC_SG_3D) <= TC_SG_3D_TOL
@@ -815,12 +904,12 @@ def check_m12(report: dict) -> tuple[bool | None, str]:
     detail = (
         f"Binder crossing T_SG = {ct_str} vs benchmark {TC_SG_3D:.2f} "
         f"(tol ±{TC_SG_3D_TOL}); pairwise [{pair_str}]; max|⟨q⟩|={max_abs_qmean:.3f} — "
-        + ("g_L(T) cross near T_SG≈0.95 — the finite-T 3D spin-glass transition, "
-           "reproduced" if ok else
+        + (f"g_L(T) cross near T_SG≈{TC_SG_3D:.2f} — the finite-T 3D spin-glass "
+           "transition, reproduced" if ok else
            ("no multi-L Binder crossing resolved (smeared g_L(T) — likely "
             "under-equilibrated; needs more disorder realizations / longer parallel "
             "tempering)" if not has_crossing else
-            ("crossing far from the 0.95 benchmark" if not near else
+            (f"crossing far from the {TC_SG_3D:.2f} benchmark" if not near else
              "P(q) not symmetric (|⟨q⟩| too large) — un-equilibrated or broken")))
     )
     return ok, detail
@@ -910,6 +999,7 @@ def check_m14(report: dict) -> tuple[bool | None, str]:
     parts: list[str] = []
     all_ok = True
     graded = 0
+    off_line_count = 0
     for pt in pts:
         p, T, e = pt.get("p"), pt.get("T"), pt.get("energy")
         if p is None or T is None or e is None or T <= 0:
@@ -917,6 +1007,7 @@ def check_m14(report: dict) -> tuple[bool | None, str]:
         # Guard 1 — the point must be on the Nishimori line, else the identity doesn't apply.
         on_line = abs(math.tanh(1.0 / T) - (1.0 - 2.0 * p)) <= NISHIMORI_LINE_TOL
         if not on_line:
+            off_line_count += 1
             all_ok = False
             parts.append(f"p={p:.3f}: OFF the Nishimori line ✗")
             continue
@@ -928,15 +1019,22 @@ def check_m14(report: dict) -> tuple[bool | None, str]:
         all_ok = all_ok and ok
         parts.append(f"p={p:.3f}: E={e:.3f} vs {e_exact:.3f} (Δ={dev:.3f}){'' if ok else ' ✗'}")
 
-    if graded < 3:
+    # An off-line point is breakage evidence (broken temperature or p wiring — the
+    # exact failure the on-line guard exists to catch), so it grades FAIL here even
+    # when <3 points remain on-line; ``None`` (fall through to an older report) is
+    # reserved for reports that structurally lack gradable points.
+    if graded < 3 and off_line_count == 0:
         return None, "M14 report has <3 gradable on-line calibration points"
     detail = (
         f"Nishimori-line energy E/N vs exact −2·tanh(1/T) — " + "; ".join(parts) + " — "
         + ("the exact disorder-averaged Nishimori-line energy is reproduced across the "
            "line (the MNP p_c≈0.109 itself is mapped only approximately at this scale)"
            if all_ok else
-           "measured energy departs from the exact Nishimori-line identity — a broken "
-           "random-bond run, not the expected exact energy")
+           (f"{off_line_count} calibration point(s) sit OFF the Nishimori line — "
+            "broken (p, T) wiring, graded as failure rather than skipped"
+            if off_line_count else
+            "measured energy departs from the exact Nishimori-line identity — a broken "
+            "random-bond run, not the expected exact energy"))
     )
     return all_ok, detail
 
@@ -993,9 +1091,15 @@ def check_m15(report: dict) -> tuple[bool | None, str]:
     L_box = report.get("L")
     if not L_box:
         return None, "M15 report missing the lattice size L"
-    t_fit_min = report.get("t_fit_min", M15_T_FIT_MIN)
-    l_min_fit = report.get("l_min_fit", M15_L_MIN_FIT)
-    sat_frac = report.get("sat_frac", M15_SAT_FRAC)
+    t_fit_min = _window_param(report, "t_fit_min", M15_T_FIT_MIN, M15_T_FIT_MIN_BOUNDS)
+    l_min_fit = _window_param(report, "l_min_fit", M15_L_MIN_FIT, M15_L_MIN_FIT_BOUNDS)
+    sat_frac = _window_param(report, "sat_frac", M15_SAT_FRAC, M15_SAT_FRAC_BOUNDS)
+    if t_fit_min is None or l_min_fit is None or sat_frac is None:
+        return False, (
+            "M15 scaling-window parameters sit outside the check-owned bounds "
+            f"(t_fit_min∈{M15_T_FIT_MIN_BOUNDS}, l_min_fit∈{M15_L_MIN_FIT_BOUNDS}, "
+            f"sat_frac∈{M15_SAT_FRAC_BOUNDS}) — a run cannot choose its own fit window"
+        )
 
     # Re-select the scaling window from the stored rule and re-fit the exponent.
     xs, ys = [], []
@@ -1111,8 +1215,14 @@ def check_m17(report: dict) -> tuple[bool | None, str]:
     if not isinstance(growth, dict) or "kpz" not in growth:
         return None, "M17 report missing the per-model growth curves"
 
-    t_fit_min = float(report.get("t_fit_min", M17_T_FIT_MIN))
-    w_fit_min = float(report.get("w_fit_min", M17_W_FIT_MIN))
+    t_fit_min = _window_param(report, "t_fit_min", M17_T_FIT_MIN, M17_T_FIT_MIN_BOUNDS)
+    w_fit_min = _window_param(report, "w_fit_min", M17_W_FIT_MIN, M17_W_FIT_MIN_BOUNDS)
+    if t_fit_min is None or w_fit_min is None:
+        return False, (
+            "M17 scaling-window parameters sit outside the check-owned bounds "
+            f"(t_fit_min∈{M17_T_FIT_MIN_BOUNDS}, w_fit_min∈{M17_W_FIT_MIN_BOUNDS}) "
+            "— a run cannot choose its own fit window"
+        )
 
     fits = {}
     for name in ("kpz", "ew", "rd"):
@@ -1195,16 +1305,20 @@ def check_m17(report: dict) -> tuple[bool | None, str]:
                "the three classes did not separate, or random deposition drifted off its "
                "exact w²=p(1−p)t curve — the exponent pipeline is not trustworthy")
     elif not alpha_ok:
-        why = "the roughness exponent α from saturation is off the exact 1/2"
+        why = ("the saturation table is missing or too short to re-fit α"
+               if alpha is None else
+               "the roughness exponent α from saturation is off the exact 1/2")
     else:
         why = ("the height-fluctuation skewness did not land on the λ<0-mirrored Tracy–Widom "
                "law its geometry predicts")
 
+    # ``α`` may be None on a growth-only (partial) report — grade it, never crash on it.
+    alpha_str = f"α={alpha:.4f}" if alpha is not None else "α=— (no saturation table)"
     detail = (
         f"β = {beta:.4f} vs KPZ 1/3 (tol ±{KPZ_BETA_TOL}, R²={beta_r2:.4f}, {beta_n} pts, "
         f"t∈[{t_lo:.0f},{t_hi:.0f}]); controls on the same pipeline: EW β={ew_beta:.4f} vs 1/4, "
         f"RD β={rd_beta:.4f} vs 1/2 and w² within {100 * rd_dev:.1f}% of the exact p(1−p)t; "
-        f"α={alpha:.4f} vs 1/2" + (f", z=α/β={z:.3f} vs 3/2" if z else "") + "; "
+        + alpha_str + " vs 1/2" + (f", z=α/β={z:.3f} vs 3/2" if z else "") + "; "
         + "; ".join(tw_bits) + " — " + why
     )
     return ok, detail
@@ -1474,16 +1588,23 @@ def check_controls(report: dict) -> tuple[bool | None, str]:
     * **Cross-updater agreement** (positive control): every ``controls`` entry
       compares an observable measured by two independent correct algorithms
       (single-spin Metropolis vs single-cluster Wolff). Each must agree within the
-      entry's own ``tol`` — two updaters, one number. A silently broken updater
-      makes ``delta`` blow past ``tol`` and this fails.
+      check-owned ``CROSS_UPDATER_TOL`` — two updaters, one number. A silently
+      broken updater pushes |metropolis − wolff| past the band and this fails.
     * **Null-coupling baseline** (negative control): with ``J=0`` there is no
       transition, so χ(T) must be flat — its peak/median prominence stays below
-      ``ratio_max`` (a real critical peak is many times its baseline; a flat noisy
-      1/T curve is ≈1×). The control's job is to **fail** the "there is a T_c peak"
-      gate; PASS here means that failure was reproduced — proving M01's peak is
-      physics, not an artifact the analysis manufactures from noise. (Prominence,
-      not the noisy argmax *location*, is the discriminator: a flat curve's argmax
-      wanders, but its peak never towers over its baseline.)
+      the check-owned cap (a real critical peak is many times its baseline; a flat
+      noisy 1/T curve is ≈1×). The control's job is to **fail** the "there is a
+      T_c peak" gate; PASS here means that failure was reproduced — proving M01's
+      peak is physics, not an artifact the analysis manufactures from noise.
+      (Prominence, not the noisy argmax *location*, is the discriminator: a flat
+      curve's argmax wanders, but its peak never towers over its baseline.)
+
+    Every graded quantity is **re-derived from the raw arrays** — ``delta`` from
+    each entry's own ``metropolis``/``wolff`` values, the null prominence from the
+    null's own ``chi`` array — against the check-owned ``CROSS_UPDATER_TOL`` /
+    ``NULL_PEAK_RATIO_MAX``. Report-carried ``tol``/``ratio_max`` never grade
+    anything, and a summary field that contradicts its own raw values (a tampered
+    ``delta`` or ``peak_to_median_ratio``) is malformed evidence and fails.
     """
     if report.get("experiment") != "CTRL-published-controls":
         return None, "not a published-controls report"
@@ -1494,33 +1615,69 @@ def check_controls(report: dict) -> tuple[bool | None, str]:
 
     parts: list[str] = []
     all_ok = True
+    graded = 0
     for e in entries:
-        delta, tol = e.get("delta"), e.get("tol")
-        if delta is None or tol is None:
+        try:
+            mv, wv = float(e["metropolis"]), float(e["wolff"])
+        except (KeyError, TypeError, ValueError):
+            continue                       # no raw values → nothing to re-derive
+        if not (math.isfinite(mv) and math.isfinite(wv)):
             continue
-        ok = delta <= tol
+        graded += 1
+        delta = abs(mv - wv)
+        ok = delta <= CROSS_UPDATER_TOL
+        # A carried delta that contradicts the raw values is a tampered/malformed
+        # receipt — fail it even when the re-derived delta itself is in band.
+        carried = e.get("delta")
+        if carried is not None:
+            try:
+                consistent = math.isclose(float(carried), delta, rel_tol=1e-3, abs_tol=1e-3)
+            except (TypeError, ValueError):
+                consistent = False
+            ok = ok and consistent
         all_ok = all_ok and ok
+        t = e.get("T")
+        t_str = f"{t:.1f}" if isinstance(t, (int, float)) else "?"
         parts.append(
-            f"{e.get('observable')}@T={e.get('T'):.1f}: |Δ|={delta:.3f}≤{tol}"
+            f"{e.get('observable')}@T={t_str}: |Δ|={delta:.3f}≤{CROSS_UPDATER_TOL}"
             + ("" if ok else " ✗")
         )
+    if graded < 2:
+        return None, ("controls report has <2 cross-updater entries with raw "
+                      "metropolis/wolff values to re-derive from")
 
-    # The negative control must NOT show a prominent peak: a flat χ has a peak/median
-    # ratio near 1, while a genuine critical peak towers many× over its baseline. If
-    # the null grew a prominent peak, the pipeline is manufacturing one.
-    ratio = null.get("peak_to_median_ratio")
-    ratio_max = null.get("ratio_max")
-    null_flat = ratio is not None and ratio_max is not None and ratio <= ratio_max
+    # The negative control must NOT show a prominent peak, re-derived from the
+    # null's own χ array. No re-derivable χ = the guard cannot run = named failure.
+    chi = null.get("chi")
+    if (isinstance(chi, list) and len(chi) >= 3
+            and all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                    and math.isfinite(v) for v in chi)):
+        median = statistics.median(chi)
+        ratio = (max(chi) / median) if median > 0 else math.inf
+        null_flat = ratio <= NULL_PEAK_RATIO_MAX
+        carried_ratio = null.get("peak_to_median_ratio")
+        if carried_ratio is not None:
+            try:
+                null_flat = null_flat and math.isclose(
+                    float(carried_ratio), ratio, rel_tol=1e-3, abs_tol=1e-3)
+            except (TypeError, ValueError):
+                null_flat = False
+        null_str = (f"J=0 null χ flat (peak/median={ratio:.2f}≤{NULL_PEAK_RATIO_MAX})"
+                    if null_flat else
+                    f"J=0 null χ prominence re-derived at {ratio:.2f} "
+                    f"(cap {NULL_PEAK_RATIO_MAX}) ✗")
+    else:
+        null_flat = False
+        null_str = "J=0 null carries no re-derivable χ array ✗"
     all_ok = all_ok and null_flat
-    null_str = (f"J=0 null χ flat (peak/median={ratio:.2f}≤{ratio_max})"
-                if ratio is not None else "J=0 null missing χ")
 
     detail = (
         "cross-updater [" + "; ".join(parts) + "] · " + null_str + " — "
         + ("two independent updaters agree and the J=0 null shows no peak — the M01 "
            "transition is physics, not an analysis artifact"
            if all_ok else
-           "a control failed: the updaters disagree or the J=0 null grew a spurious peak")
+           "a control failed: the updaters disagree, a summary contradicts its raw "
+           "values, or the J=0 null grew a spurious peak")
     )
     return all_ok, detail
 
@@ -1537,9 +1694,16 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:
-    """Grade a milestone against the newest report its check can evaluate."""
+    """Grade a milestone against the newest report its check can evaluate.
+
+    A checker that raises on a report is a named failure, not a dead gate: the
+    exception text is surfaced as the detail and the other milestones keep grading.
+    """
     for rep in reports:
-        ok, detail = fn(rep)
+        try:
+            ok, detail = fn(rep)
+        except Exception as exc:                # noqa: BLE001 — any crash must grade
+            return "fail", f"checker crashed: {type(exc).__name__}: {exc}"
         if ok is not None:
             return ("pass" if ok else "fail"), detail
     return "no-report", "no report this check can evaluate"
@@ -1549,12 +1713,27 @@ def verify(ids: list[str] | None = None) -> list[dict]:
     """Run registered checks against every verified milestone (or just ``ids``).
 
     Each result: ``pass`` / ``fail`` (check ran), ``unchecked`` (no check yet),
-    or ``no-report`` (nothing the check can read).
+    or ``no-report`` (nothing the check can read). A report file that cannot be
+    parsed as a JSON object — a truncated campaign write, a corrupt disk read —
+    is emitted as its own named ``unreadable`` row (which fails the CLI gate)
+    while every readable report still grades: one bad file degrades to a named
+    failure instead of killing the whole gate.
     """
     ms = parse_milestones(MILESTONES_MD.read_text(encoding="utf-8") if MILESTONES_MD.exists() else "")
-    reports = [json.loads(p.read_text(encoding="utf-8")) for p in _reports_newest_first()]
-
+    reports: list[dict] = []
     results: list[dict] = []
+    for p in _reports_newest_first():
+        try:
+            rep = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            results.append({"id": p.name, "status": "unreadable",
+                            "detail": f"unreadable report: {exc}"})
+            continue
+        if not isinstance(rep, dict):
+            results.append({"id": p.name, "status": "unreadable",
+                            "detail": "unreadable report: JSON root is not an object"})
+            continue
+        reports.append(rep)
     for m in ms:
         if m["status"] != "verified" or (ids and m["id"] not in ids):
             continue

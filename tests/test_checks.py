@@ -1,14 +1,15 @@
 """The verification gate: a verified milestone must reproduce its number."""
 import json
 import math
+import statistics
 
 import lab.checks as checks
 from lab.checks import (
     ALLEN_CAHN_EXPONENT, BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT,
     TC_3D, TC_SG_3D, TC_SG_3D_TOL, TC_TRI, TWO_OVER_PI, WANNIER_S0, WANNIER_S0_TOL,
-    _grade, check_m01, check_m02, check_m03, check_m04, check_m05, check_m06,
-    check_m07, check_m08, check_m09, check_m10, check_m11, check_m12, check_m13,
-    check_m15, verify,
+    _grade, check_controls, check_m01, check_m02, check_m03, check_m04, check_m05,
+    check_m06, check_m07, check_m08, check_m09, check_m10, check_m11, check_m12,
+    check_m13, check_m14, check_m15, check_m17, verify,
 )
 
 
@@ -642,7 +643,7 @@ def test_m11_needs_enough_temperatures():
     assert ok is None   # fewer than 3 temperatures → not gradable
 
 
-# ── M12: 3D Edwards–Anderson spin glass · Binder crossing (T_SG ≈ 0.95) ───────
+# ── M12: 3D Edwards–Anderson spin glass · Binder crossing (±J benchmark) ─────
 def _m12_report(t_sg=TC_SG_3D, max_abs_q=0.02, n_temps=7, sizes=(4, 6, 8), crossing=True):
     """A synthetic M12 report whose g_L(T) curves cross cleanly at ``t_sg``.
 
@@ -685,10 +686,11 @@ def test_m12_fails_when_no_crossing_resolved():
 
 
 def test_m12_fails_when_crossing_far_from_benchmark():
-    # A clean crossing, but at 0.4 — well outside the 0.95 ± 0.15 band. Must fail.
+    # A clean crossing, but at 0.4 — well outside the check-owned band around the
+    # benchmark. Must fail. (The assertion tracks the constant, not a literal.)
     ok, detail = check_m12(_m12_report(t_sg=0.4))
     assert ok is False
-    assert "far from the 0.95 benchmark" in detail
+    assert f"far from the {TC_SG_3D:.2f} benchmark" in detail
 
 
 def test_m12_fails_on_broken_symmetry():
@@ -854,3 +856,338 @@ def test_check_m15_admits_the_documented_low_bias():
 def test_check_m15_ignores_foreign_reports():
     assert check_m15({"experiment": "M13-triangular-afm"})[0] is None
     assert check_m15({"experiment": "M01-ising-verification", "T": [1, 2], "chi": [1, 2]})[0] is None
+
+
+# ══ Checker hardening: re-derive from raw arrays, fail closed, survive bad files ══
+#
+# Negative controls for the fail-open / echo / crash holes: each test below models a
+# hostile or broken report that used to grade green (or kill the gate) and asserts it
+# now grades as a NAMED failure — plus a healthy-report control per fix proving the
+# tightened guard is inert on clean data.
+
+
+# ── M12 benchmark: the check must grade the model the engine simulates ────────
+def test_m12_benchmark_mirrors_the_engine_constant():
+    # The engine draws bimodal ±J couplings and owns the literature benchmark in
+    # m12.py; the check's mirror must be the SAME number, or the headline and the
+    # verify gate disagree about what counts as the transition.
+    import lab.m12 as m12
+    assert TC_SG_3D == m12.T_SG_BENCHMARK
+    assert TC_SG_3D_TOL == m12.CROSSING_TOL
+
+
+def test_m12_gaussian_value_fails_the_bimodal_band():
+    # Katzgraber–Körner–Young give 0.951(9) for GAUSSIAN disorder and 1.120(4) for
+    # the bimodal ±J model this engine simulates (HPV refine: 1.1019(29)). A
+    # crossing at the Gaussian value must FAIL, and one at the ±J value must PASS.
+    ok_gauss, _ = check_m12(_m12_report(t_sg=0.95))
+    assert ok_gauss is False
+    ok_bimodal, detail = check_m12(_m12_report(t_sg=1.102))
+    assert ok_bimodal is True, detail
+
+
+# ── CTRL: re-derived cross-updater delta + null prominence ────────────────────
+def _controls_report(mv=-1.40, wv=-1.41, chi_peak=1.0):
+    """A synthetic CTRL report with raw per-entry updater values and a raw null χ.
+
+    ``chi_peak`` scales an interior spike on an otherwise flat 1/T curve, so the
+    re-derivable peak/median prominence is controllable (1.0 = flat, healthy null).
+    The summary fields (delta / peak_to_median_ratio) are derived from the raw
+    values exactly as the producer derives them; tests tamper from there.
+    """
+    T = [1.6, 1.9, 2.1, 2.269, 2.45, 2.7, 3.0]
+    chi = [1.0 / t for t in T]
+    chi[3] = chi_peak * chi[3]
+    entries = []
+    for T_e in (1.8, 3.2):
+        for obs in ("energy", "abs_mag"):
+            entries.append({
+                "name": "wolff-vs-metropolis", "T": T_e, "L": 16,
+                "observable": obs, "metropolis": mv, "wolff": wv,
+                "delta": abs(mv - wv), "tol": 0.15,
+            })
+    return {
+        "experiment": "CTRL-published-controls",
+        "controls": entries,
+        "null_control": {
+            "name": "null-coupling-J0-flat-chi", "L": 16, "T": T, "chi": chi,
+            "peak_to_median_ratio": max(chi) / statistics.median(chi),
+            "ratio_max": 2.5,
+        },
+    }
+
+
+def test_controls_healthy_report_passes():
+    ok, detail = check_controls(_controls_report())
+    assert ok is True, detail
+
+
+def test_controls_report_cannot_widen_its_own_tolerance():
+    # THE demonstrated false green: raw updater values 1.3 apart (badly broken)
+    # under a hostile tol=99. The check re-derives |metropolis − wolff| against its
+    # OWN band, so the report-carried tolerance must be powerless.
+    rep = _controls_report(mv=-1.5, wv=-0.2)
+    for e in rep["controls"]:
+        e["tol"] = 99.0
+    ok, detail = check_controls(rep)
+    assert ok is False
+    assert "✗" in detail or "failed" in detail
+
+
+def test_controls_rederive_delta_from_raw_values_not_the_echo():
+    # A report carrying delta=0.0 that contradicts its own raw metropolis/wolff
+    # values must fail — the raw arrays decide, never the echoed summary.
+    rep = _controls_report(mv=-1.5, wv=-0.2)
+    for e in rep["controls"]:
+        e["delta"] = 0.0
+    ok, _ = check_controls(rep)
+    assert ok is False
+
+
+def test_controls_null_rederived_from_chi_not_ratio_fields():
+    # The null χ genuinely grew a ~40× interior peak; hostile summary fields claim
+    # ratio 40 ≤ ratio_max 50. The re-derived prominence must fail it.
+    rep = _controls_report(chi_peak=40.0)
+    rep["null_control"]["ratio_max"] = 50.0
+    ok, _ = check_controls(rep)
+    assert ok is False
+
+
+def test_controls_fail_closed_when_null_chi_missing():
+    # No raw χ array = the negative control cannot be re-derived = a named
+    # failure, never a silent pass on the echoed ratio.
+    rep = _controls_report()
+    del rep["null_control"]["chi"]
+    ok, _ = check_controls(rep)
+    assert ok is False
+
+
+def test_controls_need_two_gradable_raw_entries():
+    # Entries without raw metropolis/wolff values cannot be re-derived; with fewer
+    # than two gradable entries the report is not applicable — never a pass.
+    rep = _controls_report()
+    for e in rep["controls"][1:]:
+        del e["metropolis"]
+    ok, _ = check_controls(rep)
+    assert ok is None
+
+
+def test_controls_fail_on_a_self_contradictory_summary():
+    # Raw values agree, but the carried delta wildly disagrees with them: a
+    # receipt that contradicts its own raw arrays is malformed evidence.
+    rep = _controls_report()
+    rep["controls"][0]["delta"] = 0.9
+    ok, _ = check_controls(rep)
+    assert ok is False
+
+
+# ── M11/M12: missing symmetry evidence fails closed ───────────────────────────
+def test_m11_fails_closed_without_symmetry_evidence():
+    # No q_mean array AND no max_abs_q_mean scalar: the P(q)=P(−q) guard has
+    # nothing to grade. That must be a named failure, not a default-0.0 pass.
+    rep = _m11_report()
+    del rep["q_mean"]
+    del rep["max_abs_q_mean"]
+    ok, detail = check_m11(rep)
+    assert ok is False
+    assert "symmetry" in detail or "equilibration" in detail
+
+
+def test_m11_scalar_symmetry_fallback_still_grades():
+    # Only the scalar diagnostic present (older reports): still graded, not failed.
+    rep = _m11_report()
+    del rep["q_mean"]
+    ok, detail = check_m11(rep)
+    assert ok is True, detail
+
+
+def test_m12_fails_closed_without_symmetry_evidence():
+    rep = _m12_report()
+    del rep["q_mean_by_L"]
+    ok, detail = check_m12(rep)
+    assert ok is False
+    assert "symmetry" in detail or "equilibration" in detail
+
+
+# ── M12: PT health re-derived from the raw attempt counters ───────────────────
+def test_m12_rederives_pt_health_from_raw_attempt_counters():
+    # The pt_health strings claim "ok", but the RAW counters show gaps 1 and 3
+    # never attempted — the fragmented-ladder signature of the parity bug. The
+    # check must re-derive from the counters, not trust the strings.
+    rep = _m12_report()
+    rep["swap_attempts_by_L"] = {"4": [6, 0, 6, 0, 6],
+                                 "6": [6, 6, 6, 6, 6], "8": [6, 6, 6, 6, 6]}
+    rep["pt_health_by_L"] = {"4": "ok", "6": "ok", "8": "ok"}
+    ok, detail = check_m12(rep)
+    assert ok is False
+    assert "never" in detail and "L=4" in detail
+
+
+def test_m12_malformed_attempt_counters_fail_closed():
+    rep = _m12_report()
+    rep["swap_attempts_by_L"] = {"4": "not-a-list"}
+    ok, _ = check_m12(rep)
+    assert ok is False
+
+
+def test_m12_all_zero_counters_mean_pt_off_not_fragmented():
+    # Mirrors the engine's own health rule: swap_every=0 records zero attempts at
+    # EVERY gap ("off"); only the partial pattern is fragmented scheduling. A
+    # PT-off run is still graded by the crossing + symmetry guards.
+    rep = _m12_report()
+    rep["swap_attempts_by_L"] = {L: [0, 0, 0, 0, 0] for L in ("4", "6", "8")}
+    ok, _ = check_m12(rep)
+    assert ok is True
+
+
+# ── M17: a growth-only report grades, never crashes ───────────────────────────
+def _m17_curves(ts=None):
+    ts = ts or [float(t) for t in range(1, 2001, 40)]
+    def curve(b, amp=2.0):
+        return {"times": list(ts), "width": [amp * t ** b for t in ts]}
+    return ts, curve
+
+
+def _m17_growth_only_report():
+    """Three clean growth curves, NO saturation table, NO distributions — the
+    shape a partial/interrupted M17 run ships."""
+    _, curve = _m17_curves()
+    return {
+        "experiment": "M17-kpz-growth",
+        "growth": {"kpz": curve(1.0 / 3.0), "ew": curve(0.25), "rd": curve(0.5)},
+    }
+
+
+def _m17_full_report():
+    """A synthetic M17 report every graded probe passes: exact-exponent curves,
+    the RD closed form w²=p(1−p)t exactly, an α=1/2 saturation table, and the
+    correct Tracy–Widom skewness per geometry."""
+    ts, curve = _m17_curves()
+    rd = curve(0.5, amp=0.5)                      # w = 0.5·t^½ → w² = 0.25·t
+    rd["width_sq"] = [0.25 * t for t in ts]       # exactly p(1−p)t at p=0.5
+    return {
+        "experiment": "M17-kpz-growth",
+        "growth": {"kpz": curve(1.0 / 3.0), "ew": curve(0.25), "rd": rd},
+        "saturation": [{"L": L, "w_sat": 0.9 * L ** 0.5} for L in (64, 128, 256, 512)],
+        "distributions": {"droplet": {"skewness": -0.2241},
+                          "flat": {"skewness": -0.2935}},
+        "config": {"p_flip": 0.5},
+    }
+
+
+def test_m17_full_synthetic_report_passes():
+    ok, detail = check_m17(_m17_full_report())
+    assert ok is True, detail
+
+
+def test_m17_growth_only_report_grades_instead_of_crashing():
+    # No saturation table → α is None. That used to TypeError inside the detail
+    # format string and (without isolation) kill the whole verify gate. It must
+    # grade as a named failure instead.
+    ok, detail = check_m17(_m17_growth_only_report())
+    assert ok is False
+    assert "α=—" in detail or "saturation" in detail
+
+
+# ── M15/M17: the fit window belongs to the check ──────────────────────────────
+def test_m15_report_cannot_choose_its_own_window():
+    # The window is as powerful a dial as the tolerance on a slightly curved
+    # log-log line; out-of-bounds window params must grade FAIL, not be honoured.
+    rep = _m15_report(n=0.485)
+    rep["sat_frac"] = 0.9                          # drags the fit across the knee
+    ok, detail = check_m15(rep)
+    assert ok is False
+    assert "window" in detail.lower()
+    rep2 = _m15_report(n=0.485)
+    rep2["t_fit_min"] = 500                        # cherry-picks the late tail
+    assert check_m15(rep2)[0] is False
+
+
+def test_m15_default_window_reports_still_grade():
+    # The module-default window params (what real reports store) stay in bounds.
+    ok, detail = check_m15(_m15_report(n=0.485))
+    assert ok is True, detail
+
+
+def test_m17_report_cannot_choose_its_own_window():
+    rep = _m17_full_report()
+    rep["w_fit_min"] = 0.2                         # below the check-owned band
+    ok, detail = check_m17(rep)
+    assert ok is False
+    assert "window" in detail.lower()
+    rep2 = _m17_full_report()
+    rep2["t_fit_min"] = 500.0
+    assert check_m17(rep2)[0] is False
+
+
+# ── M14: an off-line point is breakage evidence, not inapplicability ──────────
+def _m14_report(n_pts=4, off_line=()):
+    """A synthetic M14 report whose points sit exactly ON the Nishimori line with
+    the exact energy E/N = −2·tanh(1/T); indices in ``off_line`` get their T pushed
+    off the line — the broken-wiring signature the on-line guard exists to catch."""
+    pts = []
+    for i in range(n_pts):
+        p = 0.04 + 0.02 * i
+        T = 1.0 / math.atanh(1.0 - 2.0 * p)
+        pts.append({"p": p, "T": T, "energy": -2.0 * math.tanh(1.0 / T)})
+    for i in off_line:
+        pts[i]["T"] *= 1.5
+    return {"experiment": "M14-random-bond-nishimori", "calibration_points": pts}
+
+
+def test_m14_healthy_line_passes():
+    ok, detail = check_m14(_m14_report())
+    assert ok is True, detail
+
+
+def test_m14_off_line_points_fail_never_fall_through():
+    # Every point off the line (broken T/p wiring). Before hardening this returned
+    # None (“<3 gradable”) and _grade silently fell through to an OLDER report; the
+    # newest report's breakage evidence must grade FAIL instead.
+    broken = _m14_report(off_line=(0, 1, 2, 3))
+    ok, detail = check_m14(broken)
+    assert ok is False
+    assert "off the nishimori line" in detail.lower()
+    status, _ = _grade(check_m14, [broken, _m14_report()])
+    assert status == "fail"
+
+
+def test_m14_structurally_missing_points_still_not_applicable():
+    # None stays reserved for reports that structurally lack the evidence.
+    assert check_m14({"experiment": "M14-random-bond-nishimori"})[0] is None
+    assert check_m14(_m14_report(n_pts=2))[0] is None
+
+
+# ── verify(): one bad file degrades to a named row, never kills the gate ──────
+def test_verify_survives_unreadable_report_files(tmp_path, monkeypatch):
+    reports = tmp_path / "reports"
+    receipts = reports / "receipts"
+    lab_home = tmp_path / "lab-home"
+    receipts.mkdir(parents=True)
+    lab_home.mkdir()
+    milestones = tmp_path / "MILESTONES.md"
+    milestones.write_text("- [x] **M01** — Onsager gate\n", encoding="utf-8")
+    (receipts / "run-2026-06-15-m01.json").write_text(
+        json.dumps(_ising_report(round(ONSAGER_TC, 1))), encoding="utf-8")
+    (receipts / "run-2026-06-16-m01.json").write_text(
+        '{"experiment": "M01-isi', encoding="utf-8")        # truncated mid-write
+    (receipts / "run-2026-06-17-m01.json").write_text(
+        "[1, 2, 3]", encoding="utf-8")                      # parses, not an object
+
+    monkeypatch.setattr(checks, "REPORTS_DIR", reports)
+    monkeypatch.setattr(checks, "LAB_HOME", lab_home)
+    monkeypatch.setattr(checks, "MILESTONES_MD", milestones)
+
+    results = checks.verify()
+    unreadable = {r["id"] for r in results if r["status"] == "unreadable"}
+    assert unreadable == {"run-2026-06-16-m01.json", "run-2026-06-17-m01.json"}
+    m01 = [r for r in results if r["id"] == "M01"]
+    assert m01 and m01[0]["status"] == "pass"               # the gate kept grading
+
+
+def test_grade_surfaces_a_crashing_checker_as_a_named_fail():
+    def boom(rep):
+        raise ValueError("kaboom")
+    status, detail = _grade(boom, [{"experiment": "X"}])
+    assert status == "fail"
+    assert "checker crashed" in detail and "kaboom" in detail
