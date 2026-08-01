@@ -161,3 +161,62 @@ def test_campaign_commit_message_dates_in_local_time():
     assert 'pass_day="$(date +%F)"' in script
     assert '"campaign: pass $iter $pass_day seed=$seed"' in script
     assert "$(date -u +%F) seed=$seed" not in script
+
+
+# ── 4/day interleaved cadence (Win 00/06/12/18 ↔ Loam 03/09/15/21 local) ─────
+
+def test_service_sets_interleaved_cadence():
+    service = (ROOT / "scripts" / "windowsill-campaign.service").read_text(
+        encoding="utf-8"
+    )
+    assert "LAB_CAMPAIGN_INTERVAL=21600" in service
+    assert "LAB_CAMPAIGN_HOURS=3 9 15 21" in service
+
+
+def test_campaign_anchors_sleep_to_the_clock_not_accumulated_interval():
+    """`sleep INTERVAL` drifts later by each pass's walltime; the anchored
+    next_wake_seconds recomputes against the wall clock. Plain interval sleep
+    stays as the fallback when LAB_CAMPAIGN_HOURS is unset."""
+    script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    assert "next_wake_seconds" in script
+    assert "LAB_CAMPAIGN_HOURS" in script
+    assert 'sleep "$INTERVAL"' in script            # fallback path survives
+    # The anchored branch is guarded on HOURS being configured.
+    assert '-n "$HOURS"' in script
+
+
+def _extract_next_wake(script: str) -> str:
+    start = script.index("next_wake_seconds()")
+    end = script.index("\n}", start) + 2
+    return script[start:end]
+
+
+def _run_next_wake(exe: str, fn: str, now_epoch: int, hours: str) -> int:
+    import os
+    proc = subprocess.run(
+        [exe, "-c", f'{fn}\nNOW_EPOCH={now_epoch} next_wake_seconds "{hours}"'],
+        capture_output=True, timeout=60,
+        env={**os.environ, "TZ": "UTC"},
+    )
+    assert proc.returncode == 0, proc.stderr.decode("utf-8", "replace")
+    return int(proc.stdout.strip())
+
+
+def test_next_wake_seconds_targets_the_next_listed_hour():
+    exe = _working_bash()
+    if exe is None:
+        pytest.skip("no working bash on PATH")
+    from datetime import datetime, timezone
+    fn = _extract_next_wake(
+        (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    )
+
+    def epoch(h, m=0):
+        return int(datetime(2026, 1, 1, h, m, tzinfo=timezone.utc).timestamp())
+
+    # 04:00 → next listed hour is 09:00 (5h), not yesterday's drift.
+    assert _run_next_wake(exe, fn, epoch(4), "3 9 15 21") == 5 * 3600
+    # 23:30 → wraps to tomorrow 03:00 (3.5h).
+    assert _run_next_wake(exe, fn, epoch(23, 30), "3 9 15 21") == 12600
+    # Exactly ON a boundary → the NEXT boundary (a pass never re-fires its own slot).
+    assert _run_next_wake(exe, fn, epoch(3), "3 9 15 21") == 6 * 3600

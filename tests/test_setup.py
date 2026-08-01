@@ -110,27 +110,44 @@ def test_nightly_templates_commit_only_campaign_paths():
 
 
 def test_nightly_templates_derive_seed_from_utc_date():
-    """A date-derived --seed gives each night an independent sample (reruns
-    within a day repeat deterministically; successive nights differ)."""
+    """The bash nightly keeps its UTC-date seed (one pass/night). The Windows
+    nightly fires 4×/day, so its seed carries the HOUR — each of the four daily
+    passes is an independent sample instead of the same-day deterministic
+    repeat. (A retry within the same hour still repeats — documented in the
+    template.)"""
     sh = setup.nightly_script()
     assert "--seed" in sh and 'date -u +%Y%m%d' in sh
     ps = setup.nightly_ps1()
-    assert "--seed" in ps and "yyyyMMdd" in ps
+    assert "--seed" in ps and "yyyyMMddHH" in ps
 
 
 def test_task_xml_is_wellformed_and_runs_the_nightly():
     import xml.etree.ElementTree as ET
-    xml = setup.task_xml(at="04:30:00")
-    ET.fromstring(xml.encode("utf-16"))                # well-formed (declared UTF-16)
-    assert "2026-01-01T04:30:00" in xml                # the chosen schedule time
+    xml = setup.task_xml()
+    root = ET.fromstring(xml.encode("utf-16"))         # well-formed (declared UTF-16)
+    # 4 passes/device/day: four explicit daily CalendarTriggers (legible in the
+    # Task Scheduler UI), interleaved with Loam's 03/09/15/21 local turns.
+    triggers = [el for el in root.iter()
+                if el.tag.endswith("}CalendarTrigger")]
+    assert len(triggers) == 4
+    for hh in ("00:00:00", "06:00:00", "12:00:00", "18:00:00"):
+        assert f"2026-01-01T{hh}" in xml
+    # PT2H per-run limit < the 6h spacing, so passes can never overlap.
+    assert "<ExecutionTimeLimit>PT2H</ExecutionTimeLimit>" in xml
     assert str(setup.NIGHTLY_PS1) in xml               # the action runs nightly.ps1
     assert "powershell.exe" in xml
     # Resilience: catch a missed start, and wake a sleeping box so the
-    # windowsill grows even when nobody's at the machine at 3am.
+    # windowsill grows even when nobody's at the machine.
     assert "<StartWhenAvailable>true</StartWhenAvailable>" in xml
     assert "<WakeToRun>true</WakeToRun>" in xml
     assert "<RestartOnFailure>" in xml
     assert "-NonInteractive -WindowStyle Hidden" in xml
+
+
+def test_task_xml_accepts_custom_times():
+    xml = setup.task_xml(times=("04:30:00",))
+    assert "2026-01-01T04:30:00" in xml
+    assert xml.count("<CalendarTrigger>") == 1
 
 
 def test_windows_dry_run_writes_nothing(tmp_path, monkeypatch):

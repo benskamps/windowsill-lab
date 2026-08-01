@@ -1,10 +1,12 @@
 import argparse
+import json
 import os
 import sys
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import curriculum
 from .curriculum import RUNNERS, filter_scheduler_options
 
 # Lightweight commands (open / publish / help) must work without torch or
@@ -36,13 +38,43 @@ def _select_next(milestones):
     return mid, mid in RUNNERS
 
 
+def _receipt_records() -> list[tuple[str, str]]:
+    """``(stamp, milestone)`` tuples from the committed receipts ledger.
+
+    The thin disk reader that feeds ``curriculum.rotation_pointer``. Stamp is
+    the receipt's ``generated_at``; an unreadable or unstamped receipt degrades
+    to its filename date (the ``publish.run_cadence`` discipline) — committed
+    content either way, so every clone derives the identical pointer.
+    """
+    from . import publish as publish_mod
+    records: list[tuple[str, str]] = []
+    receipts_dir = publish_mod.RECEIPTS_DIR
+    if not receipts_dir.exists():
+        return records
+    date_glob = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+    for path in sorted(receipts_dir.glob(f"run-{date_glob}-*.json")):
+        date = path.stem[4:14]
+        slug = path.stem[15:]
+        if not slug:
+            continue
+        try:
+            stamp = json.loads(path.read_text(encoding="utf-8")).get("generated_at")
+        except (OSError, ValueError):
+            stamp = None
+        if not (isinstance(stamp, str) and stamp):
+            stamp = date
+        records.append((stamp, slug.upper()))
+    return records
+
+
 HELP = """lab — a windowsill physics lab.
 
 Usage:
   lab                 open the latest report (alias of `lab open`)
   lab run             run only — don't open the browser (the M01 heartbeat)
-  lab next            run the lowest OPEN milestone's experiment (heartbeat if none)
-  lab next --dry-run  print which milestone `lab next` would run — run nothing
+  lab next            run the open milestone's experiment; otherwise advance the
+                      committed portfolio rotation (M01 heartbeat only if empty)
+  lab next --dry-run  print the pick + every skip reason — run nothing
   lab m02             run M02: finite-size scaling across lattice sizes
   lab m03             run M03: critical-exponent β via magnetization data-collapse
   lab m04             run M04: 2D Ising specific heat — the thermal cross-check of T_c
@@ -1438,15 +1470,25 @@ def main(argv=None):
             capture_height=ns.capture_height,
             progress=progress,
         )
-        report = i01.to_report(result)
-        if result.analysis:
-            print(f"  → {result.analysis['shape'][0]} frames · "
-                  f"{result.analysis['hot_pixel_count']} hot pixels · "
-                  f"{result.analysis['track_candidate_count']} track-like components · "
-                  f"{'calibrated' if result.calibration_passed else '[~] null'}")
-        else:
+        if not result.analysis:
+            # Nothing was measured (no frames, no camera, capture/input error).
+            # A disclosed absence is not a science row: no dated report, no
+            # receipt, no publish — and a named nonzero exit (3) so unattended
+            # callers (campaign.sh) log "experiment failed" instead of
+            # committing a null row every pass. The committed 2026-07-14 null
+            # receipt predates this gate and stays — honest archive. A MEASURED
+            # null (real frames analyzed, calibration failed) still publishes
+            # below: that is data, not absence.
             label = result.error_code or "hardware-null"
             print(f"  → {label}: {result.reason}")
+            if result.capture_metadata:
+                print(f"  ✓ captured stack: {result.capture_metadata.get('output_path')}")
+            return 3
+        report = i01.to_report(result)
+        print(f"  → {result.analysis['shape'][0]} frames · "
+              f"{result.analysis['hot_pixel_count']} hot pixels · "
+              f"{result.analysis['track_candidate_count']} track-like components · "
+              f"{'calibrated' if result.calibration_passed else '[~] null'}")
         if result.capture_metadata:
             print(f"  ✓ captured stack: {result.capture_metadata.get('output_path')}")
         path = render_mod.render_calibration(report)
@@ -1459,34 +1501,72 @@ def main(argv=None):
         return 0
 
     if cmd == "next":
-        # Milestone-aware scheduler: run the LOWEST OPEN milestone's experiment,
-        # falling back to the M01 heartbeat when the open milestone has no runner
-        # yet (M14+) or nothing is open. Selection is read-only — it never edits
-        # MILESTONES.md; a milestone is only marked done by the verify gate + a
-        # human-reviewed PR (see docs/investigations/2026-06-26-heartbeat-vs-lab-next).
-        # NOTE: the installed nightly still runs `lab run` (the heartbeat). Swapping
-        # it to `lab next` is a deliberate, human-gated change (setup.py, one line) —
-        # this command exists so that swap can be watched via --dry-run first.
+        # Milestone-aware scheduler, selection precedence (each branch prints
+        # its one-line reason, dry-run included):
+        #   1. FRONTIER — the open milestone, when it has a runner and passes
+        #      its hardware gate (preserves the 2026-06-26 decision).
+        #   2. PORTFOLIO ROTATION — otherwise, advance the committed rotation
+        #      (curriculum.ROTATION) past the receipts-ledger pointer; gated or
+        #      runnerless slots are skipped with a disclosed one-line reason
+        #      (a log line — never a receipt, never a science row).
+        #   3. M01 HEARTBEAT — only when the rotation yields nothing (fail
+        #      closed, named reason).
+        # Selection is read-only — it never edits MILESTONES.md; a milestone is
+        # only marked done by the verify gate + a human-reviewed PR. Decisions:
+        # docs/investigations/2026-06-26-heartbeat-vs-lab-next.md and
+        # docs/investigations/2026-08-01-portfolio-rotation.md.
         from . import publish as publish_mod
         dry = "--dry-run" in args
         passthrough = [a for a in args[1:] if a != "--dry-run"]
         text = (publish_mod.MILESTONES_MD.read_text(encoding="utf-8")
                 if publish_mod.MILESTONES_MD.exists() else "")
         milestones = publish_mod.parse_milestones(text)
-        mid, has_runner = _select_next(milestones)
-        if mid is None:
-            subcmd, reason = "run", "no open milestone — heartbeat"
-        elif has_runner:
-            subcmd, reason = RUNNERS[mid], f"open milestone {mid}"
-        else:
-            subcmd, reason = "run", f"no runner for {mid} yet — heartbeat instead"
+        open_mid, has_runner = _select_next(milestones)
+        skips: list[tuple[str, str]] = []
+        mid: str | None = None
+        subcmd: str | None = None
+        reason = ""
+        if open_mid is not None and has_runner:
+            gate_reason = curriculum.hardware_gate_reason(open_mid)
+            if gate_reason is None:
+                mid, subcmd = open_mid, RUNNERS[open_mid]
+                reason = f"open milestone {open_mid}"
+            else:
+                skips.append((open_mid, gate_reason))
+        if subcmd is None:
+            if open_mid is None:
+                why = "no open milestone"
+            elif not has_runner:
+                why = f"no runner for {open_mid} yet"
+            else:
+                why = f"open milestone {open_mid} is hardware-gated"
+            try:
+                records = _receipt_records()
+                pointer = curriculum.rotation_pointer(records)
+                pick, rot_skips = curriculum.select_rotation(milestones, pointer)
+                skips.extend(rot_skips)
+                if pick is not None:
+                    mid, subcmd = pick, RUNNERS[pick]
+                    after = (f"rotation continues after {pointer}" if pointer
+                             else "no receipts — rotation starts at its first slot")
+                    reason = f"{why} — {after}"
+                else:
+                    subcmd = "run"
+                    reason = f"{why} — rotation found nothing eligible — M01 heartbeat"
+            except Exception as exc:  # noqa: BLE001 — scheduler fails CLOSED, named
+                subcmd = "run"
+                reason = f"{why} — rotation unavailable ({exc}) — M01 heartbeat"
         label = mid or "—"
-        target_mid = mid if has_runner and mid is not None else "M01"
+        target_mid = mid or "M01"
         passthrough, dropped = filter_scheduler_options(target_mid, passthrough)
         option_note = (
             f" · ignored unsupported scheduler option(s): {', '.join(dropped)}"
             if dropped else ""
         )
+        # Disclosed once per pass, to stdout/log — a skip is not a failure and
+        # not a success; it is a named absence, and it must not spam receipts.
+        for skipped_mid, skip_reason in skips:
+            print(f"lab next · skipped {skipped_mid} — {skip_reason}")
         if dry:
             print(
                 f"lab next → {label}: would run `lab {subcmd}` "
