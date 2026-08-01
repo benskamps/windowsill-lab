@@ -375,11 +375,17 @@ def _collapse_streaks(rows: list[dict]) -> list[dict]:
     consecutive rows do. Every underlying run remains in the archive index and
     the receipts ledger — this changes which rows ride in ``pot.json``, not
     what is on the books.
+
+    A ``None`` milestone is an UNKNOWN identity, not a shared one: freeform
+    runs and unreadable gap rows both carry ``milestone None``, and two
+    adjacent such rows may be entirely different experiments. Grouping them
+    would put a false "same experiment" claim on the rail, so rows without a
+    named milestone never group (fail closed).
     """
     out: list[dict] = []
     for row in rows:
         prev = out[-1] if out else None
-        if prev is not None and (
+        if prev is not None and row.get("milestone") is not None and (
             (prev.get("milestone"), prev.get("verdict"))
             == (row.get("milestone"), row.get("verdict"))
         ):

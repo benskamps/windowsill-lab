@@ -285,6 +285,46 @@ def test_run_ledger_non_adjacent_same_milestone_stays_separate(tmp_path, monkeyp
         assert "group_count" not in r
 
 
+def test_run_ledger_never_groups_milestone_none_rows(tmp_path, monkeypatch):
+    """N4 — a ``None`` milestone is an UNKNOWN identity, not a shared one.
+    Two consecutive freeform runs (different experiments, both ``unscored``,
+    both inferring no milestone) must never merge: a ×N chip claiming
+    'N consecutive runs of this experiment' would be false. Fail closed —
+    grouping requires a named milestone on both rows."""
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    _write_report(reports, "2026-07-20-x", mtime=1000, T=None, chi=None,
+                  experiment="freeform-quench", headline="quench doodle")
+    _write_report(reports, "2026-07-21-x", mtime=2000, T=None, chi=None,
+                  experiment="tensor-doodle", headline="tensor doodle")
+    rows = run_ledger()
+    assert [(r["milestone"], r["verdict"]) for r in rows] == [
+        (None, "unscored"),
+        (None, "unscored"),
+    ]
+    for r in rows:
+        assert "group_count" not in r
+        assert "group_first_date" not in r
+
+
+def test_run_ledger_never_groups_unreadable_gap_rows(tmp_path, monkeypatch):
+    """N4b — same guard for the corrupt-JSON gap rows (milestone ``None``,
+    verdict ``unreadable``): two adjacent unreadable gaps are two distinct
+    disclosed absences, never one '×2 nights' group."""
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    for i, d in enumerate(["2026-07-20", "2026-07-21"]):
+        p = reports / f"{d}-broken.json"
+        reports.mkdir(parents=True, exist_ok=True)
+        p.write_text("{not json", encoding="utf-8")
+        os.utime(p, (1000 + i, 1000 + i))
+    rows = run_ledger()
+    assert [(r["milestone"], r["verdict"]) for r in rows] == [
+        (None, "unreadable"),
+        (None, "unreadable"),
+    ]
+    for r in rows:
+        assert "group_count" not in r
+
+
 def test_run_ledger_collapses_streak_to_newest_row_with_count(tmp_path, monkeypatch):
     """A 5-night verified M01 streak rides pot.json as ONE row: newest date,
     ``group_count`` 5, ``group_first_date`` = the oldest night."""

@@ -555,6 +555,9 @@ def test_build_snapshot_latest_report_carries_group_fields():
           "receipt_url": None}
     snap = build_snapshot(parse_milestones(SAMPLE), "x", 2, 47.0,
                           reports_ledger=[r1, r2])
+    # Pin the value, not just identity: an in-place mutation of r1 would leave
+    # ``snap["reports"][0] == r1`` trivially true, so assert the href itself.
+    assert snap["reports"][0]["href"] == "https://example.test/archive#run"
     assert snap["reports"][0] == r1        # ledger row untouched by the override
     latest = snap["latest_report"]
     assert latest["group_count"] == 5
