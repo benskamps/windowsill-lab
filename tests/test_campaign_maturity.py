@@ -78,9 +78,15 @@ def test_campaign_refuses_a_preexisting_index_before_experiment():
 def test_campaign_refuses_a_dirty_tracked_worktree_before_pull_or_experiment():
     script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
     worktree_guard = script.index("git diff --quiet -- 2>/dev/null")
-    pull = script.index("git pull --rebase")
+    # The pass flow pulls via safe_pull_rebase (the loud wrapper that aborts a
+    # conflicted rebase instead of stranding the clone). Its BODY — the only
+    # place the raw `git pull --rebase` runs — is defined before the loop, so
+    # the ordering that matters is guard < CALL SITE < experiment.
+    # (`.index` with a start offset raises if the call site is not after the
+    # guard, so a reordering fails loudly, not silently.)
+    pull_call = script.index("elif ! safe_pull_rebase", worktree_guard)
     experiment = script.index("-m lab.cli next")
-    assert worktree_guard < pull < experiment
+    assert worktree_guard < pull_call < experiment
     assert "pre-existing tracked worktree changes; refusing to pull or run" in script
     assert "git pull --rebase --autostash" not in script
 
