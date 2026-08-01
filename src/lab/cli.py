@@ -1547,17 +1547,21 @@ def main(argv=None):
                 skips.extend(rot_skips)
                 if pick is not None:
                     mid, subcmd = pick, RUNNERS[pick]
-                    if pointer is None:
-                        after = "no receipts — rotation starts at its first slot"
-                    elif pointer in curriculum.ROTATION:
+                    if pointer is not None:
                         after = f"rotation continues after {pointer}"
                     else:
-                        # The claim must match the selection: an out-of-rotation
-                        # pointer (manual M12, a just-verified frontier run)
-                        # restarts the walk at slot 0 — say so, don't imply
-                        # continuation.
-                        after = (f"newest receipt {pointer} is outside the "
-                                 "rotation — restarting at its first slot")
+                        # No receipt the rotation owns. The claim must match the
+                        # selection — say WHY the walk opens at slot 0, and name
+                        # the out-of-rotation receipt (manual M12/M16, a
+                        # just-verified frontier run) that is deliberately NOT
+                        # the pointer, rather than implying an empty ledger.
+                        newest = curriculum.newest_receipt_milestone(records)
+                        after = (
+                            "no receipts — rotation starts at its first slot"
+                            if newest is None else
+                            f"no rotation receipt yet (newest is {newest}, "
+                            "outside the rotation) — starting at its first slot"
+                        )
                     reason = f"{why} — {after}"
                 else:
                     subcmd = "run"

@@ -536,6 +536,57 @@ def test_next_dry_run_names_the_restart_when_pointer_is_outside_the_rotation(
     assert "rotation continues after M12" not in out
 
 
+def test_rotation_pointer_ignores_receipts_outside_the_rotation():
+    """Review finding 1: an out-of-rotation receipt must not become the pointer.
+
+    M12/M16 are excluded from ROTATION by name but are still hand-run (four
+    such receipts are already committed), and the frontier lands one the moment
+    its milestone gets a runner. An unknown pointer restarts the walk at slot 0
+    — so letting the newest M12 win meant one manual `lab m12` re-seeded M01 as
+    the next pick and rewound the whole lap, reintroducing the M01-every-pass
+    bias the rotation exists to remove. The pointer is the newest receipt the
+    ROTATION OWNS; the M12 receipt is skipped, not obeyed."""
+    records = [
+        ("2026-08-01T02:00:00+00:00", "M07"),
+        ("2026-08-01T09:00:00+00:00", "M12"),   # hand-run, newest overall
+    ]
+    assert curriculum.rotation_pointer(records) == "M07"
+    assert curriculum.select_rotation(_all_verified(), "M07")[0] == "M08"
+    # M16 and a future frontier receipt (M18) are skipped on the same rule.
+    for outsider in ("M16", "M18"):
+        assert curriculum.rotation_pointer(
+            [("2026-08-01T02:00:00+00:00", "M07"),
+             ("2026-08-01T09:00:00+00:00", outsider)]
+        ) == "M07"
+    # Disclosure companion: the raw newest is still available to name it.
+    assert curriculum.newest_receipt_milestone(records) == "M12"
+    # A ledger with ONLY out-of-rotation receipts has no pointer to resume from.
+    assert curriculum.rotation_pointer([("2026-08-01", "M12")]) is None
+
+
+def test_next_dry_run_resumes_the_rotation_past_a_manual_out_of_rotation_run(
+        monkeypatch, capsys, tmp_path):
+    """Finding 1 end-to-end: a manual `lab m12` landing the newest receipt must
+    NOT rewind the lap to M01. The pass resumes after the newest receipt the
+    rotation owns (M07 → M08) and says so."""
+    from lab import publish as publish_mod
+    monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
+        {"id": "M18", "status": "open"},
+    ])
+    receipts = _rotation_receipts(
+        tmp_path,
+        ("2026-08-01", "m07", "2026-08-01T02:00:00+00:00"),
+        ("2026-08-01", "m12", "2026-08-01T09:00:00+00:00"),  # manual, newest
+    )
+    monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", receipts)
+    rc = cli.main(["next", "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "would run `lab m08`" in out                  # resumed, not rewound
+    assert "rotation continues after M07" in out
+    assert "would run `lab run`" not in out              # M01 was NOT re-seeded
+
+
 def test_rotation_pointer_tie_breaks_by_milestone_id_order_independent():
     """Claim check for cross-box determinism: with IDENTICAL generated_at
     stamps the pointer must be the max milestone id whatever order the records

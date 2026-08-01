@@ -95,13 +95,24 @@ intended.
 
 The rotation pointer is derived from the receipts ledger both boxes already
 commit and pull-rebase before every pass: **the milestone of the receipt with
-the maximum `generated_at`** across `reports/receipts/` (unreadable/unstamped
-receipts degrade to their filename date — the `run_cadence` discipline; ties
-break by milestone id). No receipts → the rotation starts at its first slot.
-A newest receipt from OUTSIDE the rotation (a manual `lab m12`, or the last
-frontier run right after its milestone verifies) also restarts the walk at
-slot 0 — bounded (one reset per such receipt, then normal advance) and named
-in the printed reason (review amendment, 2026-08-01).
+the maximum `generated_at` _among ROTATION members_** across
+`reports/receipts/` (unreadable/unstamped receipts degrade to their filename
+date — the `run_cadence` discipline; ties break by milestone id). No rotation
+receipt → the rotation starts at its first slot.
+
+**Out-of-rotation receipts are skipped, not obeyed** (review finding 1,
+2026-08-01). M12/M16 are excluded from the rotation by name but are still
+hand-run — four such receipts are already committed — and the frontier lands
+one the moment its milestone gets a runner. An unknown pointer restarts the
+walk at slot 0, so an earlier revision that took the newest receipt of *any*
+milestone meant a single manual `lab m12` re-seeded M01 as the next pick and
+rewound the whole lap: the M01-every-pass bias this rotation exists to remove,
+reintroduced through the back door. `rotation_pointer` therefore skips
+non-members and resumes from the last slot the rotation itself ran;
+`newest_receipt_milestone` still exposes the raw newest so the printed reason
+can *name* the receipt it is deliberately not using. The genuine slot-0 restart
+survives only where it is genuinely true — a ledger with no rotation receipt —
+and says which out-of-rotation receipt it saw instead.
 
 **Duplicate-pick window (do NOT "fix" this into a lock file):** if schedules
 are mis-armed or a slept box fires catch-up runs, both boxes can read the same
@@ -132,6 +143,19 @@ rerun repeats deterministically" property (a retry within the same **hour**
 still repeats; a `StartWhenAvailable` catch-up run lands in its own hour → its
 own sample). The determinism gate (`lab verify --rerun-smoke`) is unaffected —
 it pins its own seed.
+
+**The freshness watchdog moved with the cadence** (review finding 2,
+2026-08-01). `.github/workflows/freshness.yml` derived its 9 h threshold as
+"two missed 4 h campaign passes + slack" — a derivation this change invalidates
+by moving Loam to 21600 s. A missed pass shows as a 2× gap, so the threshold
+has to clear 2× the **slowest armed** cadence, not the steady-state one: both
+boxes armed is 3 h combined (a miss = 6 h), but a single armed box is 6 h (a
+miss = 12 h). That single-box state is exactly what the arming checklist below
+produces — two manual steps on two machines — and it lasts until Ben does the
+second one. Threshold is now **13 h** (12 + 1 slack): one missed pass never
+pages in any armed configuration, and the 29 h-strand class of outage the alarm
+was built for is still caught by a wide margin. Tightening to ~7 h once both
+boxes are confirmed armed is a one-line follow-up.
 
 Expected commit volume: every pass that changes anything commits (~8.6k-line
 `latest.html` churn per pass today) → ≈8 report-churn commits/day on main.

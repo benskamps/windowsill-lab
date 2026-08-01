@@ -144,25 +144,61 @@ def select_rotation(
     return None, skips
 
 
-def rotation_pointer(records: Iterable[tuple[str, str]]) -> str | None:
-    """The milestone of the newest-stamped receipt — the committed pointer.
+def _newest_milestone(
+    records: Iterable[tuple[str, str]], *, only_rotation: bool,
+) -> str | None:
+    """Max-stamp milestone over ``records``, optionally rotation-members only.
 
-    ``records`` are ``(generated_at_or_date, milestone)`` tuples read from the
-    committed receipts ledger (``reports/receipts/``), the same clone-stable
-    derivation ``publish.run_cadence`` trusts. Max is by stamp string (ISO
-    stamps and bare ``YYYY-MM-DD`` dates share a lexicographic order; a bare
-    date sorts before any stamped receipt of the same day), tie-broken by
-    milestone id so every box derives the identical pointer. No records →
-    ``None`` → the rotation starts at its first slot.
+    Max is by stamp string (ISO stamps and bare ``YYYY-MM-DD`` dates share a
+    lexicographic order; a bare date sorts before any stamped receipt of the
+    same day), tie-broken by milestone id so every box derives the identical
+    answer from the same committed ledger regardless of iteration order.
     """
     best: tuple[str, str] | None = None
     for stamp, mid in records:
         if not stamp or not mid:
             continue
-        key = (str(stamp), str(mid))
+        mid = str(mid)
+        if only_rotation and mid not in ROTATION:
+            continue
+        key = (str(stamp), mid)
         if best is None or key > best:
             best = key
     return best[1] if best else None
+
+
+def rotation_pointer(records: Iterable[tuple[str, str]]) -> str | None:
+    """The newest-stamped receipt THE ROTATION OWNS — the committed pointer.
+
+    ``records`` are ``(generated_at_or_date, milestone)`` tuples read from the
+    committed receipts ledger (``reports/receipts/``), the same clone-stable
+    derivation ``publish.run_cadence`` trusts.
+
+    Receipts for milestones OUTSIDE ``ROTATION`` are skipped rather than
+    returned as an unknown pointer. They exist and they are not rare: M12/M16
+    are excluded from the rotation by name but are still hand-run (four such
+    receipts are already committed), and the frontier lands one the moment its
+    milestone gets a runner. An unknown pointer restarts the walk at slot 0, so
+    letting one win meant a single manual ``lab m12`` re-seeded M01 as the next
+    pick and rewound the whole lap — reintroducing exactly the M01-every-pass
+    bias the rotation exists to remove. Skipping them resumes from the last
+    slot the rotation itself ran.
+
+    No rotation receipt → ``None`` → the walk opens at the first slot. Callers
+    disclosing that case should use ``newest_receipt_milestone`` to say WHY
+    (empty ledger vs. a ledger with only out-of-rotation receipts).
+    """
+    return _newest_milestone(records, only_rotation=True)
+
+
+def newest_receipt_milestone(records: Iterable[tuple[str, str]]) -> str | None:
+    """Newest-stamped receipt of ANY milestone — disclosure only, never selection.
+
+    Selection reads ``rotation_pointer``. This exists so a reason line can name
+    the out-of-rotation receipt that is NOT being used as the pointer, instead
+    of claiming an empty ledger.
+    """
+    return _newest_milestone(records, only_rotation=False)
 
 
 def filter_scheduler_options(
