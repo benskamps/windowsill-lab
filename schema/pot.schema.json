@@ -10,7 +10,32 @@
     "milestones": { "type": "array", "items": { "$ref": "#/definitions/milestone" } },
     "total": { "type": "integer", "minimum": 0 },
     "last_run": { "type": ["string", "null"] },
-    "runs": { "type": "integer", "minimum": 0 },
+    "runs": { "type": "integer", "minimum": 0, "description": "distinct DATES on which the lab ran — days tended. Not the number of passes; see turns.count. Kept under its original name so existing consumers keep working." },
+    "turns": {
+      "type": "object",
+      "description": "v5 — the pass counter and the DECLARED cadence. One turn = one scheduled pass, whichever machine took it. Optional: a feed without it degrades to the days-tended counter and the page's legacy freshness constants.",
+      "properties": {
+        "count": { "type": "integer", "minimum": 0, "description": "turns on the books (committed receipts). Omitted rather than guessed if receipts cannot be counted honestly." },
+        "today": { "type": "integer", "minimum": 0, "description": "turns filed under today's local date" },
+        "expected_interval_h": { "type": "number", "minimum": 1, "description": "hours between scheduled turns. Present ONLY while the cadence is declared AND effective — never inferred from observed history, so a silent machine can never lower its own bar." },
+        "last_by_machine": {
+          "type": "object",
+          "description": "every DECLARED machine → its newest turn's timestamp, or null when it has never run. A declared-but-silent box is a fact, not a blank.",
+          "additionalProperties": { "type": ["string", "null"] }
+        }
+      }
+    },
+    "divergence": {
+      "type": "array",
+      "description": "v5 — milestones whose verdicts partition perfectly along machine lines over the last 48h. Usually absent; present only when the machines are systematically disagreeing.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "milestone": { "type": "string", "pattern": "^[A-Z]{1,3}[0-9]+$" },
+          "machines": { "type": "object", "additionalProperties": { "type": "string" } }
+        }
+      }
+    },
     "temp_c": { "type": ["number", "null"] },
     "latest_report": {
       "type": ["object", "null"],
@@ -69,7 +94,7 @@
     },
     "report": {
       "type": "object",
-      "description": "One run on record — a node on the seedling stem (verified) or a folded grey leaf (null / unscored / unreadable). All fields optional so old consumers degrade. The archive ledger emits {date, milestone, verdict, headline, href, receipt_url}, plus {group_count, group_first_date} on a row standing for a collapsed streak of consecutive same-milestone same-verdict runs (v5 — the archive index keeps every run); the older compact record adds {experiment, peak_t, wall_s, url, code_sha, status}.",
+      "description": "One run on record — a node on the seedling stem (verified) or a folded grey leaf (null / unscored / unreadable). All fields optional so old consumers degrade. The archive ledger emits {date, milestone, verdict, headline, href, receipt_url}, plus {machine, at} where the run recorded its provenance, plus {group_count, group_first_date, group_machines} on a row standing for a collapsed streak of consecutive same-milestone same-verdict turns (v5 — the archive index keeps every run); the older compact record adds {experiment, peak_t, wall_s, url, code_sha, status}.",
       "properties": {
         "report_schema_version": { "type": "integer", "minimum": 1 },
         "generated_at": { "type": "string" },
@@ -104,8 +129,17 @@
         },
         "status": { "type": "string", "enum": ["verified", "null", "unscored"] },
         "verdict": { "type": "string", "enum": ["verified", "null", "unscored", "unreadable"] },
-        "group_count": { "type": "integer", "minimum": 2, "description": "this row stands for N consecutive runs of the same milestone with the same verdict; every underlying run remains in the archive index and receipts. Absent on a lone run — a streak of one is not a group." },
-        "group_first_date": { "type": ["string", "null"], "description": "oldest date in the collapsed streak this row stands for; only present alongside group_count" }
+        "group_count": { "type": "integer", "minimum": 2, "description": "this row stands for N consecutive turns of the same milestone with the same verdict; every underlying run remains in the archive index and receipts. Absent on a lone run — a streak of one is not a group. A verdict change and a missed calendar day both break the streak." },
+        "group_first_date": { "type": ["string", "null"], "description": "oldest date in the collapsed streak this row stands for; only present alongside group_count" },
+        "group_machines": {
+          "type": "array",
+          "description": "v5 — the distinct machines this collapsed group spans, sorted. The composition disclosure that makes cross-machine merging honest. Present only alongside group_count, and only when at least one member run recorded its provenance.",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,23}$" },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "machine": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,23}$", "description": "v5 — which box took this turn (e.g. windows-cuda, linux-rocm), derived from the run's own receipt provenance. ABSENT, never null and never guessed, on runs that predate provenance stamping." },
+        "at": { "type": "string", "description": "v5 — this run's own generated_at timestamp. Absent on runs that never recorded one; such a row renders date-only." }
       }
     }
   }

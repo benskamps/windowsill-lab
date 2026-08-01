@@ -211,6 +211,52 @@ def test_schema_version_5_accepted_and_6_rejected():
     assert validate({"schema_version": 6}, SCHEMA)
 
 
+# ── v5: turns — the pass counter, the declared cadence, machine provenance ───
+
+def test_turns_object_and_provenance_fields_conform():
+    snap = {
+        "schema_version": 5,
+        "turns": {
+            "count": 61, "today": 3, "expected_interval_h": 3,
+            "last_by_machine": {
+                "windows-cuda": "2026-08-01T12:03:11-04:00",
+                "linux-rocm": None,          # declared, never run — a fact
+            },
+        },
+        "divergence": [{"milestone": "M01", "machines": {
+            "windows-cuda": "verified", "linux-rocm": "null"}}],
+        "reports": [dict(
+            VALID_REPORT, verdict="verified", machine="windows-cuda",
+            at="2026-08-01T12:03:11-04:00",
+            group_count=4, group_first_date="2026-07-30",
+            group_machines=["linux-rocm", "windows-cuda"],
+        )],
+    }
+    assert validate(snap, SCHEMA) == []
+
+
+def test_a_pre_turns_feed_still_validates():
+    """A feed built before any of this — no turns, no divergence, no machine or
+    at on its rows — is still a conforming pot.json. The page degrades to the
+    days-tended counter and its legacy constants rather than breaking."""
+    legacy = {
+        "schema_version": 5, "runs": 39,
+        "reports": [dict(VALID_REPORT, verdict="verified")],
+    }
+    assert validate(legacy, SCHEMA) == []
+
+
+def test_machine_string_format_is_enforced():
+    """The mark is rendered into the page, so its shape is a contract, not a
+    convention: lowercase, hyphenated, bounded."""
+    for bad_value in ("Windows-CUDA", "-leading", "9front",
+                      "a" * 25, "win<script>"):
+        bad = {"reports": [dict(VALID_REPORT, machine=bad_value)]}
+        assert validate(bad, SCHEMA), f"{bad_value!r} should be rejected"
+    for good in ("windows-cuda", "linux-rocm", "linux"):
+        assert validate({"reports": [dict(VALID_REPORT, machine=good)]}, SCHEMA) == []
+
+
 def test_latest_report_documents_ledger_identity_fields():
     latest = {
         "milestone": "M01",

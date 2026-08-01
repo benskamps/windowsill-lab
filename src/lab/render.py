@@ -146,6 +146,11 @@ def _commit_report(date: str, slug: str, html: str, json_dump: str) -> Path:
     content is regenerated from the same kind of run, so this is idempotent
     rather than lossy). Distinct dates and distinct slugs never collide — which
     is the whole fix: the old single ``latest.html`` buried every prior run.
+
+    The public RECEIPT does not share that fate: it is turn-stamped, so a second
+    turn on the same day is a second receipt rather than an overwrite. Under a
+    multi-turn rotation the day-level report is a "latest of that day" surface
+    and the receipts ledger is the complete one.
     """
     stamped_dump = _stamp_report_json(json_dump, slug)
     if stamped_dump != json_dump and json_dump in html:
@@ -161,9 +166,13 @@ def _commit_report(date: str, slug: str, html: str, json_dump: str) -> Path:
     # intentionally gitignored.  Numerical curves + provenance remain; only
     # heavyweight lattice snapshots are replaced by explicit digests.
     from .receipt import write_public_receipt  # stdlib-only, kept lazy
+    from .publish import _receipt_filename, turn_stamp_now
+    # Turn-stamped: the dated report above deliberately overwrites its same-day
+    # twin, but the receipt is the durable public record and must not. Two turns
+    # of one milestone in a day are two receipts.
     write_public_receipt(
         json.loads(json_dump),
-        REPO_REPORTS / "receipts" / f"run-{date}-{slug}.json",
+        REPO_REPORTS / "receipts" / _receipt_filename(date, slug, turn_stamp_now()),
         json_dump.encode("utf-8"),
     )
     # Back-compat pointer: a copy of the newest, not an archive that gets clobbered.
