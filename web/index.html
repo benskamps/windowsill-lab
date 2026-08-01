@@ -995,8 +995,9 @@
       <h2 class="ex-h">What am I looking at?</h2>
       <p>A small garden on a windowsill, wired to real work. Two quiet computers take turns
       simulating physics, checking arithmetic, reading public telescope archives, or listening
-      through hardware sensors — a turn every few hours, day and night. Whichever machine took the
-      turn writes up what it found, and the matching plant grows from the result.</p>
+      through hardware sensors — one turn at a time, whenever a machine wakes to run. Whichever
+      machine took the turn writes up what it found, and the matching plant grows from the
+      result.</p>
       <p>The lower leaves are calibration: phase transitions and magnetic models whose answers are
       known well enough to expose a bad instrument. Higher leaves move into disorder and dynamics,
       where the claims must get narrower as the questions get harder. Tap any leaf—or use the
@@ -1050,7 +1051,7 @@
       <details class="curious">
         <summary>How the machine works — the engineering under the calm</summary>
         <p>The calm surface is the last mile of a real instrument. Underneath, one automated
-        pipeline runs itself on a fixed schedule, and two machines take alternating turns running
+        pipeline runs itself, and either of two machines can pick up the next turn to run
         it:</p>
         <p class="pipeline"><code>schedule → simulate → verify → report → publish → grow</code></p>
         <p>A scheduled task wakes whichever machine has the turn and asks the curriculum for a

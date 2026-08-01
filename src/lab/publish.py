@@ -428,11 +428,13 @@ def run_cadence() -> tuple[str | None, int]:
 # constants, and the footer clause never renders. Flipping this one date is the
 # whole arming ceremony.
 #
-# MERGE GATE: web/index.html's explainer says "a turn every few hours, day and
-# night" and "two machines take alternating turns". That copy is true only once
-# both boxes are actually armed. Arm them (and set effective_from) in the same
-# change that ships the copy, or soften the copy — the page and this constant
-# must not disagree about whether the rotation is real.
+# MERGE GATE (resolved 2026-08-01 by softening): the explainer no longer
+# promises a cadence — "one turn at a time, whenever a machine wakes to run" /
+# "either of two machines can pick up the next turn" are true while unarmed.
+# When the arming ceremony flips ``effective_from``, the cadence copy ("a turn
+# every few hours, day and night", "alternating turns") may be restored in the
+# same change — the page and this constant must not disagree about whether the
+# rotation is real.
 CADENCE: dict = {
     "expected_interval_h": 3,
     "machines": ["windows-cuda", "linux-rocm"],

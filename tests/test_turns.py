@@ -452,7 +452,6 @@ def test_turns_and_divergence_ride_the_snapshot_only_when_present():
 #   * two sentences that record the lab's own history without retconning it.
 _NIGHT_ALLOWLIST = (
     "dawn, noon, dusk, night",                       # sky legend row
-    "a turn every few hours, day and night",         # cadence, not a night shift
     "before July 2026 it counted nights",            # the counter's definition change
     "began as one machine's night shift",            # the lab's real history
 )
