@@ -24,13 +24,13 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>windowsill — live | Broken Branch</title>
-  <meta name="description" content="A home machine grows four kinds of patient science: physics, trusted compute, archive astronomy, and hardware instruments. Checked results become leaves; misses stay visible.">
+  <meta name="description" content="A home machine grows five kinds of patient science: physics, trusted compute, archive astronomy, hardware instruments, and donated distributed computing. Checked results become leaves; misses stay visible.">
   <meta name="author" content="Ben Schippers">
   <meta name="theme-color" content="#0d0c0a">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.brokenbranch.dev/windowsill/">
   <meta property="og:title" content="windowsill — a live readout of the lab">
-  <meta property="og:description" content="Four quiet plants growing from real work: physics, compute, archive astronomy, and instruments. Checked results become leaves, and misses stay visible.">
+  <meta property="og:description" content="Five quiet plants growing from real work: physics, compute, archive astronomy, instruments, and shared distributed computing. Checked results become leaves, and misses stay visible.">
   <meta property="og:site_name" content="Broken Branch">
   <meta property="og:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <meta property="og:image:width" content="1200">
@@ -38,7 +38,7 @@
   <meta property="og:image:alt" content="A single seedling in a clay pot on a windowsill — the lab's calm live readout, a leaf for every verified overnight result.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="windowsill — a live readout of the lab">
-  <meta name="twitter:description" content="Four quiet plants growing from real work: physics, compute, archive astronomy, and instruments. Checked results become leaves, and misses stay visible.">
+  <meta name="twitter:description" content="Five quiet plants growing from real work: physics, compute, archive astronomy, instruments, and shared distributed computing. Checked results become leaves, and misses stay visible.">
   <meta name="twitter:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <link rel="canonical" href="https://www.brokenbranch.dev/windowsill/">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d0c0a'/%3E%3Cpath d='M32 51V28c0-9 6-15 16-16-1 11-6 17-16 18M32 38c-8-1-13-6-14-15 9 1 14 6 14 14' fill='none' stroke='%237fae6b' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -489,6 +489,9 @@
                      border-top:1px solid color-mix(in srgb, var(--specimen) 20%, var(--border)); color:var(--text-muted); font:0.59rem/1.4 var(--font-mono); }
     .specimen-foot .next { margin-left:auto; color:var(--specimen); }
     .garden-row[data-ready="true"] .garden-specimen { animation:specimen-rise 0.7s both cubic-bezier(0.2,0.7,0.2,1); animation-delay:calc(var(--i, 0) * 90ms); }
+    /* Rebuilds insert fresh nodes, which would replay the entrance; after the
+       first paint the row is settled and later renders swap content quietly. */
+    .garden-row[data-settled="true"] .garden-specimen { animation:none; }
     @keyframes specimen-rise { from { opacity:0; transform:translateY(9px); } to { opacity:1; transform:none; } }
 
     .explainer {
@@ -633,7 +636,9 @@
     <div class="tagline"><strong>A home machine keeps a night shift.</strong> Physics, compute, archive astronomy, and instruments each begin with a known answer, earn trust one check at a time, and keep every miss. These plants are the public notebook.</div>
 
     <div class="scene" id="scene">
-      <svg viewBox="0 0 800 560" role="img" aria-label="A single seedling in a clay pot on a sunlit windowsill">
+      <!-- role=group, not img: an img role makes every SVG child presentational,
+           which would strip the leaf/bud button semantics wired on render. -->
+      <svg viewBox="0 0 800 560" role="group" aria-label="A single seedling in a clay pot on a sunlit windowsill">
         <defs>
           <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
             <stop class="sky-stop" offset="0"    stop-color="var(--sky-top)"/>
@@ -883,7 +888,7 @@
         the same committed heartbeat report the plant grows from. Nothing here is redrawn by hand.</p>
       </div>
 
-      <figure class="triptych" aria-label="2D Ising spin lattice at three temperatures">
+      <figure class="triptych" id="triptych-fig" aria-label="2D Ising spin lattice at three temperatures">
         <figure class="lattice-fig">
           <canvas class="lattice" id="lat-cold" width="128" height="128" role="img"
                   aria-label="Ordered spin lattice below the critical temperature — one domain dominates"></canvas>
@@ -900,9 +905,14 @@
           <figcaption><span class="lf-t" id="lf-hot-t">T = —</span><span class="lf-say">disordered · thermal noise</span></figcaption>
         </figure>
       </figure>
-      <p class="triptych-note">Each frame is <b id="ip-lattice-dims">128&times;128</b> magnets, straight from the run.
+      <!-- Dims and provenance are feed-driven: ip-lattice-dims from snapshot_L,
+           ip-lattice-src named from snapshots_date when the lattices were
+           carried forward from an earlier run's receipt. -->
+      <p class="triptych-note" id="triptych-note">Each frame is <b id="ip-lattice-dims">&mdash;</b> magnets, <span id="ip-lattice-src">straight from the run</span>.
       Cross the tipping point &mdash; Onsager&rsquo;s exact <code>T<sub>c</sub> = 2.269</code> &mdash; and a single ordered
       domain melts into pure thermal noise. That snap is the whole reason the model matters, in three frames.</p>
+      <p class="triptych-note" id="triptych-missing" hidden>This run&rsquo;s receipt omitted its lattice snapshots, so the three-frame
+      lattice view is out until a run records them again &mdash; the curves below still plot this run&rsquo;s measurements.</p>
 
       <div class="plots">
         <figure class="plot-fig" id="plot-chi">
@@ -1836,9 +1846,15 @@
 
     var _railMilestones = [];
     var _wanderIndex = -1;
+    var _railCenteredOn = null;
     function drawMilestoneRail(milestones) {
       var rail = $('milestone-rail');
       if (!rail) return;
+      // The rebuild below destroys the focused chip and zeroes the scroll;
+      // remember both so a changed-feed re-render hands them back.
+      var focusedMid = (document.activeElement && rail.contains(document.activeElement))
+        ? document.activeElement.getAttribute('data-mid') : null;
+      var keepScroll = rail.scrollLeft;
       rail.textContent = '';
       _railMilestones = (milestones || []).filter(function (m) { return m && m.id; });
       var current = _railMilestones.find(function (m) { return m.status === 'open'; })
@@ -1865,6 +1881,13 @@
       chips.forEach(function (chip) {
         chip.tabIndex = current && chip.getAttribute('data-mid') === current.id ? 0 : -1;
       });
+      if (focusedMid) {
+        var back = chips.find(function (chip) { return chip.getAttribute('data-mid') === focusedMid; });
+        if (back) {
+          chips.forEach(function (chip) { chip.tabIndex = chip === back ? 0 : -1; });
+          back.focus();
+        }
+      }
       rail.onkeydown = function (e) {
         if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
         var at = chips.indexOf(document.activeElement);
@@ -1884,13 +1907,18 @@
         now.disabled = !current;
       }
       markSelectedMilestone(_selectedMilestone);
-      if (current) {
+      // Recenter only when the current milestone actually moved — a re-render
+      // over an unchanged frontier restores the reader's own scroll instead.
+      if (current && current.id !== _railCenteredOn) {
+        _railCenteredOn = current.id;
         var currentChip = chips.find(function (chip) { return chip.getAttribute('data-mid') === current.id; });
         if (currentChip) {
           requestAnimationFrame(function () {
             rail.scrollLeft = Math.max(0, currentChip.offsetLeft - rail.clientWidth / 2);
           });
         }
+      } else {
+        rail.scrollLeft = keepScroll;
       }
     }
 
@@ -1952,11 +1980,12 @@
     // A living specimen index, not a decorative sampler. Height and leaf count
     // come from the actual track; leaf colour carries the same promotion/review/
     // null contract as the hero plant. Selecting one opens its latest field note.
+    var _gardenPainted = false;
     function drawGarden(milestones, reports) {
       var row = $('garden-row');
       if (!row) return [];
       row.textContent = '';
-      row.removeAttribute('data-ready');
+      if (!_gardenPainted) row.removeAttribute('data-ready');
       var summary = [];
 
       GARDEN_SPECS.forEach(function (spec, index) {
@@ -2103,7 +2132,15 @@
         });
       });
 
-      requestAnimationFrame(function () { row.dataset.ready = 'true'; });
+      // Entrance animation on first paint only; rebuilds insert fresh nodes,
+      // and data-settled keeps them from replaying the rise (see the CSS).
+      if (_gardenPainted) {
+        row.dataset.ready = 'true';
+        row.dataset.settled = 'true';
+      } else {
+        _gardenPainted = true;
+        requestAnimationFrame(function () { row.dataset.ready = 'true'; });
+      }
       return summary;
     }
 
@@ -2205,6 +2242,10 @@
         var repUrl = rep.href || rep.url;
         if (repUrl && /^https?:\/\//.test(repUrl)) $('report-link').href = repUrl;
         rbox.hidden = false;
+        // Qualification is part of render, not a one-shot patch: the physics
+        // block owns the quality state and re-applies it here on every write
+        // of the raw headline (it also re-applies when its own feed lands).
+        if (window.__windowsillPhysics) window.__windowsillPhysics.applyHeadlineQuality();
       } else if (rbox) {
         rbox.hidden = true;
       }
@@ -2342,21 +2383,36 @@
 
     // Try the live feed. Failure leaves an explicitly local seed;
     // it never resurrects stale scientific claims as a decorative fallback.
+    // A byte-identical response skips the re-render entirely, leaving focus,
+    // rail scroll, and entrance animations alone.
+    var _lastPotText = null;
     function loadFeed() {
       return fetch(feedUrl, { cache: 'no-store' })
         .then(function (r) {
           if (!r.ok) throw new Error('pot feed ' + r.status);
-          return r.json();
+          return r.text();
         })
-        .then(function (state) { render(state || { empty:true, reason:'empty-response' }); })
+        .then(function (text) {
+          if (text === _lastPotText) return;
+          var state = JSON.parse(text);
+          render(state || { empty:true, reason:'empty-response' });
+          _lastPotText = text;
+        })
         .catch(function () {
           if (!_lastFeedState || _lastFeedState.empty) {
             render({ empty:true, reason:'fetch-error' });
           }
         });
     }
+    // Both public feeds walk on the same tick; each catches its own failures,
+    // and allSettled keeps one feed's bad day from stalling the other.
+    function refreshFeeds() {
+      var jobs = [loadFeed()];
+      if (window.__windowsillPhysics) jobs.push(window.__windowsillPhysics.refresh());
+      return Promise.allSettled(jobs);
+    }
     loadFeed();
-    setInterval(loadFeed, 5 * 60 * 1000);
+    setInterval(refreshFeeds, 5 * 60 * 1000);
   })();
   </script>
   <script>
@@ -2397,10 +2453,20 @@
     var reduce = false;
     try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
 
-    fetch(url, { cache: 'no-store' })
-      .then(function (r) { if (!r.ok) throw 0; return r.json(); })
-      .then(render)
-      .catch(function () { /* progressive enhancement: leave the panel hidden */ });
+    // Refetched on the pot side's 5-minute tick (via the window hook below), so
+    // a long-lived tab plots tonight's run instead of a frozen instrument. A
+    // byte-identical response skips the re-render.
+    var _lastPhysicsText = null;
+    function loadPhysics() {
+      return fetch(url, { cache: 'no-store' })
+        .then(function (r) { if (!r.ok) throw 0; return r.text(); })
+        .then(function (text) {
+          if (text === _lastPhysicsText) return;
+          render(JSON.parse(text));
+          _lastPhysicsText = text;
+        })
+        .catch(function () { /* progressive enhancement: leave the panel as-is */ });
+    }
 
     // ── lattice: base64 bit-field → ImageData ──────────────────────────────
     var SPIN_UP = [232, 220, 200], SPIN_DN = [28, 22, 18];   // warm cream vs ink
@@ -2541,41 +2607,61 @@
 
     function mount(id, svg) { var m = document.getElementById(id); if (m) m.innerHTML = svg; }
 
+    // A schema-v1 pot feed may still carry the raw argmax in its compact
+    // headline, and the pot side rewrites that line raw on every one of its
+    // renders — so this reconciliation is a re-appliable function, not a
+    // one-shot: the pot render calls it after each headline write (via the
+    // window hook), and render() below calls it when the physics feed lands,
+    // whichever order the two fetches resolve in.
+    var _quality = null;
+    function applyHeadlineQuality() {
+      if (!_quality) return;
+      var quality = _quality.quality, tc = _quality.tc, date = _quality.date;
+      var latestLine = document.getElementById('report-line');
+      if (!latestLine || !/^χ peaked at T/i.test(latestLine.textContent || '')) return;
+      latestLine.textContent = quality.peak == null
+        ? 'M01 quality null · ' + quality.note + (date ? ' · ' + date : '')
+        : 'χ peaked at T≈' + quality.peak.toFixed(3) + ' vs Onsager ' + tc.toFixed(4) +
+          (quality.status === 'degraded'
+            ? ' · quality warning: ' + quality.excluded.length + ' non-equilibrated sample(s) excluded'
+            : '') + (date ? ' · ' + date : '');
+      var latestTag = document.querySelector('.report-tag');
+      if (latestTag && quality.status !== 'ok') latestTag.textContent = 'quality-checked field note';
+    }
+
     function render(feed) {
       var m = feed && feed.m01;
       if (!m || !Array.isArray(m.T) || !m.T.length) return;
       var tc = feed.onsager_tc || 2.269185;
       var T = m.T;
       var quality = m01Quality(m);
-      // A schema-v1 pot feed may still carry the raw argmax in its compact
-      // headline.  Once the richer physics receipt arrives, reconcile that
-      // visible sentence with the same quality-qualified peak shown below.
-      var latestLine = document.getElementById('report-line');
-      if (latestLine && /^χ peaked at T/i.test(latestLine.textContent || '')) {
-        latestLine.textContent = quality.peak == null
-          ? 'M01 quality null · ' + quality.note + (m.date ? ' · ' + m.date : '')
-          : 'χ peaked at T≈' + quality.peak.toFixed(3) + ' vs Onsager ' + tc.toFixed(4) +
-            (quality.status === 'degraded'
-              ? ' · quality warning: ' + quality.excluded.length + ' non-equilibrated sample(s) excluded'
-              : '') + (m.date ? ' · ' + m.date : '');
-        var latestTag = document.querySelector('.report-tag');
-        if (latestTag && quality.status !== 'ok') latestTag.textContent = 'quality-checked field note';
-      }
+      _quality = { quality: quality, tc: tc, date: m.date || null };
+      applyHeadlineQuality();
 
-      // lattice snapshots: coldest = ordered, hottest = disordered, nearest-Tc = critical
-      if (m.snapshots && m.snapshot_L) {
-        var keys = Object.keys(m.snapshots).map(Number).sort(function (a, b) { return a - b; });
-        if (keys.length) {
-          var cold = keys[0], hot = keys[keys.length - 1];
-          var crit = keys.reduce(function (best, k) { return Math.abs(k - tc) < Math.abs(best - tc) ? k : best; }, keys[0]);
-          drawLattice('lat-cold', m.snapshots[String(cold).replace(/\.0$/, '')] || m.snapshots['' + cold], m.snapshot_L);
-          drawLattice('lat-crit', m.snapshots['' + crit], m.snapshot_L);
-          drawLattice('lat-hot', m.snapshots['' + hot], m.snapshot_L);
-          setText('lf-cold-t', 'T = ' + cold);
-          setText('lf-crit-t', 'T = ' + crit);
-          setText('lf-hot-t', 'T = ' + hot);
-          setText('ip-lattice-dims', m.snapshot_L + '×' + m.snapshot_L);
-        }
+      // lattice snapshots: coldest = ordered, hottest = disordered, nearest-Tc = critical.
+      // No snapshots in the feed → the triptych hides behind a sentence saying
+      // why, instead of three blank canvases under a provenance claim. A feed
+      // may also carry lattices forward from an earlier run (labeled with
+      // snapshots_date by the publisher); the caption then names that run.
+      var snapKeys = (m.snapshots && m.snapshot_L)
+        ? Object.keys(m.snapshots).map(Number).sort(function (a, b) { return a - b; })
+        : [];
+      setHidden('triptych-fig', !snapKeys.length);
+      setHidden('triptych-note', !snapKeys.length);
+      setHidden('triptych-missing', !!snapKeys.length);
+      if (snapKeys.length) {
+        var cold = snapKeys[0], hot = snapKeys[snapKeys.length - 1];
+        var crit = snapKeys.reduce(function (best, k) { return Math.abs(k - tc) < Math.abs(best - tc) ? k : best; }, snapKeys[0]);
+        drawLattice('lat-cold', m.snapshots[String(cold).replace(/\.0$/, '')] || m.snapshots['' + cold], m.snapshot_L);
+        drawLattice('lat-crit', m.snapshots['' + crit], m.snapshot_L);
+        drawLattice('lat-hot', m.snapshots['' + hot], m.snapshot_L);
+        setText('lf-cold-t', 'T = ' + cold);
+        setText('lf-crit-t', 'T = ' + crit);
+        setText('lf-hot-t', 'T = ' + hot);
+        setText('ip-lattice-dims', m.snapshot_L + '×' + m.snapshot_L);
+        setText('ip-lattice-src', (m.snapshots_date && m.snapshots_date !== m.date)
+          ? 'from the ' + m.snapshots_date + ' run — the latest whose receipt recorded lattices'
+          : 'straight from the run');
       }
 
       var xr = [Math.min.apply(null, T), Math.max.apply(null, T)];
@@ -2666,14 +2752,17 @@
         if (link) link.href = 'https://github.com/benskamps/windowsill-lab/blob/main/' + (feed.generated_from || m.source_report);
       }
 
+      // Reveal animation on the first render only; refreshed feeds swap the
+      // plots in place without replaying the entrance.
+      if (panel.hidden && !reduce) panel.classList.add('ip-reveal');
       panel.hidden = false;
-      if (!reduce) panel.classList.add('ip-reveal');
     }
 
     // helpers
     function zip(a, b) { return a.map(function (x, i) { return [x, b[i]]; }); }
     function setText(id, t) { var e = document.getElementById(id); if (e) e.textContent = t; }
     function setHTML(id, h) { var e = document.getElementById(id); if (e) e.innerHTML = h; }
+    function setHidden(id, hide) { var e = document.getElementById(id); if (e) e.hidden = !!hide; }
     function niceTicks(lo, hi, n) {
       if (!(hi > lo)) return [lo];
       var span = hi - lo, step = Math.pow(10, Math.floor(Math.log(span / n) / Math.LN10));
@@ -2683,6 +2772,12 @@
       for (var v = start; v <= hi + step * 0.5; v += step) out.push(Math.round(v / step) * step);
       return out;
     }
+
+    // One lifecycle for the page's two feeds: the pot side drives the shared
+    // 5-minute tick through `refresh`, and re-applies the quality-qualified
+    // headline through `applyHeadlineQuality` each time it rewrites the line.
+    window.__windowsillPhysics = { refresh: loadPhysics, applyHeadlineQuality: applyHeadlineQuality };
+    loadPhysics();
   })();
   </script>
 </body>

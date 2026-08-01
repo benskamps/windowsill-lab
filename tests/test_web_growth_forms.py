@@ -114,3 +114,81 @@ def test_conservatory_is_feed_driven_and_opens_real_field_notes():
     assert "openFieldNote(focusMilestone, action)" in html
     assert "garden: garden" in html
     assert "count:5, total:8" not in html
+
+
+# ── One feed lifecycle: qualification in render, shared tick, change-detected
+#    re-renders, triptych empty/stale states, scene a11y, five-track metas ─────
+
+
+def test_headline_quality_rides_every_render_not_a_one_shot():
+    """The quality reconciliation must be a function both feeds re-apply, not a
+    one-shot patch: pot render() rewrites #report-line raw on every tick, so it
+    must consult the physics side's quality state each time, and the physics
+    side must re-apply when its feed arrives after the pot's (the t=0 race)."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert "function applyHeadlineQuality()" in html
+    assert "window.__windowsillPhysics" in html
+    # pot render() consults the hook right after writing the headline
+    assert "window.__windowsillPhysics.applyHeadlineQuality()" in html
+
+
+def test_feeds_share_one_tick_and_skip_unchanged_responses():
+    """Both feeds refresh on the same 5-minute tick (the physics panel used to
+    fetch exactly once), each failing independently; byte-identical responses
+    skip the re-render so focus, scroll, and animations are left alone."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert "setInterval(refreshFeeds, 5 * 60 * 1000)" in html
+    assert "setInterval(loadFeed, 5 * 60 * 1000)" not in html
+    assert "Promise.allSettled" in html
+    assert "_lastPotText" in html
+    assert "_lastPhysicsText" in html
+
+
+def test_rail_rebuild_preserves_focus_and_recenters_only_on_a_new_current():
+    """A changed-feed rebuild wipes the rail; keyboard focus must come back to
+    the same chip by data-mid, and the forced scroll recenter fires only when
+    the current milestone actually moved (never undoing user scroll)."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert "focusedMid" in html
+    assert "_railCenteredOn" in html
+
+
+def test_garden_entrance_animation_plays_once():
+    """Fresh <li> nodes under [data-ready] replay specimen-rise on every
+    rebuild; after the first paint the row is marked settled and the entrance
+    animation is disabled."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert '[data-settled="true"] .garden-specimen { animation:none' in html
+    assert "dataset.settled" in html
+
+
+def test_triptych_states_disclose_missing_or_carried_snapshots():
+    """A feed without lattice snapshots must hide the triptych and say why —
+    not render three blank canvases under a hardcoded 128x128 provenance
+    claim. Dims come only from the feed's snapshot_L, and a carried lattice
+    (feed's snapshots_date differs from the run date) names its producing run."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert 'id="triptych-missing"' in html
+    assert "omitted its lattice snapshots" in html
+    assert 'id="ip-lattice-dims">128' not in html
+    assert 'id="ip-lattice-src"' in html
+    assert "snapshots_date" in html
+
+
+def test_scene_svg_role_keeps_leaf_and_bud_buttons_exposed():
+    """role="img" makes an SVG's children presentational, stripping the leaf
+    and bud button semantics from the accessibility tree; the scene must use a
+    role that keeps its interactive children exposed."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert '<svg viewBox="0 0 800 560" role="group"' in html
+    assert '<svg viewBox="0 0 800 560" role="img"' not in html
+
+
+def test_meta_descriptions_enumerate_five_tracks():
+    """Search results and social unfurls must describe the page they open:
+    five instruments, not four."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert "four kinds of patient science" not in html
+    assert "Four quiet plants" not in html
+    assert "five kinds of patient science" in html
+    assert "Five quiet plants" in html
