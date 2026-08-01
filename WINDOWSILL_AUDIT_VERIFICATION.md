@@ -6,8 +6,8 @@ and the live feed (`pot.json`). This record is the fact-check that gates the imp
 
 ## Bottom line
 
-The audit is **high quality and honest** — every structural finding verified true (7/8 confirmed
-outright, 1 partially-correct), and every "healthy / what works" claim independently confirmed. Two
+Every structural finding verified true (7/8 confirmed outright, 1 partially
+correct), and every "healthy / what works" claim independently confirmed. Two
 calibration notes: the audit **over-rates severity** (its P0s are really P1s, its P1s really P2s —
 nothing is broken or dangerous on this calm page), and one cited "defect" (archive deep-links) is
 **intentional by design**.
@@ -39,7 +39,7 @@ nothing is broken or dangerous on this calm page), and one cited "defect" (archi
 
 - **#1 is freshly worse, not stale:** the M04→M11 ladder (6/24-25) added milestones, widening the
   gap between the static nightly (M01) and the curriculum front. M01 isn't even a named command — it's
-  the un-prefixed default `run`. Two honest product directions: (a) explain heartbeat-vs-expedition on
+  the un-prefixed default `run`. Two candidate product directions: (a) explain heartbeat-vs-expedition on
   the page, or (b) build a milestone-aware `lab next`. (a) is the fast comms fix; (b) is the deeper fix.
 - **#2:** `creeper`→`vine` and `moss`→`succulent` are aliased in the JS registry, so only 3 shapes
   (fern/vine/succulent) are even reachable today. Fix = select hero form from the **open** milestone's

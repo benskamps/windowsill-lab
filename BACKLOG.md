@@ -70,8 +70,8 @@ other rule identical, and a wall of windowsills should still read as one garden.
 ## Lineage — origination points (backlogged, not rebuilt)
 
 The windowsill didn't appear from nowhere. Record the ancestors so the idea's
-provenance is as honest as its data. These are **kept as origins**, not active
-work:
+provenance stays on the books the way its data does. These are **kept as
+origins**, not active work:
 
 - [ ] **The ASCII prototype** — the original text-only seed. The origination
       point of the whole "calm, living, honest" idea. Preserve it as a documented
@@ -86,5 +86,9 @@ Make a single `git pull` give you everything: the engine, the feed, and the
 page. (In progress — the page now lives in [`web/`](web/).)
 
 - [x] Bring the canonical seed-in-the-pot page into this repo (`web/index.html`).
-- [ ] Keep `brokenbranch.dev/windowsill` in sync with `web/index.html` from a
-      single source of truth (mechanism TBD: CI mirror / submodule / sync script).
+- [x] Keep `brokenbranch.dev/windowsill` in sync with `web/index.html` from a
+      single source of truth.
+      (done — `web/index.html` is mirrored verbatim into the
+      brokenbranchdevwebsite repo, and this repo's CI gates the file with the
+      same `html-validate` config the downstream site enforces, so the mirror
+      can never push HTML the site rejects; see `.github/workflows/ci.yml`.)

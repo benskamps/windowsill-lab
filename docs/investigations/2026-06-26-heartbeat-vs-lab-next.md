@@ -1,6 +1,6 @@
 # Decision: the nightly heartbeat vs. an autonomous `lab next` scheduler
 
-**Status:** open — needs Ben's call. **Raised by:** the public-experience audit (P0, "the page conflates two clocks"), verified against the code 2026-06-26.
+**Status:** resolved. **Outcome:** Direction 2 shipped 2026-07-05 in PR #49 (d64c4c8) — `lab next` with the heartbeat as its explicit fallback landed, and `lab setup` now generates the unattended job to run `lab next`. **Raised by:** the public-experience audit (P0, "the page conflates two clocks"), verified against the code 2026-06-26. The sections below are the record of the decision as it stood; kept as history.
 
 ## The finding (verified)
 
@@ -49,4 +49,4 @@ Effort for direction 2: ~half a focused session for the registry + `lab next` + 
 ## Your call
 
 - [ ] **Direction 1** — heartbeat only; I advance milestones by hand. (No further work; page is already honest.)
-- [ ] **Direction 2** — build `lab next` (registry + dry-run + tests), keep the heartbeat as fallback, swap the nightly after dry-run review.
+- [x] **Direction 2** — build `lab next` (registry + dry-run + tests), keep the heartbeat as fallback, swap the nightly after dry-run review. (Shipped 2026-07-05, PR #49.)

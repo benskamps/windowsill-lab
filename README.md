@@ -3,7 +3,8 @@
 > 🌲 Part of the [Broken Branch labs](https://www.brokenbranch.dev/labs/) — one human and a cluster of AI agents shipping strange software in public. This is one experiment among many; the front door lists them all.
 
 A patient scientific instrument that lives in your machine: numerical physics,
-trusted computation, open-archive astronomy, and the hardware itself as a sensor.
+trusted computation, open-archive astronomy, the hardware itself as a sensor,
+and donated volunteer compute.
 
 > Tonight I ran 2D Ising on a 128×128 lattice across 21 temperatures in
 > [1.50, 3.50], 40,000 measurement sweeps each. The susceptibility peaked at
@@ -63,6 +64,16 @@ anything. No accounts, no service to sign into — publishing is your own
 `git push`. The default Windows task runs while you are logged in, wakes a
 sleeping machine, and retries a failed launch twice.
 
+**Publisher topology, as of 2026-08-01.** The committed feed is published by a
+Linux campaign service ([`scripts/campaign.sh`](scripts/campaign.sh) +
+[`scripts/windowsill-campaign.service`](scripts/windowsill-campaign.service),
+one pass every 4 hours). The original Windows Task-Scheduler nightly on the
+founding box is currently **disabled**; re-enabling it requires re-running
+`lab setup` first, because the installed script is generated (gitignored) and
+predates the current templates — a stale install stages the wrong file set. A
+scheduled watchdog ([`.github/workflows/freshness.yml`](.github/workflows/freshness.yml))
+files an issue when the committed feed stops advancing.
+
 The report lives at `~/.lab/YYYY-MM-DD.html` (one per day) with a
 `~/.lab/latest.html` pointer for convenience. Raw measurements are also
 dumped as JSON next to each report so future-you (or any other tool) can
@@ -115,9 +126,9 @@ traced and re-run. See [CITIZEN_SCIENCE.md](CITIZEN_SCIENCE.md).
 The lab feeds the **windowsill** — its calm, public face (the page now ships
 from [`web/`](web/) in this repo). At
 [brokenbranch.dev/windowsill/](https://www.brokenbranch.dev/windowsill/) a
-four-plant garden grows on this lab's *passive citizen science*: each **verified**
+five-plant garden grows on this lab's *passive citizen science*: each **verified**
 milestone hardens into a node on its track's stem (a green leaf), a **failed
-calibration** is a folded grey leaf (an honest null, kept on the books), the
+calibration** is a folded grey leaf (a null result, kept on the books), the
 patient overnight **runs** water the soil, and CPU heat sets the season.
 Machine-checked measurements waiting for human review stay amber; only a human
 promotion turns them green.
@@ -130,10 +141,11 @@ lab scoreboard              # render the calibration scoreboard (measured vs the
 ```
 
 The snapshot is built by parsing `MILESTONES.md` (the single source of truth) plus
-the run cadence in `reports/`/`~/.lab`, and the CPU temperature. It's deliberately
-sanitized — milestone ids, titles, results, run counts, and temperature only; no
-private data. A `lab run` refreshes it automatically, so the seed grows as the
-science does.
+the run cadence derived from the committed receipts in `reports/receipts/`, and
+the CPU temperature. It's deliberately sanitized — milestone state and results,
+per-run headlines with report/receipt links, run cadence, CPU temperature, and a
+code-SHA/environment provenance block; no host or user data. A `lab run`
+refreshes it automatically, so the seed grows as the science does.
 
 **Live feed, no secrets.** `pot.json` is committed at the repo root; the
 windowsill page reads it straight from GitHub raw through the site's edge cache.

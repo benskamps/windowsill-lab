@@ -39,7 +39,7 @@ def _select_next(milestones):
 HELP = """lab — a windowsill physics lab.
 
 Usage:
-  lab                 run today's experiment and open the report
+  lab                 open the latest report (alias of `lab open`)
   lab run             run only — don't open the browser (the M01 heartbeat)
   lab next            run the lowest OPEN milestone's experiment (heartbeat if none)
   lab next --dry-run  print which milestone `lab next` would run — run nothing
@@ -53,7 +53,7 @@ Usage:
   lab m09             run M09: 2D Heisenberg — verify NO finite-T order (Mermin–Wagner)
   lab m10             run M10: antiferromagnetic Ising — T_N = Onsager 2.2692 on staggered m_s
   lab m11             run M11: 2D Edwards–Anderson spin glass — P(q) broadens toward T_c=0
-  lab m12             run M12: 3D EA spin glass — Binder-cumulant crossing at T_SG≈0.95 (parallel tempering)
+  lab m12             run M12: 3D EA spin glass — Binder-cumulant crossing at the ±J T_SG benchmark (parallel tempering)
   lab m13             run M13: frustrated triangular AFM — residual entropy S0/N≈0.3383 via C/T integration
   lab m14             run M14: random-bond Ising — exact Nishimori-line energy, map toward the MNP p_c≈0.109
   lab m15             run M15: Glauber dynamics — domain growth L(t)∼t^(1/2) after a quench (Phase 4)
@@ -347,19 +347,20 @@ def _parse_m11(args):
 
 def _parse_m12(args):
     p = argparse.ArgumentParser(add_help=False)
-    # M12 is the 3D EA glass: a genuine finite-T spin-glass transition at T_SG ≈ 0.95,
-    # found by the disorder-averaged Binder-cumulant CROSSING across ≥3 lattice sizes on
-    # a SHARED T ladder that straddles 0.95. Parallel tempering is mandatory — single-
-    # spin Metropolis can't equilibrate the cold rungs and the crossing washes out (M11's
-    # documented failure mode). --quick runs a small CPU pass that proves the code end to
-    # end but does not generally resolve the crossing (that needs a GPU run with many
-    # disorder realizations); it then ships an honest [~] null, per the lab's convention.
+    # M12 is the 3D EA glass: a genuine finite-T spin-glass transition at the ±J
+    # benchmark (m12.T_SG_BENCHMARK), found by the disorder-averaged Binder-cumulant
+    # CROSSING across ≥3 lattice sizes on a SHARED T ladder that straddles it.
+    # Parallel tempering is mandatory — single-spin Metropolis can't equilibrate the
+    # cold rungs and the crossing washes out (M11's documented failure mode). --quick
+    # runs a small CPU pass that proves the code end to end but does not generally
+    # resolve the crossing (that needs a GPU run with many disorder realizations); it
+    # then ships a [~] null, per the lab's convention.
     p.add_argument("--L-values", default="4,6,8",
                    help="comma-separated even lattice sizes on the shared ladder (default 4,6,8)")
     p.add_argument("--quick", action="store_true",
                    help="small CPU pass (few realizations, short sweep) — proves the code, not the physics")
     p.add_argument("--t-min", type=float, default=0.4,
-                   help="cold edge — must sit below T_SG≈0.95 (default 0.4)")
+                   help="cold edge — must sit below the T_SG benchmark (default 0.4)")
     p.add_argument("--t-max", type=float, default=1.6,
                    help="hot edge — the ergodic end parallel tempering decorrelates in (default 1.6)")
     p.add_argument("--n-temps", type=int, default=16)
@@ -1048,7 +1049,7 @@ def main(argv=None):
         if ns.quick:
             # A small CPU pass: proves the multi-file recipe end-to-end and writes
             # HTML+JSON. It will not generally resolve the crossing — that is the GPU
-            # full run's job — so an unresolved crossing here ships as an honest null.
+            # full run's job — so an unresolved crossing here ships as a [~] null.
             L_values = [4, 6, 8]
             realizations, n_temps = 8, 10
             sweeps, burnin, swap_every = 800, 400, 5
@@ -1057,7 +1058,8 @@ def main(argv=None):
             realizations, n_temps = ns.realizations, ns.n_temps
             sweeps, burnin, swap_every = ns.sweeps, ns.burnin, ns.swap_every
         print(f"M12 3D Edwards–Anderson spin glass · L={L_values} · {n_temps} temps in "
-              f"[{ns.t_min}, {ns.t_max}] straddling T_SG≈0.95 · {realizations} disorder "
+              f"[{ns.t_min}, {ns.t_max}] straddling T_SG≈{m12.T_SG_BENCHMARK:g} · "
+              f"{realizations} disorder "
               f"realizations × 2 replicas · parallel tempering (swap every {swap_every}) "
               f"· {sweeps:,} sweeps on {device}")
 
@@ -1075,7 +1077,8 @@ def main(argv=None):
         ct_str = f"{ct:.3f}" if ct is not None else "none"
         verdict = ("Binder crossing at T_SG≈%s — the finite-T 3D glass transition" % ct_str
                    if result.crossing_resolved
-                   else "no clean crossing near 0.95 — honest [~] null (needs the GPU full run)")
+                   else f"no clean crossing near {result.t_sg_benchmark:g} — [~] null "
+                        f"(needs the GPU full run)")
         print(f"  → Binder crossing T_SG = {ct_str} (benchmark {result.t_sg_benchmark:.2f} "
               f"± {result.tolerance:.2f}) · max|⟨q⟩|={result.max_abs_q_mean:.3f} · "
               f"{verdict} · {result.wall_seconds:.0f}s")
@@ -1097,7 +1100,7 @@ def main(argv=None):
             # A small CPU pass: proves the multi-file recipe end-to-end and writes
             # HTML+JSON. The frustrated model equilibrates easily (single-spin flips walk
             # the degenerate ground manifold), so even this coarse grid usually lands the
-            # integrated residual near 0.3383 — but a miss here still ships an honest null.
+            # integrated residual near 0.3383 — but a miss here still ships a [~] null.
             L, n_temps = 24, 40
             t_min, t_max = 0.15, 12.0
             sweeps, burnin = 3000, 1000
@@ -1122,7 +1125,7 @@ def main(argv=None):
         )
         report = m13.to_report(result)
         verdict = ("residual entropy reproduced — Wannier 0.3383" if result.resolved
-                   else "integrated residual off 0.3383 — honest [~] null")
+                   else "integrated residual off 0.3383 — [~] null")
         print(f"  → residual S0/N = {result.s0_measured:.4f} (Wannier {result.s0_benchmark:.4f}, "
               f"Δ={result.s0_abs_error:.4f}) · ground energy {result.e_ground:.4f}/spin (exact −1) "
               f"· {verdict} · {result.wall_seconds:.0f}s")
@@ -1148,7 +1151,7 @@ def main(argv=None):
         if ns.quick:
             # A small CPU pass: proves the multi-file recipe end to end and writes HTML+JSON.
             # The Nishimori-line energy is an exact identity, so even this coarse pass usually
-            # reproduces it; a miss still ships an honest null.
+            # reproduces it; a miss still ships a [~] null.
             L_values = (8, 12)
             p_values = (0.05, 0.10, 0.1094, 0.15)
             realizations, sweeps, burnin = 16, 3000, 1200
@@ -1173,7 +1176,7 @@ def main(argv=None):
         ph = result.mnp_order_p_half
         ph_str = f"p≈{ph:.3f}" if ph is not None else "unresolved"
         verdict = ("exact Nishimori-line energy reproduced" if result.energy_resolved
-                   else "Nishimori-line energy off — honest [~] null")
+                   else "Nishimori-line energy off — [~] null")
         print(f"  → max energy Δ = {result.max_energy_dev:.4f} vs exact −2 tanh(1/T) "
               f"(L={result.gate_L}) · ferro order collapses near {ph_str} "
               f"(MNP p_c≈{result.p_c_benchmark:.4f}) · {verdict} · {result.wall_seconds:.0f}s")
@@ -1195,7 +1198,7 @@ def main(argv=None):
         if ns.quick:
             # A small CPU pass: proves the quench → measure → fit → report pipeline end to end
             # and writes HTML+JSON. The scaling window is short at this scale, so the exponent
-            # is coarse — a miss still ships an honest null, per the lab's convention.
+            # is coarse — a miss still ships a [~] null, per the lab's convention.
             L, seeds, t_max, n_times = 96, 8, 1500, 32
             device = "cpu"
         else:
@@ -1218,7 +1221,7 @@ def main(argv=None):
         energy_n = result.energy_fit.exponent if result.energy_fit is not None else None
         en_str = f"{energy_n:.3f}" if energy_n is not None else "—"
         verdict = ("consistent with Allen–Cahn t^(1/2)" if result.supports_allen_cahn
-                   else "off the Allen–Cahn ½ — honest [~] null")
+                   else "off the Allen–Cahn ½ — [~] null")
         print(f"  → growth exponent n = {result.exponent:.3f} ± {result.exponent_stderr:.3f} "
               f"(stat) · energy-length cross-check {en_str} · systematic band "
               f"±{max(result.systematic_spread, 0.02):.2f} · {verdict} · {result.wall_seconds:.0f}s")
@@ -1256,7 +1259,7 @@ def main(argv=None):
         report = m16.to_report(result)
         print(f"  → ratio-collapse residual = {result.collapse_ratio:.2f}× fixed-lag "
               f"residual · ΔC={result.fixed_lag_separation:+.3f} at Δt={result.fixed_lag} · "
-              f"{'aging resolved' if result.aging_resolved else 'honest null'} · "
+              f"{'aging resolved' if result.aging_resolved else '[~] null'} · "
               f"{result.wall_seconds:.1f}s")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")
@@ -1275,7 +1278,7 @@ def main(argv=None):
             # A small pass: proves growth → controls → saturation → both geometries → report
             # end to end and writes HTML+JSON. The scaling window and the sample sizes are
             # short at this scale, so the exponents are coarse and the third moments noisy —
-            # a miss still ships an honest null, per the lab's convention.
+            # a miss still ships a [~] null, per the lab's convention.
             kw = dict(L=1024, batch=16, t_max=600, n_times=24,
                       ew_L=512, ew_t_max=300, rd_L=512, rd_t_max=300,
                       sat_L=(8, 16, 32), sat_batch=16,
@@ -1304,7 +1307,7 @@ def main(argv=None):
                   f"(expected {a['expected']}, {a['decisiveness']:.1f}×) "
                   f"{'✓' if a['correct'] else '✗'}")
         verdict = ("KPZ exponents + Tracy–Widom assignment reproduced"
-                   if report["status"] == "pass" else "honest [~] null — see the report")
+                   if report["status"] == "pass" else "[~] null — see the report")
         print(f"  → {verdict} · {result.wall_seconds:.0f}s")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")
@@ -1325,7 +1328,7 @@ def main(argv=None):
         report = c01.to_report(result)
         print(f"  → OEIS bytes {'match' if result.bfile_exact_match else 'DO NOT match'} · "
               f"Lucas–Lehmer residue={result.lucas_lehmer_residue} · "
-              f"{'calibrated' if result.calibration_passed else 'honest null'} · "
+              f"{'calibrated' if result.calibration_passed else '[~] null'} · "
               f"{result.wall_seconds:.2f}s")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")
@@ -1383,7 +1386,7 @@ def main(argv=None):
               f"depth={100*result.depth_fraction:.3f}% "
               f"(Δ={100*result.depth_error_fraction:.3f}%) · "
               f"{sum(result.kept_transits)} timed transits · "
-              f"{'calibrated' if result.calibration_passed else 'honest null'} · "
+              f"{'calibrated' if result.calibration_passed else '[~] null'} · "
               f"{result.wall_seconds:.1f}s")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")
@@ -1440,7 +1443,7 @@ def main(argv=None):
             print(f"  → {result.analysis['shape'][0]} frames · "
                   f"{result.analysis['hot_pixel_count']} hot pixels · "
                   f"{result.analysis['track_candidate_count']} track-like components · "
-                  f"{'calibrated' if result.calibration_passed else 'honest null'}")
+                  f"{'calibrated' if result.calibration_passed else '[~] null'}")
         else:
             label = result.error_code or "hardware-null"
             print(f"  → {label}: {result.reason}")
