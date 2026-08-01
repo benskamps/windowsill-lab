@@ -76,6 +76,48 @@ def test_nightly_ps1_is_runnable_and_self_contained():
     assert "push failed after 4 attempts" in ps
 
 
+# ── nightly hardening: index safety + independent nightly seeds ─────────────
+# The defect being fixed: the nightly committed with a bare `git commit`, so
+# anything pre-staged in the clone at 03:00 (agents work in it — IN-USE.md is a
+# live convention) shipped to main under a "nightly:" message. campaign.sh got
+# the pre-staged refusal + --only pathspec in PR #66; the nightly templates
+# did not. NOTE: the installed scripts/nightly.ps1 is gitignored — these
+# templates only take effect after `lab setup` is re-run on the box.
+
+def test_nightly_sh_refuses_prestaged_index_before_running():
+    sh = setup.nightly_script()
+    guard = sh.index("git diff --cached --quiet")
+    assert "staged" in sh and "REFUSING" in sh[:sh.index("lab.cli next")]
+    # The refusal gate sits BEFORE the experiment/publish — a dirty index means
+    # no run, no sweep, exit 0 (skip, logged), same semantics as campaign.sh.
+    assert guard < sh.index("lab.cli next")
+
+
+def test_nightly_ps1_refuses_prestaged_index_before_running():
+    ps = setup.nightly_ps1()
+    guard = ps.index("git diff --cached --quiet")
+    assert guard < ps.index("lab.cli next")
+    assert "staged" in ps
+
+
+def test_nightly_templates_commit_only_campaign_paths():
+    """`--only` + explicit pathspec: even if something slips into the index
+    mid-run, the nightly commit can only ever carry the feed + reports tree."""
+    for script in (setup.nightly_script(), setup.nightly_ps1()):
+        assert "git commit" in script
+        assert "--only" in script
+        assert "-- pot.json physics-latest.json reports/" in script
+
+
+def test_nightly_templates_derive_seed_from_utc_date():
+    """A date-derived --seed gives each night an independent sample (reruns
+    within a day repeat deterministically; successive nights differ)."""
+    sh = setup.nightly_script()
+    assert "--seed" in sh and 'date -u +%Y%m%d' in sh
+    ps = setup.nightly_ps1()
+    assert "--seed" in ps and "yyyyMMdd" in ps
+
+
 def test_task_xml_is_wellformed_and_runs_the_nightly():
     import xml.etree.ElementTree as ET
     xml = setup.task_xml(at="04:30:00")

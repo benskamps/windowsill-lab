@@ -1,0 +1,83 @@
+# Feed-freshness watchdog — the dead-campaign alarm.
+#
+# CONSUMER: Ben, via GitHub notifications (creates/updates the single
+# "windowsill feed stale" issue when it trips). Surface contract: this is an
+# alarm, not an index — it reads one committed stamp and retires nothing.
+#
+# WHY: the campaign publishes every 4h. On 2026-07-30 it stopped after pass 48
+# and nothing in the repo, CI, or cockpit could see the outage — the page
+# served last-known-good data for 29h+ with zero repo-visible signal, because
+# every campaign failure mode logs only to the campaign box's local
+# ~/.lab/campaign.log. This converts silence into a notification.
+#
+# Threshold: 9h = two missed 4h passes + slack, so one slow pass or a single
+# skipped interval never pages.
+#
+# NOTE: GitHub auto-disables scheduled workflows after ~60 days without repo
+# activity. If the estate goes quiet on purpose, this alarm goes quiet with it
+# — re-enable from the Actions tab when the campaign restarts.
+name: feed freshness
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"   # every 6h, offset from top-of-hour runner load
+  workflow_dispatch: {}       # manual poke to exercise the alarm path
+
+jobs:
+  freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@v7
+      - name: pot.json updated within the last 9 hours
+        id: age
+        run: |
+          python - <<'PY'
+          import json, os, sys
+          from datetime import datetime, timezone
+
+          THRESHOLD_H = 9.0   # two missed 4h campaign passes + slack
+          out = open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8")
+          try:
+              stamp = json.loads(open("pot.json", encoding="utf-8").read())["updated"]
+              ts = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+              if ts.tzinfo is None:
+                  ts = ts.replace(tzinfo=timezone.utc)
+          except Exception as exc:
+              # Missing/malformed stamp is a named failure, never a silent pass.
+              detail = f"pot.json `updated` stamp unreadable: {exc!r}"
+              print(f"detail={detail}", file=out)
+              print(f"::error::{detail}")
+              sys.exit(1)
+          age_h = (datetime.now(timezone.utc) - ts).total_seconds() / 3600.0
+          detail = f"pot.json updated {stamp} — {age_h:.1f}h ago (threshold {THRESHOLD_H:g}h)"
+          print(f"detail={detail}", file=out)
+          print(detail)
+          if age_h > THRESHOLD_H:
+              print(f"::error::feed stale: {detail}")
+              sys.exit(1)
+          PY
+      - name: Create or update the "windowsill feed stale" issue
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DETAIL: ${{ steps.age.outputs.detail }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          title="windowsill feed stale"
+          body="${DETAIL:-freshness check failed before measuring the age}
+
+          - run: ${RUN_URL}
+
+          The campaign publishes every 4h; this fired after the feed sat unchanged past the 9h threshold. First moves on the campaign box: \`systemctl --user status windowsill-campaign\` and \`tail ~/.lab/campaign.log\`."
+          num=$(gh issue list --state open --json number,title \
+                --jq '[.[] | select(.title == "windowsill feed stale")][0].number // empty')
+          if [ -n "$num" ]; then
+            gh issue comment "$num" --body "$body"
+          else
+            gh issue create --title "$title" --body "$body"
+          fi

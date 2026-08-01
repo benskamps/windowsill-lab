@@ -296,35 +296,109 @@ def test_latest_report_reconciles_degraded_m01_raw_headline(monkeypatch):
     assert "quality warning" in latest["headline"]
 
 
-def test_run_cadence_last_breaks_mtime_tie_by_date_stem(tmp_path, monkeypatch):
-    """FIX 4: with equal mtimes, run_cadence's last_run tracks the higher date."""
+# ── run cadence: derived from the committed receipts, not box-local files ───
+# The defect being fixed: run_cadence() counted box-local dated report JSONs
+# (gitignored in reports/, private in ~/.lab), so each box published its own
+# cadence — this box computed ('2026-07-23', 28) while the committed pot.json
+# (from the campaign box) said ('2026-07-30', 24), and the shared receipts
+# ledger showed 39 distinct days. Receipts (reports/receipts/run-*.json) are
+# committed on every pass, so every clone derives the same numbers.
+
+def _write_receipt(receipts_dir, date, slug="m01", generated_at=None, mtime=None):
+    """Drop a minimal receipt named ``run-<date>-<slug>.json``."""
+    receipts_dir.mkdir(parents=True, exist_ok=True)
+    p = receipts_dir / f"run-{date}-{slug}.json"
+    payload = {"experiment": f"{slug.upper()}-test", "T": [2.2], "chi": [1.0]}
+    if generated_at is not None:
+        payload["generated_at"] = generated_at
+    p.write_text(json.dumps(payload), encoding="utf-8")
+    if mtime is not None:
+        os.utime(p, (mtime, mtime))
+    return p
+
+
+def _cadence_dirs(tmp_path, monkeypatch):
     reports = tmp_path / "reports"
+    receipts = reports / "receipts"
     lab_home = tmp_path / "lab"
     monkeypatch.setattr(publish, "REPORTS_DIR", reports)
+    monkeypatch.setattr(publish, "RECEIPTS_DIR", receipts)
     monkeypatch.setattr(publish, "LAB_HOME", lab_home)
-    _write_report(lab_home, "2026-06-14", mtime=1000)
-    _write_report(lab_home, "2026-06-15", mtime=1000)   # same mtime, higher date
+    return reports, receipts, lab_home
+
+
+def test_run_cadence_ignores_box_local_reports(tmp_path, monkeypatch):
+    """The two-box divergence repro: local dated reports (different dates, any
+    mtimes) must not move the published cadence — only committed receipts count.
+    Negative control for the box-local scan: this test fails against it."""
+    reports, receipts, lab_home = _cadence_dirs(tmp_path, monkeypatch)
+    _write_receipt(receipts, "2026-07-29", generated_at="2026-07-29T22:31:00+00:00")
+    _write_receipt(receipts, "2026-07-30", generated_at="2026-07-30T22:34:12+00:00")
+    baseline = run_cadence()
+    # Now add box-local dated reports the OTHER box doesn't have — extra days,
+    # newer mtimes, a fresher-looking date. Cadence must not change.
+    _write_report(lab_home, "2026-07-23", mtime=9_999_999_999)
+    _write_report(reports, "2026-07-31", mtime=9_999_999_999)
+    assert run_cadence() == baseline
+    last_iso, total = baseline
+    assert total == 2
+    assert last_iso == "2026-07-30T22:34:12+00:00"
+
+
+def test_run_cadence_last_run_is_newest_receipt_generated_at(tmp_path, monkeypatch):
+    """last_run comes from committed content (generated_at), not file mtime —
+    a fresh clone resets every mtime, committed stamps survive it."""
+    _, receipts, _ = _cadence_dirs(tmp_path, monkeypatch)
+    # The higher DATE wins even when an older receipt has a newer mtime (clone).
+    _write_receipt(receipts, "2026-07-29", generated_at="2026-07-29T22:31:00+00:00",
+                   mtime=9_999_999_999)
+    _write_receipt(receipts, "2026-07-30", slug="m01",
+                   generated_at="2026-07-30T18:34:00+00:00", mtime=1000)
+    _write_receipt(receipts, "2026-07-30", slug="m12",
+                   generated_at="2026-07-30T22:34:12+00:00", mtime=500)
     last_iso, total = run_cadence()
     assert total == 2
-    # last_run is stamped from the winning file's mtime; both share it here, but
-    # the WINNER must be the 06-15 file (its date breaks the tie).
-    assert last_iso == datetime.fromtimestamp(1000, timezone.utc).isoformat()
+    assert last_iso == "2026-07-30T22:34:12+00:00"   # max stamp on the max date
 
 
-def test_run_cadence_last_is_by_mtime_total_is_distinct_days(tmp_path, monkeypatch):
-    reports = tmp_path / "reports"
-    lab_home = tmp_path / "lab"
-    monkeypatch.setattr(publish, "REPORTS_DIR", reports)
-    monkeypatch.setattr(publish, "LAB_HOME", lab_home)
-    _write_report(reports, "2026-06-08", mtime=500)
-    _write_report(lab_home, "2026-06-16", mtime=1000)   # future date, older write
-    newest_mtime = 2000
-    _write_report(lab_home, "2026-06-15", mtime=newest_mtime)   # the real last run
+def test_run_cadence_counts_distinct_receipt_dates_once(tmp_path, monkeypatch):
+    """A day with two milestones (m01 + m12) is one run day, matching the old
+    distinct-days contract."""
+    _, receipts, _ = _cadence_dirs(tmp_path, monkeypatch)
+    _write_receipt(receipts, "2026-07-04", slug="m01")
+    _write_receipt(receipts, "2026-07-04", slug="m12")
+    _write_receipt(receipts, "2026-07-05", slug="m01")
+    _, total = run_cadence()
+    assert total == 2
+
+
+def test_run_cadence_pre_stamp_receipts_fall_back_to_bare_date(tmp_path, monkeypatch):
+    """Receipts predating generated_at yield the receipt's date — still committed
+    content, so still identical on every clone (mtime would be clone time)."""
+    _, receipts, _ = _cadence_dirs(tmp_path, monkeypatch)
+    _write_receipt(receipts, "2026-06-14", mtime=9_999_999_999)
+    _write_receipt(receipts, "2026-06-15", mtime=1000)
     last_iso, total = run_cadence()
-    assert total == 3                                    # three distinct days on record
-    # last_run is the actual moment the newest report was written (mtime), so it
-    # tracks the 06-15 file even though 06-16 sorts higher as a string.
-    assert last_iso == datetime.fromtimestamp(newest_mtime, timezone.utc).isoformat()
+    assert total == 2
+    assert last_iso == "2026-06-15"
+
+
+def test_run_cadence_unreadable_receipt_still_counts_its_date(tmp_path, monkeypatch):
+    """A truncated receipt degrades to its filename date — a named, dated entry,
+    never a silently skipped day."""
+    _, receipts, _ = _cadence_dirs(tmp_path, monkeypatch)
+    _write_receipt(receipts, "2026-07-29", generated_at="2026-07-29T22:31:00+00:00")
+    receipts.joinpath("run-2026-07-30-m01.json").write_text("{trunc", encoding="utf-8")
+    last_iso, total = run_cadence()
+    assert total == 2
+    assert last_iso == "2026-07-30"
+
+
+def test_run_cadence_no_receipts_is_none_zero(tmp_path, monkeypatch):
+    reports, receipts, lab_home = _cadence_dirs(tmp_path, monkeypatch)
+    # Even with local dated reports present: no committed receipts, no cadence.
+    _write_report(lab_home, "2026-06-15", mtime=1000)
+    assert run_cadence() == (None, 0)
 
 
 # ── Permanence refactor: slug, run records, discovery, snapshot, backfill ────
