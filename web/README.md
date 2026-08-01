@@ -4,7 +4,7 @@ This is the **canonical** seed-in-the-pot web surface: one portable
 `index.html` with no build step that grows a clay pot from this
 lab's real science. Human-promoted milestones harden into green nodes,
 machine-checked measurements awaiting review stay amber, and a failed
-calibration folds into an honest grey leaf. Overnight runs water the soil and
+calibration folds into a grey leaf, kept on the books. Overnight runs water the soil and
 CPU heat sets the season. The light follows the visitor's own clock, so it stays
 alive even when the feed is quiet.
 

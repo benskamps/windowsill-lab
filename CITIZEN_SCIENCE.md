@@ -15,7 +15,7 @@ A home result is only believable if the instrument first reproduces a *known*
 answer. So every track opens with a calibration milestone (`*01`) that recovers a
 published value within its error bars. No calibration, no claim — a result that
 doesn't reproduce a known result is **a failed calibration, not a discovery**,
-and it stays on the books as an honest null (`[~]`, a folded grey leaf).
+and it stays on the books as a recorded null (`[~]`, a folded grey leaf).
 
 ## The tracks
 
@@ -90,6 +90,6 @@ A000045 b-file lines byte-for-byte and independently verified M31 with
 Lucas–Lehmer. A01 recovered WASP-18 b's period and transit depth from eight
 official TESS SPOC light curves inside the NASA Exoplanet Archive uncertainties.
 Both remain amber pending human review; neither is a submitted contribution.
-I01 recorded an honest hardware null because no real capped-sensor frames were
+I01 recorded a hardware null because no real capped-sensor frames were
 available. As with the physics ladder: verify before claiming, publish the nulls
 too, and let the record accumulate over months.
