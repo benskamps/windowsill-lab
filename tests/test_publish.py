@@ -413,8 +413,10 @@ from lab.publish import (
 from pathlib import Path
 
 
-def test_schema_version_bumped_to_4():
-    assert SCHEMA_VERSION == 4
+def test_schema_version_bumped_to_5():
+    # v5: consecutive same-milestone same-verdict runs collapse to the newest
+    # row + group_count/group_first_date; the archive index keeps every run.
+    assert SCHEMA_VERSION == 5
 
 
 def test_slug_for_rules():
@@ -538,6 +540,29 @@ def test_build_snapshot_emits_reports_array_and_back_compat_latest():
     snap = build_snapshot(parse_milestones(SAMPLE), "x", 2, 47.0, reports=[r1, r2])
     assert snap["reports"] == [r1, r2]
     assert snap["latest_report"] == r1     # newest run is the headline
+
+
+def test_build_snapshot_latest_report_carries_group_fields():
+    """v5 grouping rides along harmlessly: latest_report stays the first ledger
+    row (its href swapped for the live full report), and the group fields are
+    NOT stripped — while the reports[] row itself keeps its archive href."""
+    r1 = {"date": "2026-07-24", "milestone": "M01", "verdict": "verified",
+          "headline": "peak", "href": "https://example.test/archive#run",
+          "receipt_url": None,
+          "group_count": 5, "group_first_date": "2026-07-20"}
+    r2 = {"date": "2026-07-19", "milestone": "M02", "verdict": "verified",
+          "headline": "scaling", "href": "https://example.test/archive#run2",
+          "receipt_url": None}
+    snap = build_snapshot(parse_milestones(SAMPLE), "x", 2, 47.0,
+                          reports_ledger=[r1, r2])
+    # Pin the value, not just identity: an in-place mutation of r1 would leave
+    # ``snap["reports"][0] == r1`` trivially true, so assert the href itself.
+    assert snap["reports"][0]["href"] == "https://example.test/archive#run"
+    assert snap["reports"][0] == r1        # ledger row untouched by the override
+    latest = snap["latest_report"]
+    assert latest["group_count"] == 5
+    assert latest["group_first_date"] == "2026-07-20"
+    assert latest["href"] == publish.REPORT_URL
 
 
 def test_build_snapshot_back_compat_without_reports():

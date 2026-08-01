@@ -5,7 +5,7 @@
   "description": "The sanitized snapshot the lab publishes and the /windowsill/ page consumes. Every field is optional so the page degrades to a procedural seed; this schema describes the shape when present. Shared by windowsill-lab (producer) and brokenbranchdevwebsite (consumer).",
   "type": "object",
   "properties": {
-    "schema_version": { "type": "integer", "minimum": 1, "maximum": 4 },
+    "schema_version": { "type": "integer", "minimum": 1, "maximum": 5 },
     "source": { "type": "string" },
     "milestones": { "type": "array", "items": { "$ref": "#/definitions/milestone" } },
     "total": { "type": "integer", "minimum": 0 },
@@ -69,7 +69,7 @@
     },
     "report": {
       "type": "object",
-      "description": "One run on record — a node on the seedling stem (verified) or a folded grey leaf (null / unscored / unreadable). All fields optional so old consumers degrade. The archive ledger emits {date, milestone, verdict, headline, href, receipt_url}; the older compact record adds {experiment, peak_t, wall_s, url, code_sha, status}.",
+      "description": "One run on record — a node on the seedling stem (verified) or a folded grey leaf (null / unscored / unreadable). All fields optional so old consumers degrade. The archive ledger emits {date, milestone, verdict, headline, href, receipt_url}, plus {group_count, group_first_date} on a row standing for a collapsed streak of consecutive same-milestone same-verdict runs (v5 — the archive index keeps every run); the older compact record adds {experiment, peak_t, wall_s, url, code_sha, status}.",
       "properties": {
         "report_schema_version": { "type": "integer", "minimum": 1 },
         "generated_at": { "type": "string" },
@@ -103,7 +103,9 @@
           }
         },
         "status": { "type": "string", "enum": ["verified", "null", "unscored"] },
-        "verdict": { "type": "string", "enum": ["verified", "null", "unscored", "unreadable"] }
+        "verdict": { "type": "string", "enum": ["verified", "null", "unscored", "unreadable"] },
+        "group_count": { "type": "integer", "minimum": 2, "description": "this row stands for N consecutive runs of the same milestone with the same verdict; every underlying run remains in the archive index and receipts. Absent on a lone run — a streak of one is not a group." },
+        "group_first_date": { "type": ["string", "null"], "description": "oldest date in the collapsed streak this row stands for; only present alongside group_count" }
       }
     }
   }

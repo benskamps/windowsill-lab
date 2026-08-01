@@ -42,7 +42,9 @@ POT_JSON = REPO_ROOT / "pot.json"   # committed live feed the windowsill reads
 # ``latest_report`` stays as ``reports[0]`` for back-compat. v4 distinguishes
 # machine-checked ``review`` milestones from human-promoted ``verified`` ones
 # and declares whether each curriculum step has a runnable implementation.
-SCHEMA_VERSION = 4
+# v5: consecutive same-milestone same-verdict runs collapse to the newest row
+# + group_count/group_first_date; the archive index keeps every run.
+SCHEMA_VERSION = 5
 
 # Onsager's exact 2D Ising critical temperature, 1944 — the lab's calibration target.
 ONSAGER_TC = 2.0 / math.log(1.0 + math.sqrt(2.0))   # ≈ 2.2692

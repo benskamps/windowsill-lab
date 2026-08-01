@@ -396,6 +396,9 @@
     .arc-row.review .arc-glyph { color:var(--review); }
     .arc-row.unscored .arc-glyph, .arc-row.unreadable .arc-glyph { color:var(--text-muted); }
     .arc-date { color:var(--text-muted); white-space:nowrap; }
+    .arc-x { font-family:var(--font-mono); font-size:0.64rem; color:var(--text-muted);
+             white-space:nowrap; border:1px solid var(--border); border-radius:3px;
+             padding:0 0.3em; cursor:help; }
     .arc-mid { color:var(--text-secondary); }
     .arc-head { color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
     .arc-link { margin-left:auto; color:var(--text-secondary); text-decoration:none;
@@ -1762,6 +1765,22 @@
         d.textContent = r.date || '—';
         row.appendChild(d);
 
+        // A row standing for a collapsed streak of consecutive same-milestone
+        // same-verdict runs (schema v5) — presentation grouping only; every
+        // underlying run stays in the archive index and receipts. A verdict
+        // change always breaks the streak producer-side, so a null after
+        // verified is always its own row here.
+        if (typeof r.group_count === 'number' && r.group_count >= 2) {
+          var gx = document.createElement('span');
+          gx.className = 'arc-x';
+          gx.textContent = '×' + r.group_count + ' nights';
+          gx.title = r.group_count + ' consecutive runs of '
+            + (r.milestone || 'this experiment') + ', same verdict — '
+            + 'every run is kept in the archive'
+            + (r.group_first_date ? ' (since ' + r.group_first_date + ')' : '');
+          row.appendChild(gx);
+        }
+
         if (r.milestone) {
           var mid = document.createElement('span');
           mid.className = 'arc-mid';
@@ -1802,17 +1821,24 @@
         list.appendChild(row);
       });
 
+      // Truthful totals: a collapsed row stands for group_count runs, so the
+      // run count sums the groups — rows would undercount the record.
+      var totalRuns = 0;
+      reports.forEach(function (r) {
+        totalRuns += (r && typeof r.group_count === 'number' && r.group_count >= 2)
+          ? r.group_count : 1;
+      });
       if (typeof archiveUrl === 'string' && /^https?:\/\//i.test(archiveUrl)) {
         var all = document.createElement('a');
         all.className = 'arc-all';
         all.href = archiveUrl;
         all.target = '_blank';
         all.rel = 'noopener noreferrer';
-        all.textContent = 'see all ' + reports.length + ' runs in the archive ↗';
+        all.textContent = 'see all ' + totalRuns + ' runs in the archive ↗';
         list.appendChild(all);
       }
       var sum = $('archive-summary');
-      if (sum) sum.textContent = 'every run · ' + reports.length + ' on record';
+      if (sum) sum.textContent = 'every run · ' + totalRuns + ' on record';
       box.hidden = false;
     }
 

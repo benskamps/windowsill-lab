@@ -360,22 +360,62 @@ def _public_href(href: str | None) -> str | None:
     return href if (isinstance(href, str) and _HTTP_RE.match(href)) else None
 
 
+def _collapse_streaks(rows: list[dict]) -> list[dict]:
+    """Collapse CONSECUTIVE newest-first rows sharing ``(milestone, verdict)``.
+
+    Presentation grouping only (schema v5): a streak of nightly reruns of the
+    same milestone with the same verdict becomes its newest row plus
+    ``group_count`` (how many runs it stands for) and ``group_first_date`` (the
+    oldest date in the streak). A streak of one carries NEITHER field — a lone
+    run is not a group, and the schema enforces ``group_count >= 2``.
+
+    The grouping key includes the VERDICT, so a verdict change always breaks
+    the streak by construction — a null after verified can never be hidden
+    inside a green group. Non-adjacent same-milestone rows never merge; only
+    consecutive rows do. Every underlying run remains in the archive index and
+    the receipts ledger — this changes which rows ride in ``pot.json``, not
+    what is on the books.
+
+    A ``None`` milestone is an UNKNOWN identity, not a shared one: freeform
+    runs and unreadable gap rows both carry ``milestone None``, and two
+    adjacent such rows may be entirely different experiments. Grouping them
+    would put a false "same experiment" claim on the rail, so rows without a
+    named milestone never group (fail closed).
+    """
+    out: list[dict] = []
+    for row in rows:
+        prev = out[-1] if out else None
+        if prev is not None and row.get("milestone") is not None and (
+            (prev.get("milestone"), prev.get("verdict"))
+            == (row.get("milestone"), row.get("verdict"))
+        ):
+            prev["group_count"] = prev.get("group_count", 1) + 1
+            prev["group_first_date"] = row.get("date")   # newest-first → oldest wins
+        else:
+            out.append(dict(row))
+    return out
+
+
 def run_ledger(limit: int | None = None) -> list[dict]:
     """Newest-first sanitized rows for ``pot.json``'s ``reports`` array.
 
-    Each row is ONLY ``{date, milestone, verdict, headline, href,
-    receipt_url}`` — no config, no curves, no raw arrays leak into the feed.
+    Each row is ``{date, milestone, verdict, headline, href, receipt_url}`` —
+    no config, no curves, no raw arrays leak into the feed — plus, on a row
+    standing for a collapsed streak, ``group_count`` / ``group_first_date``
+    (see ``_collapse_streaks``; the archive index page keeps every run).
     ``href`` opens the human-readable archive row; ``receipt_url`` opens the
     durable measurement evidence. A non-http href (a local-only ~/.lab path)
     becomes ``None`` so the page never tries to link it. ``unreadable`` and
     ``unscored`` rows are mapped to the schema's
     ``verified``/``null`` enum is NOT done here — the schema's ``report`` enum is
-    extended to carry all four verdicts honestly.
+    extended to carry all four verdicts honestly. ``limit`` bounds the number
+    of underlying RUNS considered (applied before grouping), not the number of
+    grouped rows emitted.
     """
     rows = scan_runs()
     if limit is not None:
         rows = rows[:limit]
-    return [
+    return _collapse_streaks([
         {
             "date": r["date"],
             "milestone": r.get("milestone"),
@@ -385,7 +425,7 @@ def run_ledger(limit: int | None = None) -> list[dict]:
             "receipt_url": _public_href(r.get("receipt_href")),
         }
         for r in rows
-    ]
+    ])
 
 
 # ── render_index: the HTML page (reuses the report templates' calm CSS) ───────
