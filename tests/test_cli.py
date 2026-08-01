@@ -191,6 +191,69 @@ def test_m02_command_forwards_updater(monkeypatch, capsys):
     assert "sweeps · metropolis" in out
 
 
+def test_i01_bare_fails_fast_without_publishing(monkeypatch, capsys):
+    """N1: `lab i01` with no camera, no --frames, and no WINDOWSILL_I01_FRAMES
+    measures nothing — so it must exit nonzero (rc 3) with the named error and
+    write NO dated report, NO receipt, NO public row. The regression this
+    replaces: the CLI laundered the no_real_frames absence into a completed run
+    (rc 0 + a published null science row per pass)."""
+    monkeypatch.delenv("WINDOWSILL_I01_FRAMES", raising=False)
+    from lab import publish as publish_mod
+    from lab import render as render_mod
+
+    calls = {}
+    monkeypatch.setattr(
+        render_mod, "render_calibration",
+        lambda report, date=None: calls.setdefault("render", report) or "/tmp/i01.html",
+    )
+    monkeypatch.setattr(
+        publish_mod, "publish",
+        lambda *a, **k: calls.setdefault("publish", True) and "/tmp/pot.json",
+    )
+    rc = cli.main(["i01"])
+    out = capsys.readouterr().out
+    assert rc == 3
+    assert "no_real_frames" in out
+    assert "render" not in calls        # no dated report
+    assert "publish" not in calls       # no receipt, no public row
+
+
+def test_i01_measured_null_still_publishes(monkeypatch, capsys):
+    """The boundary the fail-fast must NOT cross: a MEASURED null (real frames
+    loaded and analyzed, calibration failed) is an honest science row — it
+    still renders, publishes, and exits 0. A skip is a disclosed absence; a
+    measured null is data."""
+    from lab import i01 as i01_mod
+    from lab import publish as publish_mod
+    from lab import render as render_mod
+
+    class _MeasuredNull:
+        hardware_available = True
+        calibration_passed = False
+        reason = "temporal noise exceeded the calibration bound"
+        analysis = {"shape": [24, 8, 8], "hot_pixel_count": 3,
+                    "track_candidate_count": 1}
+        input_evidence = []
+        wall_seconds = 2.0
+        error_code = None
+        capture_metadata = None
+
+    calls = {}
+    monkeypatch.setattr(i01_mod, "run_i01", lambda *a, **k: _MeasuredNull())
+    monkeypatch.setattr(i01_mod, "to_report", lambda result: {"experiment": "I01"})
+    monkeypatch.setattr(
+        render_mod, "render_calibration",
+        lambda report, date=None: calls.setdefault("render", report) or "/tmp/i01.html",
+    )
+    monkeypatch.setattr(
+        publish_mod, "publish",
+        lambda *a, **k: calls.setdefault("publish", True) and "/tmp/pot.json",
+    )
+    rc = cli.main(["i01"])
+    assert rc == 0
+    assert "render" in calls and "publish" in calls
+
+
 def test_setup_dry_run_never_claims_the_scheduler_was_installed(monkeypatch, capsys):
     from lab import setup as setup_mod
 

@@ -14,9 +14,18 @@
 # NOT claimed here.  What this delivers: the instrument is continuously alive, computing
 # and publishing verified independent physics every INTERVAL instead of once a night.
 #
+# INTERLEAVE CONTRACT (2026-08-01): Win runs 00/06/12/18 local (Task Scheduler,
+# 4 daily triggers) ↔ Loam runs 03/09/15/21 local (LAB_CAMPAIGN_HOURS below) —
+# 8 turns/day across the portfolio, no overlapping slots. When HOURS is set the
+# loop sleeps to the NEXT listed local hour boundary (recomputed from the wall
+# clock each pass — drift-free, DST-proof) instead of accumulating
+# `sleep INTERVAL` drift. Docs: docs/investigations/2026-08-01-portfolio-rotation.md.
+#
 # Stop gracefully:  touch ~/.lab/campaign.stop   (honored after the current pass)  or SIGINT.
 # Config (env):
 #   LAB_CAMPAIGN_INTERVAL  seconds between passes           (default 1800 = 30m)
+#   LAB_CAMPAIGN_HOURS     space-separated local hours to anchor passes to
+#                          (e.g. "3 9 15 21"); unset = plain interval sleep
 #   LAB_CAMPAIGN_DEVICE    cuda | cpu                        (default cuda)
 #   LAB_CAMPAIGN_SEED      seed base; pass N uses base+N     (default 1000)
 #   LAB_CAMPAIGN_MAX_ITERS 0 = forever                       (default 0)
@@ -33,6 +42,7 @@ export TMPDIR="${TMPDIR:-$HOME/.cache/wtmp}"; mkdir -p "$TMPDIR"
 PY="${LAB_CAMPAIGN_PY:-$REPO/.venv/bin/python3}"
 
 INTERVAL="${LAB_CAMPAIGN_INTERVAL:-1800}"
+HOURS="${LAB_CAMPAIGN_HOURS:-}"
 DEVICE="${LAB_CAMPAIGN_DEVICE:-cuda}"
 SEED_BASE="${LAB_CAMPAIGN_SEED:-1000}"
 MAX_ITERS="${LAB_CAMPAIGN_MAX_ITERS:-0}"
@@ -159,6 +169,26 @@ safe_pull_rebase(){
 }
 trap 'log "campaign: signal — stopping after pass $iter"; exit 0' INT TERM
 
+# Seconds until the soonest next LOCAL H:00:00 strictly in the future, over a
+# space-separated hour list. Anchored to the wall clock (targets are rebuilt
+# from local date strings, so DST shifts are absorbed) rather than accumulated
+# sleeps, which drift later by each pass's walltime. NOW_EPOCH is a test seam.
+next_wake_seconds() {
+  local hours="$1" now today tomorrow h target best
+  now="${NOW_EPOCH:-$(date +%s)}"
+  today="$(date -d "@$now" +%F)"
+  tomorrow="$(date -d "@$((now + 86400))" +%F)"
+  best=""
+  for h in $hours; do
+    target="$(date -d "$today $h:00:00" +%s)"
+    if [ "$target" -le "$now" ]; then
+      target="$(date -d "$tomorrow $h:00:00" +%s)"
+    fi
+    if [ -z "$best" ] || [ "$target" -lt "$best" ]; then best="$target"; fi
+  done
+  echo $((best - now))
+}
+
 persist_counter() {
   local value="$1"
   local state_base state_tmp
@@ -213,7 +243,7 @@ if [ -n "${LAB_CAMPAIGN_LIB:-}" ]; then
   return 0 2>/dev/null || exit 0
 fi
 
-log "campaign: START interval=${INTERVAL}s device=${DEVICE} seed_base=${SEED_BASE} max_iters=${MAX_ITERS} dry=${LAB_CAMPAIGN_DRY:-0}"
+log "campaign: START interval=${INTERVAL}s hours='${HOURS}' device=${DEVICE} seed_base=${SEED_BASE} max_iters=${MAX_ITERS} dry=${LAB_CAMPAIGN_DRY:-0}"
 while :; do
   [ -f "$STOP" ] && { log "campaign: stop sentinel — done (iter=$iter)"; break; }
   next_iter=$((iter+1))
@@ -288,5 +318,11 @@ while :; do
 
   [ "$MAX_ITERS" -gt 0 ] && [ "$passes" -ge "$MAX_ITERS" ] && { log "campaign: reached max_iters=$MAX_ITERS"; break; }
   [ -f "$STOP" ] && { log "campaign: stop sentinel — done"; break; }
-  sleep "$INTERVAL"
+  if [ -n "$HOURS" ]; then
+    wait_s="$(next_wake_seconds "$HOURS")"
+    log "campaign: sleeping ${wait_s}s until the next anchored hour (${HOURS})"
+    sleep "$wait_s"
+  else
+    sleep "$INTERVAL"
+  fi
 done

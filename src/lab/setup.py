@@ -102,11 +102,10 @@ mkdir -p "$(dirname "$LOG")"
   # their own schedule, and a bare push from a stale main is rejected ("fetch
   # first") — exactly how the feed stranded for days in June 2026. Rebase on top.
   git pull --rebase --autostash 2>/dev/null || true
-  # Advance the frontier: `lab next` runs the LOWEST OPEN milestone's experiment
-  # (falling back to the M01 heartbeat when the open milestone has no runner yet),
-  # so the windowsill climbs the curriculum on its own instead of re-running M01
-  # every night. Best-effort; always leave the feed fresh. (Swapped from `lab run`
-  # to the milestone-aware scheduler 2026-07-05, together with the M14 runner.)
+  # Advance the portfolio: `lab next` runs the open milestone's experiment when it
+  # has a runner, otherwise the committed portfolio rotation past the receipts-ledger
+  # pointer (M01 heartbeat only when the rotation is empty). Best-effort; always
+  # leave the feed fresh. (Frontier scheduler 2026-07-05 PR #49; rotation 2026-08-01.)
   # The UTC-date --seed makes each night an independent sample (a rerun within
   # the same day repeats deterministically; successive nights differ).
   "{PY}" -m lab.cli next --seed "$(date -u +%Y%m%d)" || "{PY}" -m lab.cli publish
@@ -207,14 +206,20 @@ if ($LASTEXITCODE -ne 0) {
 # their own schedule; without this our nightly commit is based on a stale main and
 # the push below is rejected ("fetch first") -- exactly how the feed stranded for
 # days in June 2026. Rebase whatever we do on top of whatever has already landed.
+# The pull also fetches the other box's receipts, so the portfolio-rotation
+# pointer below is read from the SHARED committed ledger, not box-local state.
 git pull --rebase --autostash 2>&1 | LogCmd
-# Advance the frontier: `lab next` runs the LOWEST OPEN milestone's experiment (falling
-# back to the M01 heartbeat when the open milestone has no runner yet), so the windowsill
-# climbs the curriculum on its own instead of re-running M01 every night. Best-effort;
-# always leave the feed fresh. (Swapped from `lab run` to the milestone-aware scheduler
-# 2026-07-05, together with the M14 runner landing.) The UTC-date --seed makes each
-# night an independent sample (a same-day rerun repeats; successive nights differ).
-$seed = (Get-Date).ToUniversalTime().ToString('yyyyMMdd')
+# Advance the portfolio: `lab next` runs the open milestone's experiment when it has
+# a runner, otherwise the committed portfolio rotation (curriculum.ROTATION) past the
+# receipts-ledger pointer -- so 4 passes/day re-measure the whole runnable portfolio
+# instead of re-running M01 every pass. Best-effort; always leave the feed fresh.
+# (Frontier scheduler 2026-07-05 PR #49; rotation 2026-08-01, see
+# docs/investigations/2026-08-01-portfolio-rotation.md.) The UTC date+HOUR --seed
+# makes each of the four daily passes an independent sample; a retry within the
+# same hour repeats deterministically (StartWhenAvailable catch-up runs land in
+# their own hour, so they get their own sample). This retires the documented
+# "same-day rerun repeats" property of the old date-only seed.
+$seed = (Get-Date).ToUniversalTime().ToString('yyyyMMddHH')
 & '__PY__' -m lab.cli next --seed $seed 2>&1 | LogCmd
 if ($LASTEXITCODE -ne 0) { & '__PY__' -m lab.cli publish 2>&1 | LogCmd }
 # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
@@ -244,22 +249,19 @@ Log "-- done (success)"
 
 # Task Scheduler XML. schtasks /Create /XML wants UTF-16, so the file is written
 # as utf-16 and the declaration says so. InteractiveToken = no stored password
-# (runs while logged in); StartWhenAvailable catches a missed 3am if the box slept,
-# and WakeToRun wakes a sleeping machine so the windowsill grows even unattended.
+# (runs while logged in); StartWhenAvailable catches a missed slot if the box
+# slept, and WakeToRun wakes a sleeping machine so the windowsill grows even
+# unattended. Cadence: FOUR explicit daily triggers (legible in the Task
+# Scheduler UI, unlike a Repetition block) at 00/06/12/18 local — interleaved
+# with Loam's campaign turns at 03/09/15/21 local: 8 turns/day across the
+# portfolio. ExecutionTimeLimit PT2H < the 6h spacing, so passes never overlap.
 _TASK_XML = """<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
-    <Description>Windowsill Lab — nightly run + publish</Description>
+    <Description>Windowsill Lab — 4×/day run + publish</Description>
   </RegistrationInfo>
   <Triggers>
-    <CalendarTrigger>
-      <StartBoundary>2026-01-01T__AT__</StartBoundary>
-      <Enabled>true</Enabled>
-      <ScheduleByDay>
-        <DaysInterval>1</DaysInterval>
-      </ScheduleByDay>
-    </CalendarTrigger>
-  </Triggers>
+__TRIGGERS__  </Triggers>
   <Principals>
     <Principal id="Author">
       <LogonType>InteractiveToken</LogonType>
@@ -294,10 +296,27 @@ def nightly_ps1() -> str:
     return _NIGHTLY_PS1.replace("__REPO_ROOT__", str(REPO_ROOT)).replace("__PY__", PY)
 
 
-def task_xml(at: str = "03:00:00") -> str:
+# Win slots 00/06/12/18 local ↔ Loam slots 03/09/15/21 local (campaign.sh) —
+# the two boxes take interleaved turns, 8 portfolio passes/day total.
+TASK_TIMES: tuple[str, ...] = ("00:00:00", "06:00:00", "12:00:00", "18:00:00")
+
+_TRIGGER_TEMPLATE = """    <CalendarTrigger>
+      <StartBoundary>2026-01-01T__AT__</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay>
+        <DaysInterval>1</DaysInterval>
+      </ScheduleByDay>
+    </CalendarTrigger>
+"""
+
+
+def task_xml(times: tuple[str, ...] = TASK_TIMES) -> str:
+    triggers = "".join(
+        _TRIGGER_TEMPLATE.replace("__AT__", at) for at in times
+    )
     return (
         _TASK_XML
-        .replace("__AT__", at)
+        .replace("__TRIGGERS__", triggers)
         .replace("__NIGHTLY_PS1__", str(NIGHTLY_PS1))
     )
 
@@ -323,15 +342,15 @@ def _write_windows() -> None:
     TASK_XML.write_text(task_xml(), encoding="utf-16")   # schtasks /XML wants UTF-16
 
 
-def _install_windows(dry_run: bool = False, at: str = "03:00:00") -> dict:
-    """Register a daily Scheduled Task — the Windows analog of the systemd timer."""
+def _install_windows(dry_run: bool = False, times: tuple[str, ...] = TASK_TIMES) -> dict:
+    """Register the Scheduled Task — the Windows analog of the systemd unit."""
     plan = {"nightly": str(NIGHTLY_PS1), "method": "schtasks", "steps": [], "notes": []}
-    hhmm = at[:5]
+    slots = "/".join(t[:5] for t in times)
 
     if dry_run:
         plan["steps"].append("(dry run — nothing written)")
         plan["notes"].append(f"Would write {NIGHTLY_PS1} + {TASK_XML}, then register:")
-        plan["notes"].append(f'  schtasks /Create /TN "{TASK_NAME}" /XML "{TASK_XML}" /F   (daily {hhmm})')
+        plan["notes"].append(f'  schtasks /Create /TN "{TASK_NAME}" /XML "{TASK_XML}" /F   (daily at {slots})')
         return plan
 
     _write_windows()
@@ -343,15 +362,16 @@ def _install_windows(dry_run: bool = False, at: str = "03:00:00") -> dict:
     plan["steps"] = [
         f"wrote {NIGHTLY_PS1}",
         f"wrote {TASK_XML}",
-        f"registered task '{TASK_NAME}' (daily {hhmm})" if ok
+        f"registered task '{TASK_NAME}' (daily at {slots})" if ok
         else f"schtasks failed: {(r.stderr or r.stdout).strip()}",
     ]
     plan["notes"].append(f"Inspect:  schtasks /Query /TN {TASK_NAME} /V /FO LIST")
     plan["notes"].append(f"Run now:  schtasks /Run /TN {TASK_NAME}")
     plan["notes"].append(
-        "Fires at 03:00 while you're logged in (InteractiveToken — no stored "
-        "password). To run while logged out, open Task Scheduler and tick "
-        "'Run whether user is logged on or not'."
+        f"Fires at {slots} local while you're logged in (InteractiveToken — no "
+        "stored password). Loam's campaign takes the 03/09/15/21 local slots — "
+        "8 interleaved portfolio turns/day. To run while logged out, open Task "
+        "Scheduler and tick 'Run whether user is logged on or not'."
     )
     return plan
 

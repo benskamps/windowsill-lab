@@ -46,7 +46,7 @@ pip install -e .
 lab run     # run today's experiment (Phase 1: Ising)
 lab         # open the latest report in your browser
 lab web     # open your seed-in-the-pot page locally (web/index.html)
-lab setup   # install the nightly job so the windowsill grows on its own
+lab setup   # install the scheduled job so the windowsill grows on its own
 ```
 
 One repo, everything in it: the **engine** (`src/`), the published **feed**
@@ -55,9 +55,13 @@ One repo, everything in it: the **engine** (`src/`), the published **feed**
 pull, fork, and customize. Where it's headed lives in [`BACKLOG.md`](BACKLOG.md).
 
 `lab setup` runs a pre-flight (Python, git remote, compute device) and then
-installs a nightly job — Windows Task Scheduler on Windows, a systemd **user**
-timer where available, or a cron line otherwise — that runs the next available
-curriculum experiment (and an M01 heartbeat when the frontier has no runner),
+installs a scheduled job — a Windows Task Scheduler task with four daily
+passes (00/06/12/18 local) on Windows, a nightly systemd **user** timer where
+available, or a nightly cron line otherwise — that runs the open milestone's
+experiment when it has a runner, otherwise advances the committed portfolio
+rotation over already-runnable milestones (M01 heartbeat only when the
+rotation yields nothing — see
+[`docs/investigations/2026-08-01-portfolio-rotation.md`](docs/investigations/2026-08-01-portfolio-rotation.md)),
 refreshes `pot.json`, and pushes it. Inspect first with `lab setup --check`, or
 see the plan with `lab setup --dry-run`; a dry run never writes or schedules
 anything. No accounts, no service to sign into — publishing is your own
@@ -66,8 +70,12 @@ sleeping machine, and retries a failed launch twice.
 
 **Publisher topology, as of 2026-08-01.** The committed feed is published by a
 Linux campaign service ([`scripts/campaign.sh`](scripts/campaign.sh) +
-[`scripts/windowsill-campaign.service`](scripts/windowsill-campaign.service),
-one pass every 4 hours). The original Windows Task-Scheduler nightly on the
+[`scripts/windowsill-campaign.service`](scripts/windowsill-campaign.service)).
+The committed service template anchors four passes/day at 03/09/15/21 local,
+interleaved with the Windows box's 00/06/12/18 slots; a running unit keeps
+whatever interval it was started with (the founding box's was 4-hourly) until
+it is restarted — the arming checklist lives in
+[`docs/investigations/2026-08-01-portfolio-rotation.md`](docs/investigations/2026-08-01-portfolio-rotation.md). The original Windows Task-Scheduler nightly on the
 founding box is currently **disabled**; re-enabling it requires re-running
 `lab setup` first, because the installed script is generated (gitignored) and
 predates the current templates — a stale install stages the wrong file set. A
@@ -149,7 +157,7 @@ refreshes it automatically, so the seed grows as the science does.
 
 **Live feed, no secrets.** `pot.json` is committed at the repo root; the
 windowsill page reads it straight from GitHub raw through the site's edge cache.
-A nightly run commits and pushes it. (`--gist <id>` / `POT_GIST_ID` remain an
+Each scheduled pass commits and pushes it. (`--gist <id>` / `POT_GIST_ID` remain an
 optional legacy push target.) The shape is pinned by
 [`schema/pot.schema.json`](schema/pot.schema.json) and carries a `schema_version`
 so producer and page can't silently drift.

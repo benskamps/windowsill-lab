@@ -4,14 +4,28 @@
 # "windowsill feed stale" issue when it trips). Surface contract: this is an
 # alarm, not an index — it reads one committed stamp and retires nothing.
 #
-# WHY: the campaign publishes every 4h. On 2026-07-30 it stopped after pass 48
-# and nothing in the repo, CI, or cockpit could see the outage — the page
-# served last-known-good data for 29h+ with zero repo-visible signal, because
-# every campaign failure mode logs only to the campaign box's local
+# WHY: the campaign publishes on a fixed cadence. On 2026-07-30 it stopped
+# after pass 48 and nothing in the repo, CI, or cockpit could see the outage —
+# the page served last-known-good data for 29h+ with zero repo-visible signal,
+# because every campaign failure mode logs only to the campaign box's local
 # ~/.lab/campaign.log. This converts silence into a notification.
 #
-# Threshold: 9h = two missed 4h passes + slack, so one slow pass or a single
-# skipped interval never pages.
+# Threshold: 13h. Re-derived 2026-08-01 for the 4/day interleaved cadence (Win
+# 00/06/12/18 local, Loam 03/09/15/21 local — see
+# docs/investigations/2026-08-01-portfolio-rotation.md). A missed pass shows up
+# as a 2x-cadence gap, so the threshold has to clear 2x the SLOWEST armed
+# cadence, not the steady-state one:
+#   - both boxes armed  -> 3h combined  -> a miss is a 6h gap
+#   - ONE box armed     -> 6h           -> a miss is a 12h gap
+# The single-box state is not hypothetical: arming is two manual steps on two
+# machines (the checklist in the decision doc), so the estate sits there for as
+# long as it takes Ben to do the second one. 12h + 1h slack = 13h, so one
+# missed pass never pages in any armed configuration. It still catches the
+# 29h-strand class of outage this alarm was built for by a wide margin.
+# Tightening to ~7h once both boxes are confirmed armed is a one-line change.
+#
+# (Was 9h = two missed 4h passes + slack, from the pre-rotation 4h campaign
+# interval. That derivation went stale when the campaign moved to 21600s.)
 #
 # NOTE: GitHub auto-disables scheduled workflows after ~60 days without repo
 # activity. If the estate goes quiet on purpose, this alarm goes quiet with it
@@ -32,14 +46,14 @@ jobs:
       issues: write
     steps:
       - uses: actions/checkout@v7
-      - name: pot.json updated within the last 9 hours
+      - name: pot.json updated within the last 13 hours
         id: age
         run: |
           python - <<'PY'
           import json, os, sys
           from datetime import datetime, timezone
 
-          THRESHOLD_H = 9.0   # two missed 4h campaign passes + slack
+          THRESHOLD_H = 13.0  # 2x the slowest armed cadence (6h, one box) + 1h slack
           out = open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8")
           try:
               stamp = json.loads(open("pot.json", encoding="utf-8").read())["updated"]
@@ -73,7 +87,7 @@ jobs:
 
           - run: ${RUN_URL}
 
-          The campaign publishes every 4h; this fired after the feed sat unchanged past the 9h threshold. First moves on the campaign box: \`systemctl --user status windowsill-campaign\` and \`tail ~/.lab/campaign.log\`."
+          Cadence when both boxes are armed: 4 passes/day each, interleaved (Win 00/06/12/18 local, Loam 03/09/15/21 local) = a publish every ~3h. This fired after the feed sat unchanged past the 13h threshold, which is more than two missed passes even if only ONE box is armed. First moves on the campaign box: \`systemctl --user status windowsill-campaign\` and \`tail ~/.lab/campaign.log\`; on the Windows box: \`schtasks /Query /TN windowsill-lab /V /FO LIST\`."
           num=$(gh issue list --state open --json number,title \
                 --jq '[.[] | select(.title == "windowsill feed stale")][0].number // empty')
           if [ -n "$num" ]; then

@@ -5,6 +5,12 @@
 #           systemctl --user stop windowsill-campaign.service   (hard)
 # It supersedes the nightly timer — disable that when this is on:
 #           systemctl --user disable --now windowsill-lab.timer
+# Cadence (2026-08-01): 4 passes/day anchored to 03/09/15/21 LOCAL, interleaved
+# with the Windows box's 00/06/12/18 local Task Scheduler slots — 8 portfolio
+# turns/day. INTERVAL=21600 (6h) is the fallback when HOURS is unset; with
+# HOURS set, campaign.sh sleeps to the next listed hour boundary (drift-free).
+# Re-arming after merge is a human step — this file is a template, nothing here
+# enables or restarts the unit.
 [Unit]
 Description=Windowsill Lab — continuous physics campaign (run constantly)
 After=network-online.target
@@ -14,7 +20,8 @@ Wants=network-online.target
 Type=simple
 Environment=TMPDIR=%h/.cache/wtmp
 Environment=LAB_CAMPAIGN_DEVICE=cuda
-Environment=LAB_CAMPAIGN_INTERVAL=14400
+Environment=LAB_CAMPAIGN_INTERVAL=21600
+Environment="LAB_CAMPAIGN_HOURS=3 9 15 21"
 ExecStart=/home/benslinuxbox/projects/windowsill-lab/scripts/campaign.sh
 Restart=on-failure
 RestartSec=30
