@@ -243,6 +243,43 @@ def _attested_packed_snapshots(report: dict,
     return packed, lattice_L
 
 
+def _carried_stale_snapshots(
+    previous_feed: dict | None,
+) -> tuple[dict, int, str, str] | None:
+    """Previous feed's packed lattices, labeled for disclosed carry-forward.
+
+    When the newest receipt cannot attest the previous feed's lattices (a
+    rebuild on a box without the raw report, or a receipt with no snapshot
+    digest), the page's triptych would otherwise go dark. The previous
+    lattices ride forward instead — but only when they still unpack cleanly
+    AND their origin run can be named, so the feed labels them
+    (``snapshots_source_report`` + ``snapshots_date``) rather than presenting
+    them as this run's evidence. A prior carry's labels propagate, so the
+    named origin is always the run that produced the lattices.
+    """
+    if not isinstance(previous_feed, dict):
+        return None
+    previous_m01 = previous_feed.get("m01")
+    if not isinstance(previous_m01, dict):
+        return None
+    packed = previous_m01.get("snapshots")
+    lattice_L = previous_m01.get("snapshot_L")
+    if (
+        not isinstance(packed, dict)
+        or not packed
+        or not isinstance(lattice_L, int)
+        or isinstance(lattice_L, bool)
+    ):
+        return None
+    if _unpack_snapshots(packed, lattice_L) is None:
+        return None
+    source = previous_m01.get("snapshots_source_report") or previous_m01.get("source_report")
+    date = previous_m01.get("snapshots_date") or previous_m01.get("date")
+    if not isinstance(source, str) or not isinstance(date, str):
+        return None
+    return packed, lattice_L, source, date
+
+
 def pack_lattice(rows: list[list[int]]) -> str:
     """Bit-pack a square ±1 spin lattice (row-major) to base64.
 
@@ -276,16 +313,23 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
     feed records the exact code that produced the run. When omitted, provenance
     recorded by the selected report is preserved. A public receipt may reuse
     packed snapshots from ``previous_feed``, but only when its omission digest
-    attests the reconstructed lattice exactly. Returns ``None`` when no M01
-    sweep exists.
+    attests the reconstructed lattice exactly; when attestation fails or is
+    absent, the previous lattices carry forward labeled with
+    ``snapshots_source_report`` + ``snapshots_date`` so stale panels are
+    disclosed instead of dark. Returns ``None`` when no M01 sweep exists.
     """
     found = _newest_m01_report(reports_dir, lab_home)
     if found is None:
         return None
     rep, source_rel = found
 
-    T = [round(float(t), 4) for t in rep["T"]]
-    chi = [float(c) for c in rep["chi"]]
+    # The shape gate checks lists, not elements — a non-numeric entry is "no
+    # usable M01 sweep", not a crash of the publish path.
+    try:
+        T = [round(float(t), 4) for t in rep["T"]]
+        chi = [float(c) for c in rep["chi"]]
+    except (TypeError, ValueError, OverflowError):
+        return None
     cfg = rep.get("config", {}) or {}
     quality = assess_m01_quality(rep)
     peak_t = quality["peak_t"]
@@ -337,6 +381,17 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
         retained = _attested_packed_snapshots(rep, previous_feed)
         if retained is not None:
             m01["snapshots"], m01["snapshot_L"] = retained
+        else:
+            # Attestation failed or absent: carry the previous lattices
+            # forward labeled with their origin run, never as this run's own.
+            carried = _carried_stale_snapshots(previous_feed)
+            if carried is not None:
+                (
+                    m01["snapshots"],
+                    m01["snapshot_L"],
+                    m01["snapshots_source_report"],
+                    m01["snapshots_date"],
+                ) = carried
 
     return {
         "schema": PHYSICS_SCHEMA,
