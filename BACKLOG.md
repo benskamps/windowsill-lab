@@ -70,8 +70,8 @@ other rule identical, and a wall of windowsills should still read as one garden.
 ## Lineage — origination points (backlogged, not rebuilt)
 
 The windowsill didn't appear from nowhere. Record the ancestors so the idea's
-provenance is as honest as its data. These are **kept as origins**, not active
-work:
+provenance stays on the books the way its data does. These are **kept as
+origins**, not active work:
 
 - [ ] **The ASCII prototype** — the original text-only seed. The origination
       point of the whole "calm, living, honest" idea. Preserve it as a documented
