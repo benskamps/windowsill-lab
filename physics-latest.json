@@ -4,13 +4,17 @@
   "source": "windowsill-lab",
   "generated_from": "reports/receipts/run-2026-08-01-m01.json",
   "provenance": {
-    "code_sha": "42c7da3",
-    "env": "python 3.14.4 \u00b7 linux",
-    "deps": {
-      "torch": "2.10.0.dev20251031+rocm6.4",
+    "dependencies": {
+      "matplotlib": "3.11.1",
       "numpy": "2.5.1",
-      "matplotlib": "3.11.1"
-    }
+      "torch": "2.10.0.dev20251031+rocm6.4"
+    },
+    "platform": "linux-x86_64",
+    "python": "3.14.4",
+    "source_clean": true,
+    "source_commit": "42c7da3255fae3e62a5d9382dc9e5260c3b0a750",
+    "source_diff_sha256": null,
+    "source_tree_sha256": "8289d7ab413f33868eec34b5eb1e81423fc7faccf15ca747d1028ce6f38e60cb"
   },
   "m01": {
     "source_report": "reports/receipts/run-2026-08-01-m01.json",

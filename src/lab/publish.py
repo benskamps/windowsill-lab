@@ -877,6 +877,9 @@ def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
     # no snapshot report yet simply writes nothing.
     try:
         from . import physics_feed
+        # Fallback only: this describes the publishing box, and the feed's
+        # provenance describes the run it was generated from. A report that
+        # carries its own provenance keeps it.
         physics_feed.build_physics_feed(provenance=snap.get("provenance"))
     except Exception:  # noqa: BLE001 — the physics feed never breaks publish
         pass
