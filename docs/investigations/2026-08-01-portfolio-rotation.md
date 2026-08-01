@@ -66,11 +66,20 @@ Membership changes are one-line PRs against `curriculum.ROTATION`.
 ### Hardware gates — skips are disclosed absences, not failure runs
 
 `curriculum.HARDWARE_GATES` maps milestone → a deterministic, configuration-only
-check (no device probing). Today's only entry: **I01** is eligible when
-`WINDOWSILL_I01_FRAMES` names an existing dark-frame stack or `LAB_I01_CAMERA`
-is set; otherwise the scheduler skips it with a named `no-camera:` reason —
-one log line per pass, no receipt, no public row. (Neither box currently has a
-webcam.)
+check (no device probing). Today's only entry: **I01** is eligible exactly when
+`WINDOWSILL_I01_FRAMES` names an existing dark-frame stack; otherwise the
+scheduler skips it with a named reason — one log line per pass, no receipt, no
+public row. (Neither box currently has a webcam.)
+
+**`LAB_I01_CAMERA` deliberately does NOT satisfy the gate** (review finding,
+2026-08-01): the scheduler dispatches a bare `lab i01` with no capture flags,
+and `run_i01` never reads `LAB_I01_CAMERA` — so a camera-only config would
+fail `no_real_frames` rc 3 every pass with **no receipt**, freezing the
+pointer and re-picking I01 forever (a rotation livelock). The gate names that
+mismatch (`no-frames:` reason) instead of passing. Live capture stays an
+attended `lab i01 --camera N`; if scheduled capture is ever wanted, the
+dispatch itself must learn to pass capture flags first — re-widen the gate
+only in the same PR.
 
 Separately, `lab i01` invoked bare now **fails fast**: a run that measured
 nothing (`no_real_frames`, capture errors — `analysis is None`) prints its
@@ -89,6 +98,10 @@ commit and pull-rebase before every pass: **the milestone of the receipt with
 the maximum `generated_at`** across `reports/receipts/` (unreadable/unstamped
 receipts degrade to their filename date — the `run_cadence` discipline; ties
 break by milestone id). No receipts → the rotation starts at its first slot.
+A newest receipt from OUTSIDE the rotation (a manual `lab m12`, or the last
+frontier run right after its milestone verifies) also restarts the walk at
+slot 0 — bounded (one reset per such receipt, then normal advance) and named
+in the printed reason (review amendment, 2026-08-01).
 
 **Duplicate-pick window (do NOT "fix" this into a lock file):** if schedules
 are mis-armed or a slept box fires catch-up runs, both boxes can read the same

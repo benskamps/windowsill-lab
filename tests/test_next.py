@@ -281,8 +281,11 @@ def test_rotation_is_curated_and_every_slot_is_dispatchable():
 
 def test_i01_hardware_gate_names_the_absence(monkeypatch, tmp_path):
     """No camera env + no frames env (or frames pointing at nothing) → a named
-    'no-camera' reason. A real stack on disk, or an explicit LAB_I01_CAMERA,
-    satisfies the gate. Deterministic — the scheduler never probes a device."""
+    'no-camera' reason. ONLY a real stack on disk satisfies the gate — that is
+    the one input the scheduled bare dispatch can measure from. Deterministic —
+    the scheduler never probes a device. (Amended in review 2026-08-01: the
+    original expectation that LAB_I01_CAMERA satisfies the gate was the
+    livelock bug — see test_i01_gate_rejects_camera_only_config below.)"""
     _no_camera(monkeypatch)
     reason = curriculum.HARDWARE_GATES["I01"]()
     assert reason is not None and "no-camera" in reason
@@ -297,7 +300,7 @@ def test_i01_hardware_gate_names_the_absence(monkeypatch, tmp_path):
 
     _no_camera(monkeypatch)
     monkeypatch.setenv("LAB_I01_CAMERA", "0")
-    assert curriculum.HARDWARE_GATES["I01"]() is None
+    assert curriculum.HARDWARE_GATES["I01"]() is not None   # camera-only ≠ dispatchable
 
 
 # ── pure rotation selection (select_rotation) ────────────────────────────────
@@ -486,3 +489,93 @@ def test_rotation_pass_never_dispatches_gated_i01(monkeypatch, capsys, tmp_path)
     assert "running `lab run`" in out          # wrapped to the M01 slot
     assert "cfg" in calls                      # the M01 engine actually ran
     assert not list(tmp_path.glob("**/*i01*"))  # zero i01 artifacts anywhere
+
+
+# ── adversarial review pass (2026-08-01): gate/runner contract, pointer
+#    disclosure, tie-break determinism, dry-run purity ────────────────────────
+
+def test_i01_gate_rejects_camera_only_config_the_dispatch_cannot_use(monkeypatch):
+    """LAB_I01_CAMERA alone must NOT make I01 eligible. The scheduler dispatches
+    a bare `lab i01`, which measures only from --frames / WINDOWSILL_I01_FRAMES
+    — live capture requires an attended `lab i01 --camera N` (cli passes no
+    capture flags on dispatch; i01.run_i01 never reads LAB_I01_CAMERA). If the
+    gate passed on LAB_I01_CAMERA, the dispatch would exit 3 with NO receipt,
+    the pointer would never advance past the previous slot, and every later
+    pass would re-pick I01: a rotation livelock. The gate must skip with a
+    reason naming the mismatch instead."""
+    monkeypatch.delenv("WINDOWSILL_I01_FRAMES", raising=False)
+    monkeypatch.setenv("LAB_I01_CAMERA", "0")
+    reason = curriculum.hardware_gate_reason("I01")
+    assert reason is not None
+    assert "LAB_I01_CAMERA" in reason and "WINDOWSILL_I01_FRAMES" in reason
+    pick, skips = curriculum.select_rotation(_all_verified(), "A01")
+    assert pick == "M01"                       # wraps past the gated slot
+    assert skips and skips[0][0] == "I01"
+
+
+def test_next_dry_run_names_the_restart_when_pointer_is_outside_the_rotation(
+        monkeypatch, capsys, tmp_path):
+    """A newest receipt from an out-of-rotation experiment (a manual `lab m12`,
+    or a frontier run right after its milestone verifies) restarts the walk at
+    slot 0 — and the printed reason must SAY so, not claim the rotation
+    'continues after M12' while actually resetting. Checkers re-derive claims;
+    the reason line is the claim."""
+    from lab import publish as publish_mod
+    monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
+        {"id": "M18", "status": "open"},
+    ])
+    receipts = _rotation_receipts(
+        tmp_path, ("2026-08-01", "m12", "2026-08-01T10:00:00+00:00"),
+    )
+    monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", receipts)
+    rc = cli.main(["next", "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "would run `lab run`" in out                  # slot 0 is M01
+    assert "outside the rotation" in out and "M12" in out
+    assert "rotation continues after M12" not in out
+
+
+def test_rotation_pointer_tie_breaks_by_milestone_id_order_independent():
+    """Claim check for cross-box determinism: with IDENTICAL generated_at
+    stamps the pointer must be the max milestone id whatever order the records
+    arrive in — otherwise two boxes iterating the same committed ledger
+    differently would derive different pointers and double-run a slot."""
+    stamp = "2026-08-01T06:00:00+00:00"
+    records = [(stamp, "M03"), (stamp, "M07"), (stamp, "M02")]
+    assert curriculum.rotation_pointer(records) == "M07"
+    assert curriculum.rotation_pointer(list(reversed(records))) == "M07"
+
+
+def test_next_dry_run_runs_nothing_and_writes_nothing(monkeypatch, capsys, tmp_path):
+    """Negative control for the dry-run promise: with every engine entry point
+    booby-trapped, `lab next --dry-run` must still succeed and disclose its
+    skips — proof the dry path selects and prints but never runs, renders,
+    publishes, or writes."""
+    from lab import i01 as i01_mod
+    from lab import ising as ising_mod
+    from lab import publish as publish_mod
+    from lab import render as render_mod
+    _no_camera(monkeypatch)
+    monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
+        {"id": "M18", "status": "open"},
+    ])
+    receipts = _rotation_receipts(
+        tmp_path, ("2026-07-31", "a01", "2026-07-31T15:10:00+00:00"),
+    )
+    monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", receipts)
+
+    def _boom(*a, **k):
+        raise AssertionError("--dry-run must not execute anything")
+    monkeypatch.setattr(ising_mod, "run", _boom)
+    monkeypatch.setattr(i01_mod, "run_i01", _boom)
+    monkeypatch.setattr(render_mod, "render", _boom)
+    monkeypatch.setattr(publish_mod, "publish", _boom)
+
+    before = sorted(p.name for p in receipts.iterdir())
+    rc = cli.main(["next", "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "skipped I01" in out and "no-camera" in out   # disclosed in dry-run
+    assert "would run `lab run`" in out                  # wrapped to M01
+    assert sorted(p.name for p in receipts.iterdir()) == before

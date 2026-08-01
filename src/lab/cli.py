@@ -1547,8 +1547,17 @@ def main(argv=None):
                 skips.extend(rot_skips)
                 if pick is not None:
                     mid, subcmd = pick, RUNNERS[pick]
-                    after = (f"rotation continues after {pointer}" if pointer
-                             else "no receipts — rotation starts at its first slot")
+                    if pointer is None:
+                        after = "no receipts — rotation starts at its first slot"
+                    elif pointer in curriculum.ROTATION:
+                        after = f"rotation continues after {pointer}"
+                    else:
+                        # The claim must match the selection: an out-of-rotation
+                        # pointer (manual M12, a just-verified frontier run)
+                        # restarts the walk at slot 0 — say so, don't imply
+                        # continuation.
+                        after = (f"newest receipt {pointer} is outside the "
+                                 "rotation — restarting at its first slot")
                     reason = f"{why} — {after}"
                 else:
                     subcmd = "run"

@@ -70,19 +70,27 @@ ROTATION: tuple[str, ...] = (
 
 
 def _i01_hardware_gate() -> str | None:
-    """I01 needs a real dark-frame stack or an explicitly configured camera.
+    """I01 needs a real dark-frame stack the DISPATCH can actually measure.
 
-    Deterministic and disclosed: the scheduler checks configuration only
-    (an env var naming an existing stack, or an explicit ``LAB_I01_CAMERA``)
-    — it never probes a device. There is currently no webcam on either box,
-    so without configuration this gate skips I01 with a named reason instead
-    of shipping a failure run every pass.
+    Deterministic and disclosed: the scheduler checks configuration only — it
+    never probes a device. Eligible exactly when ``WINDOWSILL_I01_FRAMES``
+    names an existing stack, because that is the one input a scheduled bare
+    ``lab i01`` reads (the dispatch passes no capture flags, and ``run_i01``
+    never consults ``LAB_I01_CAMERA``). A camera-only config must NOT pass:
+    the dispatched run would exit 3 with no receipt, the pointer would never
+    advance, and every later pass would re-pick I01 — a rotation livelock.
+    Live capture stays an attended ``lab i01 --camera N``.
     """
     frames = os.environ.get("WINDOWSILL_I01_FRAMES")
     if frames and Path(frames).exists():
         return None
     if os.environ.get("LAB_I01_CAMERA"):
-        return None
+        return (
+            "no-frames: LAB_I01_CAMERA is set, but a scheduled bare `lab i01` "
+            "cannot capture (live capture is an attended `lab i01 --camera N`);"
+            " set WINDOWSILL_I01_FRAMES to an existing dark-frame stack to put "
+            "I01 in rotation"
+        )
     return (
         "no-camera: no capture device configured (LAB_I01_CAMERA unset) and "
         "WINDOWSILL_I01_FRAMES names no existing dark-frame stack"
