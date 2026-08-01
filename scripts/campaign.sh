@@ -25,10 +25,12 @@
 #   LAB_CAMPAIGN_STATE     persisted pass counter             (default ~/.lab/campaign.iter)
 set -uo pipefail
 
-REPO="/home/benslinuxbox/projects/windowsill-lab"
+# Both overridable so the conflict fixtures can drive the real functions against a
+# throwaway clone and a stub interpreter instead of this box's paths.
+REPO="${LAB_CAMPAIGN_REPO:-/home/benslinuxbox/projects/windowsill-lab}"
 cd "$REPO" || exit 1
 export TMPDIR="${TMPDIR:-$HOME/.cache/wtmp}"; mkdir -p "$TMPDIR"
-PY="$REPO/.venv/bin/python3"
+PY="${LAB_CAMPAIGN_PY:-$REPO/.venv/bin/python3}"
 
 INTERVAL="${LAB_CAMPAIGN_INTERVAL:-1800}"
 DEVICE="${LAB_CAMPAIGN_DEVICE:-cuda}"
@@ -43,16 +45,88 @@ if ! mkdir -p "$(dirname "$LOG")" "$(dirname "$STOP")" "$STATE_DIR"; then
   exit 1
 fi
 
-iter=0
-if [ -r "$STATE" ]; then
-  IFS= read -r saved_iter < "$STATE" || true
-  case "$saved_iter" in
-    ''|*[!0-9]*) ;;
-    *) iter="$saved_iter" ;;
-  esac
-fi
 passes=0
 log(){ echo "$(date -u +%FT%TZ) $*" >> "$LOG"; }
+
+# pot.json and physics-latest.json are DERIVED: both boxes rebuild them from the same
+# committed receipts every pass, so their contents collide by construction on any
+# concurrent publish. On 2026-07-31 BOTH files conflicted on the same replay — the
+# multi-file case, not a single-file one. Neither side's copy is authoritative and
+# neither is worth keeping, so we do not pick a side: `--ours`/`--theirs` inverts
+# meaning under rebase (the replayed commit is "theirs"), and that inversion bit both
+# boxes during the manual recovery. Instead: abort, hard-sync to upstream, put our own
+# unpushed receipts back on top, and rebuild both files from the merged receipt set —
+# deterministic since #66. The receipts are the only irreplaceable thing in flight.
+resolve_by_regeneration(){
+  local conflicted ahead_paths stash_dir
+  conflicted="$(git diff --name-only --diff-filter=U 2>/dev/null)"
+  if [ -z "$conflicted" ]; then
+    log "campaign: ERROR mid-rebase with no unmerged paths; not auto-resolving"
+    return 1
+  fi
+  # Only the two derived feeds may be resolved this way. A conflict anywhere else is a
+  # real divergence of authored content and a human has to look at it.
+  if printf '%s\n' "$conflicted" | grep -qvx -e 'pot.json' -e 'physics-latest.json'; then
+    log "campaign: ERROR conflict touches non-derived paths ($(printf '%s' "$conflicted" | tr '\n' ' ')); not auto-resolving"
+    return 1
+  fi
+  log "campaign: conflict on derived feeds only ($(printf '%s' "$conflicted" | tr '\n' ' ')); resolving by regeneration"
+  if ! git rebase --abort >/dev/null 2>&1; then
+    log "campaign: ERROR rebase abort FAILED - clone is STRANDED, manual repair required"
+    return 1
+  fi
+  # The hard-sync below discards our unpushed commits, so refuse if they carry anything
+  # this loop did not author. campaign commits only ever touch these paths.
+  ahead_paths="$(git diff --name-only origin/main...HEAD 2>/dev/null)"
+  if [ -n "$ahead_paths" ] && printf '%s\n' "$ahead_paths" \
+    | grep -qv -e '^pot\.json$' -e '^physics-latest\.json$' -e '^reports/'; then
+    log "campaign: ERROR unpushed commits touch paths outside the campaign's own ($(printf '%s' "$ahead_paths" | tr '\n' ' ')); not auto-resolving"
+    return 1
+  fi
+  if ! stash_dir="$(mktemp -d "$TMPDIR/campaign-regen.XXXXXX")"; then
+    log "campaign: ERROR could not create a temp dir to preserve receipts; not auto-resolving"
+    return 1
+  fi
+  if [ -d reports ] && ! cp -a reports "$stash_dir/reports"; then
+    rm -rf -- "$stash_dir"
+    log "campaign: ERROR could not preserve local receipts; not auto-resolving"
+    return 1
+  fi
+  if ! git reset -q --hard origin/main; then
+    rm -rf -- "$stash_dir"
+    log "campaign: ERROR hard-sync to origin/main failed; clone left as-is for inspection"
+    return 1
+  fi
+  # Upstream's receipts arrived with the reset; ours go back on top. A same-named file
+  # is the same milestone on the same day, so overlaying is a union, not a clobber.
+  if [ -d "$stash_dir/reports" ] && ! cp -a "$stash_dir/reports/." reports/; then
+    rm -rf -- "$stash_dir"
+    log "campaign: ERROR could not restore local receipts after sync; clone left for inspection"
+    return 1
+  fi
+  rm -rf -- "$stash_dir"
+  if ! "$PY" -m lab.cli publish >> "$LOG" 2>&1; then
+    log "campaign: ERROR regeneration failed after conflict; clone left for inspection"
+    return 1
+  fi
+  if ! git add -- pot.json physics-latest.json >/dev/null 2>&1 \
+    || ! git add -A -- reports/ >/dev/null 2>&1; then
+    git reset -q -- pot.json physics-latest.json reports/ 2>/dev/null || true
+    log "campaign: ERROR staging the regenerated feeds failed"
+    return 1
+  fi
+  if git diff --cached --quiet -- pot.json physics-latest.json reports/ 2>/dev/null; then
+    log "campaign: conflict resolved by regeneration — upstream already carried this state"
+    return 0
+  fi
+  if ! git commit -q --only -m "campaign: reconcile pass $iter — regenerated pot.json + physics-latest.json after conflict" \
+    -- pot.json physics-latest.json reports/ >/dev/null 2>&1; then
+    log "campaign: ERROR reconcile commit failed"
+    return 1
+  fi
+  log "campaign: conflict resolved by regeneration — both feeds rebuilt from the merged receipt set"
+  return 0
+}
 
 # A conflicted `git pull --rebase` leaves the clone detached and mid-rebase. This used to be
 # written `git pull --rebase >/dev/null 2>&1 || true`, which discarded the output AND the exit
@@ -60,13 +134,20 @@ log(){ echo "$(date -u +%FT%TZ) $*" >> "$LOG"; }
 # later pass tripped the on-main guard and logged "on 'HEAD' not main" — a symptom four days
 # downstream of its cause. That is exactly how Loam lost passes 2-8 on 2026-07-31.
 # pot.json and physics-latest.json are regenerated by BOTH boxes every pass, so this recurs by
-# construction once we share the 4/day rotation. Fail loudly, leave the clone usable, and let
-# the caller skip the pass rather than pretend it synced.
+# construction once we share the 4/day rotation. Resolve it by regeneration when only those
+# derived feeds conflict; otherwise fail loudly, leave the clone usable, and let the caller
+# skip the pass rather than pretend it synced.
 safe_pull_rebase(){
   local out rc
   out="$(git pull --rebase 2>&1)"; rc=$?
   [ "$rc" -eq 0 ] && return 0
   log "campaign: ERROR pull --rebase failed rc=$rc: $(printf '%s' "$out" | tail -3 | tr '\n' ' ')"
+  if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then
+    if resolve_by_regeneration; then
+      return 0
+    fi
+  fi
+  # Regeneration declined or failed before it could abort — leave the clone usable.
   if [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then
     if git rebase --abort >/dev/null 2>&1; then
       log "campaign: ERROR rebase aborted, clone restored to '$(git rev-parse --abbrev-ref HEAD 2>/dev/null)'"
@@ -97,6 +178,40 @@ persist_counter() {
     return 1
   fi
 }
+
+# The counter picks the seed (SEED_BASE + iter), so losing it REUSES seeds. The state
+# file is only a cache: a fresh clone, a wiped ~/.lab, or a restored box leaves it absent
+# and the loop silently restarts at pass 1. That is what happened on 2026-07-31 — Loam
+# came back up logging "pass 1 seed=1001" and replayed July's seeds 1001+ against the same
+# milestones, which makes independent samples look independent when they are not. The
+# published ledger is the durable record, so derive from it and let the file only agree
+# or lag. Highest wins; the counter must never walk backwards.
+ledger_counter(){
+  git log --format=%s -n 4000 -- pot.json physics-latest.json 2>/dev/null \
+    | sed -n 's/^campaign: pass \([0-9][0-9]*\) .*/\1/p' \
+    | sort -rn | head -1
+}
+
+iter=0
+if [ -r "$STATE" ]; then
+  IFS= read -r saved_iter < "$STATE" || true
+  case "$saved_iter" in
+    ''|*[!0-9]*) ;;
+    *) iter="$saved_iter" ;;
+  esac
+fi
+ledger_iter="$(ledger_counter)"
+case "$ledger_iter" in ''|*[!0-9]*) ledger_iter=0 ;; esac
+if [ "$ledger_iter" -gt "$iter" ]; then
+  log "campaign: counter recovered from ledger — state file said $iter, published ledger says $ledger_iter"
+  iter="$ledger_iter"
+fi
+
+# Sourced by the conflict fixtures to drive the functions above against a throwaway
+# clone without entering the loop:  LAB_CAMPAIGN_LIB=1 . scripts/campaign.sh
+if [ -n "${LAB_CAMPAIGN_LIB:-}" ]; then
+  return 0 2>/dev/null || exit 0
+fi
 
 log "campaign: START interval=${INTERVAL}s device=${DEVICE} seed_base=${SEED_BASE} max_iters=${MAX_ITERS} dry=${LAB_CAMPAIGN_DRY:-0}"
 while :; do

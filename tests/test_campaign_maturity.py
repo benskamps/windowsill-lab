@@ -9,6 +9,35 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
+def _script_body():
+    """campaign.sh with comment-only lines blanked, for ordering assertions.
+
+    These tests pin the order of RUNTIME steps but locate them with ``str.index``,
+    which finds the first textual occurrence anywhere — including prose. b66a0e6
+    added a comment explaining the ``git pull --rebase`` strand above the guards
+    and turned the dirty-worktree ordering test red without changing any behavior.
+    Blanking comments (rather than dropping the lines) keeps every offset's
+    relative order intact while making the pins mean what they say.
+    """
+    text = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    return "\n".join(
+        "" if line.lstrip().startswith("#") else line for line in text.splitlines()
+    )
+
+
+def _loop_body():
+    """The pass loop only — the region the ordering pins below actually describe.
+
+    The guards, the pull, the experiment, the verify gate and the staging all run
+    inside ``while :; do``. Helper functions defined above the loop legitimately
+    reuse the same commands (``resolve_by_regeneration`` re-stages the regenerated
+    feeds), so a whole-file ``str.index`` finds the helper's copy instead and the
+    pins stop meaning "the order the steps run in".
+    """
+    body = _script_body()
+    return body[body.index("while :; do"):]
+
+
 def _working_bash():
     """Locate a bash that actually runs (the WSL stub on Windows resolves but errors)."""
     exe = shutil.which("bash")
@@ -47,18 +76,19 @@ def test_graceful_stop_survives_service_restart_policy():
 
 def test_campaign_persists_counter_before_running_each_seed():
     script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
-    state_write = script.index('if ! persist_counter "$next_iter"; then')
-    experiment = script.index("-m lab.cli next")
+    loop = _loop_body()
+    state_write = loop.index('if ! persist_counter "$next_iter"; then')
+    experiment = loop.index("-m lab.cli next")
     assert "LAB_CAMPAIGN_STATE" in script
     assert state_write < experiment
     assert 'mktemp "$STATE_DIR/.${state_base}.tmp.XXXXXX"' in script
     assert 'mv -f -- "$state_tmp" "$STATE"' in script
     assert 'state_tmp="${STATE}.$$"' not in script
-    persist_failure = script.index(
+    persist_failure = loop.index(
         "campaign: counter persistence failed; no experiment was launched"
     )
     assert state_write < persist_failure < experiment
-    assert "exit 1" in script[persist_failure:experiment]
+    assert "exit 1" in loop[persist_failure:experiment]
     assert "passes=$((passes+1))" in script
 
 
@@ -69,26 +99,30 @@ def test_campaign_stages_both_public_feeds():
 
 def test_campaign_refuses_a_preexisting_index_before_experiment():
     script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
-    index_guard = script.index("git diff --cached --quiet -- 2>/dev/null")
-    experiment = script.index("-m lab.cli next")
+    loop = _loop_body()
+    index_guard = loop.index("git diff --cached --quiet -- 2>/dev/null")
+    experiment = loop.index("-m lab.cli next")
     assert index_guard < experiment
     assert "pre-existing staged changes; refusing to run or alter the index" in script
 
 
 def test_campaign_refuses_a_dirty_tracked_worktree_before_pull_or_experiment():
     script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
-    worktree_guard = script.index("git diff --quiet -- 2>/dev/null")
-    # The pass flow pulls via safe_pull_rebase (the loud wrapper that aborts a
-    # conflicted rebase instead of stranding the clone). Its BODY — the only
-    # place the raw `git pull --rebase` runs — is defined before the loop, so
-    # the ordering that matters is guard < CALL SITE < experiment.
-    # (`.index` with a start offset raises if the call site is not after the
-    # guard, so a reordering fails loudly, not silently.)
-    pull_call = script.index("elif ! safe_pull_rebase", worktree_guard)
-    experiment = script.index("-m lab.cli next")
-    assert worktree_guard < pull_call < experiment
+    body, loop = _script_body(), _loop_body()
+    # The pull runs through safe_pull_rebase(), defined above the loop, so pin the
+    # CALL SITE — that is the step the guards have to precede. Searching from the
+    # guard's offset means a reordering raises here rather than failing an assert.
+    worktree_guard = loop.index("git diff --quiet -- 2>/dev/null")
+    pull = loop.index("elif ! safe_pull_rebase", worktree_guard)
+    experiment = loop.index("-m lab.cli next")
+    assert worktree_guard < pull < experiment
     assert "pre-existing tracked worktree changes; refusing to pull or run" in script
     assert "git pull --rebase --autostash" not in script
+    # ...and the loop must never reach git pull directly: the helper owns the
+    # conflict path, so exactly one invocation exists and it lives in the helper.
+    assert body.count("git pull --rebase") == 1
+    assert body.index("safe_pull_rebase(){") < body.index("git pull --rebase")
+    assert "git pull --rebase" not in loop
 
 
 def test_campaign_git_operations_are_limited_to_owned_paths():
@@ -103,21 +137,23 @@ def test_campaign_git_operations_are_limited_to_owned_paths():
 
 def test_campaign_verify_gates_publication_between_run_and_staging():
     script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    loop = _loop_body()
     assert "-m lab.cli verify" in script
-    run = script.index("-m lab.cli next")
-    gate = script.index("-m lab.cli verify")
-    stage = script.index("git add -- pot.json physics-latest.json")
+    run = loop.index("-m lab.cli next")
+    gate = loop.index("-m lab.cli verify")
+    stage = loop.index("git add -- pot.json physics-latest.json")
     assert run < gate < stage
     assert "verify failed; publishing withheld" in script
 
 
 def test_campaign_withheld_pass_restores_owned_paths_for_the_next_pass():
     script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    loop = _loop_body()
     restore = "git checkout -q -- pot.json physics-latest.json reports/"
     assert restore in script
-    withheld = script.index("verify failed; publishing withheld")
-    stage = script.index("git add -- pot.json physics-latest.json")
-    assert withheld < script.index(restore) < stage
+    withheld = loop.index("verify failed; publishing withheld")
+    stage = loop.index("git add -- pot.json physics-latest.json")
+    assert withheld < loop.index(restore) < stage
 
 
 def test_campaign_commit_message_dates_in_local_time():

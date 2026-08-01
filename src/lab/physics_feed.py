@@ -309,9 +309,13 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
                previous_feed: dict | None = None) -> dict | None:
     """Assemble the physics feed dict from the newest M01 report or receipt.
 
-    ``provenance`` (e.g. ``publish.provenance()``) rides along verbatim so the
-    feed records the exact code that produced the run. When omitted, provenance
-    recorded by the selected report is preserved. A public receipt may reuse
+    The feed's ``provenance`` sits beside ``generated_from`` and therefore
+    describes THAT RUN: the selected report's own provenance always wins.
+    ``provenance`` (e.g. ``publish.provenance()``) is only a fallback for legacy
+    reports that carry none — it describes the box doing the publishing, which is
+    not the same claim. Letting it win mislabels a run with whatever environment
+    happened to republish it, most visibly on the degraded path where an
+    experiment fails and ``publish`` merely refreshes an older run's feed. A public receipt may reuse
     packed snapshots from ``previous_feed``, but only when its omission digest
     attests the reconstructed lattice exactly; when attestation fails or is
     absent, the previous lattices carry forward labeled with
@@ -398,9 +402,7 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
         "onsager_tc": round(ONSAGER_TC, 6),
         "source": "windowsill-lab",
         "generated_from": source_rel,
-        "provenance": (
-            provenance if provenance is not None else (rep.get("provenance") or {})
-        ),
+        "provenance": rep.get("provenance") or provenance or {},
         "m01": m01,
     }
 
