@@ -3,6 +3,8 @@ import json
 import math
 import statistics
 
+import pytest
+
 import lab.checks as checks
 from lab.checks import (
     ALLEN_CAHN_EXPONENT, BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT,
@@ -871,6 +873,9 @@ def test_m12_benchmark_mirrors_the_engine_constant():
     # The engine draws bimodal ±J couplings and owns the literature benchmark in
     # m12.py; the check's mirror must be the SAME number, or the headline and the
     # verify gate disagree about what counts as the transition.
+    # lab.m12 imports numpy at module scope; the stdlib-only pipeline job skips
+    # this mirror — the full-deps physics job still enforces it on every run.
+    pytest.importorskip("numpy")
     import lab.m12 as m12
     assert TC_SG_3D == m12.T_SG_BENCHMARK
     assert TC_SG_3D_TOL == m12.CROSSING_TOL
