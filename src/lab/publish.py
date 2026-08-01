@@ -316,15 +316,28 @@ def _cpu_temp_windows() -> float | None:
 
 
 def today_local() -> str:
-    """The local calendar date as ``YYYY-MM-DD`` — the operator's "tonight".
+    """The local calendar date as ``YYYY-MM-DD`` — the running machine's day.
 
     Reports are dated in *local* time, not UTC. The windowsill is a personal
-    instrument; "last night I ran ..." should match the day on the human's wall
-    clock, so an evening run isn't stamped tomorrow. (The 03:00 nightly is
-    unaffected — at 3 a.m. the local and UTC dates already agree for any sane
-    timezone; the divergence only bit off-hours manual runs.)
+    instrument; the day a turn is filed under should match the day on the
+    human's wall clock, so an evening run isn't stamped tomorrow. A scheduled
+    small-hours turn is unaffected — at 03:00 the local and UTC dates already
+    agree for any sane timezone; the divergence only bit off-hours manual runs.
     """
     return datetime.now().date().isoformat()
+
+
+def turn_stamp_now() -> str:
+    """The local wall-clock ``HHMM`` of this turn — the receipt name's discriminator.
+
+    Deliberately the SAME clock as ``today_local``: the pair
+    ``(date, turn)`` is one machine's own local timestamp for the pass, so a
+    date and its turns can never disagree about which day it was. Used only at
+    write time by the box that ran the turn; every reader afterwards just parses
+    the filename, so the ordering is identical in every clone regardless of the
+    reader's timezone (converting a UTC ``generated_at`` on read would not be).
+    """
+    return datetime.now().strftime("%H%M")
 
 
 # A report JSON is named either ``<date>.json`` (legacy bare-date dump) or
@@ -376,7 +389,10 @@ def run_cadence() -> tuple[str | None, int]:
     newest date — committed content, so it survives a fresh clone (which resets
     every mtime). Receipts predating ``generated_at`` (or unreadable ones)
     degrade to the bare receipt date, still clone-stable. ``total`` counts
-    *distinct dates*: a day with two milestones is one run day.
+    *distinct DATES*: a day with two milestones is one run day. This is NOT the
+    turn count and is deliberately not renamed — ``runs`` is a shipped field
+    with existing consumers, and days-tended stays true for as long as anyone
+    reads it. ``turn_cadence`` counts the passes themselves.
     """
     if not RECEIPTS_DIR.exists():
         return None, 0
@@ -397,6 +413,93 @@ def run_cadence() -> tuple[str | None, int]:
             stamps.append(stamp)
     last_iso = max(stamps) if stamps else last_date
     return last_iso, len(dates)
+
+
+# ── The declared cadence ─────────────────────────────────────────────────────
+# Expected is DECLARED or it is nothing. The page's freshness, soil-drying and
+# "one machine quiet" clause all read this constant and never a rate inferred
+# from history — an inferred expectation lets a dying box quietly lower its own
+# bar (fewer runs → "cadence" drops → everything looks on time again), and it
+# retro-grades months of one-machine history against a two-machine schedule.
+#
+# ``effective_from`` stays None until BOTH boxes are actually armed (see
+# docs/investigations/2026-08-01-portfolio-rotation.md). While it is None the
+# feed omits ``expected_interval_h`` entirely, the page falls back to its legacy
+# constants, and the footer clause never renders. Flipping this one date is the
+# whole arming ceremony.
+#
+# MERGE GATE (resolved 2026-08-01 by softening): the explainer no longer
+# promises a cadence — "one turn at a time, whenever a machine wakes to run" /
+# "either of two machines can pick up the next turn" are true while unarmed.
+# When the arming ceremony flips ``effective_from``, the cadence copy ("a turn
+# every few hours, day and night", "alternating turns") may be restored in the
+# same change — the page and this constant must not disagree about whether the
+# rotation is real.
+CADENCE: dict = {
+    "expected_interval_h": 3,
+    "machines": ["windows-cuda", "linux-rocm"],
+    "effective_from": None,
+}
+
+
+def cadence_is_effective(today: str | None = None) -> bool:
+    """True once ``CADENCE['effective_from']`` has arrived (and is declared)."""
+    start = CADENCE.get("effective_from")
+    if not isinstance(start, str) or not start:
+        return False
+    return (today or today_local()) >= start
+
+
+def turn_cadence() -> dict:
+    """The ``turns`` object for the feed — one turn = one scheduled pass.
+
+    Counts the committed receipts themselves rather than the distinct dates
+    ``run_cadence`` reports, which is only honest because receipts are now
+    turn-stamped (``_receipt_filename``): before that, two same-day passes of
+    one milestone shared a filename and the second silently destroyed the first.
+
+    ``expected_interval_h`` rides along ONLY while the cadence is declared and
+    effective (see ``CADENCE``). ``last_by_machine`` carries every declared
+    machine, ``None`` for one that has never filed a turn — a declared-but-silent
+    box is a fact worth publishing, not a blank.
+    """
+    from .archive import machine_of  # one pinned derivation, imported not copied
+
+    turns: dict = {"count": 0, "today": 0}
+    if not RECEIPTS_DIR.exists():
+        receipts: list[Path] = []
+    else:
+        receipts = sorted(RECEIPTS_DIR.glob(f"run-{_DATE_GLOB}-*.json"))
+
+    today = today_local()
+    last_by_machine: dict[str, str | None] = {
+        m: None for m in CADENCE.get("machines", []) if isinstance(m, str)
+    }
+    for path in receipts:
+        turns["count"] += 1
+        if _receipt_date(path) == today:
+            turns["today"] += 1
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        machine = machine_of(data)
+        # Only DECLARED machines get a slot: the object answers "how are the
+        # machines we said would take turns doing", and inventing a row for an
+        # undeclared box would quietly turn an observation into an expectation.
+        if machine not in last_by_machine:
+            continue
+        stamp = data.get("generated_at")
+        if not (isinstance(stamp, str) and stamp):
+            continue
+        prior = last_by_machine[machine]
+        if prior is None or stamp > prior:
+            last_by_machine[machine] = stamp
+
+    turns["last_by_machine"] = last_by_machine
+    if cadence_is_effective(today):
+        turns["expected_interval_h"] = CADENCE["expected_interval_h"]
+    return turns
 
 
 def _git(*args: str) -> str | None:
@@ -655,8 +758,14 @@ def discover_runs() -> list[dict]:
 
 
 def build_snapshot(milestones, last_run, runs, temp_c, report=None,
-                   reports=None, reports_ledger=None) -> dict:
+                   reports=None, reports_ledger=None, turns=None,
+                   divergence=None) -> dict:
     """Assemble the sanitized snapshot the /windowsill/ page consumes.
+
+    ``turns`` (optional) is the ``turn_cadence()`` object — the pass counter and
+    the declared cadence. ``divergence`` (optional) is the machine-aligned
+    disagreement list from ``archive.detect_divergence``; both are omitted when
+    absent and the page degrades to its legacy constants without them.
 
     ``reports_ledger`` (new) is the archive's sanitized every-run ledger
     (``archive.run_ledger()`` — rows of ``{date, milestone, verdict, headline,
@@ -684,10 +793,18 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
         "latest_report": latest,
         "archive_url": ARCHIVE_URL,
         "updated": datetime.now(timezone.utc).isoformat(),
+        # PUBLISHER-box provenance: the environment that built this feed, which
+        # is not necessarily the environment that ran any given result. Never
+        # surface it as "the lab's environment" — per-turn truth is the ledger
+        # row's own ``machine`` plus its receipt.
         "provenance": provenance(),
     }
     if rows is not None:
         snap["reports"] = rows
+    if turns is not None:
+        snap["turns"] = turns
+    if divergence:
+        snap["divergence"] = divergence
     return snap
 
 
@@ -707,10 +824,17 @@ def collect() -> dict:
         ledger = archive.run_ledger()
     except Exception:  # noqa: BLE001 — provenance is never allowed to break the feed
         ledger = None
+    turns = divergence = None
+    try:
+        from . import archive
+        turns = turn_cadence()
+        divergence = archive.detect_divergence(archive.scan_runs())
+    except Exception:  # noqa: BLE001 — same guard: the turn layer never breaks the feed
+        pass
     if ledger is not None:
         return build_snapshot(
             parse_milestones(text), last_run, runs, cpu_temp_c(),
-            reports_ledger=ledger,
+            reports_ledger=ledger, turns=turns, divergence=divergence,
         )
     return build_snapshot(
         parse_milestones(text), last_run, runs, cpu_temp_c(),
@@ -718,9 +842,64 @@ def collect() -> dict:
     )
 
 
-def _receipt_filename(date: str, slug: str) -> str:
-    """Stable public-receipt name (does not match the dated-report gitignore)."""
-    return f"run-{date}-{slug}.json"
+def _receipt_filename(date: str, slug: str, turn: str | None = None) -> str:
+    """Stable public-receipt name (does not match the dated-report gitignore).
+
+    ``turn`` is the local ``HHMM`` of the pass. With it the name becomes
+    ``run-<date>-<hhmm>-<slug>.json``, which is what makes two turns of the
+    same milestone on the same day two receipts instead of one overwriting the
+    other — the prerequisite for counting turns honestly and for the archive's
+    "every run is kept" claim. Without it the legacy ``run-<date>-<slug>.json``
+    is produced unchanged, so every receipt already on the books keeps its name
+    and its URL forever.
+    """
+    stem = f"{date}-{turn}-{slug}" if turn else f"{date}-{slug}"
+    return f"run-{stem}.json"
+
+
+# A turn stamp is exactly four digits followed by a hyphen, at the head of what
+# would otherwise be the slug. Slugs are milestone ids or ``run`` (see
+# ``_slug_for``) and therefore always start with a LETTER, so this prefix can
+# never eat a slug — the guard is structural, not a convention.
+_TURN_PREFIX_RE = re.compile(r"^(\d{4})-(?=.)")
+
+
+def _split_receipt_stem(stem: str) -> tuple[str, str | None, str]:
+    """``<date>[-<hhmm>]-<slug>`` → ``(date, turn, slug)``; turn ``None`` if bare.
+
+    Legacy receipts (written before turn-stamping) parse to ``turn=None`` and
+    behave exactly as they always have.
+    """
+    date, rest = stem[:10], stem[11:]
+    match = _TURN_PREFIX_RE.match(rest)
+    if match:
+        return date, match.group(1), rest[match.end():]
+    return date, None, rest
+
+
+def receipt_turn(path: Path) -> str | None:
+    """The ``HHMM`` turn stamp in a receipt filename, or ``None`` when legacy."""
+    return _split_receipt_stem(path.stem[len("run-"):])[1]
+
+
+def _existing_receipt_for(date: str, slug: str) -> Path | None:
+    """The receipt already on the books for ``(date, slug)``, whatever its name.
+
+    Prefers the bare legacy name so a receipt that has been committed and linked
+    for months keeps its URL; otherwise returns the newest stamped turn of that
+    day. ``None`` when the run has no receipt yet.
+    """
+    if not RECEIPTS_DIR.exists():
+        return None
+    bare = RECEIPTS_DIR / _receipt_filename(date, slug)
+    if bare.exists():
+        return bare
+    stamped = []
+    for path in RECEIPTS_DIR.glob(f"run-{date}-*.json"):
+        found_date, turn, found_slug = _split_receipt_stem(path.stem[len("run-"):])
+        if turn and found_date == date and found_slug == slug:
+            stamped.append((turn, path))
+    return max(stamped)[1] if stamped else None
 
 
 def ensure_public_receipts() -> list[Path]:
@@ -731,6 +910,14 @@ def ensure_public_receipts() -> list[Path]:
     provenance, and reproduction commands while hashing omitted snapshots.  A
     repo report wins over its ``~/.lab`` twin so provenance-stamped copies are
     preferred.  Returns every receipt path, whether newly written or unchanged.
+
+    This is the BACKFILL path, and it never invents a turn stamp. A dated report
+    has already collapsed a day's same-milestone turns into one file, so it
+    cannot know how many turns it stands for; minting a stamped name here would
+    put a second receipt on the books for a run that already has one. It writes
+    to whatever name that run's receipt already carries and otherwise to the
+    bare legacy name. Only ``render._commit_report`` — which sees the actual
+    pass — stamps a turn.
     """
     from .receipt import receipt_text  # stdlib-only; avoids a heavy render import
 
@@ -756,7 +943,8 @@ def ensure_public_receipts() -> list[Path]:
     paths: list[Path] = []
     for (date, slug), (_, _, source, data) in sorted(selected.items()):
         raw = source.read_bytes()
-        destination = RECEIPTS_DIR / _receipt_filename(date, slug)
+        destination = _existing_receipt_for(date, slug) \
+            or RECEIPTS_DIR / _receipt_filename(date, slug)
         content = receipt_text(data, raw)
         destination.parent.mkdir(parents=True, exist_ok=True)
         if not destination.exists() or destination.read_text(encoding="utf-8") != content:

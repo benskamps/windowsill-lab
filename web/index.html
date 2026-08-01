@@ -7,8 +7,8 @@
     ║  pot, growing on real science: each verified windowsill-lab  ║
     ║  milestone hardens into a node on the stem (a failed         ║
     ║  calibration is a folded grey leaf — a null), the            ║
-    ║  lab's overnight runs water the soil, and CPU heat sets the  ║
-    ║  season. Every visible claim points back to its receipt.      ║
+    ║  lab's turns water the soil, and CPU heat sets the           ║
+    ║  season. Every visible claim points back to its receipt.     ║
     ║                                                              ║
     ║  This page shows a SANITIZED snapshot — milestones and lab   ║
     ║  weather only. No project names, no private data.             ║
@@ -24,7 +24,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>windowsill — live | Broken Branch</title>
-  <meta name="description" content="A home machine grows five kinds of patient science: physics, trusted compute, archive astronomy, hardware instruments, and donated distributed computing. Checked results become leaves; misses stay visible.">
+  <meta name="description" content="Two home machines grow five kinds of patient science: physics, trusted compute, archive astronomy, hardware instruments, and donated distributed computing. Checked results become leaves; misses stay visible.">
   <meta name="author" content="Ben Schippers">
   <meta name="theme-color" content="#0d0c0a">
   <meta property="og:type" content="website">
@@ -35,7 +35,7 @@
   <meta property="og:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta property="og:image:alt" content="A single seedling in a clay pot on a windowsill — the lab's calm live readout, a leaf for every verified overnight result.">
+  <meta property="og:image:alt" content="A single seedling in a clay pot on a windowsill — the lab's calm live readout, a leaf for every verified result.">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="windowsill — a live readout of the lab">
   <meta name="twitter:description" content="Five quiet plants growing from real work: physics, compute, archive astronomy, instruments, and shared distributed computing. Checked results become leaves, and misses stay visible.">
@@ -253,7 +253,7 @@
     .report-link:hover { color:var(--text); }
 
     /* ── The current expedition: the question the lab is growing toward NOW ───
-       Distinct from the nightly heartbeat (.report). Reads the open milestone's
+       Distinct from the turn-by-turn heartbeat (.report). Reads the open milestone's
        plain-language story from the feed; hidden if there's no open milestone. */
     .expedition {
       display:grid; gap:0.18rem; padding:0.72rem 0.8rem;
@@ -396,11 +396,24 @@
     .arc-row.review .arc-glyph { color:var(--review); }
     .arc-row.unscored .arc-glyph, .arc-row.unreadable .arc-glyph { color:var(--text-muted); }
     .arc-date { color:var(--text-muted); white-space:nowrap; }
+    /* Second and later turns of a day show a time instead of repeating the
+       date. The indent IS the grouping — no headers, no dividers, no new grid. */
+    .arc-date.arc-time { font-size:0.64rem; opacity:0.75; padding-left:1.15em; }
+    /* The machine mark: provenance, not chrome. Same muted mono as the rest of
+       the row's machine-voice text, and deliberately NO border — .arc-x owns
+       the row's one bordered element. */
+    .arc-mach { font-family:var(--font-mono); font-size:0.64rem; color:var(--text-muted);
+                white-space:nowrap; cursor:help; }
     .arc-x { font-family:var(--font-mono); font-size:0.64rem; color:var(--text-muted);
              white-space:nowrap; border:1px solid var(--border); border-radius:3px;
              padding:0 0.3em; cursor:help; }
     .arc-mid { color:var(--text-secondary); }
-    .arc-head { color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    /* The headline is the row's shock absorber: min-width:0 lets a flex item
+       shrink below its own content, which is what makes the ellipsis actually
+       fire. Without it the machine mark pushes narrow phones into a horizontal
+       scroll instead of truncating the sentence that was always truncatable. */
+    .arc-head { color:var(--text); overflow:hidden; text-overflow:ellipsis;
+                white-space:nowrap; flex:1 1 auto; min-width:0; }
     .arc-link { margin-left:auto; color:var(--text-secondary); text-decoration:none;
                 border-bottom:1px dotted var(--border); white-space:nowrap; }
     .arc-link + .arc-link { margin-left:0.15rem; }
@@ -529,6 +542,18 @@
     @media (max-width:560px) {
       .read-list > div { flex-direction:column; gap:0.1rem; }
       .read-list dt { flex-basis:auto; }
+      /* The machine mark is one element more than a phone-width row can hold —
+         when → where → what → result → links no longer fits on one line. Wrap
+         instead of hiding: the headline and its two links take a second line,
+         so nothing is dropped and no evidence link goes missing on mobile.
+         (Hiding the mark would make provenance a desktop privilege; truncating
+         the links would put the receipt out of reach on the device most people
+         actually read this on.) Scoped to rows that actually carry a mark, so
+         a run with no recorded provenance renders exactly as it does today. */
+      .arc-row.has-mach { flex-wrap:wrap; row-gap:0.1rem; }
+      .arc-row.has-mach .arc-head { flex-basis:100%; }
+      .arc-row.has-mach .arc-link { margin-left:0; }
+      .arc-row.has-mach .arc-link:first-of-type { margin-left:auto; }
     }
 
     @media (max-width: 720px) {
@@ -631,12 +656,12 @@
       <a class="home" href="https://www.brokenbranch.dev/">broken branch</a>
     </nav>
 
-    <p class="lab-kicker">Windowsill Lab · a patient home science machine</p>
+    <p class="lab-kicker">Windowsill Lab · a patient home instrument</p>
     <div class="topbar">
       <h1 class="label"><span class="sky" id="sky">☀</span>windowsill</h1>
       <div class="phase-mood"><span id="phase">day</span> · <span id="season">spring</span> · feels <span class="mood" id="mood">—</span></div>
     </div>
-    <div class="tagline"><strong>A home machine keeps a night shift.</strong> Physics, compute, archive astronomy, and instruments each begin with a known answer, earn trust one check at a time, and keep every miss. These plants are the public notebook.</div>
+    <div class="tagline"><strong>Two home machines tend one small lab in turns.</strong> Physics, compute, archive astronomy, and instruments each begin with a known answer, earn trust one check at a time, and keep every miss. These plants are the public notebook.</div>
 
     <div class="scene" id="scene">
       <!-- role=group, not img: an img role makes every SVG child presentational,
@@ -824,7 +849,7 @@
     <section class="legend" id="legend" aria-label="what the windowsill is showing">
       <span><b>milestones</b> <span class="v" id="m-growth">—</span></span>
       <span><b>watered</b> <span class="v" id="m-watered">—</span></span>
-      <span><b>nights</b> <span class="v" id="m-runs">—</span></span>
+      <span><b id="m-runs-label">days tended</b> <span class="v" id="m-runs">—</span></span>
     </section>
 
     <div class="rail-tools" role="group" aria-label="milestone navigation">
@@ -968,9 +993,11 @@
 
     <div class="explainer">
       <h2 class="ex-h">What am I looking at?</h2>
-      <p>A small garden on a windowsill, wired to real work. A quiet computer spends its nights
+      <p>A small garden on a windowsill, wired to real work. Two quiet computers take turns
       simulating physics, checking arithmetic, reading public telescope archives, or listening
-      through hardware sensors. It writes up what it found, and the matching plant grows from the result.</p>
+      through hardware sensors — one turn at a time, whenever a machine wakes to run. Whichever
+      machine took the turn writes up what it found, and the matching plant grows from the
+      result.</p>
       <p>The lower leaves are calibration: phase transitions and magnetic models whose answers are
       known well enough to expose a bad instrument. Higher leaves move into disorder and dynamics,
       where the claims must get narrower as the questions get harder. Tap any leaf—or use the
@@ -984,17 +1011,17 @@
         <div><dt>grey folded leaf</dt><dd>an experiment that missed. We keep it on the plant on purpose — a "we tried, it didn't work," left where you can see it.</dd></div>
         <div><dt>the soft growing tip</dt><dd>the question at the front of the curriculum. Its field note says whether code exists to run it yet.</dd></div>
         <div><dt>stem height</dt><dd>how far the plant has climbed through its list of experiments — taller means more done.</dd></div>
-        <div><dt>dark, damp soil</dt><dd>a fresh overnight run just finished and watered it. The soil slowly dries through the day until the next run.</dd></div>
+        <div><dt>dark, damp soil</dt><dd>a fresh run just finished and watered it. The soil slowly dries until the next turn.</dd></div>
         <div><dt>the season</dt><dd>how hard the computer is working: hard work heats it up, and that heat sets the season — cool and quiet reads as winter, busy and warm as summer. It shows spring when a run doesn't report a temperature.</dd></div>
         <div><dt>the sky &amp; light</dt><dd>your own time of day, in real time — dawn, noon, dusk, night. The plant keeps the same hours you do, wherever you are.</dd></div>
       </dl>
 
       <h2 class="ex-h">Why do this?</h2>
-      <p>A home computer has something a busy university supercomputer doesn't: slow, patient time,
-      and no line of people waiting on it. So it takes the unglamorous jobs nobody's in a hurry to
-      run — one small experiment a night, most nights, filling a real notebook over months. First it
-      re-checks answers we already know, to earn its trust; once it's proven steady, it can wander
-      toward corners of science nobody has gotten around to mapping yet.</p>
+      <p>A pair of home computers has something a busy university supercomputer doesn't: slow,
+      patient time, and no line of people waiting. So they take the unglamorous jobs nobody's in a
+      hurry to run — one small experiment at a time, turn after turn, filling a real notebook over
+      months. First they re-check answers we already know, to earn their trust; once proven steady,
+      they can wander toward corners of science nobody has gotten around to mapping yet.</p>
 
       <details class="curious">
         <summary>For the curious — the real names and numbers</summary>
@@ -1002,12 +1029,13 @@
         physicists use to study these sudden snaps. The exact tip-over temperature (written
         <code>T_c</code>, equal to 2.2692 in the model's own units) was solved by hand by
         <b>Lars Onsager in 1944</b> — so the plant's first job is calibration: prove the computer can
-        be trusted by re-finding that number on its own. Each night it sweeps across temperatures and
+        be trusted by re-finding that number on its own. Each calibration turn sweeps across temperatures and
         watches for the moment the magnets line up, where a measurement called the <b>magnetic
         susceptibility</b> spikes. Last run it landed near <code>2.30 ± 0.05</code> — a clean match —
-        in well under a minute on the GPU (the graphics chip that also runs video games). That nightly re-check is the lab's <b>heartbeat</b> — most nights it
+        in well under a minute on the GPU (the graphics chip that also runs video games). That steady re-check is the lab's <b>heartbeat</b> — most turns it
         re-proves it can still find an answer we already trust, while the curriculum's frontier climbs
-        on ahead of it. The ethos:
+        on ahead of it. The counter under the plant counts turns — one scheduled pass, whichever
+        machine took it; before July 2026 it counted nights. The ethos:
         <em>a result that doesn't reproduce a known answer is a failed calibration, not a
         discovery</em>, and the misses stay in the record beside the wins. So far
         <span id="ex-verified">several</span> milestones are verified — beginning with the 2D Ising
@@ -1023,9 +1051,11 @@
       <details class="curious">
         <summary>How the machine works — the engineering under the calm</summary>
         <p>The calm surface is the last mile of a real instrument. Underneath, one automated
-        pipeline runs itself on a nightly schedule:</p>
+        pipeline runs itself, and either of two machines can pick up the next turn to run
+        it:</p>
         <p class="pipeline"><code>schedule → simulate → verify → report → publish → grow</code></p>
-        <p>A scheduled task wakes the machine and asks the curriculum for a runnable next step. If
+        <p>A scheduled task wakes whichever machine has the turn and asks the curriculum for a
+        runnable next step. If
         the frontier is still only a design, the lab records that fact and runs its M01 calibration
         heartbeat instead. A <b>GPU simulation</b> (PyTorch) produces measurements; a
         <b>deterministic check</b> independently re-derives the gated result; and a report is written
@@ -1036,7 +1066,11 @@
         you're looking at is drawn straight from that feed. Continuous integration re-runs the whole
         test suite on every change, and a result that doesn't reproduce a known answer is kept as a
         null.</p>
-        <p>Built by one person and a fleet of agents: the GPU physics, the verification gate, the nightly
+        <p>The two machines are different on purpose — one Windows/CUDA, one Linux/ROCm — and each
+        run's receipt records which box ran it, its exact environment, and the commands to re-run it.
+        The lab began as one machine's night shift; a second machine joined in July 2026, and the two
+        now alternate.</p>
+        <p>Built by one person and a fleet of agents: the GPU physics, the verification gate, the
         scheduler, the provenance, the JSON contract, the tests and CI, and the live drawing — every
         layer from the silicon to the seedling.</p>
       </details>
@@ -1476,7 +1510,7 @@
       leaves.appendChild(frag);
 
       // The open experiment is the tender bud at the very tip. "Open" means
-      // it is on the bench; runner_available says whether tonight can run it.
+      // it is on the bench; runner_available says whether a turn can run it.
       $('bud').setAttribute('cx', geo.tip.x.toFixed(0));
       $('bud').setAttribute('cy', topY.toFixed(0));
       $('bud').setAttribute('fill', leafColor);
@@ -1732,7 +1766,7 @@
     // procedural seed stays byte-for-byte unchanged. textContent (never raw
     // HTML) + the same /^https?:\/\//i href-guard the milestone leaves use.
     var ARC_GLYPH = { verified:'●', review:'◆', null:'◑', unscored:'○', unreadable:'⚠' };
-    function drawRunList(reports, archiveUrl, milestones) {
+    function drawRunList(reports, archiveUrl, milestones, divergence) {
       var box = $('archive'), list = $('arc-list');
       if (!box || !list) return;
       if (!Array.isArray(reports) || !reports.length) { box.hidden = true; return; }
@@ -1741,7 +1775,21 @@
       (milestones || []).forEach(function (m) {
         if (m && m.id) milestoneStatus[m.id] = m.status;
       });
-      var shown = reports.slice(0, 8);
+      // Under a multi-turn rotation a flat "newest 8 rows" can be a single busy
+      // day, which reads as a wall and hides the week. So the window has a
+      // FLOOR on days rather than a ceiling: keep taking rows until there are
+      // both eight of them and three distinct dates on screen, hard-capped at
+      // ten. A one-run-a-day feed hits eight rows across eight dates and is
+      // unchanged from before; a busy day spends the two extra rows reaching
+      // back far enough to show that yesterday existed.
+      var shown = [], seenDates = [];
+      for (var i = 0; i < reports.length && shown.length < 10; i++) {
+        if (shown.length >= 8 && seenDates.length >= 3) break;
+        var d = reports[i] && reports[i].date;
+        if (seenDates.indexOf(d) === -1) seenDates.push(d);
+        shown.push(reports[i]);
+      }
+      var lastDate = null;
       shown.forEach(function (r) {
         r = r || {};
         var rawVerdict = r.verdict || r.status;
@@ -1760,10 +1808,36 @@
         g.textContent = ARC_GLYPH[verdict] || '○';
         row.appendChild(g);
 
+        // Date once per day, time thereafter. A run with no recorded timestamp
+        // (everything before provenance stamping) keeps its own date line —
+        // there is no time to show and none is invented.
         var d = document.createElement('span');
-        d.className = 'arc-date';
-        d.textContent = r.date || '—';
+        var sameDay = (r.date != null && r.date === lastDate);
+        var at = (typeof r.at === 'string') ? r.at.slice(11, 16) : '';
+        if (sameDay && /^\d\d:\d\d$/.test(at)) {
+          d.className = 'arc-date arc-time';
+          d.textContent = at;
+        } else {
+          d.className = 'arc-date';
+          d.textContent = r.date || '—';
+          lastDate = r.date;
+        }
         row.appendChild(d);
+
+        // Which box took this turn — like a lens engraving, only in the
+        // archive, never on the rail. Absent on runs that never recorded it;
+        // that absence is historical fact, not a gap to fill.
+        if (typeof r.machine === 'string' && /^[a-z][a-z0-9-]{0,23}$/.test(r.machine)) {
+          var mach = document.createElement('span');
+          mach.className = 'arc-mach';
+          mach.textContent = r.machine.replace(/-/g, ' · ');
+          mach.title = 'this turn ran on the ' + mach.textContent
+            + ' box — full environment in the receipt';
+          row.appendChild(mach);
+          // Lets the narrow-screen rule wrap only the rows that gained an
+          // element; a row with no recorded machine keeps today's single line.
+          row.classList.add('has-mach');
+        }
 
         // A row standing for a collapsed streak of consecutive same-milestone
         // same-verdict runs (schema v5) — presentation grouping only; every
@@ -1773,11 +1847,18 @@
         if (typeof r.group_count === 'number' && r.group_count >= 2) {
           var gx = document.createElement('span');
           gx.className = 'arc-x';
-          gx.textContent = '×' + r.group_count + ' nights';
-          gx.title = r.group_count + ' consecutive runs of '
-            + (r.milestone || 'this experiment') + ', same verdict — '
-            + 'every run is kept in the archive'
-            + (r.group_first_date ? ' (since ' + r.group_first_date + ')' : '');
+          gx.textContent = '×' + r.group_count + ' turns';
+          var spansBoth = Array.isArray(r.group_machines) && r.group_machines.length === 2;
+          gx.title = r.group_count + ' consecutive turns of '
+            + (r.milestone || 'this experiment') + ', same verdict'
+            // Only worth saying when the group actually spans both boxes; a
+            // single-machine streak is the unremarkable default.
+            + (spansBoth ? ', on both machines' : '')
+            + ' — every run is kept in the archive'
+            // Suppressed when the streak began today: "(since today's date)"
+            // is noise, not provenance.
+            + ((r.group_first_date && r.group_first_date !== r.date)
+                ? ' (since ' + r.group_first_date + ')' : '');
           row.appendChild(gx);
         }
 
@@ -1838,7 +1919,22 @@
         list.appendChild(all);
       }
       var sum = $('archive-summary');
-      if (sum) sum.textContent = 'every run · ' + totalRuns + ' on record';
+      if (sum) {
+        sum.textContent = 'every run · ' + totalRuns + ' on record';
+        // The one case where which machine ran a turn is the story: the boxes
+        // are splitting along machine lines on the same experiment. Stated
+        // plainly, no colour and no icon — an alarm would overclaim, and
+        // saying nothing would leave the pattern scattered across the rows.
+        if (Array.isArray(divergence) && divergence.length) {
+          var names = divergence.map(function (dv) {
+            return dv && typeof dv.milestone === 'string' ? dv.milestone : null;
+          }).filter(Boolean);
+          if (names.length) {
+            sum.appendChild(document.createTextNode(' · ' + names.join(', ')
+              + ' — the two machines are returning different verdicts.'));
+          }
+        }
+      }
       box.hidden = false;
     }
 
@@ -1863,11 +1959,22 @@
       return 'autumn';
     }
 
+    // The declared interval between turns, in hours — or null when the feed has
+    // not declared one. Never inferred from how often runs happen to arrive.
+    function turnInterval(state) {
+      var iv = state && state.turns && state.turns.expected_interval_h;
+      return (typeof iv === 'number' && isFinite(iv) && iv > 0) ? iv : null;
+    }
+
     function feedFreshness(state) {
       if (!state || state.empty || !state.last_run) return 'offline';
       var age = (labNowMs() - new Date(state.last_run).getTime()) / 3600000;
       if (!isFinite(age)) return 'offline';
-      return age <= 36 ? 'fresh' : 'quiet';
+      // Four missed cycles at the declared cadence, or the legacy 36h when no
+      // cadence is declared. Generous on purpose: one hiccup must not flap the
+      // chip, but a stretch of silence should stop reading as "fresh".
+      var iv = turnInterval(state);
+      return age <= (iv ? 4 * iv : 36) ? 'fresh' : 'quiet';
     }
 
     var _railMilestones = [];
@@ -2207,6 +2314,38 @@
       el.appendChild(document.createTextNode(freshness === 'offline'
         ? ' · live snapshot unavailable'
         : ' · last confirmed ' + ago(state.last_run)));
+      var quiet = quietMachineClause(freshness, state);
+      if (quiet) el.appendChild(document.createTextNode(quiet));
+    }
+
+    // One declared machine has gone quiet while the other keeps watering, so
+    // the feed still looks fresh and nothing else on the page would say so.
+    // NAMELESS above the fold — which box it is, is a ledger fact one scroll
+    // down, on the rows themselves. Duration only; no colour, no dot, no name.
+    // Both boxes quiet is already the '◌ feed quiet' story, so it stays silent
+    // there rather than saying the same thing twice.
+    function quietMachineClause(freshness, state) {
+      var iv = turnInterval(state);
+      if (!iv || freshness !== 'fresh') return '';
+      var last = state.turns && state.turns.last_by_machine;
+      if (!last || typeof last !== 'object') return '';
+      var names = Object.keys(last);
+      if (names.length !== 2) return '';
+      // Eight intervals — four of a machine's own alternating slots — so a
+      // single skipped turn, or a deliberate pause of an hour, never fires it.
+      var limit = 8 * iv, quiet = [];
+      for (var i = 0; i < names.length; i++) {
+        var stamp = last[names[i]];
+        if (stamp == null) { quiet.push(null); continue; }
+        var age = (labNowMs() - new Date(stamp).getTime()) / 3600000;
+        if (isFinite(age) && age > limit) quiet.push(stamp);
+      }
+      if (quiet.length !== 1) return '';
+      if (quiet[0] === null) return ' · one machine has not run yet';
+      var d = new Date(quiet[0]);
+      if (isNaN(d.getTime())) return '';
+      return ' · one machine quiet since '
+        + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     }
 
     var _renderState = { mode:'local-scene' };
@@ -2222,7 +2361,7 @@
       var total = state.total == null ? DEFAULT_TOTAL : state.total;
       var freshness = feedFreshness(state);
       var moisture = (state.moisture != null) ? state.moisture
-                   : (state.last_run ? wetFromRun(state.last_run) : 0.3);
+                   : (state.last_run ? wetFromRun(state.last_run, state) : 0.3);
 
       $('season').textContent = season;
       drawStalk(milestones, total, season);
@@ -2243,7 +2382,22 @@
       if (open && open.id) growth.push(open.id + (open.runner_available ? ' runner ready' : ' on bench'));
       $('m-growth').textContent = growth.length ? growth.join(' · ') : 'awaiting a snapshot';
       $('m-watered').textContent = state.last_run ? ago(state.last_run) : '—';
-      $('m-runs').textContent = state.runs != null ? state.runs : '—';
+      // One counter, never two. A feed that counts turns says "turns"; an older
+      // feed that only knows distinct dates says "days tended" and is equally
+      // true. The number steps up once when the turn count arrives — the
+      // curious layer explains the definition change rather than smoothing it.
+      var turnCount = state.turns && state.turns.count;
+      var runsLabel = $('m-runs-label');
+      if (typeof turnCount === 'number') {
+        $('m-runs').textContent = turnCount;
+        if (runsLabel) {
+          runsLabel.textContent = 'turns';
+          runsLabel.title = 'one turn = one scheduled pass, whichever machine took it';
+        }
+      } else {
+        $('m-runs').textContent = state.runs != null ? state.runs : '—';
+        if (runsLabel) { runsLabel.textContent = 'days tended'; runsLabel.removeAttribute('title'); }
+      }
 
       // Feed-drive the explainer's verified count so the prose can't drift stale.
       var exV = $('ex-verified');
@@ -2277,7 +2431,7 @@
       }
 
       // The current expedition — the open milestone's plain-language question,
-      // distinct from the nightly heartbeat above. Hidden if nothing is open or
+      // distinct from the turn-by-turn heartbeat above. Hidden if nothing is open or
       // the feed carries no story for it (procedural default).
       var exp = $('expedition');
       if (exp && open && (open.question_plain || open.short_label)) {
@@ -2294,7 +2448,7 @@
       }
 
       // The honest every-run ledger — hidden unless the feed carries reports[].
-      drawRunList(state.reports, state.archive_url, milestones);
+      drawRunList(state.reports, state.archive_url, milestones, state.divergence);
       setFooterStatus(freshness, state, open);
 
       _renderState = {
@@ -2321,11 +2475,15 @@
       };
     }
 
-    // Soil dries over ~16h between the lab's patient overnight runs.
-    function wetFromRun(iso) {
+    // Soil dries over ~two turn-lengths between the lab's patient runs, so the
+    // pot breathes with whatever the declared cadence is: a quiet stretch reads
+    // as drier-than-usual soil before a single word is read. Falls back to the
+    // legacy 16h when no cadence is declared.
+    function wetFromRun(iso, state) {
       var h = (labNowMs() - new Date(iso).getTime()) / 3600000;
       if (isNaN(h)) return 0.3;
-      return Math.max(0.15, Math.min(1, 1 - h / 16));
+      var iv = turnInterval(state || _lastFeedState);
+      return Math.max(0.15, Math.min(1, 1 - h / (iv ? 2 * iv : 16)));
     }
 
     // ── Boot ────────────────────────────────────────────────────────────────
@@ -2378,7 +2536,7 @@
       var freshness = feedFreshness(_lastFeedState);
       var open = (_lastFeedState.milestones || []).find(function (m) { return m && m.status === 'open'; });
       if (_lastFeedState.last_run) {
-        applyMoisture(wetFromRun(_lastFeedState.last_run));
+        applyMoisture(wetFromRun(_lastFeedState.last_run, _lastFeedState));
         $('m-watered').textContent = ago(_lastFeedState.last_run);
       }
       updateInstrumentRecord(_lastFeedState, freshness);
@@ -2480,7 +2638,7 @@
     try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
 
     // Refetched on the pot side's 5-minute tick (via the window hook below), so
-    // a long-lived tab plots tonight's run instead of a frozen instrument. A
+    // a long-lived tab plots the latest turn instead of a frozen instrument. A
     // byte-identical response skips the re-render.
     var _lastPhysicsText = null;
     function loadPhysics() {

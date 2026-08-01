@@ -12,6 +12,7 @@ run fast and never touch the live ``reports/`` or ``~/.lab``. Everything goes
 through monkeypatched tmp dirs.
 """
 import json
+import re
 from types import SimpleNamespace
 
 from lab import render
@@ -45,8 +46,12 @@ def test_commit_report_writes_permanent_pair(tmp_path, monkeypatch):
     html_file = reports / "2026-06-15-m02.html"
     json_file = reports / "2026-06-15-m02.json"
     assert html_file.exists() and json_file.exists()
-    receipt_file = reports / "receipts" / "run-2026-06-15-m02.json"
-    assert receipt_file.exists()
+    # The receipt is TURN-STAMPED (run-<date>-<hhmm>-<slug>.json) so a second
+    # turn of the same milestone on the same day cannot overwrite the first.
+    receipts = sorted((reports / "receipts").glob("run-2026-06-15-*-m02.json"))
+    assert len(receipts) == 1, f"expected one stamped receipt, got {receipts}"
+    receipt_file = receipts[0]
+    assert re.fullmatch(r"run-2026-06-15-\d{4}-m02\.json", receipt_file.name)
     assert path == html_file
     assert html_file.read_text(encoding="utf-8") == "<html>m02</html>"
     # JSON round-trips back to the same object.
