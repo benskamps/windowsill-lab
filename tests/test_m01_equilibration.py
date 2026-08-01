@@ -126,3 +126,55 @@ def test_both_real_committed_receipts_pass(tag):
         pytest.skip(f"{p.name} not in this checkout")
     ok, msg = check_m01(json.loads(p.read_text(encoding="utf-8")))
     assert ok is True, f"{tag}: {msg}"
+
+
+def test_pass43_committed_receipt_claims_no_tc():
+    """The 2026-07-29 incident (campaign pass 43, seed 1043): |M| fell
+    monotonically across a metastable shelf, the rise guard passed it, and the
+    qualified argmax crowned T=1.8. That receipt must now fail as *invalid* —
+    no T_c claimed — not as a confidently wrong peak."""
+    import json
+    from pathlib import Path
+
+    p = Path(__file__).resolve().parents[1] / "reports" / "receipts" / "run-2026-07-29-m01.json"
+    if not p.exists():
+        pytest.skip(f"{p.name} not in this checkout")
+    ok, msg = check_m01(json.loads(p.read_text(encoding="utf-8")))
+    assert ok is False
+    assert "no T_c claimed" in msg
+    # T=1.800 may appear as a *named exclusion*, never as the claimed peak.
+    assert "χ peak at T=1.800" not in msg
+
+
+def test_every_committed_receipt_keeps_its_classification():
+    """Over-tightening control: regrading the whole archive, only the already-
+    failing 2026-07-29 receipt changes class. Everything else keeps its status,
+    its exclusion list, and its peak."""
+    import json
+    from pathlib import Path
+
+    from lab.m01_quality import assess_m01_quality
+
+    receipts = sorted(
+        (Path(__file__).resolve().parents[1] / "reports" / "receipts").glob("run-*-m01.json")
+    )
+    if not receipts:
+        pytest.skip("no committed receipts in this checkout")
+    graded = 0
+    for p in receipts:
+        rep = json.loads(p.read_text(encoding="utf-8"))
+        quality = assess_m01_quality(rep)
+        exc = nonequilibrated_indices(rep)
+        assert exc is not None, f"{p.name}: guard arrays unreadable"
+        graded += 1
+        if p.name == "run-2026-07-29-m01.json":
+            assert quality["status"] == "invalid", p.name
+            assert quality["peak_t"] is None, p.name
+            continue
+        # The rise guard fully determines these receipts, exactly as before.
+        assert quality["excluded_indices"] == exc, p.name
+        assert quality["status"] == ("degraded" if exc else "ok"), p.name
+        candidates = [i for i in range(len(rep["chi"])) if i not in set(exc)]
+        old_peak = rep["T"][max(candidates, key=lambda i: float(rep["chi"][i]))]
+        assert quality["peak_t"] == pytest.approx(float(old_peak)), p.name
+    assert graded >= 30  # the archive, not a stub directory
