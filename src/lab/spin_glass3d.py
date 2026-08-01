@@ -6,7 +6,8 @@ only signature is P(q) broadening as T → 0 (no finite-T phase). **In three dim
 the story changes** — the ±J Edwards–Anderson glass has a genuine *finite-temperature*
 spin-glass transition at
 
-    T_SG ≈ 0.95   (±J / bimodal disorder, simple-cubic, the modern MC benchmark)
+    T_SG ≈ 1.10   (±J / bimodal disorder, simple-cubic, the modern MC benchmark —
+                   the often-quoted 0.95 is the GAUSSIAN-disorder value; see m12.py)
 
 detected not by any local order parameter (there is none — ⟨s_i⟩ = 0 by the ±J
 symmetry) but by the **disorder-averaged Binder cumulant crossing**: curves g_L(T) for
@@ -85,7 +86,7 @@ import torch
 @dataclass
 class SpinGlass3DConfig:
     L: int = 6
-    T_min: float = 0.5             # below T_SG ≈ 0.95 — the ladder must straddle it
+    T_min: float = 0.5             # below T_SG ≈ 1.10 — the ladder must straddle it
     T_max: float = 1.6             # above T_SG — the ergodic end PT decorrelates in
     n_temps: int = 12
     n_realizations: int = 24       # quenched disorder samples to average over
@@ -115,6 +116,8 @@ class SpinGlass3DResult:
     binder: np.ndarray             # g_L = ½(3 − [⟨q⁴⟩]/[⟨q²⟩]²), (n_temps,)
     energy: np.ndarray             # mean energy per spin, (n_temps,)
     swap_rate: np.ndarray          # PT acceptance per adjacent T-gap, (n_temps-1,)
+    swap_attempts: np.ndarray      # PT rounds attempted per adjacent T-gap, (n_temps-1,)
+    pt_health: str                 # "ok" | "off" | "degraded — gaps never swapped: [...]"
     wall_seconds: float
 
     def to_json(self) -> dict:
@@ -131,6 +134,8 @@ class SpinGlass3DResult:
             "binder": self.binder.tolist(),
             "energy": self.energy.tolist(),
             "swap_rate": self.swap_rate.tolist(),
+            "swap_attempts": self.swap_attempts.tolist(),
+            "pt_health": self.pt_health,
             "wall_seconds": self.wall_seconds,
         }
 
@@ -289,12 +294,18 @@ def run(cfg: SpinGlass3DConfig) -> SpinGlass3DResult:
         spins = _half_sweep_3d(spins, beta, Jx, Jy, Jz, mask_b, g_step)
 
     t0 = time.time()
+    # Parity comes from the swap-ROUND counter, never the sweep index: rounds fire only
+    # when s % swap_every == 0, so with an even swap_every the firing s is always even
+    # and s % 2 pins to 0 — gaps (1,2),(3,4),… would never swap and the ladder would
+    # decompose into disconnected 2-rung islands (the 2026-07-22 receipt's dead gaps).
+    n_swap_rounds = 0
     # ── Burn-in with interleaved parallel-tempering swaps ────────────────────────
     for s in range(cfg.n_burnin):
         _sweep()
         if cfg.swap_every > 0 and s % cfg.swap_every == 0:
             energies = _total_energy_3d(spins, Jx, Jy, Jz)
-            _pt_swap_round(spins, energies, beta_ladder, s % 2, g_swap)
+            _pt_swap_round(spins, energies, beta_ladder, n_swap_rounds % 2, g_swap)
+            n_swap_rounds += 1
 
     # ── Measurement (swaps continue; overlap sampled at each rung's fixed T) ──────
     edges = torch.linspace(-1.0, 1.0, cfg.n_qbins + 1, device=device)
@@ -312,9 +323,10 @@ def run(cfg: SpinGlass3DConfig) -> SpinGlass3DResult:
         _sweep()
         if cfg.swap_every > 0 and s % cfg.swap_every == 0:
             energies = _total_energy_3d(spins, Jx, Jy, Jz)
-            parity = s % 2
+            parity = n_swap_rounds % 2
             swap_acc += _pt_swap_round(spins, energies, beta_ladder, parity, g_swap)
             swap_attempts[parity:M - 1:2] += 1          # only this parity's gaps ran
+            n_swap_rounds += 1
         if s % cfg.sample_every == 0:
             sv = spins.float()                                 # (R, 2, M, L, L, L)
             # Overlap between the two replicas of each (realization, temperature).
@@ -356,6 +368,15 @@ def run(cfg: SpinGlass3DConfig) -> SpinGlass3DResult:
 
     swap_rate = swap_acc / swap_attempts.clamp_min(1.0)        # (M-1,) per-gap acceptance
 
+    # Self-alarm, derived from the attempt counters: a gap with ZERO attempted rounds
+    # means the ladder was fragmented for the whole measurement window — cold rungs
+    # could never ride to the hot end, so the run is not trustworthy as a PT result.
+    if cfg.swap_every <= 0:
+        pt_health = "off"
+    else:
+        dead = [t for t in range(M - 1) if int(swap_attempts[t].item()) == 0]
+        pt_health = "ok" if not dead else f"degraded — gaps never swapped: {dead}"
+
     return SpinGlass3DResult(
         config=cfg,
         T=T.cpu().numpy(),
@@ -369,5 +390,7 @@ def run(cfg: SpinGlass3DConfig) -> SpinGlass3DResult:
         binder=binder.cpu().numpy(),
         energy=energy.cpu().numpy(),
         swap_rate=swap_rate.cpu().numpy(),
+        swap_attempts=swap_attempts.cpu().numpy(),
+        pt_health=pt_health,
         wall_seconds=wall,
     )

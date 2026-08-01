@@ -1,10 +1,12 @@
-"""M02 finite-size scaling — the pure analysis functions (NumPy only, no GPU)."""
+"""M02 finite-size scaling — the pure analysis functions (NumPy only), plus a tiny CPU
+smoke pinning the hardware label in the headline."""
 import numpy as np
 
 from lab.fss import (
     GAMMA_OVER_NU, NU, chi_peak, collapse_coords, fit_gamma_over_nu, to_report,
-    FSSResult, FSSCurve,
+    FSSResult, FSSCurve, run_fss,
 )
+from lab.hw import hw
 
 
 def test_chi_peak_finds_max_and_location():
@@ -67,6 +69,36 @@ def _toy_result(slope=GAMMA_OVER_NU):
     return FSSResult(curves=curves, slope=s, intercept=intercept, r2=r2,
                      tc=2.2692, gamma_over_nu_theory=GAMMA_OVER_NU, nu=NU,
                      wall_seconds=120.0, config={"seed": 42})
+
+
+# ─────────────────────────── the hardware label must not overclaim ────────────────────
+def test_hw_deviceless_config_labels_cpu():
+    """NEGATIVE CONTROL: a config dict with NO device key must label CPU. The missing
+    key used to default to 'cuda', stamping 'on GPU' onto CPU-fallback headlines — the
+    committed reports/2026-07-05-m02.json carries the tell ('on GPU', no device key)."""
+    assert hw({}) == "CPU"
+    assert hw({"seed": 42, "n_sweeps": 300}) == "CPU"
+
+
+def test_hw_explicit_devices():
+    assert hw({"device": "cuda"}) == "GPU"
+    assert hw({"device": "cuda:0"}) == "GPU"
+    assert hw({"device": "cpu"}) == "CPU"
+    assert hw("hip") == "GPU"
+    assert hw("cpu") == "CPU"
+
+
+def test_run_fss_records_device_and_cpu_headline():
+    """run_fss's config dict omitted 'device' entirely, so every M02 headline claimed
+    'on GPU' regardless of the device used. A tiny CPU metropolis pass (seconds) must
+    record its device and render an 'on CPU' headline."""
+    res = run_fss(
+        L_values=(8, 16), T_min=2.27, T_max=2.40, n_temps=3,
+        n_sweeps=40, n_burnin=20, seed=3, device="cpu", updater="metropolis",
+    )
+    rep = to_report(res)
+    assert rep["headline"].endswith("on CPU"), rep["headline"]
+    assert res.config["device"] == "cpu"
 
 
 def test_to_report_shape_is_check_ready():
