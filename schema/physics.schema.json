@@ -2,7 +2,7 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://www.brokenbranch.dev/windowsill/physics.schema.json",
   "title": "windowsill physics-latest.json",
-  "description": "Compact, plottable M01 receipt. Schema v2 distinguishes the raw susceptibility argmax from the equilibrium-qualified scientific claim.",
+  "description": "Compact, plottable M01 receipt. Schema v2 distinguishes the raw susceptibility argmax from the equilibrium-qualified scientific claim. Lattice snapshots are this run's own unless snapshots_source_report + snapshots_date are present, which label them as carried forward from the named earlier run.",
   "type": "object",
   "required": ["schema", "onsager_tc", "source", "generated_from", "m01"],
   "properties": {
@@ -43,7 +43,9 @@
         "energy": { "type": "array", "items": { "type": "number" } },
         "specific_heat": { "type": "array", "items": { "type": "number" } },
         "snapshots": { "type": "object" },
-        "snapshot_L": { "type": "integer", "minimum": 1 }
+        "snapshot_L": { "type": "integer", "minimum": 1 },
+        "snapshots_source_report": { "type": "string" },
+        "snapshots_date": { "type": "string" }
       }
     }
   }
