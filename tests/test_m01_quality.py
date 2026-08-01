@@ -213,6 +213,43 @@ def test_abs_mag_present_without_err_fails_closed():
     assert "abs_mag_err" in quality["note"]
 
 
+def test_single_sample_corrupt_guard_arrays_fail_closed():
+    """A one-sample sweep has no adjacent pair, so the pair scan alone never
+    touches the arrays — corrupt elements must still fail closed, not raise
+    and not silently pass."""
+    quality = assess_m01_quality({
+        "T": [2.2], "chi": [1.0],
+        "abs_mag": ["corrupt"], "abs_mag_err": [0.1],
+    })
+    assert quality["status"] == "invalid"
+    assert "abs_mag" in quality["note"]
+    quality = assess_m01_quality({
+        "T": [2.2], "chi": [1.0],
+        "abs_mag": [0.8], "abs_mag_err": ["corrupt"],
+    })
+    assert quality["status"] == "invalid"
+    assert "abs_mag_err" in quality["note"]
+    assert "passed" not in quality["note"]
+
+
+def test_chi_only_invalid_note_names_only_the_guard_that_fired():
+    """Three ordered-phase χ spikes with |M| falling everywhere: the invalid
+    note must name the χ-scale guard alone, not a monotonic-|M| clause with an
+    empty exclusion list."""
+    T = [round(1.5 + 0.1 * i, 1) for i in range(21)]
+    mag = [0.99 - 0.002 * i for i in range(8)] + [0.28, 0.08] + \
+        [0.05 - 0.001 * i for i in range(11)]
+    chi = [900.0, 950.0, 980.0, 0.1, 0.2, 0.3, 0.6, 2.1, 750.0, 63.0,
+           25.0, 13.7, 8.7, 6.3, 4.7, 3.9, 3.3, 2.7, 2.3, 2.1, 1.8]
+    quality = assess_m01_quality({
+        "T": T, "chi": chi, "abs_mag": mag, "abs_mag_err": [0.0005] * 21,
+    })
+    assert quality["status"] == "invalid"
+    assert quality["excluded_indices"] == [0, 1, 2]
+    assert "χ-scale" in quality["note"]
+    assert "monotonic-|M|" not in quality["note"]
+
+
 def test_absent_guard_arrays_stay_legacy_ok():
     """Old receipts carry no |M| at all — deliberately no exclusions, not invalid."""
     quality = assess_m01_quality({

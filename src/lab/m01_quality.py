@@ -53,17 +53,22 @@ def _guard_scan(report: dict) -> tuple[list[int] | None, str | None]:
     if len(err) != len(T):
         return None, "abs_mag_err"
 
+    # Coerce whole arrays up front: a one-sample sweep has no adjacent pair,
+    # so a pairwise scan alone would never touch (or validate) the elements.
+    try:
+        err_values = [float(value or 0.0) for value in err]
+    except (TypeError, ValueError, OverflowError):
+        return None, "abs_mag_err"
+    try:
+        mag_values = [float(value) for value in mag]
+    except (TypeError, ValueError, OverflowError):
+        return None, "abs_mag"
+
     bad: set[int] = set()
     for i in range(len(T) - 1):
-        try:
-            left_err = float(err[i] or 0.0)
-            right_err = float(err[i + 1] or 0.0)
-        except (TypeError, ValueError, OverflowError):
-            return None, "abs_mag_err"
-        try:
-            rise = float(mag[i + 1]) - float(mag[i])
-        except (TypeError, ValueError, OverflowError):
-            return None, "abs_mag"
+        left_err = err_values[i]
+        right_err = err_values[i + 1]
+        rise = mag_values[i + 1] - mag_values[i]
         sigma = math.hypot(left_err, right_err)
         if not all(math.isfinite(v) for v in (left_err, right_err, rise, sigma)):
             continue
@@ -169,7 +174,7 @@ def assess_m01_quality(report: dict) -> dict:
     chi_only = sorted(chi_suspects - set(rise_excluded))
     valid = [i for i in range(len(T_values)) if i not in set(excluded)]
     if len(excluded) > EQUIL_MAX_EXCLUDED:
-        if chi_only:
+        if chi_only and rise_excluded:
             rise_where = ", ".join(f"T={T_values[i]:.3f}" for i in rise_excluded)
             chi_where = ", ".join(f"T={T_values[i]:.3f}" for i in chi_only)
             note = (
@@ -177,6 +182,13 @@ def assess_m01_quality(report: dict) -> dict:
                 f"samples failed equilibration guards "
                 f"({EQUIL_SIGMA:g}σ monotonic-|M|: {rise_where}; "
                 f"χ-scale: {chi_where}) — no T_c claimed"
+            )
+        elif chi_only:
+            chi_where = ", ".join(f"T={T_values[i]:.3f}" for i in chi_only)
+            note = (
+                f"sweep not equilibrated: {len(excluded)} of {len(T_values)} "
+                f"samples failed the χ-scale guard ({chi_where}) — "
+                "no T_c claimed"
             )
         else:
             note = (
