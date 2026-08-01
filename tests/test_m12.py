@@ -327,6 +327,75 @@ def test_parallel_tempering_preserves_equilibrium():
     assert np.max(np.abs(r_pt.energy - r_no.energy)) < 0.12, (r_pt.energy, r_no.energy)
 
 
+# ─────────────────────────── PT scheduling: parity must alternate ─────────────────────
+def test_even_swap_every_attempts_every_gap():
+    """NEGATIVE CONTROL for the swap scheduler. Swap rounds fire only when
+    ``s % swap_every == 0``, so with an EVEN swap_every every firing sweep index is even
+    — parity derived from ``s % 2`` pins to 0 and gaps (1,2),(3,4),… are NEVER attempted:
+    the ladder decomposes into disconnected 2-rung islands (the committed 2026-07-22 M12
+    receipt shows exactly 0.0 at every odd gap of ``swap_rate_by_L``). Parity must come
+    from the swap-ROUND counter so an even interval still alternates: every gap records
+    attempts and no gap's acceptance rate is structurally zero."""
+    cfg = SpinGlass3DConfig(
+        L=4, T_min=0.5, T_max=1.6, n_temps=6, n_realizations=6,
+        n_burnin=40, n_sweeps=200, sample_every=10, swap_every=10, seed=11, device="cpu",
+    )
+    r = run(cfg)
+    assert (r.swap_rate > 0).all(), r.swap_rate       # no structurally dead gap
+    assert (r.swap_attempts > 0).all(), r.swap_attempts
+    assert r.pt_health == "ok"
+
+
+def test_pt_health_degraded_when_only_one_parity_runs():
+    """A window that fits only ONE swap round covers only the parity-0 gaps. The engine
+    must say so itself (fail closed) instead of shipping a silent half-ladder."""
+    cfg = SpinGlass3DConfig(
+        L=4, T_min=0.5, T_max=1.6, n_temps=6, n_realizations=3,
+        n_burnin=0, n_sweeps=10, sample_every=5, swap_every=10, seed=7, device="cpu",
+    )
+    r = run(cfg)
+    assert r.swap_attempts.tolist() == [1, 0, 1, 0, 1]
+    assert r.pt_health.startswith("degraded")
+    assert "[1, 3]" in r.pt_health                    # the never-swapped gaps, by index
+    j = r.to_json()
+    assert j["swap_attempts"] == [1, 0, 1, 0, 1]
+    assert j["pt_health"] == r.pt_health
+
+
+def test_pt_health_off_when_swaps_disabled():
+    cfg = SpinGlass3DConfig(
+        L=4, T_min=0.5, T_max=1.6, n_temps=5, n_realizations=2,
+        n_burnin=10, n_sweeps=20, sample_every=5, swap_every=0, seed=13, device="cpu",
+    )
+    r = run(cfg)
+    assert r.pt_health == "off"
+    assert r.swap_attempts.tolist() == [0, 0, 0, 0]
+
+
+# ─────────────────────────── benchmark: the model actually simulated ──────────────────
+def test_benchmark_matches_bimodal_disorder():
+    """The engine draws bimodal ±J couplings (``randint(0,2)*2−1``), so the benchmark
+    must be the ±J literature value — Katzgraber–Körner–Young PRB 73, 224432 (2006)
+    give T_c = 1.120(4) for ±J vs 0.951(9) for GAUSSIAN disorder;
+    Hasenbusch–Pelissetto–Vicari refine ±J to 1.1019(29). Grading ±J physics against
+    the Gaussian 0.95 made promotion unsatisfiable as coded."""
+    assert 1.0 < T_SG_BENCHMARK < 1.2
+    # The Gaussian-disorder value must sit OUTSIDE the accepted band: a run that
+    # crossed at 0.95 is measuring a different model (or is broken) and must fail.
+    assert abs(0.95 - T_SG_BENCHMARK) > CROSSING_TOL
+
+
+def test_to_report_pt_degraded_forces_null_and_names_gaps():
+    """A resolved-looking result whose PT ladder had dead gaps is not a result — the
+    report must ship status='null' and carry the gap list from the engine counters."""
+    res = _toy_m12_result(resolved=True)
+    res.pt_health_by_L = {"8": "degraded — gaps never swapped: [1, 3]"}
+    rep = to_report(res)
+    assert rep["status"] == "null"
+    assert "gaps never swapped: [1, 3]" in rep["headline"]
+    assert rep["pt_health_by_L"]["8"].startswith("degraded")
+
+
 # ─────────────────────────── run_m12 integration (tiny) ────────────────────────────────
 def test_run_m12_integration_tiny():
     """The full multi-L runner returns a check-ready result over ≥3 sizes on a shared
@@ -344,5 +413,7 @@ def test_run_m12_integration_tiny():
     assert all(len(v) == 6 for v in result.binder_by_L.values())
     assert result.t_sg_benchmark == T_SG_BENCHMARK
     assert isinstance(result.crossing_resolved, bool)
+    assert set(result.pt_health_by_L.keys()) == {"4", "6", "8"}
+    assert all(h == "ok" for h in result.pt_health_by_L.values())
     rep = to_report(result)
     assert rep["experiment"] == "M12-spin-glass-3d"

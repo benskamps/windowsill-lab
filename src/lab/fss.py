@@ -187,7 +187,7 @@ def run_fss(
         config={
             "T_min": T_min, "T_max": T_max, "n_temps": n_temps,
             "n_sweeps": n_sweeps, "n_burnin": n_burnin, "seed": seed,
-            "updater": updater, "wolff_init": wolff_init,
+            "updater": updater, "wolff_init": wolff_init, "device": device,
         },
     )
 

@@ -4,7 +4,8 @@ The first milestone whose signature is a **multi-lattice-size crossing**, not a 
 peak or trend. Where M11 (2D EA) ordered only at T = 0, the **3D** ±J Edwards–Anderson
 glass has a genuine finite-temperature spin-glass transition at
 
-    T_SG ≈ 0.95    (±J / bimodal, simple-cubic — the modern Monte-Carlo benchmark)
+    T_SG ≈ 1.10    (±J / bimodal, simple-cubic — the modern Monte-Carlo benchmark;
+                    the often-quoted 0.95 is the GAUSSIAN-disorder value)
 
 with no local order parameter. The clean fingerprint is the **disorder-averaged Binder
 cumulant** g_L(T) = ½(3 − [⟨q⁴⟩]/[⟨q²⟩]²) computed for several lattice sizes on one
@@ -22,7 +23,7 @@ re-derive the crossing from the report arrays without torch — the same discipl
 M11's ``broadening_trend``.
 
 Honest-null is on the table and expected at small scale: resolving a clean 3-size
-crossing near 0.95 needs many disorder realizations and long parallel-tempered
+crossing near the benchmark needs many disorder realizations and long parallel-tempered
 equilibration (a GPU run). A ``--quick`` CPU pass proves the code end-to-end but will not
 generally resolve the physics; when the crossing is not clean the milestone ships as a
 ``[~]`` failed-calibration null with the reason in the report, never a fake green.
@@ -30,19 +31,22 @@ generally resolve the physics; when the crossing is not clean the milestone ship
 from __future__ import annotations
 
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import numpy as np
 
-# The modern Monte-Carlo benchmark for the ±J simple-cubic Edwards–Anderson
-# spin-glass transition. Not a closed form; the literature clusters around
-# T_SG ≈ 0.95 (e.g. Katzgraber–Körner–Young and follow-ups place it near 0.95).
-T_SG_BENCHMARK = 0.95
+# The modern Monte-Carlo benchmark for the model this engine actually simulates:
+# BIMODAL ±J couplings on the simple-cubic lattice (spin_glass3d._bonds draws
+# randint(0,2)*2−1). Katzgraber–Körner–Young, PRB 73, 224432 (2006) place the ±J
+# transition at T_c = 1.120(4) — their 0.951(9) is the GAUSSIAN-disorder value —
+# and Hasenbusch–Pelissetto–Vicari refine the ±J value to T_c = 1.1019(29).
+T_SG_BENCHMARK = 1.102
 # Documented crossing tolerance. Finite-size Binder crossings drift with the pair
 # of sizes used and carry real corrections-to-scaling, so — like M08's ±0.07 BKT
 # window — the check allows a physically-justified band around the benchmark. A
-# broken run (no crossing, or one far from 0.95) still fails by a wide margin.
-CROSSING_TOL = 0.15
+# broken run (no crossing, or one far from the benchmark) still fails by a wide
+# margin, and the Gaussian-disorder 0.95 sits outside the band.
+CROSSING_TOL = 0.10
 
 
 def pair_crossing(T, g_small, g_large):
@@ -132,6 +136,10 @@ class M12Result:
     n_realizations: int
     wall_seconds: float
     config: dict
+    # PT scheduling receipts (per L, str keys like the other by_L dicts): the raw
+    # attempt counters and the engine's own health verdict derived from them.
+    swap_attempts_by_L: dict = field(default_factory=dict)
+    pt_health_by_L: dict = field(default_factory=dict)
 
 
 def run_m12(
@@ -153,8 +161,10 @@ def run_m12(
     ``L_values`` on the identical ``(T_min, T_max, n_temps)`` ladder, collects the
     disorder-averaged Binder cumulant g_L(T) for each size, and reads off the multi-L
     crossing. The verdict ``crossing_resolved`` is True only when a crossing exists,
-    lands within ``CROSSING_TOL`` of the T_SG ≈ 0.95 benchmark, AND the overlap stays
-    symmetric (max|⟨q⟩| ≈ 0, the parallel-tempering equilibration guard). ``check_m12``
+    lands within ``CROSSING_TOL`` of the T_SG ≈ 1.10 (±J) benchmark, the overlap stays
+    symmetric (max|⟨q⟩| ≈ 0, the parallel-tempering equilibration guard), AND every
+    size's PT ladder reports ``pt_health == "ok"`` — a ladder with never-swapped gaps
+    is fragmented into islands, so its crossing is not evidence. ``check_m12``
     re-derives the crossing from the reported per-L arrays.
     """
     from .spin_glass3d import SpinGlass3DConfig, run
@@ -163,7 +173,7 @@ def run_m12(
     L_values = [int(L) for L in L_values]
     T_ref = None
     binder_by_L, q2_by_L, q4_by_L, qmean_by_L = {}, {}, {}, {}
-    energy_by_L, swap_by_L = {}, {}
+    energy_by_L, swap_by_L, attempts_by_L, pt_by_L = {}, {}, {}, {}
     pq_ref, centers, pq_ref_L = None, None, None
     max_abs_qmean = 0.0
 
@@ -182,6 +192,8 @@ def run_m12(
         qmean_by_L[L] = r.q_mean.tolist()
         energy_by_L[L] = r.energy.tolist()
         swap_by_L[L] = r.swap_rate.tolist()
+        attempts_by_L[L] = r.swap_attempts.tolist()
+        pt_by_L[L] = r.pt_health
         max_abs_qmean = max(max_abs_qmean, float(np.max(np.abs(r.q_mean))))
         # Keep the largest L's P(q) for the report figure (richest structure).
         pq_ref, centers, pq_ref_L = r.pq.tolist(), r.q_bin_centers.tolist(), L
@@ -191,7 +203,10 @@ def run_m12(
     crossing_T, pairs, mean_T = locate_tsg(T_ref, binder_by_L)
     near = crossing_T is not None and abs(crossing_T - T_SG_BENCHMARK) <= CROSSING_TOL
     symmetric = max_abs_qmean <= 0.15
-    resolved = bool(near and symmetric)
+    # A ladder with never-swapped gaps is fragmented — whatever crossing it shows is
+    # not evidence of the transition, so it can never grade as resolved.
+    pt_ok = all(not str(h).startswith("degraded") for h in pt_by_L.values())
+    resolved = bool(near and symmetric and pt_ok)
 
     result = M12Result(
         T=T_ref,
@@ -205,6 +220,8 @@ def run_m12(
         q_mean_by_L={str(k): v for k, v in qmean_by_L.items()},
         energy_by_L={str(k): v for k, v in energy_by_L.items()},
         swap_rate_by_L={str(k): v for k, v in swap_by_L.items()},
+        swap_attempts_by_L={str(k): v for k, v in attempts_by_L.items()},
+        pt_health_by_L={str(k): v for k, v in pt_by_L.items()},
         crossing_T=crossing_T,
         crossing_pairs=pairs,
         crossing_mean_T=mean_T,
@@ -232,16 +249,27 @@ def to_report(result: M12Result) -> dict:
 
     Distinct ``experiment`` tag (``M12-spin-glass-3d``) so no single-peak χ/C or 2D-EA
     check misreads it — M12's signature is a **multi-L Binder crossing** at the finite-T
-    transition T_SG ≈ 0.95. Carries the shared T ladder, the per-L Binder / ⟨q²⟩ / ⟨q⁴⟩ /
-    ⟨q⟩ arrays, the located crossing, and the P(q) at the largest L, so ``check_m12`` can
-    re-derive the crossing verdict. When the crossing is not resolved the report carries
-    ``status: "null"`` — an honest failed-calibration grey leaf (never a fake green, and
-    never a mislabelled transition).
+    transition T_SG ≈ 1.10 (±J). Carries the shared T ladder, the per-L Binder / ⟨q²⟩ /
+    ⟨q⁴⟩ / ⟨q⟩ arrays, the located crossing, the P(q) at the largest L, and the per-L PT
+    attempt counters + health, so ``check_m12`` can re-derive the crossing verdict. When
+    the crossing is not resolved — or any size's PT ladder carried never-swapped gaps —
+    the report ships ``status: "null"`` with the reason in the headline (never a fake
+    green, and never a mislabelled transition).
     """
     ct = result.crossing_T
     ct_str = f"{ct:.3f}" if ct is not None else "none"
-    verdict = ("crossing at T_SG≈%.3f" % ct if result.crossing_resolved
-               else "no clean crossing near 0.95 — calibration null")
+    # Dead-gap alarm: the engine's per-L health strings, derived from its own attempt
+    # counters. Any degraded ladder overrides a resolved-looking crossing.
+    pt_dead = {L: h for L, h in (result.pt_health_by_L or {}).items()
+               if str(h).startswith("degraded")}
+    if pt_dead:
+        gap_str = "; ".join(f"L={L}: {pt_dead[L]}"
+                            for L in sorted(pt_dead, key=lambda k: int(k)))
+        verdict = f"parallel tempering {gap_str} — calibration null"
+    elif result.crossing_resolved:
+        verdict = "crossing at T_SG≈%.3f" % ct
+    else:
+        verdict = f"no clean crossing near {result.t_sg_benchmark:.2f} — calibration null"
     headline = (
         f"3D Edwards–Anderson spin glass (L={result.L_values}, "
         f"{result.n_realizations} disorder realizations, parallel tempering): "
@@ -261,6 +289,8 @@ def to_report(result: M12Result) -> dict:
         "q_mean_by_L": result.q_mean_by_L,
         "energy_by_L": result.energy_by_L,
         "swap_rate_by_L": result.swap_rate_by_L,
+        "swap_attempts_by_L": result.swap_attempts_by_L,
+        "pt_health_by_L": result.pt_health_by_L,
         "q_bin_centers": result.q_bin_centers,
         "pq_ref": result.pq_ref,
         "pq_ref_L": result.pq_ref_L,
@@ -274,8 +304,10 @@ def to_report(result: M12Result) -> dict:
         "wall_seconds": result.wall_seconds,
         "config": result.config,
     }
-    # Honest failed-calibration marker: a folded grey leaf on the windowsill, never a
-    # green one. Omitted when the crossing resolves (the archive/check grades that).
-    if not result.crossing_resolved:
+    # Failed-calibration marker: a folded grey leaf on the windowsill, never a green
+    # one. Omitted only when the crossing resolves AND every PT ladder was healthy
+    # (the archive/check grades that); a fragmented ladder forces the null regardless
+    # of what the crossing flag says.
+    if pt_dead or not result.crossing_resolved:
         report["status"] = "null"
     return report
