@@ -238,6 +238,117 @@ def test_run_ledger_validates_against_pot_schema(tmp_path, monkeypatch):
     assert validate(snap, SCHEMA) == []
 
 
+# ── run_ledger grouping: consecutive same-(milestone, verdict) streaks ────────
+# Presentation-only collapse (2026-08-01): repeated nightly reruns of the same
+# milestone with the same verdict ride pot.json as ONE row carrying
+# ``group_count`` / ``group_first_date``. The archive index + receipts keep
+# every run untouched. The grouping key includes the VERDICT, so a verdict
+# change always breaks the streak by construction — a null after verified can
+# never be swallowed into a green group.
+
+def _m01_null_sweep():
+    """A χ-sweep peaking at T=1.6 — far from Onsager 2.269 → honest null."""
+    return {"T": [1.5, 1.6, 1.7], "chi": [1.0, 9.0, 1.0]}
+
+
+def test_run_ledger_verdict_change_always_breaks_streak(tmp_path, monkeypatch):
+    """N1 — the load-bearing negative control. Mirrors the real committed
+    M01 history: 7/28 verified / 7/29 null / 7/30 verified. Three rows MUST
+    come out — merging any of them would hide a failed calibration inside a
+    green group (or a recovery inside a grey one)."""
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    _write_report(reports, "2026-07-28-m01", mtime=1000)
+    _write_report(reports, "2026-07-29-m01", mtime=2000, **_m01_null_sweep())
+    _write_report(reports, "2026-07-30-m01", mtime=3000)
+    rows = run_ledger()
+    assert [(r["date"], r["verdict"]) for r in rows] == [
+        ("2026-07-30", "verified"),
+        ("2026-07-29", "null"),
+        ("2026-07-28", "verified"),
+    ]
+    # Streaks of one carry NO group fields — a lone run is not a group.
+    for r in rows:
+        assert "group_count" not in r
+        assert "group_first_date" not in r
+
+
+def test_run_ledger_non_adjacent_same_milestone_stays_separate(tmp_path, monkeypatch):
+    """N2 — consecutiveness is required: M01, M02, M01 never groups the two
+    M01 rows across the M02 between them."""
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    _write_report(reports, "2026-07-01-m01", mtime=1000)
+    _write_report(reports, "2026-07-02-m02", mtime=2000, **_m02_good())
+    _write_report(reports, "2026-07-03-m01", mtime=3000)
+    rows = run_ledger()
+    assert [r["milestone"] for r in rows] == ["M01", "M02", "M01"]
+    for r in rows:
+        assert "group_count" not in r
+
+
+def test_run_ledger_collapses_streak_to_newest_row_with_count(tmp_path, monkeypatch):
+    """A 5-night verified M01 streak rides pot.json as ONE row: newest date,
+    ``group_count`` 5, ``group_first_date`` = the oldest night."""
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    dates = ["2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24"]
+    for i, d in enumerate(dates):
+        _write_report(reports, f"{d}-m01", mtime=1000 + i)
+    rows = run_ledger()
+    assert len(rows) == 1
+    row = rows[0]
+    assert row["date"] == "2026-07-24"
+    assert row["verdict"] == "verified"
+    assert row["group_count"] == 5
+    assert row["group_first_date"] == "2026-07-20"
+
+
+def test_run_ledger_rotation_day_never_merges_across_milestones(tmp_path, monkeypatch):
+    """A rotation-shaped day — several different milestones sharing one date —
+    stays several rows: the group key is (milestone, verdict), never the date."""
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    _write_report(reports, "2026-08-01-m01", mtime=1000)
+    _write_report(reports, "2026-08-01-m02", mtime=2000, **_m02_good())
+    _write_report(reports, "2026-08-01-m03", mtime=3000,
+                  experiment="M03-data-collapse", headline="collapse run")
+    _write_report(reports, "2026-08-01-m06", mtime=4000,
+                  experiment="M06-3d-ising", headline="3d run")
+    rows = run_ledger()
+    assert len(rows) == 4
+    assert {r["milestone"] for r in rows} == {"M01", "M02", "M03", "M06"}
+    for r in rows:
+        assert "group_count" not in r
+
+
+def test_run_ledger_grouping_leaves_archive_surfaces_untouched(tmp_path, monkeypatch):
+    """The collapse is presentation-only: ``scan_runs`` still returns every raw
+    run and ``render_index`` (reports/index.html) still lists every night of a
+    collapsed streak — nothing is deleted anywhere."""
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    dates = ["2026-07-20", "2026-07-21", "2026-07-22", "2026-07-23", "2026-07-24"]
+    for i, d in enumerate(dates):
+        _write_report(reports, f"{d}-m01", mtime=1000 + i)
+    assert len(scan_runs()) == 5
+    html = render_index()
+    for d in dates:
+        assert d in html
+    assert len(run_ledger()) == 1                 # while the public rail groups
+
+
+def test_grouped_ledger_validates_against_pot_schema(tmp_path, monkeypatch):
+    """A grouped ledger row (group_count + group_first_date) conforms to
+    pot.schema.json v5 inside a full snapshot."""
+    reports, _lab_home = _patch(tmp_path, monkeypatch)
+    _write_report(reports, "2026-07-22-m01", mtime=1000)
+    _write_report(reports, "2026-07-23-m01", mtime=2000)
+    _write_report(reports, "2026-07-24-m01", mtime=3000)
+    ledger = run_ledger()
+    assert len(ledger) == 1 and ledger[0]["group_count"] == 3
+    snap = publish.build_snapshot(
+        publish.parse_milestones(""), "x", 3, 47.0, reports_ledger=ledger,
+    )
+    from tests.test_schema import SCHEMA, validate
+    assert validate(snap, SCHEMA) == []
+
+
 # ── render_index: the HTML page — every run, nulls honest, all linked ─────────
 
 def test_render_index_shows_every_run_including_null(tmp_path, monkeypatch):

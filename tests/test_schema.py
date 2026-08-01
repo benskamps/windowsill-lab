@@ -182,6 +182,35 @@ def test_report_status_enum_allows_unscored():
     assert validate({"reports": [ok]}, SCHEMA) == []
 
 
+# ── v5: presentation grouping — group_count / group_first_date ───────────────
+# Consecutive same-milestone same-verdict runs collapse to their newest row in
+# pot.json's reports[]; the archive index keeps every run. The fields are
+# additive + optional so old consumers degrade cleanly.
+
+def test_grouped_report_row_conforms():
+    grouped = dict(
+        VALID_REPORT, verdict="verified",
+        group_count=4, group_first_date="2026-07-20",
+    )
+    assert validate({"reports": [grouped]}, SCHEMA) == []
+    # group_first_date may be null (an undated streak start degrades honestly).
+    undated = dict(VALID_REPORT, group_count=2, group_first_date=None)
+    assert validate({"reports": [undated]}, SCHEMA) == []
+
+
+def test_group_count_of_one_is_rejected():
+    """N3 — a lone run is NOT a group: the producer omits the fields entirely
+    for streaks of one, and the contract enforces it (minimum 2). A row
+    claiming group_count 1 is a producer bug, not a valid degenerate group."""
+    bad = {"reports": [dict(VALID_REPORT, group_count=1)]}
+    assert validate(bad, SCHEMA)
+
+
+def test_schema_version_5_accepted_and_6_rejected():
+    assert validate({"schema_version": 5}, SCHEMA) == []
+    assert validate({"schema_version": 6}, SCHEMA)
+
+
 def test_latest_report_documents_ledger_identity_fields():
     latest = {
         "milestone": "M01",
