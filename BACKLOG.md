@@ -4,6 +4,43 @@ Where the windowsill is headed. Not commitments — a place to park ideas so the
 don't get lost, and so the shape of the project stays legible. Roughly ordered
 by how soon they matter.
 
+## ⭐ North star — the frontier gate (declared 2026-08-02, Ben)
+
+**The windowsill is "frontier" on the day one of its numbers survives BOTH its
+own check gate AND a literature search that comes back empty.** Everything below
+this line serves that crossing. Honest ladder position as of the declaration:
+rung 0–1 (reproduce known physics) done across five tracks; rung 1.5 (falsify
+your own conjecture with receipts) crossed 2026-08-02 by K02; rung 2 (a
+certified-novel number) not attempted. The wall is not compute — it is
+**certifying novelty**, and physics has no OEIS: the literature search IS the
+gate, so it must be built with the same rigor as `checks.py`.
+
+Goals, nearest first:
+
+1. **K02 literature cross-check** — grade the measured r*-collapse (∝ N^−0.28)
+   against published Kuramoto finite-size scaling (Hong–Chaté–Tang–Park 2015,
+   Daido 1990, successors). Expected outcome: rediscovery (an honest label, and
+   the first live test of the novelty-certification muscle). Small chance the
+   estimator-specific exponent is unpublished — then this IS the crossing.
+   Downstream either way: the /fireflies/ page's "peaks at r = 0.4" sentence
+   gets the finite-size reframe.
+2. **K03 — the Run 02 fork questions** (does a coverage-optimizing schedule beat
+   ALOHA; does the desync end have its own optimal τ). Best odds in the estate:
+   the framing is ours, the quantities plausibly sit behind soft walls nobody
+   tabulated. Source: coherence-lab Run 02 report (RUN02-TAU.md).
+3. **A novelty-certification protocol for physics** — the Erdős Check discipline
+   transposed: pinned sources, adversarial search for prior art, a verdict
+   vocabulary (rediscovered / extends / unpublished), and a receipt. Without
+   this, no rung-2 claim is trustworthy; with it, the *method* is publishable
+   even when every number turns out known.
+4. **M12 valid rerun** (parity fix landed, GPU capped 240 W) — then spin-glass
+   territory only via niche observables; the exponent-precision race belongs to
+   Janus-class hardware and we do not pretend otherwise.
+
+Supporting invariant: the bench stays trustworthy — armed rotation on both
+boxes, receipts immutable (#83), one turn per box (#84), and every claim graded
+by a check before it is spoken.
+
 ## Instrument — a cluster algorithm (the next big unlock)
 
 M02 (finite-size scaling) landed cleanly over L = 32–256 but **stops there**: the
