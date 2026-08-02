@@ -3330,6 +3330,55 @@ def _plot_calibration(report: dict) -> str:
         axes[1].set_ylabel("χ = N · Var(r)")
         axes[1].set_title("fluctuation peak locates K_c")
         axes[1].legend(frameon=False, fontsize=8)
+    elif exp.startswith("K02"):
+        # Left: χ against the MEASURED coherence, one curve per population size — the
+        # whole milestone in one picture, because the peaks march left as N grows.
+        # Right: that march plotted against N, with Run 01's N-independent 2/5 as the
+        # flat line the data is being tested against.
+        fig, axes = plt.subplots(1, 2, figsize=(9.4, 3.9))
+        rungs = report.get("rungs") or []
+        shades = ["#d9c6a8", "#c2a374", "#a8834f", "#8a6435", "#5f4222"]
+        r_stars, ns = [], []
+        for j, rung in enumerate(rungs):
+            r = np.asarray(rung.get("r_mean", []), dtype=float)
+            chi = np.asarray(rung.get("chi", []), dtype=float)
+            if r.size == 0:
+                continue
+            color = shades[j % len(shades)]
+            axes[0].plot(r, chi, "o-", ms=3, lw=1.0, color=color, label=f"N={rung.get('n')}")
+            star = rung.get("r_star")
+            if star is not None:
+                axes[0].axvline(float(star), ls=":", lw=0.8, color=color)
+                r_stars.append(float(star))
+                ns.append(float(rung.get("n", 0)))
+        run01 = float(report.get("run01_r_star", 0.4))
+        axes[0].axvline(run01, ls="--", lw=1.2, color="#a2553f",
+                        label=f"Run 01  r* = 2/5 = {run01:g}")
+        axes[0].set_xlabel("measured coherence  r")
+        axes[0].set_ylabel("χ = N · Var(r)")
+        axes[0].set_title("the peak marches left as N grows")
+        axes[0].legend(frameon=False, fontsize=7)
+        if r_stars:
+            axes[1].plot(ns, r_stars, "o", ms=5, color="#7a5c3e",
+                         label="measured argmax  r*(N)")
+            # The better-conditioned reading: the fitted interior maximum, which is a
+            # property of the whole curve rather than one sample of it.
+            fitted = report.get("fit_peak_ladder") or []
+            if len(fitted) == len(ns):
+                axes[1].plot(ns, fitted, "s-", ms=4, lw=1.1, color="#667c86",
+                             label="fitted interior max  p/(p+q)")
+                slope = report.get("fit_peak_exponent")
+                if slope is not None and np.isfinite(float(slope)):
+                    ref = fitted[0] * (np.asarray(ns) / ns[0]) ** float(slope)
+                    axes[1].plot(ns, ref, ":", lw=1.0, color="#b88963",
+                                 label=f"∝ N^{float(slope):.2f}")
+            axes[1].axhline(run01, ls="--", lw=1.2, color="#a2553f",
+                            label="Run 01  r* = 2/5 (N-independent)")
+            axes[1].set_xscale("log"); axes[1].set_yscale("log")
+            axes[1].legend(frameon=False, fontsize=7)
+        axes[1].set_xlabel("population size  N")
+        axes[1].set_ylabel("peak location  r*")
+        axes[1].set_title("does the shape survive N?")
     elif exp.startswith("M16"):
         fig, axes = plt.subplots(1, 2, figsize=(9, 3.8))
         tws = [int(x) for x in report["waiting_times"]]

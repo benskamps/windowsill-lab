@@ -92,6 +92,7 @@ Usage:
   lab m16             run M16: 3D spin-glass aging — compare t/t_w with t−t_w collapse
   lab m17             run M17: KPZ growth on a ring — β=1/3, α=1/2, z=3/2 + Tracy–Widom class
   lab k01             run K01: Kuramoto synchronization — verify K_c = 2γ (Track K)
+  lab k02             run K02: does the χ(r) shape survive N? (Track K)
   lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
   lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
   lab i01             run I01: calibrate a real capped-CMOS dark-frame stack
@@ -555,6 +556,39 @@ def _parse_k01(args):
     if ns.quick:
         ns.n, ns.points = 500, 13
         ns.t_burn, ns.t_measure = 50.0, 150.0
+    return ns
+
+
+def _parse_k02(args):
+    # Same import-late rule as _parse_k01: the parser defaults are anchored to the
+    # ladder identity rather than re-typed beside it, so the CLI and the runner
+    # cannot drift.
+    from . import k02 as k02_mod
+
+    p = argparse.ArgumentParser(add_help=False)
+    # K02's control is not one coupling but a LADDER of population sizes. The fixed
+    # identity is the 5-rung ladder over 3 initial conditions at γ=0.5; --quick
+    # deliberately changes it, which makes the run a diagnostic rather than this
+    # measurement (checks.check_k02 says so out loud).
+    p.add_argument("--ladder", type=str,
+                   default=",".join(str(n) for n in k02_mod.CALIBRATION_LADDER),
+                   help="comma-separated N-ladder (default 250,500,1000,2000,4000)")
+    p.add_argument("--seeds", type=str,
+                   default=",".join(str(s) for s in k02_mod.CALIBRATION_SEEDS),
+                   help="comma-separated initial conditions averaged per rung")
+    p.add_argument("--gamma", type=float, default=k02_mod.CALIBRATION_GAMMA,
+                   help="Lorentzian half-width γ; exact K_c = 2γ (default 0.5)")
+    p.add_argument("--quick", action="store_true",
+                   help="small fast pass — proves the ladder, the fits, and the check end to end")
+    p.add_argument("--dt", type=float, default=k02_mod.DT)
+    p.add_argument("--t-burn", type=float, default=k02_mod.T_BURN)
+    p.add_argument("--t-measure", type=float, default=k02_mod.T_MEASURE)
+    ns = p.parse_args(args)
+    if ns.quick:
+        ns.ladder, ns.seeds = "250,500", "42"
+        ns.t_burn, ns.t_measure = 20.0, 60.0
+    ns.ladder = tuple(int(x) for x in ns.ladder.split(",") if x.strip())
+    ns.seeds = tuple(int(x) for x in ns.seeds.split(",") if x.strip())
     return ns
 
 
@@ -1372,6 +1406,44 @@ def main(argv=None):
                   f"(expected {a['expected']}, {a['decisiveness']:.1f}×) "
                   f"{'✓' if a['correct'] else '✗'}")
         verdict = ("KPZ exponents + Tracy–Widom assignment reproduced"
+                   if report["status"] == "pass" else "[~] null — see the report")
+        print(f"  → {verdict} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "k02":
+        ns = _parse_k02(args[1:])
+        from . import k02 as k02_mod
+        from . import render as render_mod
+        k_c = 2.0 * ns.gamma
+        print(f"K02 susceptibility shape · N-ladder {list(ns.ladder)} · "
+              f"{len(ns.seeds)} initial conditions · γ={ns.gamma} · exact K_c = 2γ = {k_c:g}")
+        print(f"  testing Run 01's χ(r) = a·r²(1−r)³ with its interior max at r* = 2/5")
+
+        def progress(stage, done, total, n):
+            if stage == "rung":
+                print(f"  · rung {done + 1}/{total}: N={n} oscillators")
+
+        result = k02_mod.run_k02(
+            ladder=ns.ladder, gamma=ns.gamma, seeds=ns.seeds, dt=ns.dt,
+            t_burn=ns.t_burn, t_measure=ns.t_measure, progress=progress,
+        )
+        report = k02_mod.to_report(result)
+        for rung in result.rungs:
+            print(f"  → N={rung.n:5d}  r*={rung.r_star:.4f} ±{rung.r_resolution:.4f} "
+                  f"(grid)  K_peak={rung.k_peak:.4f}  free (p,q)="
+                  f"({rung.fit_free['p']:.2f},{rung.fit_free['q']:.2f}) R²="
+                  f"{rung.fit_free['r2']:.3f}  pinned (2,3) R²={rung.fit_run01['r2']:.3f}")
+        print(f"  → r* {result.rungs[0].r_star:.4f} → {result.rungs[-1].r_star:.4f} across the "
+              f"ladder, scaling as N^{result.scaling_exponent:.3f} (R²={result.scaling_r2:.3f}) "
+              f"vs Run 01's N-independent 2/5")
+        verdict = ("interior peak resolved at every N; see the report for the shape verdict"
                    if report["status"] == "pass" else "[~] null — see the report")
         print(f"  → {verdict} · {result.wall_seconds:.0f}s")
         path = render_mod.render_calibration(report)
