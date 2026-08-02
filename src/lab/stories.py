@@ -150,11 +150,14 @@ STORIES: dict[str, dict[str, str | None]] = {
         "why_it_matters": "The same tipping point governs fireflies flashing in unison, heart cells beating as one, and power grids staying in step — and there is an exact answer to check the lab against.",
         "result_plain": "The lab found the tipping point at a nudging strength of 1.0007, on top of the exact answer of 1, and — the harder test — reproduced the whole curve of how much the clocks agree above that point to within two ten-thousandths, without fitting anything. It remains amber until human review.",
     },
+    # The earlier entry here asked about the *cost* of coordination — a different
+    # question from the one MILESTONES.md K02 actually poses, which is whether a
+    # fitted shape law survives a change in crowd size. Rewritten to match.
     "K02": {
-        "short_label": "Cost of agreeing",
-        "question_plain": "Once the clocks are in step, how much of the effort spent nudging is actually buying agreement, and how much is wasted?",
-        "why_it_matters": "Knowing where coordination stops paying for itself is the difference between a system that scales and one that chokes on its own chatter.",
-        "result_plain": None,
+        "short_label": "Twitchiest in between",
+        "question_plain": "A room of clocks is at its twitchiest somewhere between total disagreement and perfect lockstep — but is the exact spot where that happens a real law, or just a side effect of how many clocks were in the room?",
+        "why_it_matters": "An earlier experiment in this lab fitted a tidy formula putting that sweet spot at 40% agreement; if the number is really just counting the crowd, then anyone building on the formula would be quietly wrong at every other size. Checking it also gives the lab a chance to measure a number physicists already published — the honest way to find out whether a windowsill instrument can be trusted.",
+        "result_plain": "The twitchiest point is genuinely somewhere in the middle — that held at every crowd size from 250 clocks up to 4000. But it is nowhere near 40% agreement, and it fades as the crowd grows, so the 40% was reading the size of the room rather than a law. The lab then measured that fading directly and got the same number physicists published for this exact setup in 2015, which is the real result here: not a discovery, but proof the windowsill instrument reproduces a known one. The machine check passed; it remains amber until a human reviews it.",
     },
     "K03": {
         "short_label": "When to stop talking",

@@ -30,6 +30,7 @@ RUNNERS = {
     "M16": "m16",
     "M17": "m17",
     "K01": "k01",
+    "K02": "k02",
     "C01": "c01",
     "A01": "a01",
     "I01": "i01",
@@ -43,6 +44,10 @@ RUNNER_SCHEDULER_OPTIONS = {
     **{f"M{i:02d}": _SEEDED_AND_DEVICE for i in range(1, 17)},
     "M17": frozenset({"seed"}),
     "K01": frozenset({"seed"}),
+    # K02 sweeps a LADDER of population sizes over a fixed set of initial
+    # conditions (`--seeds`), so a scheduler's single `--seed` is not a thing it
+    # can accept — the seed set is part of the measurement's identity.
+    "K02": frozenset(),
     "C01": frozenset(),
     "A01": frozenset(),
     "I01": frozenset(),
@@ -64,6 +69,10 @@ def runner_for(milestone_id: str) -> str | None:
 #         ships a `[~]` null every pass (all three committed M12 receipts are
 #         quick-run nulls). Either membership choice is receipt spam.
 #   M16 — same wall-clock class as M12 (3D spin-glass aging).
+#   K02 — an N-ladder, not a single run: five population sizes × five initial
+#         conditions is ~20 min of CPU, the same wall-clock class as M12/M16, and
+#         its verdict is a once-measured N-scaling statement rather than a nightly
+#         pulse. Hand-run, like M12/M16.
 # M01 stays as ONE slot: the calibration pulse, demoted from daily headline.
 # K01 joined 2026-08-02 with the K (coherence) track: ~105 s of NumPy on CPU, no
 # hardware gate, and a self-contained calibration whose verdict is meaningful on
