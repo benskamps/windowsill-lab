@@ -11,9 +11,21 @@ runner and the fallback was a single hardcoded heartbeat instead of a rotation
 """
 import json
 
+import pytest
+
 import lab.cli as cli
 from lab import curriculum
 from lab.publish import parse_milestones
+
+
+@pytest.fixture(autouse=True)
+def _isolated_lab_home(tmp_path, monkeypatch):
+    """Non-dry `lab next` now takes a run lock under ``LAB_HOME``. Redirect it so
+    no test ever creates a lock in the live ``~/.lab`` — a leaked one there would
+    make the real scheduler skip its next slot."""
+    home = tmp_path / "lab-home"
+    home.mkdir()
+    monkeypatch.setattr(cli, "LAB_HOME", home)
 
 
 def _rotation_receipts(tmp_path, *entries):

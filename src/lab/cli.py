@@ -1,4 +1,5 @@
 import argparse
+import contextlib
 import json
 import os
 import sys
@@ -13,6 +14,140 @@ from .curriculum import RUNNERS, filter_scheduler_options
 # matplotlib, so ising/render are imported lazily inside `run`. LAB_HOME is a
 # trivial constant we keep here to avoid importing render just for the path.
 LAB_HOME = Path.home() / ".lab"
+
+# One turn per box. See `next_run_lock` below and tests/test_next_lock.py.
+NEXT_LOCK_NAME = "next.lock"
+
+
+class LockBusy(Exception):
+    """Another live `lab next` turn owns the run lock."""
+
+    def __init__(self, pid, started):
+        self.pid = pid
+        self.started = started
+        super().__init__(f"lab next is already running (pid {pid} since {started})")
+
+
+def _process_is_live_python(pid) -> bool:
+    """Is ``pid`` a running python interpreter?
+
+    Liveness alone is not enough on Windows, where PIDs are recycled quickly: a
+    reused PID would make a stale lock look live and wedge the scheduler for
+    good. So we also check the process NAME where we can. ``psutil`` gives us
+    that cheaply but is deliberately NOT a declared dependency of this package —
+    when it is absent we fall back to a liveness-only probe and accept the small
+    reuse risk, which costs at most one skipped slot (the next turn's takeover
+    path recovers).
+    """
+    if not isinstance(pid, int) or pid <= 0:
+        return False
+    try:
+        import psutil  # noqa: PLC0415 — optional; never a declared dependency
+    except ImportError:
+        pass
+    else:
+        try:
+            return "python" in psutil.Process(pid).name().lower()
+        except Exception:  # noqa: BLE001 — no such process / access denied
+            return False
+    if os.name == "nt":
+        import ctypes
+
+        PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+        STILL_ACTIVE = 259
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+        if not handle:
+            return False
+        try:
+            code = ctypes.c_ulong()
+            if not kernel32.GetExitCodeProcess(handle, ctypes.byref(code)):
+                return False
+            return code.value == STILL_ACTIVE
+        finally:
+            kernel32.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True          # exists, owned by someone else
+    return True
+
+
+def _read_lock(path):
+    """Parse a lock file, or return ``None`` when it is missing/unreadable.
+
+    An unparseable lock names no owner, so it cannot be honored — treat it as
+    stale and fail toward running rather than toward a silent standstill.
+    """
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def note_lock_milestone(path, milestone) -> None:
+    """Stamp the running milestone into an already-held lock.
+
+    Selection only knows WHAT it is running after the lock is taken, and a lock
+    that says `M02 since 12:00` is the difference between a diagnosable box and
+    a mystery. Best-effort: never fail a real turn over its own bookkeeping.
+    """
+    payload = _read_lock(path) or {}
+    payload["milestone"] = milestone
+    try:
+        path.write_text(json.dumps(payload), encoding="utf-8")
+    except OSError:
+        pass
+
+
+@contextlib.contextmanager
+def next_run_lock(path=None):
+    """Hold the one-turn-per-box lock for the duration of a `lab next` turn.
+
+    Overlap prevention lives HERE, in the process that actually knows whether a
+    turn is running — not in the scheduled task's ExecutionTimeLimit, which the
+    2026-08-02 incident falsified: Task Scheduler killed the powershell wrapper
+    at the 2h mark and the python child kept running, so the limit prevented no
+    overlap and only orphaned the logger.
+
+    Raises ``LockBusy`` when a live python process already holds it. A lock whose
+    owner is dead (killed turn, reboot, power loss) is announced and taken over.
+    """
+    path = Path(path) if path is not None else LAB_HOME / NEXT_LOCK_NAME
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = json.dumps({
+        "pid": os.getpid(),
+        "started": datetime.now(timezone.utc).isoformat(),
+        "milestone": None,
+    })
+    try:
+        # O_EXCL so two turns starting in the same instant cannot both win.
+        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+    except FileExistsError:
+        holder = _read_lock(path)
+        held_pid = holder.get("pid") if holder else None
+        if holder is not None and _process_is_live_python(held_pid):
+            raise LockBusy(held_pid, holder.get("started", "unknown")) from None
+        print(
+            f"lab next · stale lock from pid {held_pid} "
+            f"(since {holder.get('started', 'unknown') if holder else 'unreadable'}) "
+            "— taking it over"
+        )
+        fd = os.open(path, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)
+    with os.fdopen(fd, "w", encoding="utf-8") as fh:
+        fh.write(payload)
+    try:
+        yield path
+    finally:
+        # Only clear a lock we still own: if a later turn decided ours was stale
+        # and took over, that lock is theirs to release.
+        current = _read_lock(path)
+        if current is None or current.get("pid") == os.getpid():
+            with contextlib.suppress(OSError):
+                path.unlink()
 
 # Milestone → runnable ``lab`` subcommand lives in ``curriculum.py`` so the
 # scheduler and the public feed expose the same operational truth. M01 is the
@@ -592,6 +727,106 @@ def _parse_i01(args):
     p.add_argument("--capture-height", type=int, default=None,
                    help="optional requested frame height")
     return p.parse_args(args)
+
+
+def _run_next(args, dry, lock_path=None):
+    """Pick and dispatch this turn's experiment. Selection precedence (each
+    branch prints its one-line reason, dry-run included):
+
+      1. FRONTIER — the open milestone, when it has a runner and passes its
+         hardware gate (preserves the 2026-06-26 decision).
+      2. PORTFOLIO ROTATION — otherwise, advance the committed rotation
+         (curriculum.ROTATION) past the receipts-ledger pointer; gated or
+         runnerless slots are skipped with a disclosed one-line reason (a log
+         line — never a receipt, never a science row).
+      3. M01 HEARTBEAT — only when the rotation yields nothing (fail closed,
+         named reason).
+
+    Selection is read-only — it never edits MILESTONES.md; a milestone is only
+    marked done by the verify gate + a human-reviewed PR. Decisions:
+    docs/investigations/2026-06-26-heartbeat-vs-lab-next.md and
+    docs/investigations/2026-08-01-portfolio-rotation.md.
+
+    ``lock_path``, when the caller holds the run lock, is stamped with the
+    selected milestone before dispatch.
+    """
+    from . import publish as publish_mod
+    passthrough = [a for a in args[1:] if a != "--dry-run"]
+    text = (publish_mod.MILESTONES_MD.read_text(encoding="utf-8")
+            if publish_mod.MILESTONES_MD.exists() else "")
+    milestones = publish_mod.parse_milestones(text)
+    open_mid, has_runner = _select_next(milestones)
+    skips: list[tuple[str, str]] = []
+    mid: str | None = None
+    subcmd: str | None = None
+    reason = ""
+    if open_mid is not None and has_runner:
+        gate_reason = curriculum.hardware_gate_reason(open_mid)
+        if gate_reason is None:
+            mid, subcmd = open_mid, RUNNERS[open_mid]
+            reason = f"open milestone {open_mid}"
+        else:
+            skips.append((open_mid, gate_reason))
+    if subcmd is None:
+        if open_mid is None:
+            why = "no open milestone"
+        elif not has_runner:
+            why = f"no runner for {open_mid} yet"
+        else:
+            why = f"open milestone {open_mid} is hardware-gated"
+        try:
+            records = _receipt_records()
+            pointer = curriculum.rotation_pointer(records)
+            pick, rot_skips = curriculum.select_rotation(milestones, pointer)
+            skips.extend(rot_skips)
+            if pick is not None:
+                mid, subcmd = pick, RUNNERS[pick]
+                if pointer is not None:
+                    after = f"rotation continues after {pointer}"
+                else:
+                    # No receipt the rotation owns. The claim must match the
+                    # selection — say WHY the walk opens at slot 0, and name
+                    # the out-of-rotation receipt (manual M12/M16, a
+                    # just-verified frontier run) that is deliberately NOT
+                    # the pointer, rather than implying an empty ledger.
+                    newest = curriculum.newest_receipt_milestone(records)
+                    after = (
+                        "no receipts — rotation starts at its first slot"
+                        if newest is None else
+                        f"no rotation receipt yet (newest is {newest}, "
+                        "outside the rotation) — starting at its first slot"
+                    )
+                reason = f"{why} — {after}"
+            else:
+                subcmd = "run"
+                reason = f"{why} — rotation found nothing eligible — M01 heartbeat"
+        except Exception as exc:  # noqa: BLE001 — scheduler fails CLOSED, named
+            subcmd = "run"
+            reason = f"{why} — rotation unavailable ({exc}) — M01 heartbeat"
+    label = mid or "—"
+    target_mid = mid or "M01"
+    passthrough, dropped = filter_scheduler_options(target_mid, passthrough)
+    option_note = (
+        f" · ignored unsupported scheduler option(s): {', '.join(dropped)}"
+        if dropped else ""
+    )
+    # Disclosed once per pass, to stdout/log — a skip is not a failure and
+    # not a success; it is a named absence, and it must not spam receipts.
+    for skipped_mid, skip_reason in skips:
+        print(f"lab next · skipped {skipped_mid} — {skip_reason}")
+    if dry:
+        print(
+            f"lab next → {label}: would run `lab {subcmd}` "
+            f"({reason}){option_note}"
+        )
+        return 0
+    if lock_path is not None:
+        note_lock_milestone(lock_path, mid)
+    print(
+        f"lab next → {label}: running `lab {subcmd}` "
+        f"({reason}){option_note}"
+    )
+    return main([subcmd, *passthrough])
 
 
 def main(argv=None):
@@ -1575,96 +1810,21 @@ def main(argv=None):
         return 0
 
     if cmd == "next":
-        # Milestone-aware scheduler, selection precedence (each branch prints
-        # its one-line reason, dry-run included):
-        #   1. FRONTIER — the open milestone, when it has a runner and passes
-        #      its hardware gate (preserves the 2026-06-26 decision).
-        #   2. PORTFOLIO ROTATION — otherwise, advance the committed rotation
-        #      (curriculum.ROTATION) past the receipts-ledger pointer; gated or
-        #      runnerless slots are skipped with a disclosed one-line reason
-        #      (a log line — never a receipt, never a science row).
-        #   3. M01 HEARTBEAT — only when the rotation yields nothing (fail
-        #      closed, named reason).
-        # Selection is read-only — it never edits MILESTONES.md; a milestone is
-        # only marked done by the verify gate + a human-reviewed PR. Decisions:
-        # docs/investigations/2026-06-26-heartbeat-vs-lab-next.md and
-        # docs/investigations/2026-08-01-portfolio-rotation.md.
-        from . import publish as publish_mod
-        dry = "--dry-run" in args
-        passthrough = [a for a in args[1:] if a != "--dry-run"]
-        text = (publish_mod.MILESTONES_MD.read_text(encoding="utf-8")
-                if publish_mod.MILESTONES_MD.exists() else "")
-        milestones = publish_mod.parse_milestones(text)
-        open_mid, has_runner = _select_next(milestones)
-        skips: list[tuple[str, str]] = []
-        mid: str | None = None
-        subcmd: str | None = None
-        reason = ""
-        if open_mid is not None and has_runner:
-            gate_reason = curriculum.hardware_gate_reason(open_mid)
-            if gate_reason is None:
-                mid, subcmd = open_mid, RUNNERS[open_mid]
-                reason = f"open milestone {open_mid}"
-            else:
-                skips.append((open_mid, gate_reason))
-        if subcmd is None:
-            if open_mid is None:
-                why = "no open milestone"
-            elif not has_runner:
-                why = f"no runner for {open_mid} yet"
-            else:
-                why = f"open milestone {open_mid} is hardware-gated"
-            try:
-                records = _receipt_records()
-                pointer = curriculum.rotation_pointer(records)
-                pick, rot_skips = curriculum.select_rotation(milestones, pointer)
-                skips.extend(rot_skips)
-                if pick is not None:
-                    mid, subcmd = pick, RUNNERS[pick]
-                    if pointer is not None:
-                        after = f"rotation continues after {pointer}"
-                    else:
-                        # No receipt the rotation owns. The claim must match the
-                        # selection — say WHY the walk opens at slot 0, and name
-                        # the out-of-rotation receipt (manual M12/M16, a
-                        # just-verified frontier run) that is deliberately NOT
-                        # the pointer, rather than implying an empty ledger.
-                        newest = curriculum.newest_receipt_milestone(records)
-                        after = (
-                            "no receipts — rotation starts at its first slot"
-                            if newest is None else
-                            f"no rotation receipt yet (newest is {newest}, "
-                            "outside the rotation) — starting at its first slot"
-                        )
-                    reason = f"{why} — {after}"
-                else:
-                    subcmd = "run"
-                    reason = f"{why} — rotation found nothing eligible — M01 heartbeat"
-            except Exception as exc:  # noqa: BLE001 — scheduler fails CLOSED, named
-                subcmd = "run"
-                reason = f"{why} — rotation unavailable ({exc}) — M01 heartbeat"
-        label = mid or "—"
-        target_mid = mid or "M01"
-        passthrough, dropped = filter_scheduler_options(target_mid, passthrough)
-        option_note = (
-            f" · ignored unsupported scheduler option(s): {', '.join(dropped)}"
-            if dropped else ""
-        )
-        # Disclosed once per pass, to stdout/log — a skip is not a failure and
-        # not a success; it is a named absence, and it must not spam receipts.
-        for skipped_mid, skip_reason in skips:
-            print(f"lab next · skipped {skipped_mid} — {skip_reason}")
-        if dry:
+        # A turn runs under the run lock; a dry run claims nothing (it runs
+        # nothing, and must stay usable as a diagnostic while a turn is live).
+        if "--dry-run" in args:
+            return _run_next(args, dry=True)
+        try:
+            with next_run_lock() as lock_path:
+                return _run_next(args, dry=False, lock_path=lock_path)
+        except LockBusy as busy:
+            # A skipped slot is a healthy outcome, not a failure: exit 0 so Task
+            # Scheduler's LastTaskResult stays clean and nobody chases a ghost.
             print(
-                f"lab next → {label}: would run `lab {subcmd}` "
-                f"({reason}){option_note}"
+                f"lab next · another turn is running (pid {busy.pid} since "
+                f"{busy.started}) — skipping this slot"
             )
             return 0
-        print(
-            f"lab next → {label}: running `lab {subcmd}` "
-            f"({reason}){option_note}"
-        )
-        return main([subcmd, *passthrough])
 
     if cmd == "run" or (cmd not in ("help", "open") and cmd.startswith("--")):
         rest = args if cmd != "run" else args[1:]
