@@ -235,13 +235,66 @@ K02_R_STAR_EXCLUSION_SIGMA = 1.0
 # a flat, noise-dominated χ curve would satisfy the bare index test. The peak must stand
 # above the ends of the swept r-range by this factor (scout: 4–6× at every N).
 K02_INTERIOR_PEAK_RATIO = 2.0
-# The anchor against exact theory, re-confirmed at EVERY rung: χ still peaks in the
-# CONTROL parameter at K_c = 2γ. Same ±0.10 arithmetic K01 declared — the dense arm of
-# K02's grid is ΔK = 0.01·K_c (4× finer than K01's), so the grid contributes far less here
-# and the band is dominated by the physical finite-N shift, which K01 measured at +0.050
-# for N=250. Its job is refusing a broken engine, not precision: an uncoupled or
-# sign-flipped sweep puts the peak at a sweep endpoint, off by ~1.0.
+# The anchor: χ's peak in the CONTROL parameter is UNRESOLVED FROM K_c = 2γ at every
+# rung. Note the wording — this gate does NOT certify that the peak sits exactly at K_c,
+# and an earlier version of this file wrongly implied it did. Hong, Chaté, Tang & Park,
+# Phys. Rev. E 92, 022122 (2015) §III report that the finite-N peak is always on the
+# SUBCRITICAL side and only approaches K_c as N grows, drifting as δK_max ~ N^(−1/ν̄')
+# (their Eq. 3.10). K02's measured peak couplings scatter on BOTH sides with a standard
+# deviation of ≈0.024 — wider than that drift — so all this band can honestly assert is
+# consistency. Same ±0.10 arithmetic K01 declared; its job is refusing a broken engine,
+# not precision, since an uncoupled or sign-flipped sweep puts the peak at a sweep
+# endpoint, off by ~1.0.
 K02_KC_TOL = 0.10
+
+# ── the calibration: r(K_c, N) ~ N^(−β/ν̄_c) against a PUBLISHED exponent ─────────────
+# This is K02's headline after the 2026-08-02 literature assay
+# (docs/assays/2026-08-02-k02-literature-crosscheck.md) retired the previous one. The
+# benchmark is owned here and never read from the report:
+#   Hong et al. 2015 Eq. (4.3), for the REGULAR (deterministic-quantile) Lorentzian —
+#   this engine's exact published configuration, their §IV A — gives β/ν̄_c = 0.39(2)
+#   over N = 200…12800.
+K02_CRITICAL_EXPONENT = 0.39
+K02_CRITICAL_EXPONENT_ERR = 0.02
+# The tolerance is set to bracket the LITERATURE's own spread for this sampling class,
+# not this run's luck. Park & Park 2024 Eq. (20) revise the asymptotic value to
+# 0.325(15) while noting the effective exponent sits near 0.37 until N ≳ 2^15; K02's
+# ladder stops at 2^12, so a correct run may legitimately land anywhere in ≈[0.325,
+# 0.39]. ±0.08 admits that whole window (and both published error bars) while still
+# excluding the two things this gate exists to catch: the RANDOM-sampling universality
+# class at 0.20 (which is what a frequency draw that lost the deterministic quantile
+# grid would give — 2.4 bands away), and the 0.28 artifact the demoted Beta-fit
+# estimator produced before the assay caught it.
+K02_CRITICAL_TOL = 0.08
+# Equilibration. The defect that produced the retired headline: at N=4000 the sweep's
+# window measured a TRANSIENT, ⟨r⟩ still falling 0.070 → 0.027 long after it stopped
+# looking, inflating the coherence ~2.5×. The critical measurement therefore reports the
+# change in ⟨r⟩ between the first and second halves of its own window, and a rung still
+# drifting is refused rather than averaged.
+#
+# The gate is on the drift's SIGNIFICANCE, not on a bare percentage, and that is a
+# correction made after measuring: at N=2000 the shipped protocol returned an 11.3%
+# half-to-half change, which a flat 10% constant would have failed — but the drift
+# estimator has its own noise floor (a difference of two half-window means across a
+# finite set of initial conditions), and 11.3% there is well inside it. Grading a noisy
+# number against a constant would have refused a perfectly equilibrated rung. So each
+# rung reports |Δ| in units of its own standard error and must come in under this many
+# sigma. Gross non-equilibration is still caught with room to spare: the old short
+# window's ~60% drift at the top of the ladder is many sigma, not one.
+K02_EQUILIBRATION_MAX_DRIFT_SIGMA = 3.0
+# A belt-and-braces absolute cap for the case where the drift's error bar is itself
+# unreliable (too few initial conditions, or a rung whose seeds all drifted together).
+# Loose on purpose — the sigma gate above is the one that does the work.
+K02_EQUILIBRATION_MAX_DRIFT = 0.25
+# The tail-clip negative control. ``kuramoto`` clips the Lorentzian at |ω| ≤ 40γ; the
+# published configuration this milestone is graded against is UNCLIPPED, and the clip
+# piles ~1.6% of the population onto two degenerate frequencies inside exactly the
+# running-oscillator population Park & Park 2024 argue dominates the finite-size
+# correction. So the run re-measures r(K_c) at a 2.5× looser clip (with dt cut 4× to
+# keep the fastest drifter resolved) and the two must agree to within this many sigma
+# of their combined standard error. If the exponent were riding on the clip rather than
+# on the physics, this is what would catch it.
+K02_CLIP_CONTROL_MAX_SIGMA = 3.0
 
 # A01 calibration anchor — owned by the checker, not accepted from the report.
 # NASA Exoplanet Archive pscomppars values used by the A01 producer.  Freezing
@@ -1593,8 +1646,22 @@ def check_k02(report: dict) -> tuple[bool | None, str]:
     scientific verdict to the numbers it reports. Gating on r\\* landing at (or away
     from) Run 01's 2/5 would let the grader manufacture its own answer, and gating on
     the direction r\\*(N) happened to move would be a tolerance written after the fact.
-    Four gates, all of which must hold at **every** rung of the ladder:
+    **The headline is a calibration, not a discovery.** After the 2026-08-02 literature
+    assay, K02's load-bearing number is the coherence at the *exact* critical coupling,
+    ``r(K_c, N) ~ N^(−β/ν̄_c)``, graded against the published **0.39(2)** for this
+    engine's exact configuration. It is re-fitted here from the per-rung values rather
+    than read from the report. The estimator it replaced — the Beta fit's ``p/(p+q)`` —
+    is demoted and deliberately **not** graded: it is a ratio of parameters that
+    themselves track N inside a misspecified family.
 
+    Five gates, all of which must hold at **every** rung of the ladder:
+
+    0. **The calibration.** The re-fitted exponent must land within ``K02_CRITICAL_TOL``
+       of the published value, and every rung must be **equilibrated** — the fractional
+       drift between the halves of its own measurement window under
+       ``K02_EQUILIBRATION_MAX_DRIFT``. That second half is not ceremony: measuring a
+       transient instead of a stationary state is exactly what produced the wrong
+       headline the first time.
     1. **An interior peak in r exists** — the χ argmax is at neither end of the swept
        range, and stands at least ``K02_INTERIOR_PEAK_RATIO`` above the χ at both ends.
        A flat, noise-dominated curve satisfies a bare argmax test and fails this one.
@@ -1608,13 +1675,17 @@ def check_k02(report: dict) -> tuple[bool | None, str]:
        claim at all. This is the gate that bites hardest, and it is deliberately
        symmetric: it certifies that the instrument can *speak to* the question, never
        that the answer came out a particular way.
-    3. **The exact-theory anchor still holds.** χ's peak in the CONTROL parameter must
-       sit within ``K02_KC_TOL`` of ``K_c = 2γ`` at every N. Nothing is fitted; this is
-       K01's calibrated result re-confirmed across the whole ladder, and it is what
-       makes the finite-size argument in ``k02``'s docstring a mechanism rather than a
-       correlation.
-    4. **The negative control.** At K = 0 the measured coherence must still be the
-       1/√N random-walk floor at every population size.
+    3. **The χ peak in K is consistent with K_c.** Its refined position must sit within
+       ``K02_KC_TOL`` of ``K_c = 2γ`` at every N. Read the wording carefully: this
+       asserts *consistency*, not that the peak is fixed at K_c. The literature has the
+       finite-N peak sitting subcritical and drifting toward K_c as N grows, below this
+       ladder's resolution — see ``K02_KC_TOL``'s note. The mechanism argument in
+       ``k02``'s docstring only needs the peak to be asymptotically at K_c.
+    4. **The negative controls.** At K = 0 the measured coherence must still be the
+       1/√N random-walk floor at every population size; and loosening the Lorentzian's
+       tail clip 2.5× must not move r(K_c) — the clip is a documented deviation from
+       the published configuration, so the run measures whether it matters instead of
+       arguing that it doesn't.
 
     The verdict string then *reports* the measured r\\*(N) ladder, its separation from
     2/5 in units of σ, and whether the two ends of the ladder are resolvably different
@@ -1727,6 +1798,104 @@ def check_k02(report: dict) -> tuple[bool | None, str]:
         summary.append(f"N={n}: r*={r_star:.3f}±{sigma:.3f} (K_peak={k_peak:.3f})")
         measured.append((r_star, sigma))
 
+    # ── gate 5: the calibration against a published finite-size exponent ──
+    # Re-fitted HERE from the per-rung r(K_c) values rather than trusting the runner's
+    # reported slope — a receipt, not an echo.
+    critical = report.get("critical")
+    exponent = float("nan")
+    if not isinstance(critical, list) or len(critical) != len(K02_LADDER):
+        failures.append(
+            "K02 is missing its r(K_c, N) calibration block — the headline measurement"
+        )
+    else:
+        xs: list[float] = []
+        ys: list[float] = []
+        for entry in critical:
+            if not isinstance(entry, dict):
+                return None, "K02 calibration block is unreadable"
+            n = entry.get("n")
+            r_c = entry.get("r_critical")
+            drift = entry.get("equilibration_drift")
+            if (
+                not isinstance(n, int) or isinstance(n, bool)
+                or isinstance(r_c, bool) or not isinstance(r_c, (int, float))
+                or isinstance(drift, bool) or not isinstance(drift, (int, float))
+                or not math.isfinite(float(r_c)) or not math.isfinite(float(drift))
+                or float(r_c) <= 0.0
+            ):
+                return None, f"K02 calibration rung {n!r} is unreadable"
+            # gate 4b: each rung must actually be equilibrated. Graded on the drift's
+            # SIGNIFICANCE — see K02_EQUILIBRATION_MAX_DRIFT_SIGMA for why a bare
+            # percentage was the wrong instrument here.
+            sigma_drift = entry.get("equilibration_drift_sigma")
+            readable_sigma = (
+                not isinstance(sigma_drift, bool)
+                and isinstance(sigma_drift, (int, float))
+                and math.isfinite(float(sigma_drift))
+            )
+            if readable_sigma and float(sigma_drift) > K02_EQUILIBRATION_MAX_DRIFT_SIGMA:
+                failures.append(
+                    f"N={n}: r(K_c) still drifting between the halves of its measurement "
+                    f"window at {float(sigma_drift):.1f}σ (max "
+                    f"{K02_EQUILIBRATION_MAX_DRIFT_SIGMA:g}σ, |Δ|={float(drift) * 100:.1f}%) "
+                    "— a transient, not a stationary state"
+                )
+            elif float(drift) > K02_EQUILIBRATION_MAX_DRIFT:
+                failures.append(
+                    f"N={n}: r(K_c) drifted {float(drift) * 100:.1f}% between the halves "
+                    f"of its measurement window, past the absolute cap "
+                    f"{K02_EQUILIBRATION_MAX_DRIFT * 100:.0f}% — a transient, not a "
+                    "stationary state"
+                )
+            xs.append(math.log(float(n)))
+            ys.append(math.log(float(r_c)))
+        if [e.get("n") for e in critical] != list(K02_LADDER):
+            failures.append("K02 calibration block does not cover the fixed N-ladder")
+        mx = sum(xs) / len(xs)
+        my = sum(ys) / len(ys)
+        sxx = sum((x - mx) ** 2 for x in xs)
+        slope = sum((x - mx) * (y - my) for x, y in zip(xs, ys)) / sxx if sxx > 0 else float("nan")
+        exponent = -slope
+        gap = abs(exponent - K02_CRITICAL_EXPONENT)
+        if not (gap <= K02_CRITICAL_TOL):
+            failures.append(
+                f"r(K_c,N) ~ N^−{exponent:.3f} misses the published β/ν̄_c = "
+                f"{K02_CRITICAL_EXPONENT}({int(K02_CRITICAL_EXPONENT_ERR * 100)}) by "
+                f"{gap:.3f} (tol ±{K02_CRITICAL_TOL})"
+            )
+
+    # ── gate 6: the tail-clip negative control ──
+    clip = report.get("clip_control")
+    clip_sigma = float("nan")
+    if not isinstance(clip, list) or len(clip) != 2:
+        failures.append("K02 is missing its tail-clip negative control")
+    else:
+        vals, sems = [], []
+        for entry in clip:
+            if not isinstance(entry, dict):
+                return None, "K02 clip control is unreadable"
+            v, s = entry.get("r_critical"), entry.get("r_sem")
+            if (
+                isinstance(v, bool) or not isinstance(v, (int, float))
+                or isinstance(s, bool) or not isinstance(s, (int, float))
+                or not math.isfinite(float(v)) or not math.isfinite(float(s))
+            ):
+                return None, "K02 clip control is missing readable values"
+            vals.append(float(v))
+            sems.append(float(s))
+        if clip[0].get("clip_scale") == clip[1].get("clip_scale"):
+            failures.append(
+                "K02 clip control compared the SAME clip to itself — no control at all"
+            )
+        combined = math.sqrt(sems[0] ** 2 + sems[1] ** 2)
+        clip_sigma = abs(vals[0] - vals[1]) / combined if combined > 0 else float("inf")
+        if clip_sigma > K02_CLIP_CONTROL_MAX_SIGMA:
+            failures.append(
+                f"tail-clip control failed: r(K_c) moves {abs(vals[0] - vals[1]):.5f} "
+                f"({clip_sigma:.1f}σ, max {K02_CLIP_CONTROL_MAX_SIGMA:g}σ) when the "
+                "frequency clip is loosened — the exponent is riding on the clip"
+            )
+
     # ── the finding, REPORTED rather than graded ──
     (r_first, s_first), (r_last, s_last) = measured[0], measured[-1]
     drift = r_first - r_last
@@ -1752,10 +1921,19 @@ def check_k02(report: dict) -> tuple[bool | None, str]:
     verdict_run01 = f"every rung sits ≥{min(gaps):.1f}σ {side} Run 01's r*=2/5"
 
     ok = not failures
+    calibration = (
+        f"r(K_c,N) ~ N^−{exponent:.3f} vs published β/ν̄_c = {K02_CRITICAL_EXPONENT}"
+        f"({int(K02_CRITICAL_EXPONENT_ERR * 100)}) [Hong et al. 2015 Eq. 4.3, regular "
+        f"Lorentzian] (tol ±{K02_CRITICAL_TOL})"
+        if math.isfinite(exponent) else "r(K_c,N) calibration unavailable"
+    )
     detail = (
-        f"{'; '.join(summary)} — {trend}; {verdict_run01}. "
-        + ("interior χ maximum in r resolved at every rung, χ still peaks at the exact "
-           f"K_c=2γ={k_c:g} throughout, uncoupled control held"
+        f"{calibration}. {'; '.join(summary)} — {trend}; {verdict_run01}. "
+        + ("coherence at criticality reproduces the published finite-size exponent; "
+           "interior χ maximum in r resolved at every rung; the χ peak in K is "
+           f"unresolved from K_c=2γ={k_c:g} throughout (it is subcritical and drifting "
+           "in the literature, below this ladder's resolution); uncoupled control held; "
+           f"tail-clip control agrees at {clip_sigma:.1f}σ"
            if ok else "FAILED: " + "; ".join(failures))
     )
     return ok, detail

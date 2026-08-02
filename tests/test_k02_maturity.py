@@ -27,13 +27,25 @@ np = pytest.importorskip("numpy")
 
 from lab import k02  # noqa: E402  (must follow the importorskip)
 from lab.checks import (  # noqa: E402
-    K02_INTERIOR_PEAK_RATIO, K02_KC_TOL, K02_K_PEAK_STEPS, K02_LADDER,
-    K02_RUN01_R_STAR, K02_R_STAR_EXCLUSION_SIGMA, K02_R_STAR_SCATTER, K02_SEEDS,
-    KURAMOTO_GAMMA, check_k02,
+    K02_CRITICAL_EXPONENT, K02_CRITICAL_EXPONENT_ERR, K02_CRITICAL_TOL,
+    K02_EQUILIBRATION_MAX_DRIFT, K02_EQUILIBRATION_MAX_DRIFT_SIGMA,
+    K02_INTERIOR_PEAK_RATIO, K02_KC_TOL,
+    K02_K_PEAK_STEPS, K02_LADDER, K02_RUN01_R_STAR, K02_R_STAR_EXCLUSION_SIGMA,
+    K02_CLIP_CONTROL_MAX_SIGMA, K02_R_STAR_SCATTER, K02_SEEDS, KURAMOTO_GAMMA,
+    check_k02,
 )
 
 
-QUICK = dict(ladder=(250, 500), seeds=(42,), t_burn=20.0, t_measure=60.0)
+QUICK = dict(
+    ladder=(250, 500), seeds=(42,), t_burn=20.0, t_measure=60.0,
+    # The calibration pass defaults to windows long enough for N=4000 at criticality
+    # (t = 2000 + 2000); left at those, this fixture would spend minutes proving
+    # plumbing. Shrunk deliberately — which is also what makes the run a diagnostic
+    # rather than the measurement, asserted below.
+    critical_seeds=2, critical_t_burn=10.0, critical_t_measure=20.0,
+    clip_control_n=100, clip_control_seeds=2, clip_control_t_burn=10.0,
+    clip_control_t_measure=20.0,
+)
 
 
 # ───────────────── the estimators: answers known by construction ─────────────────
@@ -157,6 +169,181 @@ def test_seed_combination_is_the_plain_answer_when_nothing_is_pathological():
     np.testing.assert_allclose(k02.combine_over_seeds(seeds), [1.0, 2.0, 3.0])
 
 
+# ───────────────── the calibration: r(K_c, N) against a published exponent ─────────────────
+
+def test_critical_exponent_fit_recovers_an_exact_power_law():
+    """Synthetic r = A·N^−0.39 with no noise: the fitter has to return 0.39 and R²=1."""
+    rungs = [{"n": n, "r_critical": 0.5 * n ** -0.39, "r_sem": 1e-6} for n in K02_LADDER]
+    fit = k02.fit_critical_exponent(rungs)
+    assert fit["exponent"] == pytest.approx(0.39, abs=1e-6)
+    assert fit["r2"] > 0.9999
+    assert fit["points"] == len(K02_LADDER)
+
+
+def test_critical_exponent_error_bar_is_the_larger_of_two_estimates():
+    """A tidy line through points with big individual error bars must NOT report the
+    tiny regression error — that is how a fit claims precision its inputs lack."""
+    rungs = [{"n": n, "r_critical": 0.5 * n ** -0.39, "r_sem": 0.25 * (0.5 * n ** -0.39)}
+             for n in K02_LADDER]
+    fit = k02.fit_critical_exponent(rungs)
+    assert fit["err_regression"] < 1e-6          # the points are exactly collinear
+    assert fit["err_propagated"] > 0.05          # ...but each one is badly known
+    assert fit["err"] == pytest.approx(fit["err_propagated"])
+
+
+def test_critical_coherence_reports_its_own_equilibration_drift():
+    """The measurement carries the diagnostic that would have caught the retired
+    headline: how much ⟨r⟩ moved between the halves of its own window."""
+    got = k02.critical_coherence(250, seeds=3, t_burn=40.0, t_measure=80.0)
+    assert 0.0 < got["r_critical"] < 1.0
+    assert got["equilibration_drift"] == pytest.approx(
+        abs(got["r_second_half"] - got["r_first_half"]) / got["r_critical"], rel=1e-9,
+    )
+    assert len(got["r_by_seed"]) == 3
+
+
+def test_check_passes_a_calibration_that_matches_the_published_exponent():
+    ok, detail = check_k02(_ladder_report())
+    assert ok, detail
+    assert "reproduces the published finite-size exponent" in detail
+    assert "Hong et al. 2015" in detail
+
+
+def test_check_rejects_the_random_sampling_universality_class():
+    """The gate's main job: a frequency draw that lost the deterministic quantile grid
+    lands in the RANDOM class at β/ν̄ = 0.20, not 0.39. That must fail."""
+    report = _ladder_report(critical=_critical(exponent=0.20))
+    ok, detail = check_k02(report)
+    assert ok is False
+    assert "misses the published" in detail
+
+
+def test_check_rejects_the_retired_beta_fit_artifact_value():
+    """0.28 is the number the demoted p/(p+q) estimator produced. The calibration gate
+    must not accept it, or the regression this revision fixes could silently return."""
+    ok, detail = check_k02(_ladder_report(critical=_critical(exponent=0.28)))
+    assert ok is False
+    assert "misses the published" in detail
+
+
+def test_check_rejects_a_rung_that_never_equilibrated():
+    """The defect behind the retired headline: averaging a transient. A rung still
+    drifting between the halves of its own window is refused, not averaged."""
+    block = _critical()
+    block[-1]["equilibration_drift"] = 0.6
+    block[-1]["equilibration_drift_sigma"] = 9.0
+    ok, detail = check_k02(_ladder_report(critical=block))
+    assert ok is False
+    assert "still drifting" in detail
+    assert "transient" in detail
+
+
+def test_equilibration_gate_forgives_a_drift_that_is_only_noise():
+    """The correction this gate needed: at N=2000 the shipped protocol returned an
+    11.3% half-to-half change that is well inside the drift estimator's own noise. A
+    bare-percentage gate would have refused a settled rung; the sigma gate must not."""
+    block = _critical()
+    block[3]["equilibration_drift"] = 0.113
+    block[3]["equilibration_drift_sigma"] = 1.8
+    ok, detail = check_k02(_ladder_report(critical=block))
+    assert ok, detail
+
+
+def test_equilibration_absolute_cap_still_catches_an_unreadable_sigma():
+    """If the drift's error bar is missing or unusable, the loose absolute cap is the
+    fallback — a rung cannot dodge the gate by omitting its uncertainty."""
+    block = _critical()
+    block[-1]["equilibration_drift"] = 0.6
+    block[-1]["equilibration_drift_sigma"] = float("nan")
+    ok, detail = check_k02(_ladder_report(critical=block))
+    assert ok is False
+    assert "absolute cap" in detail
+
+
+def test_check_refits_the_exponent_and_ignores_a_forged_one():
+    """A receipt claiming the right answer over wrong data must still fail."""
+    report = _ladder_report(critical=_critical(exponent=0.20))
+    report["critical_fit"] = {"exponent": K02_CRITICAL_EXPONENT, "err": 0.001}
+    report["headline"] = "matches the published exponent exactly"
+    assert check_k02(report)[0] is False
+
+
+def test_check_rejects_a_report_with_no_calibration_block():
+    report = _ladder_report()
+    del report["critical"]
+    ok, detail = check_k02(report)
+    assert ok is False
+    assert "missing its r(K_c, N) calibration" in detail
+
+
+def test_check_passes_a_clip_control_whose_two_settings_agree():
+    ok, detail = check_k02(_ladder_report())
+    assert ok, detail
+    assert "tail-clip control agrees" in detail
+
+
+def test_check_rejects_an_exponent_riding_on_the_frequency_clip():
+    """The assay flagged the |ω| ≤ 40γ clip as an uncontrolled deviation from the
+    published configuration. If loosening it moved r(K_c), the calibration would be
+    measuring the clip rather than the physics — that must fail."""
+    ok, detail = check_k02(_ladder_report(clip_control=_clip_control(delta=0.02)))
+    assert ok is False
+    assert "riding on the clip" in detail
+
+
+def test_check_rejects_a_clip_control_that_compared_a_setting_to_itself():
+    """A control that never varied the thing it controls for is not a control."""
+    same = _clip_control()
+    same[1]["clip_scale"] = same[0]["clip_scale"]
+    ok, detail = check_k02(_ladder_report(clip_control=same))
+    assert ok is False
+    assert "SAME clip to itself" in detail
+
+
+def test_check_rejects_a_report_with_no_clip_control():
+    report = _ladder_report()
+    del report["clip_control"]
+    ok, detail = check_k02(report)
+    assert ok is False
+    assert "missing its tail-clip negative control" in detail
+
+
+def test_clip_control_constants_are_mirrored_and_actually_vary_the_clip():
+    assert k02.CLIP_CONTROL_ALT_SCALE != k02.kuramoto_clip_default()
+    # dt must shrink with the looser clip or the fastest drifter is aliased, which
+    # would make the control fail for an integration reason rather than a physical one.
+    assert k02.CLIP_CONTROL_ALT_DT < k02.DT
+    assert (k02.CLIP_CONTROL_ALT_SCALE * k02.CALIBRATION_GAMMA
+            * k02.CLIP_CONTROL_ALT_DT) <= 0.5
+    assert K02_CLIP_CONTROL_MAX_SIGMA >= 2.0
+
+
+def test_published_benchmark_is_mirrored_between_runner_and_check():
+    assert K02_CRITICAL_EXPONENT == k02.CRITICAL_EXPONENT_PUBLISHED
+    assert K02_CRITICAL_EXPONENT_ERR == k02.CRITICAL_EXPONENT_PUBLISHED_ERR
+
+
+def test_calibration_tolerance_brackets_the_literature_and_excludes_the_artifacts():
+    """The tolerance's justification is arithmetic, not taste.
+
+    It must admit the whole published window for this sampling class — Hong's 0.39(2)
+    and Park & Park's asymptotic 0.325(15), between which a finite ladder legitimately
+    sits — while excluding the random-sampling class (0.20) and the 0.28 the demoted
+    estimator produced.
+    """
+    lo = K02_CRITICAL_EXPONENT - K02_CRITICAL_TOL
+    hi = K02_CRITICAL_EXPONENT + K02_CRITICAL_TOL
+    assert lo <= k02.CRITICAL_EXPONENT_ASYMPTOTIC <= hi
+    assert lo <= K02_CRITICAL_EXPONENT - K02_CRITICAL_EXPONENT_ERR
+    assert not (lo <= k02.CRITICAL_EXPONENT_RANDOM_SAMPLING <= hi)
+    assert not (lo <= 0.28 <= hi)          # the retired Beta-fit artifact
+    # The equilibration gate is on SIGNIFICANCE; the absolute cap is only the fallback
+    # for an unreadable error bar and is deliberately loose. Assert that ordering
+    # rather than a magnitude, so the cap can be tuned without the test lying.
+    assert K02_EQUILIBRATION_MAX_DRIFT_SIGMA >= 2.0
+    assert K02_EQUILIBRATION_MAX_DRIFT > 0.15
+
+
 def test_run01_constants_are_the_published_ones():
     assert (k02.RUN01_P, k02.RUN01_Q) == (2.0, 3.0)
     assert k02.RUN01_R_STAR == pytest.approx(0.4)
@@ -264,7 +451,30 @@ def _rung(n: int, r_star: float = 0.10, k_peak_shift: float = 0.0,
     }
 
 
-def _ladder_report(**kwargs) -> dict:
+def _critical(exponent: float = K02_CRITICAL_EXPONENT, amplitude: float = 0.5,
+              drift: float = 0.02, drift_sigma: float = 0.8) -> list[dict]:
+    """The r(K_c, N) calibration block: an exact power law with the given exponent."""
+    return [
+        {
+            "n": n,
+            "r_critical": amplitude * n ** (-exponent),
+            "r_sem": 0.001,
+            "equilibration_drift": drift,
+            "equilibration_drift_sigma": drift_sigma,
+        }
+        for n in K02_LADDER
+    ]
+
+
+def _clip_control(delta: float = 0.0, sem: float = 0.0016) -> list[dict]:
+    """The tail-clip negative control: the same r(K_c) at two clip settings."""
+    return [
+        {"r_critical": 0.0498, "r_sem": sem, "clip_scale": 40.0},
+        {"r_critical": 0.0498 + delta, "r_sem": sem, "clip_scale": 100.0},
+    ]
+
+
+def _ladder_report(critical=None, clip_control=None, **kwargs) -> dict:
     return {
         "experiment": "K02-coherence-susceptibility-shape",
         "gamma": KURAMOTO_GAMMA,
@@ -272,6 +482,8 @@ def _ladder_report(**kwargs) -> dict:
         "ladder": list(K02_LADDER),
         "seeds": list(K02_SEEDS),
         "run01_r_star": K02_RUN01_R_STAR,
+        "critical": _critical() if critical is None else critical,
+        "clip_control": _clip_control() if clip_control is None else clip_control,
         # r* marching left as N grows — the shape the real ladder measures.
         "rungs": [_rung(n, r_star=s, **kwargs)
                   for n, s in zip(K02_LADDER, (0.16, 0.12, 0.09, 0.07, 0.05))],

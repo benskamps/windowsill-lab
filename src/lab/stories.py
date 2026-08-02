@@ -156,8 +156,8 @@ STORIES: dict[str, dict[str, str | None]] = {
     "K02": {
         "short_label": "Twitchiest in between",
         "question_plain": "A room of clocks is at its twitchiest somewhere between total disagreement and perfect lockstep — but is the exact spot where that happens a real law, or just a side effect of how many clocks were in the room?",
-        "why_it_matters": "An earlier experiment in this lab fitted a tidy formula putting that sweet spot at 40% agreement; if the number is really just counting the crowd, then anyone building on the formula would be quietly wrong at every other size.",
-        "result_plain": "The twitchiest point is genuinely somewhere in the middle — that part held up at every crowd size from 250 clocks to 4000. But it is nowhere near 40% agreement, and it keeps sliding lower as the crowd grows: the tidy formula fits the lab's measurements worse than a flat line would. So the 40% was reading the size of the room, not a law of nature. The machine check passed; it remains amber until a human reviews it.",
+        "why_it_matters": "An earlier experiment in this lab fitted a tidy formula putting that sweet spot at 40% agreement; if the number is really just counting the crowd, then anyone building on the formula would be quietly wrong at every other size. Checking it also gives the lab a chance to measure a number physicists already published — the honest way to find out whether a windowsill instrument can be trusted.",
+        "result_plain": "The twitchiest point is genuinely somewhere in the middle — that held at every crowd size from 250 clocks up to 4000. But it is nowhere near 40% agreement, and it fades as the crowd grows, so the 40% was reading the size of the room rather than a law. The lab then measured that fading directly and got the same number physicists published for this exact setup in 2015, which is the real result here: not a discovery, but proof the windowsill instrument reproduces a known one. The machine check passed; it remains amber until a human reviews it.",
     },
     "K03": {
         "short_label": "When to stop talking",

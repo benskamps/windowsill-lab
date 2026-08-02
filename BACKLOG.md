@@ -40,11 +40,14 @@ M03 β/ν, M04 specific heat, and the spin-glass runs M11+) at modest L.
       3D Wolff updater (`wolff3d.py`, #32) lets this reach L ≥ 24 without
       critical slowing.
 - [ ] **Sharpen K02's r\*(N) collapse — the raw argmax doesn't resolve it.** K02
-      excludes Run 01's r\* = 2/5 at every rung (≥2.5σ) and shows the collapse
-      cleanly through the *fitted* interior maximum (monotone 5/5, ∝ N^−0.28,
-      R² = 0.985), but the family-free **argmax** does not separate the ladder's
-      two ends against its own honest floor (|Δ| = 0.069 inside a combined
-      ±0.115). The floor is not statistics — it is the parameterization:
+      excludes Run 01's r\* = 2/5 at every rung (≥2.5σ), and the *collapse itself*
+      is now established the right way — by the direct r(K_c,N) calibration,
+      N^−0.401(17) against the published 0.39(2). But the family-free **argmax on
+      the r-axis** still does not separate the ladder's two ends against its own
+      honest floor (|Δ| = 0.069 inside a combined ±0.115), so the χ(r) reading of
+      the same physics remains under-resolved. (The Beta fit's p/(p+q) trend is
+      **not** the fix — the 2026-08-02 assay demoted it as a misfit artifact; see
+      MILESTONES K02.) The floor is not statistics — it is the parameterization:
       `r(K) = √(1−K_c/K)` has infinite slope at K_c⁺, exactly where χ peaks, so a
       peak index that wanders two or three grid steps drags r\* a long way, and
       the N=500 rung's five initial conditions came back bimodal (0.05 / 0.20).
@@ -55,6 +58,25 @@ M03 β/ν, M04 specific heat, and the spin-glass runs M11+) at modest L.
       lever arm in N (8000, 16000) — still CPU-scale at O(N) per step. The
       shipped run is ~21 min; (a)+(c) is a few hours, i.e. a hand-run, not a
       nightly (K02 is deliberately out of `curriculum.ROTATION` for this reason).
+- [ ] **Measure the fluctuation exponent γ — a live disagreement in the literature,
+      on data K02 already collects.** The 2026-08-02 assay's §4.3 flagged this as a
+      better K03 than another pass at the Beta form. Hong et al. 2015 report
+      `γ ≃ γ' ≃ 1/4` for the **regular** frequency set (K02's case) with hyperscaling
+      `γ = ν̄ − 2β` obeyed, against `≃ 1` and violated for the random set. Daido's
+      perturbation theory (Prog. Theor. Phys. **75**, 1460 (1986); J. Stat. Phys.
+      **60**, 753 (1990)) predicted an *asymmetric* `γ = 1/4` above and `γ' = 1`
+      below — which Hong et al. contradict. That is a genuine open disagreement, in
+      exactly K02's regime, and `χ_c(K_c) ~ N^(γ/ν̄_c)` is a one-line fit on the
+      per-rung χ this milestone already measures at K_c. Now that K02's β/ν̄_c
+      reproduces the published 0.39(2), the instrument has earned the right to be
+      pointed at it.
+- [ ] **Extend the K02 ladder past the pre-asymptotic window.** K02's β/ν̄_c =
+      0.401(17) agrees with Hong et al.'s 0.39(2) but the ladder stops at
+      N = 4000 = 2¹². Park & Park 2024 Eq. (20) put the true asymptote at 0.325(15),
+      reached only for N ≳ 2¹⁵ ≈ 32768, and call the late crossover *"exceedingly
+      challenging"*. Watching the effective exponent bend from 0.39 toward 0.325
+      would be a far stronger statement than either endpoint alone — and it is pure
+      CPU time (the measurement is O(N) per step at a single coupling), not new code.
 - [ ] **Test the χ(r) shape law in Run 01's OWN regime (noisy Kuramoto).** K02
       ran the *deterministic* engine K01 calibrated — fixed-step RK4, no
       stochastic forcing — while Run 01's `a·r²(1−r)³` fit came from a **noisy**

@@ -583,10 +583,18 @@ def _parse_k02(args):
     p.add_argument("--dt", type=float, default=k02_mod.DT)
     p.add_argument("--t-burn", type=float, default=k02_mod.T_BURN)
     p.add_argument("--t-measure", type=float, default=k02_mod.T_MEASURE)
+    # The r(K_c,N) calibration needs windows an order of magnitude longer than the
+    # sweep's — relaxation at criticality slows with N, and reading the sweep's window
+    # at N=4000 measures a transient. See k02.critical_coherence.
+    p.add_argument("--critical-seeds", type=int, default=k02_mod.CRITICAL_SEEDS)
+    p.add_argument("--critical-t-burn", type=float, default=k02_mod.CRITICAL_T_BURN)
+    p.add_argument("--critical-t-measure", type=float, default=k02_mod.CRITICAL_T_MEASURE)
     ns = p.parse_args(args)
     if ns.quick:
         ns.ladder, ns.seeds = "250,500", "42"
         ns.t_burn, ns.t_measure = 20.0, 60.0
+        ns.critical_seeds = 2
+        ns.critical_t_burn, ns.critical_t_measure = 10.0, 20.0
     ns.ladder = tuple(int(x) for x in ns.ladder.split(",") if x.strip())
     ns.seeds = tuple(int(x) for x in ns.seeds.split(",") if x.strip())
     return ns
@@ -1424,15 +1432,23 @@ def main(argv=None):
         k_c = 2.0 * ns.gamma
         print(f"K02 susceptibility shape · N-ladder {list(ns.ladder)} · "
               f"{len(ns.seeds)} initial conditions · γ={ns.gamma} · exact K_c = 2γ = {k_c:g}")
-        print(f"  testing Run 01's χ(r) = a·r²(1−r)³ with its interior max at r* = 2/5")
+        print(f"  testing Run 01's χ(r) = a·r²(1−r)³ with its interior max at r* = 2/5,")
+        print(f"  and calibrating r(K_c,N) against the published β/ν̄_c = "
+              f"{k02_mod.CRITICAL_EXPONENT_PUBLISHED}"
+              f"({int(k02_mod.CRITICAL_EXPONENT_PUBLISHED_ERR * 100)}) "
+              f"[Hong et al. 2015 Eq. 4.3]")
 
         def progress(stage, done, total, n):
             if stage == "rung":
-                print(f"  · rung {done + 1}/{total}: N={n} oscillators")
+                print(f"  · sweep rung {done + 1}/{total}: N={n} oscillators")
+            elif stage == "critical":
+                print(f"  · calibration rung {done + 1}/{total}: N={n} at exact K_c")
 
         result = k02_mod.run_k02(
             ladder=ns.ladder, gamma=ns.gamma, seeds=ns.seeds, dt=ns.dt,
-            t_burn=ns.t_burn, t_measure=ns.t_measure, progress=progress,
+            t_burn=ns.t_burn, t_measure=ns.t_measure,
+            critical_seeds=ns.critical_seeds, critical_t_burn=ns.critical_t_burn,
+            critical_t_measure=ns.critical_t_measure, progress=progress,
         )
         report = k02_mod.to_report(result)
         for rung in result.rungs:
@@ -1440,9 +1456,17 @@ def main(argv=None):
                   f"(grid)  K_peak={rung.k_peak:.4f}  free (p,q)="
                   f"({rung.fit_free['p']:.2f},{rung.fit_free['q']:.2f}) R²="
                   f"{rung.fit_free['r2']:.3f}  pinned (2,3) R²={rung.fit_run01['r2']:.3f}")
-        print(f"  → r* {result.rungs[0].r_star:.4f} → {result.rungs[-1].r_star:.4f} across the "
-              f"ladder, scaling as N^{result.scaling_exponent:.3f} (R²={result.scaling_r2:.3f}) "
-              f"vs Run 01's N-independent 2/5")
+        for c in result.critical:
+            print(f"  → N={c['n']:5d}  ⟨r⟩ at exact K_c = {c['r_critical']:.5f} "
+                  f"± {c['r_sem']:.5f}  (equilibration drift "
+                  f"{c['equilibration_drift'] * 100:.1f}%)")
+        cf = result.critical_fit
+        print(f"  → CALIBRATION: r(K_c,N) ~ N^−{cf['exponent']:.3f}±{cf['err']:.3f} "
+              f"(R²={cf['r2']:.3f}) vs published "
+              f"{k02_mod.CRITICAL_EXPONENT_PUBLISHED}"
+              f"({int(k02_mod.CRITICAL_EXPONENT_PUBLISHED_ERR * 100)})")
+        print(f"  → χ(r) argmax r* {result.rungs[0].r_star:.4f} → "
+              f"{result.rungs[-1].r_star:.4f} vs Run 01's N-independent 2/5")
         verdict = ("interior peak resolved at every N; see the report for the shape verdict"
                    if report["status"] == "pass" else "[~] null — see the report")
         print(f"  → {verdict} · {result.wall_seconds:.0f}s")

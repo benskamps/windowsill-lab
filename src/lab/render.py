@@ -3358,27 +3358,38 @@ def _plot_calibration(report: dict) -> str:
         axes[0].set_ylabel("χ = N · Var(r)")
         axes[0].set_title("the peak marches left as N grows")
         axes[0].legend(frameon=False, fontsize=7)
+        # Right: THE CALIBRATION — coherence at the exact K_c against the published
+        # finite-size exponent. This is the headline; the argmax r* rides along as
+        # context, and the demoted Beta-fit p/(p+q) is deliberately not plotted.
+        crit = report.get("critical") or []
+        if crit:
+            cn = np.asarray([c["n"] for c in crit], dtype=float)
+            cr = np.asarray([c["r_critical"] for c in crit], dtype=float)
+            cerr = np.asarray([c.get("r_sem", 0.0) or 0.0 for c in crit], dtype=float)
+            axes[1].errorbar(cn, cr, yerr=cerr, fmt="o-", ms=5, lw=1.1, capsize=2.5,
+                             color="#7a5c3e", label="measured  ⟨r⟩ at exact K_c")
+            pub = float(report.get("critical_exponent_published", 0.39))
+            ref = cr[0] * (cn / cn[0]) ** (-pub)
+            axes[1].plot(cn, ref, "--", lw=1.2, color="#a2553f",
+                         label=f"published  N^−{pub:g}  (Hong 2015)")
+            fit = report.get("critical_fit") or {}
+            exp, err = fit.get("exponent"), fit.get("err")
+            if exp is not None and np.isfinite(float(exp)):
+                lab_ = f"measured  N^−{float(exp):.3f}"
+                if err is not None and np.isfinite(float(err)):
+                    lab_ += f" ± {float(err):.3f}"
+                axes[1].plot(cn, cr[0] * (cn / cn[0]) ** (-float(exp)), ":", lw=1.2,
+                             color="#b88963", label=lab_)
         if r_stars:
-            axes[1].plot(ns, r_stars, "o", ms=5, color="#7a5c3e",
-                         label="measured argmax  r*(N)")
-            # The better-conditioned reading: the fitted interior maximum, which is a
-            # property of the whole curve rather than one sample of it.
-            fitted = report.get("fit_peak_ladder") or []
-            if len(fitted) == len(ns):
-                axes[1].plot(ns, fitted, "s-", ms=4, lw=1.1, color="#667c86",
-                             label="fitted interior max  p/(p+q)")
-                slope = report.get("fit_peak_exponent")
-                if slope is not None and np.isfinite(float(slope)):
-                    ref = fitted[0] * (np.asarray(ns) / ns[0]) ** float(slope)
-                    axes[1].plot(ns, ref, ":", lw=1.0, color="#b88963",
-                                 label=f"∝ N^{float(slope):.2f}")
-            axes[1].axhline(run01, ls="--", lw=1.2, color="#a2553f",
-                            label="Run 01  r* = 2/5 (N-independent)")
-            axes[1].set_xscale("log"); axes[1].set_yscale("log")
-            axes[1].legend(frameon=False, fontsize=7)
+            axes[1].plot(ns, r_stars, "s", ms=4, mfc="none", color="#667c86",
+                         label="χ(r) argmax  r*(N)  (context)")
+        axes[1].axhline(run01, ls="-.", lw=1.0, color="#8d8175",
+                        label="Run 01  r* = 2/5 (N-independent)")
+        axes[1].set_xscale("log"); axes[1].set_yscale("log")
+        axes[1].legend(frameon=False, fontsize=6.5)
         axes[1].set_xlabel("population size  N")
-        axes[1].set_ylabel("peak location  r*")
-        axes[1].set_title("does the shape survive N?")
+        axes[1].set_ylabel("coherence at criticality")
+        axes[1].set_title("calibration: r(K_c,N) ~ N^−β/ν̄")
     elif exp.startswith("M16"):
         fig, axes = plt.subplots(1, 2, figsize=(9, 3.8))
         tws = [int(x) for x in report["waiting_times"]]
