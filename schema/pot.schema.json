@@ -74,7 +74,7 @@
         "id": { "type": "string", "pattern": "^[A-Z]{1,3}[0-9]+$" },
         "title": { "type": "string" },
         "status": { "type": "string", "enum": ["verified", "review", "null", "open", "pending"] },
-        "track": { "type": "string", "enum": ["physics", "compute", "astronomy", "instrument", "boinc", "misc"] },
+        "track": { "type": "string", "enum": ["physics", "coherence", "compute", "astronomy", "instrument", "boinc", "misc"] },
         "growth_form": {
           "type": "string",
           "description": "Render-strategy hint derived from `track` (see BACKLOG.md §Growth forms): the *form* of the green thing — same pot, palette, and contract, only the form changes — so the kind of science is legible at a glance. Unknown/absent track falls back to the homogeneous default seedling.",

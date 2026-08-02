@@ -29,6 +29,7 @@ RUNNERS = {
     "M15": "m15",
     "M16": "m16",
     "M17": "m17",
+    "K01": "k01",
     "C01": "c01",
     "A01": "a01",
     "I01": "i01",
@@ -41,6 +42,7 @@ _SEEDED_AND_DEVICE = frozenset({"seed", "device"})
 RUNNER_SCHEDULER_OPTIONS = {
     **{f"M{i:02d}": _SEEDED_AND_DEVICE for i in range(1, 17)},
     "M17": frozenset({"seed"}),
+    "K01": frozenset({"seed"}),
     "C01": frozenset(),
     "A01": frozenset(),
     "I01": frozenset(),
@@ -63,9 +65,16 @@ def runner_for(milestone_id: str) -> str | None:
 #         quick-run nulls). Either membership choice is receipt spam.
 #   M16 — same wall-clock class as M12 (3D spin-glass aging).
 # M01 stays as ONE slot: the calibration pulse, demoted from daily headline.
+# K01 joined 2026-08-02 with the K (coherence) track: ~105 s of NumPy on CPU, no
+# hardware gate, and a self-contained calibration whose verdict is meaningful on
+# every pass — it clears both bars the exclusions above were written to enforce.
+# It sits with the physics rungs rather than at the tail, because the walk is
+# grouped: the convergence ladders (M, K) first, then the citizen-science tracks
+# (C, A, I). That keeps I01 — the one gated slot — last, where the wrap lands on
+# the M01 calibration pulse.
 ROTATION: tuple[str, ...] = (
     "M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10",
-    "M11", "M13", "M14", "M15", "M17", "C01", "A01", "I01",
+    "M11", "M13", "M14", "M15", "M17", "K01", "C01", "A01", "I01",
 )
 
 

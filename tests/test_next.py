@@ -312,7 +312,11 @@ def _all_verified():
 def test_select_rotation_walks_to_the_next_slot():
     pick, skips = curriculum.select_rotation(_all_verified(), "M01")
     assert (pick, skips) == ("M02", [])
+    # The walk is grouped: the convergence ladders (M, then K) come before the
+    # citizen-science tracks, so M17's successor is K01 and K01's is C01.
     pick, _ = curriculum.select_rotation(_all_verified(), "M17")
+    assert pick == "K01"
+    pick, _ = curriculum.select_rotation(_all_verified(), "K01")
     assert pick == "C01"
     # Unknown or absent pointer starts the rotation at its first slot.
     pick, _ = curriculum.select_rotation(_all_verified(), "ZZ99")

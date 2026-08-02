@@ -53,6 +53,15 @@ green thing changes (vine, fern, succulent, moss…). A growth form is a render
 strategy, not a new page. Pick the form from a milestone's `track`, keep every
 other rule identical, and a wall of windowsills should still read as one garden.
 
+**Open (2026-08-02):** the K (coherence) track landed without its own form — it
+reuses the physics `fern`, because a coherence sweep is the same shape of climb
+as a magnetism sweep and shipping a seventh plant nobody asked for is not what
+K01 was for. If the track grows past K01, give it a form that reads as *many
+things falling into step* (a cluster converging on one line) and add it to
+`web/growth-forms.js` + the `growth_form` enum in `schema/pot.schema.json`.
+Until then `publish.GROWTH_FORMS["coherence"] = "fern"` is the deliberate
+placeholder, not an oversight.
+
 - [x] Define a `growth_form` (or derive it from `track`) in the feed contract.
       (done 2026-06-23 — `publish.GROWTH_FORMS` + `growth_form_for(track)`; every
       milestone is stamped, schema enum added.)

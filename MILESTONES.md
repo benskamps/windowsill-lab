@@ -38,6 +38,31 @@ note when the report it produced is committed into `reports/`.
 
 ---
 
+# The coherence book
+
+The M ladder asks when a lattice of **spins** agrees. This one asks the same
+question of **clocks**: N oscillators, each running at its own natural frequency,
+each nudged toward the crowd. It is the second physics ladder in the lab, and it
+follows the same rule as the first — **calibrate first** (reproduce a result that
+is known exactly), then map, then push into the open.
+
+Track K graduates the coherence research in `~/projects/coherence-lab/` into the
+nightly instrument. That work already ran on the order-parameter susceptibility
+χ(K) = N·Var(r); K01 is the rung underneath it, proving the same estimator finds
+the one coupling in this model that theory pins exactly.
+
+## Track K — coherence
+
+- [?] **K01** — Kuramoto synchronization transition, calibrated. N coupled phase oscillators with Lorentzian natural frequencies; sweep the coupling K and locate the critical point against the exact mean-field `K_c = 2γ`. (measured 2026-08-02 — machine check passed, awaiting human review. The lab's first **non-lattice** milestone: no sites, no neighbours, no temperature — 2000 oscillators on a circle, coupled only through their own centroid `r·e^{iψ} = ⟨e^{iθ}⟩`, integrated with fixed-step RK4. The pair coupling collapses exactly to the mean-field form `K·r·sin(ψ−θ_i)`, which is what makes an N=2000 sweep an O(N)-per-step **NumPy CPU** job (≈105 s) rather than a GPU one. Sweeping 25 couplings over [0, 4γ] at γ=0.5, the susceptibility-style fluctuation **χ(K) = N·Var_t(r)** — the same estimator M04/M05/M06 peak-locate in temperature, refined with the same 3-point parabola — peaks at **K_c = 1.0007 against the exact 2γ = 1.0000** (rel. err 0.07%). **The stronger claim is not the peak but the curve:** above the transition the mean-field solution is a closed form with nothing fitted, `r(K) = √(1 − K_c/K)`, and the measured coherence matches it to **1.5 × 10⁻⁴** across 7 un-fitted couplings — the same role random deposition's exact `w²=p(1−p)t` plays in M17 and the Nishimori-line energy identity plays in M14. A pipeline that manufactured a plausible transition would still have to reproduce seven coherence values it never fitted. The **negative control** closes the other end: at K=0 the measured ⟨r⟩ = 0.0203 is nothing but the random-walk centroid of N scattered phases, 1/√N = 0.0224 — a collapsed frequency draw (all ω equal) would order at zero coupling and is caught before any peak is fitted. Natural frequencies are drawn by deterministic inverse-CDF **quantile** sampling on the grid (i+½)/N rather than from a generator, so the set is exactly antisymmetric (Σω = 0, no spurious ψ drift) and carries no sampling noise on top of the finite-size effect being measured; the Lorentzian's tails are **clipped** at |ω| ≤ 40γ, which — unlike truncating and renormalizing — leaves g(0) and therefore `K_c = 2/(πg(0))` exactly unchanged while keeping |ω|·dt ≪ 2π so no fast drifter is aliased into a spurious near-stationary lock. **Boundary:** the exact K_c = 2γ is an N → ∞ result and the sweep is a finite grid, so this is a calibrated finite-N estimate, not a precision measurement. Both systematics were *measured before* the tolerance was declared, not assumed: the estimate approaches 2γ **from above** — 1.0504 at N=250, 1.0256 at N=500, 1.0083 at N=1000, 1.0007 at N=2000 — and by N=2000 the run-to-run scatter from the initial condition (a second seed gave 0.9910) has overtaken the finite-N shift. The floor under both is the sweep's own resolution ΔK = γ/6 = 0.0833, which is what sets `check_k01`'s ±0.10 band — the *grid*, not the shipped run's luck. dt = 0.02 was cross-checked against dt = 0.01: the two agree on the graded peak to four decimals, so the number is a property of the model and not the integrator. The steepest-rise cross-check estimator is carried but deliberately **not** graded — `r(K) = √(1−K_c/K)` has infinite slope at K_c⁺, so a central difference on a finite grid can never place it better than ≈0.8·ΔK high, and it lands at 1.068 at every N and seed tried; that is a known property of the estimator, which is exactly why the fluctuation peak is the headline. **[?] means machine-passed, awaiting Ben's green-leaf review.**)
+- [ ] **K02** — The susceptibility's shape, and whether it survives N. Run 01 of the coherence-window work found the interior χ peak at partial order (r\*≈0.40) and fitted the closed form **χ(r) = a·r²(1−r)³** with an analytic interior maximum at r\* = 2/5 (R² = 0.967). K01 pins the *location* of that peak against exact theory; K02 asks whether its *shape* is real — re-derive the r²(1−r)³ form on this engine and test whether the fitted exponents hold as N grows, or whether they are a finite-size artifact of one population size. Source: `~/projects/coherence-lab/coherence-window/report/REPORT.md`.
+- [ ] **K03** — Scheduled coverage versus random access at the desync end. How long can the crowd go quiet before it drifts apart? Run 02 forked Run 01's null into a *gating* question and landed two results worth graduating: an interior optimum in the gating duty cycle τ under a collision channel, with clean-slot throughput peaking at **τ\* = 1/N exactly** across N = 8…128 (the analytic slotted-ALOHA optimum of S(τ) = N·τ·(1−τ)^(N−1), std 0.00), and an **inversion** — coordination coverage falls monotonically 0.90 → 0.19 as coupling rises from K = −3 to +5, so the best coordination sits at the *desynchronizing* end, opposite to Run 01's edge-of-order window. K03 reproduces the τ\* = 1/N law as the calibrated anchor and asks whether a scheduled coverage policy beats random access once the agents share the clock K01 built. Source: `~/projects/coherence-lab/coherence-window/report/RUN02-TAU.md`.
+
+K02 and K03 are **planned, not built** — no runner, no check, no receipt. They are
+written down here so the track's arc is legible, and so the research they graduate
+is cited at the point it will be used.
+
+---
+
 # The Citizen Science book
 
 The physics ladder above proves the lab can be trusted. This book points that
