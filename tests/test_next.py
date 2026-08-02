@@ -31,6 +31,45 @@ def _no_camera(monkeypatch):
     monkeypatch.delenv("LAB_I01_CAMERA", raising=False)
 
 
+def _capture_dispatch(monkeypatch):
+    """Stub the ONE boundary a `lab next` pass runs anything through — the tail
+    ``main([subcmd, ...])`` call — and return the list it records argv into.
+
+    Stubbing engines instead only covers the slots the test names, so a
+    one-line ROTATION edit that moves the wrap target silently turns a
+    scheduler test into a real experiment: minutes of Monte Carlo and a receipt
+    written into the committed repo. This seam is rotation-independent —
+    whichever slot the walk picks, no engine is reached.
+    """
+    real_main = cli.main
+    dispatched: list[list[str]] = []
+    depth = {"n": 0}
+
+    def _main(argv=None):
+        depth["n"] += 1
+        try:
+            if depth["n"] > 1:          # the scheduler's dispatch tail call
+                dispatched.append(list(argv or []))
+                return 0
+            return real_main(argv)
+        finally:
+            depth["n"] -= 1
+
+    monkeypatch.setattr(cli, "main", _main)
+    return dispatched
+
+
+def _repo_report_files():
+    """Every path under the committed ``reports/`` tree — receipts included.
+
+    Snapshot it either side of a non-dry pass: a scheduler test must leave the
+    repo byte-identical, and this fails loudly if the dispatch seam ever leaks.
+    """
+    from lab import publish as publish_mod
+    root = publish_mod.REPORTS_DIR
+    return set(root.rglob("*")) if root.exists() else set()
+
+
 # ── pure selection ────────────────────────────────────────────────────────────
 
 def test_select_next_picks_the_lowest_open_milestone():
@@ -463,9 +502,10 @@ def test_rotation_pass_never_dispatches_gated_i01(monkeypatch, capsys, tmp_path)
     and produces zero I01 artifacts — the I01 runner is never invoked."""
     _no_camera(monkeypatch)
     from lab import i01 as i01_mod
-    from lab import ising as ising_mod
     from lab import publish as publish_mod
-    from lab import render as render_mod
+
+    dispatched = _capture_dispatch(monkeypatch)
+    repo_before = _repo_report_files()
 
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
         {"id": "M18", "status": "open"},
@@ -479,20 +519,50 @@ def test_rotation_pass_never_dispatches_gated_i01(monkeypatch, capsys, tmp_path)
         raise AssertionError("gated I01 must never be dispatched by the scheduler")
     monkeypatch.setattr(i01_mod, "run_i01", _never_run_i01)
 
-    class _FakeIsing:
-        wall_seconds = 1.0
-    calls = {}
-    monkeypatch.setattr(ising_mod, "run", lambda cfg: calls.setdefault("cfg", cfg) and _FakeIsing() or _FakeIsing())
-    monkeypatch.setattr(render_mod, "render", lambda result: tmp_path / "m01.html")
-    monkeypatch.setattr(publish_mod, "publish", lambda *a, **k: str(tmp_path / "pot.json"))
-
     rc = cli.main(["next", "--seed", "2026080100"])
     out = capsys.readouterr().out
     assert rc == 0
     assert "skipped I01" in out and "no-camera" in out
     assert "running `lab run`" in out          # wrapped to the M01 slot
-    assert "cfg" in calls                      # the M01 engine actually ran
+    assert len(dispatched) == 1                # exactly one dispatch, and it is
+    assert dispatched[0][0] == curriculum.RUNNERS["M01"]        # the wrapped pick
+    assert dispatched[0][0] != curriculum.RUNNERS["I01"]        # never the gated one
     assert not list(tmp_path.glob("**/*i01*"))  # zero i01 artifacts anywhere
+    assert _repo_report_files() == repo_before  # and nothing written into the repo
+
+
+def test_rotation_pass_runs_no_engine_when_the_wrap_target_moves(
+        monkeypatch, capsys, tmp_path):
+    """The guard above must not depend on WHICH slot the wrap lands on. With the
+    rotation reordered so the wrap target is M13 rather than the M01 calibration
+    pulse, the pass still discloses the I01 skip and still reaches no engine.
+
+    This is the regression the dispatch-boundary seam exists for: stubbing only
+    the M01 runner made the test's safety an accident of ROTATION's current
+    contents, so a one-line curriculum edit would have started a real
+    multi-minute experiment and written its receipt into the committed repo."""
+    _no_camera(monkeypatch)
+    from lab import publish as publish_mod
+
+    dispatched = _capture_dispatch(monkeypatch)
+    repo_before = _repo_report_files()
+
+    monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
+        {"id": "M18", "status": "open"},
+    ])
+    monkeypatch.setattr(curriculum, "ROTATION", ("M13", "M02", "I01"))
+    receipts = _rotation_receipts(
+        tmp_path, ("2026-07-31", "m02", "2026-07-31T15:10:00+00:00"),
+    )
+    monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", receipts)
+
+    rc = cli.main(["next"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "skipped I01" in out and "no-camera" in out
+    assert "running `lab m13`" in out           # wrapped past I01 to slot 0
+    assert dispatched == [["m13"]]              # dispatched, never executed
+    assert _repo_report_files() == repo_before
 
 
 # ── adversarial review pass (2026-08-01): gate/runner contract, pointer
