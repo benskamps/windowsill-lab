@@ -918,7 +918,13 @@ def ensure_public_receipts() -> list[Path]:
     are large.  Receipts retain the numerical measurements, checker inputs,
     provenance, and reproduction commands while hashing omitted snapshots.  A
     repo report wins over its ``~/.lab`` twin so provenance-stamped copies are
-    preferred.  Returns every receipt path, whether newly written or unchanged.
+    preferred.  Returns every receipt path, whether newly written or untouched.
+
+    Backfill only ever ADDS. A receipt already on disk is never regenerated — it
+    is the permanent record of what that run measured, the same promise
+    ``archive.py`` makes about reports. Source selection is a heuristic and can
+    pick a divergent twin; immutability is what keeps that from rewriting
+    reviewed evidence.
 
     This is the BACKFILL path, and it never invents a turn stamp. A dated report
     has already collapsed a day's same-milestone turns into one file, so it
@@ -951,13 +957,22 @@ def ensure_public_receipts() -> list[Path]:
 
     paths: list[Path] = []
     for (date, slug), (_, _, source, data) in sorted(selected.items()):
-        raw = source.read_bytes()
         destination = _existing_receipt_for(date, slug) \
             or RECEIPTS_DIR / _receipt_filename(date, slug)
-        content = receipt_text(data, raw)
+        # A receipt already on disk is EVIDENCE, and evidence is immutable. The
+        # source selection above cannot tell a correction from a corruption: the
+        # repo's dated reports are gitignored, so in a fresh clone, on the other
+        # box, or in a worktree there is no repo report to win and a divergent
+        # ~/.lab twin of the same (date, slug) becomes the source. Regenerating
+        # then overwrites reviewed measurements with another run's numbers —
+        # which is exactly what happened to K01 on 2026-08-02. Keep the receipt,
+        # report it, write nothing.
+        if destination.exists():
+            paths.append(destination)
+            continue
+        content = receipt_text(data, source.read_bytes())
         destination.parent.mkdir(parents=True, exist_ok=True)
-        if not destination.exists() or destination.read_text(encoding="utf-8") != content:
-            destination.write_text(content, encoding="utf-8")
+        destination.write_text(content, encoding="utf-8")
         paths.append(destination)
     return paths
 
