@@ -965,7 +965,7 @@ def ensure_public_receipts() -> list[Path]:
         # box, or in a worktree there is no repo report to win and a divergent
         # ~/.lab twin of the same (date, slug) becomes the source. Regenerating
         # then overwrites reviewed measurements with another run's numbers —
-        # which is exactly what happened to K01 on 2026-08-01. Keep the receipt,
+        # which is exactly what happened to K01 on 2026-08-02. Keep the receipt,
         # report it, write nothing.
         if destination.exists():
             paths.append(destination)
