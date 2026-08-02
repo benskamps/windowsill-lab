@@ -444,7 +444,10 @@ def run_cadence() -> tuple[str | None, int]:
 CADENCE: dict = {
     "expected_interval_h": 3,
     "machines": ["windows-cuda", "linux-rocm"],
-    "effective_from": None,
+    # Arming ceremony 2026-08-02 (Ben's approval): win task re-registered
+    # 00/06/12/18 and linux-rocm filing turns the same day. First full
+    # armed day is the 3rd — the declared cadence starts there.
+    "effective_from": "2026-08-03",
 }
 
 
