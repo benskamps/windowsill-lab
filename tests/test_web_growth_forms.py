@@ -106,7 +106,7 @@ def test_host_only_walk_does_not_404_in_local_file_mode():
 def test_conservatory_is_feed_driven_and_opens_real_field_notes():
     """Every specimen must report the feed, not repeat decorative sample plants."""
     html = PAGE.read_text(encoding="utf-8")
-    assert "Five instruments. One standard of proof." in html
+    assert "Six instruments. One standard of proof." in html
     assert "function drawGarden(milestones, reports)" in html
     assert "count:closed.length, total:total" in html
     assert "reportForMilestone(reports, latest && latest.id)" in html
@@ -184,11 +184,18 @@ def test_scene_svg_role_keeps_leaf_and_bud_buttons_exposed():
     assert '<svg viewBox="0 0 800 560" role="img"' not in html
 
 
-def test_meta_descriptions_enumerate_five_tracks():
-    """Search results and social unfurls must describe the page they open:
-    five instruments, not four."""
+def test_meta_descriptions_enumerate_every_track():
+    """Search results and social unfurls must describe the page they open.
+
+    The count is the number of TRACKS in ``publish.TRACKS`` (physics, coherence,
+    compute, astronomy, instrument, boinc) — it went four → five → six as tracks
+    landed, so this asserts the current count and that no stale one survives.
+    """
     html = PAGE.read_text(encoding="utf-8")
-    assert "four kinds of patient science" not in html
-    assert "Four quiet plants" not in html
-    assert "five kinds of patient science" in html
-    assert "Five quiet plants" in html
+    for stale in ("four kinds of patient science", "Four quiet plants",
+                  "five kinds of patient science", "Five quiet plants",
+                  "Five instruments."):
+        assert stale not in html, f"stale track count on the page: {stale!r}"
+    assert "six kinds of patient science" in html
+    assert "Six quiet plants" in html
+    assert "Six instruments. One standard of proof." in html

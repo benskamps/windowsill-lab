@@ -14,6 +14,9 @@ Each entry is keyed by milestone id and may carry:
 - ``result_plain``   — one plain sentence stating the verified outcome (or ``None``
                        for open/pending milestones, which have no result yet).
 
+Tracks currently carrying entries: M=magnetism, K=coherence, C=computation,
+A=astronomy, I=instrument, B=donated compute.
+
 ``publish.parse_milestones`` merges these onto each milestone record (without
 overwriting the technical ``result``), so they flow into ``pot.json`` and the page.
 
@@ -138,6 +141,25 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Spreading or dying",
         "question_plain": "If an activity can either spread to its neighbours or fizzle out for good, is there a knife's-edge setting where it just barely survives forever?",
         "why_it_matters": "This simplest model of epidemics, forest fires, and chain reactions captures the universal tipping point between extinction and survival, a pattern that shows up far beyond physics.",
+        "result_plain": None,
+    },
+    # ── Track K — coherence: when do independent rhythms agree? ──────────────
+    "K01": {
+        "short_label": "Clocks finding a beat",
+        "question_plain": "If you fill a room with clocks that all tick at slightly different speeds, and let each one nudge the others, how hard do they have to pull before they suddenly all tick together?",
+        "why_it_matters": "The same tipping point governs fireflies flashing in unison, heart cells beating as one, and power grids staying in step — and there is an exact answer to check the lab against.",
+        "result_plain": "The lab found the tipping point at a nudging strength of 1.0007, on top of the exact answer of 1, and — the harder test — reproduced the whole curve of how much the clocks agree above that point to within two ten-thousandths, without fitting anything. It remains amber until human review.",
+    },
+    "K02": {
+        "short_label": "Cost of agreeing",
+        "question_plain": "Once the clocks are in step, how much of the effort spent nudging is actually buying agreement, and how much is wasted?",
+        "why_it_matters": "Knowing where coordination stops paying for itself is the difference between a system that scales and one that chokes on its own chatter.",
+        "result_plain": None,
+    },
+    "K03": {
+        "short_label": "When to stop talking",
+        "question_plain": "If the clocks can only talk to each other now and then, how long can they go quiet before they drift apart — and is a fixed schedule better than everyone speaking at once?",
+        "why_it_matters": "Every swarm of robots, sensors, or servers has to choose how often to check in, and the honest comparison against the classic free-for-all protocol says whether a schedule is worth the trouble.",
         "result_plain": None,
     },
     # ── Track C — compute & number theory ────────────────────────────────────

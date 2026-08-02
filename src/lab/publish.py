@@ -79,7 +79,8 @@ _MILESTONE_RE = re.compile(
     r"^\s*-\s*\[(?P<box>[ xX~?\->])\]\s*\*\*(?P<id>[A-Z]{1,3}\d+)\*\*\s*[—\-]\s*(?P<body>.*\S)\s*$"
 )
 _TAG_RE = re.compile(r"\{([^}]*)\}\s*$")
-TRACKS = {"M": "physics", "C": "compute", "A": "astronomy", "I": "instrument", "B": "boinc"}
+TRACKS = {"M": "physics", "K": "coherence", "C": "compute", "A": "astronomy",
+          "I": "instrument", "B": "boinc"}
 
 # Growth forms — the feed contract's render-strategy hint (see BACKLOG.md §"Growth
 # forms"). The hard constraint is *homogeneous*: same clay pot, same palette, same
@@ -94,6 +95,11 @@ TRACKS = {"M": "physics", "C": "compute", "A": "astronomy", "I": "instrument", "
 # seedling, so the page degrades cleanly.
 GROWTH_FORMS = {
     "physics": "fern",        # the core convergence ladder — fronds unfurl rung by rung
+    # Coherence is a convergence ladder too — same shape of climb, same kind of
+    # exactly-known rung — so it deliberately REUSES the fern rather than shipping
+    # a seventh plant nobody asked for. A bespoke coherence form is a follow-up
+    # (BACKLOG §"Growth forms"), not a blocker on the track's first rung.
+    "coherence": "fern",
     "compute": "vine",        # climbing integer sequences (e.g. OEIS extensions)
     "astronomy": "creeper",   # a long time-series that trails across the seasons
     "instrument": "succulent",  # a calibration: compact, slow, precise

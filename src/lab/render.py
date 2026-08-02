@@ -3301,6 +3301,35 @@ def _plot_calibration(report: dict) -> str:
         axes[1].set_xlabel("ring size  L")
         axes[1].set_ylabel("saturated width  w_sat")
         axes[1].set_title("roughness exponent")
+    elif exp.startswith("K01"):
+        # Left: the measured coherence against the exact ordered branch — the anchor
+        # with nothing fitted. Right: the fluctuation whose peak IS the headline.
+        fig, axes = plt.subplots(1, 2, figsize=(9.4, 3.9))
+        K = np.asarray(report.get("K", []), dtype=float)
+        r = np.asarray(report.get("r_mean", []), dtype=float)
+        chi = np.asarray(report.get("chi", []), dtype=float)
+        branch = np.asarray(report.get("mean_field_r", []), dtype=float)
+        k_c = float(report.get("kc_exact", 1.0))
+        axes[0].plot(K, r, "o", ms=4, color="#7a5c3e", label=f"measured ⟨r⟩ (N={report.get('n')})")
+        if branch.size == K.size:
+            axes[0].plot(K, branch, "-", lw=1.2, color="#b88963",
+                         label="exact  √(1 − K_c/K)")
+        axes[0].axvline(k_c, ls=":", lw=1.0, color="#8d8175")
+        axes[0].set_xlabel("coupling  K")
+        axes[0].set_ylabel("coherence  r")
+        axes[0].set_title("order parameter vs the closed form")
+        axes[0].legend(frameon=False, fontsize=8)
+        axes[1].plot(K, chi, "o-", ms=3, lw=1.1, color="#667c86")
+        axes[1].axvline(k_c, ls=":", lw=1.0, color="#8d8175",
+                        label=f"exact K_c = 2γ = {k_c:g}")
+        peak = report.get("kc_chi_peak")
+        if peak is not None:
+            axes[1].axvline(float(peak), ls="--", lw=1.0, color="#7a9b56",
+                            label=f"measured peak {float(peak):.4f}")
+        axes[1].set_xlabel("coupling  K")
+        axes[1].set_ylabel("χ = N · Var(r)")
+        axes[1].set_title("fluctuation peak locates K_c")
+        axes[1].legend(frameon=False, fontsize=8)
     elif exp.startswith("M16"):
         fig, axes = plt.subplots(1, 2, figsize=(9, 3.8))
         tws = [int(x) for x in report["waiting_times"]]
@@ -3364,8 +3393,8 @@ def render_calibration(report: dict, date: str | None = None) -> Path:
     _ensure_home()
     milestone = _slug_for(report).upper()
     plant = {
-        "M": "physics fern", "C": "compute vine", "A": "astronomy creeper",
-        "I": "instrument succulent",
+        "M": "physics fern", "K": "coherence fern", "C": "compute vine",
+        "A": "astronomy creeper", "I": "instrument succulent",
     }.get(milestone[:1], "calibration plant")
     passed = str(report.get("status", "")).lower() == "pass"
     verdict = (

@@ -91,6 +91,7 @@ Usage:
   lab m15             run M15: Glauber dynamics — domain growth L(t)∼t^(1/2) after a quench (Phase 4)
   lab m16             run M16: 3D spin-glass aging — compare t/t_w with t−t_w collapse
   lab m17             run M17: KPZ growth on a ring — β=1/3, α=1/2, z=3/2 + Tracy–Widom class
+  lab k01             run K01: Kuramoto synchronization — verify K_c = 2γ (Track K)
   lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
   lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
   lab i01             run I01: calibrate a real capped-CMOS dark-frame stack
@@ -523,6 +524,38 @@ def _parse_m17(args):
                    help="corner-flip probability, strictly in (0,1) (default 0.5)")
     p.add_argument("--seed", type=int, default=42)
     return p.parse_args(args)
+
+
+def _parse_k01(args):
+    # Imported here (not at module scope) so the CLI stays import-light; k01 itself
+    # defers NumPy to run time, so this costs nothing but keeps the parser defaults
+    # anchored to the calibration identity rather than re-typed beside it.
+    from . import k01 as k01_mod
+
+    p = argparse.ArgumentParser(add_help=False)
+    # K01 has no temperature and no lattice: the control parameter is the coupling
+    # K, swept from zero up to 4γ so the sweep straddles the exact K_c = 2γ. The
+    # fixed calibration identity is N=2000, γ=0.5, 25 points — `--quick` changes it
+    # deliberately, which makes the run a diagnostic rather than the calibration
+    # (checks.check_k01 says so out loud, the same way `lab c01 --terms 12` does).
+    p.add_argument("--n", type=int, default=k01_mod.CALIBRATION_N,
+                   help="oscillators, must be even (default 2000)")
+    p.add_argument("--gamma", type=float, default=k01_mod.CALIBRATION_GAMMA,
+                   help="Lorentzian half-width γ; exact K_c = 2γ (default 0.5)")
+    p.add_argument("--points", type=int, default=k01_mod.CALIBRATION_POINTS,
+                   help="couplings swept over [0, 4γ] (default 25)")
+    p.add_argument("--quick", action="store_true",
+                   help="small fast pass — proves the sweep, the branch, and the control end to end")
+    p.add_argument("--dt", type=float, default=0.02,
+                   help="RK4 step (default 0.02; dt=0.01 agrees to four decimals)")
+    p.add_argument("--t-burn", type=float, default=100.0)
+    p.add_argument("--t-measure", type=float, default=300.0)
+    p.add_argument("--seed", type=int, default=42)
+    ns = p.parse_args(args)
+    if ns.quick:
+        ns.n, ns.points = 500, 13
+        ns.t_burn, ns.t_measure = 50.0, 150.0
+    return ns
 
 
 def _parse_c01(args):
@@ -1339,6 +1372,47 @@ def main(argv=None):
                   f"(expected {a['expected']}, {a['decisiveness']:.1f}×) "
                   f"{'✓' if a['correct'] else '✗'}")
         verdict = ("KPZ exponents + Tracy–Widom assignment reproduced"
+                   if report["status"] == "pass" else "[~] null — see the report")
+        print(f"  → {verdict} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "k01":
+        ns = _parse_k01(args[1:])
+        from . import k01 as k01_mod
+        from . import render as render_mod
+        k_c = 2.0 * ns.gamma
+        print(f"K01 Kuramoto synchronization · N={ns.n} oscillators · γ={ns.gamma} · "
+              f"{ns.points} couplings over [0, {4 * ns.gamma:g}] · exact K_c = 2γ = {k_c:g}")
+        last = [None]
+
+        def progress(stage, done, total):
+            if stage != last[0]:
+                labels = {"burn-in": "settling the crowd (burn-in)",
+                          "measure": "measuring ⟨r⟩ and its fluctuation"}
+                if stage in labels:
+                    print(f"  · {labels[stage]}")
+                last[0] = stage
+
+        result = k01_mod.run_k01(
+            n=ns.n, gamma=ns.gamma, n_points=ns.points, dt=ns.dt,
+            t_burn=ns.t_burn, t_measure=ns.t_measure, seed=ns.seed,
+            progress=progress,
+        )
+        report = k01_mod.to_report(result)
+        print(f"  → χ=N·Var(r) peak at K_c={result.kc_chi_peak:.4f} vs exact {k_c:g} "
+              f"(rel. err {result.rel_error*100:.1f}%) · steepest-rise cross-check "
+              f"{result.kc_slope_crossing:.4f}")
+        print(f"  → ordered branch √(1−K_c/K) matched to {result.branch_max_dev:.2e} over "
+              f"{result.branch_points} couplings · ⟨r⟩(K=0)={result.r_incoherent:.4f} "
+              f"vs 1/√N={result.r_incoherent_scale:.4f}")
+        verdict = ("synchronization transition reproduced"
                    if report["status"] == "pass" else "[~] null — see the report")
         print(f"  → {verdict} · {result.wall_seconds:.0f}s")
         path = render_mod.render_calibration(report)

@@ -156,6 +156,45 @@ TW_GOE_SKEW = -0.2935   # flat geometry
 # (skew 0) or the wrong Tracy–Widom class.
 TW_SKEW_TOL = 0.06
 
+# ── K01: the Kuramoto synchronization transition. Track K (coherence). ────────────────────
+# The fixed K01 calibration identity, mirrored from ``k01`` so the grader and the producer
+# cannot drift (test_k01_identity_mirrors_the_runner pins the pair together). A run that
+# changed any of these is a diagnostic, NOT this calibration — the same identity gate
+# check_c01 puts on its 40-term OEIS prefix, and the reason a hostile receipt can't grade
+# itself against a γ of its own choosing.
+KURAMOTO_GAMMA = 0.5
+KURAMOTO_N = 2000
+KURAMOTO_POINTS = 25
+KURAMOTO_K_MAX_OVER_GAMMA = 4.0
+# Kuramoto's exact infinite-N mean-field critical coupling for a Lorentzian g(ω) of
+# half-width γ: K_c = 2/(π·g(0)) = 2γ. At the fixed γ = 0.5 this is exactly 1.0.
+KURAMOTO_KC = 2.0 * KURAMOTO_GAMMA
+# Tolerance for K01, OWNED BY THE CHECK (never read from the report). Set by the SWEEP
+# GRID, not by the shipped run's luck: the 25-point sweep of [0, 4γ] has ΔK = γ/6 = 0.0833,
+# and no 3-point peak refinement recovers much better than a fraction of one grid step, so
+# ±0.10 ≈ 1.2·ΔK is the honest floor. It comfortably admits every configuration measured
+# before it was declared — N=2000 gave +0.0007 and −0.0090 on two initial conditions, and
+# the finite-N shift is +0.008 at N=1000, +0.026 at N=500, +0.050 at N=250 (the estimate
+# approaches 2γ from ABOVE as N grows) — while a broken run misses by ~10×: an uncoupled or
+# sign-flipped sweep never orders and puts the fluctuation peak at a sweep endpoint (0 or
+# 2γ·2, off by 1.0), and a mis-drawn frequency distribution moves K_c = 2γ by a whole factor.
+KURAMOTO_KC_TOL = 0.10
+# The STRONGER anchor: above the transition the mean-field solution is a closed form with
+# nothing fitted, r(K) = √(1 − K_c/K). Graded only where it is genuinely asymptotic
+# (K ≥ 1.5·K_c) — closer in, the finite-N curve is still rounding the transition's corner.
+KURAMOTO_BRANCH_K_MIN_FACTOR = 1.5
+# Branch tolerance, also check-owned. The shipped N=2000 run matches the closed form to
+# 1.5e-4 and the cheapest N=250 run to 1.3e-3, so ±0.02 is slack by two orders of magnitude
+# — deliberately, because its job is not precision but refusing a fabricated curve: a broken
+# estimator misses these seven un-fitted values by 0.1–0.7, not by 0.02.
+KURAMOTO_BRANCH_TOL = 0.02
+# Negative control. With ZERO coupling there is no synchronization, so the measured
+# coherence must be nothing but the random-walk centroid of N scattered phases, r ≈ 1/√N
+# (measured 0.0203 against 0.0224 at N=2000). Allowing 3/√N catches the failure that
+# matters — a collapsed frequency draw (all ω equal) orders at K=0 and would sail through a
+# peak-only gate — without grading the noise floor to a precision it doesn't have.
+KURAMOTO_INCOHERENT_MAX_SIGMA = 3.0
+
 # A01 calibration anchor — owned by the checker, not accepted from the report.
 # NASA Exoplanet Archive pscomppars values used by the A01 producer.  Freezing
 # them here makes a receipt independently verifiable: changing a report's
@@ -1339,6 +1378,146 @@ def _fib_segment(n_terms: int) -> str:
     return "".join(lines)
 
 
+def _finite_floats(values, n: int | None = None) -> list[float] | None:
+    """A list of finite floats of the expected length, or ``None`` if unreadable.
+
+    Unreadable guard data is a named failure at the call site, never a default —
+    a receipt carrying ``null`` or ``"1.0"`` where a number belongs must not be
+    graded as if it had carried the number.
+    """
+    if not isinstance(values, list) or (n is not None and len(values) != n):
+        return None
+    out: list[float] = []
+    for v in values:
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return None
+        f = float(v)
+        if not math.isfinite(f):
+            return None
+        out.append(f)
+    return out
+
+
+def check_k01(report: dict) -> tuple[bool | None, str]:
+    """Kuramoto synchronization: the fluctuation peak locates the exact K_c = 2γ.
+
+    Returns ``None`` unless this is a K01 report. Otherwise it re-derives every
+    graded number from the run's raw per-coupling arrays rather than trusting the
+    headline the runner wrote — a receipt, not an echo. Three independent gates,
+    all of which must hold:
+
+    1. **The transition.** ``χ(K) = N·Var_t(r)`` is re-computed from the reported
+       ``n`` and ``r_var`` (a stored ``chi`` that disagrees with ``n·r_var`` is a
+       tampered or broken receipt and fails here), its peak re-located with the
+       same 3-point parabola M04/M05/M06 use, and required to sit within
+       ``KURAMOTO_KC_TOL`` of the exact ``K_c = 2γ``.
+    2. **The ordered branch.** The closed form ``r(K) = √(1 − K_c/K)`` is
+       re-derived here from the *check-owned* ``K_c`` and compared to the measured
+       ⟨r⟩ at every coupling ``K ≥ 1.5·K_c``. Nothing is fitted, so this is the
+       hard half: a run would have to reproduce seven un-fitted coherence values.
+    3. **The negative control.** At ``K = 0`` the measured coherence must be the
+       ``1/√N`` random-walk floor — no coupling, no order.
+
+    The fixed calibration identity (γ, N, and the swept grid) is asserted first,
+    so a run cannot grade itself against a critical coupling of its own choosing.
+    """
+    if report.get("experiment") != "K01-kuramoto-synchronization":
+        return None, "not a K01 Kuramoto report"
+
+    n, gamma = report.get("n"), report.get("gamma")
+    K = report.get("K")
+    r_mean, r_var = report.get("r_mean"), report.get("r_var")
+    if (
+        not isinstance(n, int) or isinstance(n, bool)
+        or isinstance(gamma, bool) or not isinstance(gamma, (int, float))
+        or not isinstance(K, list) or len(K) < 3
+    ):
+        return None, "K01 report missing the swept couplings or the population size"
+
+    # ── the fixed calibration identity, asserted before anything is graded ──
+    n_points = len(K)
+    expected_K = [
+        i * (KURAMOTO_K_MAX_OVER_GAMMA * KURAMOTO_GAMMA) / (KURAMOTO_POINTS - 1)
+        for i in range(KURAMOTO_POINTS)
+    ]
+    swept = _finite_floats(K, KURAMOTO_POINTS)
+    grid_ok = swept is not None and all(
+        abs(a - b) <= 1e-9 for a, b in zip(swept, expected_K)
+    )
+    if not (
+        n == KURAMOTO_N
+        and float(gamma) == KURAMOTO_GAMMA
+        and n_points == KURAMOTO_POINTS
+        and grid_ok
+    ):
+        return False, (
+            f"K01 must sweep {KURAMOTO_POINTS} couplings over "
+            f"[0, {KURAMOTO_K_MAX_OVER_GAMMA:g}γ] with N={KURAMOTO_N} oscillators at "
+            f"γ={KURAMOTO_GAMMA} (exact K_c = 2γ = {KURAMOTO_KC:g}) — "
+            "synchronization calibration identity changed"
+        )
+
+    means = _finite_floats(r_mean, KURAMOTO_POINTS)
+    variances = _finite_floats(r_var, KURAMOTO_POINTS)
+    if means is None or variances is None:
+        return None, "K01 report missing readable per-coupling ⟨r⟩ / Var(r) arrays"
+    if any(v < 0.0 for v in variances) or any(not (0.0 <= m <= 1.0) for m in means):
+        return False, "K01 coherence values are outside [0,1] or the variance is negative"
+
+    # ── gate 1: the transition, re-derived from n·Var(r) ──
+    chi = [n * v for v in variances]
+    stored_chi = _finite_floats(report.get("chi"), KURAMOTO_POINTS)
+    # The report's own χ must be the χ this check re-derives; a receipt whose
+    # stored fluctuation curve disagrees with its variances is not gradeable.
+    chi_consistent = stored_chi is not None and all(
+        abs(a - b) <= 1e-6 * max(1.0, abs(b)) for a, b in zip(stored_chi, chi)
+    )
+    peak_k = _refine_peak_stdlib(swept, chi)
+    peak_dev = abs(peak_k - KURAMOTO_KC)
+    peak_ok = peak_dev <= KURAMOTO_KC_TOL
+
+    # ── gate 2: the exact ordered branch √(1 − K_c/K), nothing fitted ──
+    graded = [
+        (k, m) for k, m in zip(swept, means)
+        if k >= KURAMOTO_BRANCH_K_MIN_FACTOR * KURAMOTO_KC
+    ]
+    branch_dev = max(
+        (abs(m - math.sqrt(1.0 - KURAMOTO_KC / k)) for k, m in graded), default=None,
+    )
+    branch_ok = len(graded) >= 5 and branch_dev is not None and branch_dev <= KURAMOTO_BRANCH_TOL
+
+    # ── gate 3: the negative control at zero coupling ──
+    floor = 1.0 / math.sqrt(n)
+    incoherent = means[0]
+    incoherent_ok = swept[0] == 0.0 and incoherent <= KURAMOTO_INCOHERENT_MAX_SIGMA * floor
+
+    ok = bool(chi_consistent and peak_ok and branch_ok and incoherent_ok)
+    branch_str = "n/a" if branch_dev is None else f"{branch_dev:.1e}"
+    if not chi_consistent:
+        verdict = "stored χ does not equal N·Var(r) — receipt is not self-consistent"
+    elif not incoherent_ok:
+        verdict = (
+            f"uncoupled control failed: ⟨r⟩(K=0)={incoherent:.4f} exceeds "
+            f"{KURAMOTO_INCOHERENT_MAX_SIGMA:g}/√N={KURAMOTO_INCOHERENT_MAX_SIGMA * floor:.4f}"
+        )
+    elif not branch_ok:
+        verdict = (
+            f"ordered branch not reproduced ({len(graded)} pts, "
+            f"tol ±{KURAMOTO_BRANCH_TOL})"
+        )
+    elif not peak_ok:
+        verdict = "synchronization calibration failed"
+    else:
+        verdict = "synchronization transition reproduced"
+    return ok, (
+        f"χ=N·Var(r) peak at K={peak_k:.4f} vs exact 2γ = {KURAMOTO_KC:g} "
+        f"(Δ={peak_dev:.4f}, tol ±{KURAMOTO_KC_TOL}); ordered branch √(1−K_c/K) "
+        f"matched to {branch_str} over {len(graded)} couplings "
+        f"(tol ±{KURAMOTO_BRANCH_TOL}); ⟨r⟩(K=0)={incoherent:.4f} vs 1/√N={floor:.4f} — "
+        f"{verdict}"
+    )
+
+
 def _lucas_lehmer_residue(exponent: int) -> int:
     modulus = (1 << exponent) - 1
     residue = 4
@@ -1689,7 +1868,8 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
           "M10": check_m10, "M11": check_m11, "M12": check_m12,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
-          "M16": check_m16, "M17": check_m17, "C01": check_c01, "A01": check_a01,
+          "M16": check_m16, "M17": check_m17, "K01": check_k01,
+          "C01": check_c01, "A01": check_a01,
           "I01": check_i01, "CTRL": check_controls}
 
 
