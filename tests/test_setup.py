@@ -132,8 +132,12 @@ def test_task_xml_is_wellformed_and_runs_the_nightly():
     assert len(triggers) == 4
     for hh in ("00:00:00", "06:00:00", "12:00:00", "18:00:00"):
         assert f"2026-01-01T{hh}" in xml
-    # PT2H per-run limit < the 6h spacing, so passes can never overlap.
-    assert "<ExecutionTimeLimit>PT2H</ExecutionTimeLimit>" in xml
+    # ExecutionTimeLimit is an anti-wedge watchdog, NOT overlap prevention: on
+    # 2026-08-02 the old PT2H limit killed the wrapper mid-M02 while the python
+    # child survived and finished, orphaning its logging. Overlap is the run
+    # lock's job (cli.next_run_lock); the watchdog sits past the longest honest
+    # milestone so it only fires on a genuinely wedged wrapper.
+    assert "<ExecutionTimeLimit>PT12H</ExecutionTimeLimit>" in xml
     assert str(setup.NIGHTLY_PS1) in xml               # the action runs nightly.ps1
     assert "powershell.exe" in xml
     # Resilience: catch a missed start, and wake a sleeping box so the

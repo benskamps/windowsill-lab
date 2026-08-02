@@ -254,7 +254,19 @@ Log "-- done (success)"
 # unattended. Cadence: FOUR explicit daily triggers (legible in the Task
 # Scheduler UI, unlike a Repetition block) at 00/06/12/18 local — interleaved
 # with Loam's campaign turns at 03/09/15/21 local: 8 turns/day across the
-# portfolio. ExecutionTimeLimit PT2H < the 6h spacing, so passes never overlap.
+# portfolio.
+#
+# ExecutionTimeLimit is an ANTI-WEDGE WATCHDOG ONLY — it is NOT overlap
+# prevention, and it does NOT reliably stop work. 2026-08-02 falsified the old
+# PT2H-prevents-overlap theory: the 12:00 slot dispatched M02 (a legitimate
+# ~4.5h GPU milestone), at 14:00 Task Scheduler terminated the powershell
+# wrapper (0x41306), and the `python -m lab.cli next` CHILD survived the kill
+# and ran to completion with its logging orphaned. So the limit stopped nothing
+# except the log. Overlap prevention is the run lock's job (~/.lab/next.lock,
+# see cli.next_run_lock): a slot that arrives while a turn is live skips itself
+# and exits 0. PT12H is set so the watchdog sits well past the longest honest
+# milestone rather than amputating it — it should only ever fire on a genuinely
+# wedged wrapper.
 _TASK_XML = """<?xml version="1.0" encoding="UTF-16"?>
 <Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
   <RegistrationInfo>
@@ -277,7 +289,7 @@ __TRIGGERS__  </Triggers>
       <Interval>PT5M</Interval>
       <Count>2</Count>
     </RestartOnFailure>
-    <ExecutionTimeLimit>PT2H</ExecutionTimeLimit>
+    <ExecutionTimeLimit>PT12H</ExecutionTimeLimit>
     <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
     <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
     <Enabled>true</Enabled>
