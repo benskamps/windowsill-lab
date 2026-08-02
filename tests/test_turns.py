@@ -169,6 +169,69 @@ def test_backfill_never_mints_a_stamped_twin(tmp_path, monkeypatch):
         "run-2026-06-14-m01.json"]
 
 
+def _lab_report(lab_home, date, slug, chi, *, mtime=9000):
+    """A dated report in the ``~/.lab`` cache — the backfill's other source."""
+    lab_home.mkdir(parents=True, exist_ok=True)
+    path = lab_home / f"{date}-{slug}.json"
+    path.write_text(json.dumps({
+        "experiment": f"{slug.upper()}-ising-verification",
+        "headline": "a different run of the same milestone",
+        "T": [2.2, 2.3, 2.4], "chi": chi,
+        "generated_at": f"{date}T19:00:00+00:00",
+    }), encoding="utf-8")
+    os.utime(path, (mtime, mtime))
+    return path
+
+
+def test_a_committed_receipt_is_never_rewritten_from_a_lab_twin(tmp_path, monkeypatch):
+    """The honest-archive invariant, from the incident of 2026-08-01.
+
+    A receipt is EVIDENCE: once it is committed, the numbers in it are what that
+    run measured, permanently. The backfill picks its source per (date, slug) —
+    repo report, else newest ``~/.lab`` twin — and the repo's dated reports are
+    gitignored, so on a fresh clone, on the other machine, or inside a worktree
+    there is NO repo report to win. A worktree re-run of the same milestone on
+    the same day then leaves a divergent ``~/.lab`` twin, and the backfill
+    regenerated the reviewed receipt from it: K01's measured χ values were
+    replaced with another run's numbers and 20 other receipts' provenance
+    hashes churned (poison 51dc784, reverted 3119074).
+
+    Regeneration cannot tell a correction from a corruption, so it may not
+    happen at all. The receipt on disk wins over any source, forever."""
+    reports, lab_home = _patch(tmp_path, monkeypatch)
+    receipts = reports / "receipts"
+    committed = _receipt(receipts, "2026-08-01", "k01", turn=None,
+                         at="2026-08-01T07:00:00+00:00", machine=None)
+    before = committed.read_bytes()
+    # The divergent twin: same run key, different measurements, newer mtime.
+    _lab_report(lab_home, "2026-08-01", "k01", [1.0, 42.0, 1.0])
+
+    paths = publish.ensure_public_receipts()
+
+    assert committed.read_bytes() == before
+    assert b"42.0" not in committed.read_bytes()
+    assert json.loads(committed.read_text(encoding="utf-8"))["chi"] == [1.0, 9.0, 1.0]
+    # Still reported as a receipt on the books — the guard skips the WRITE,
+    # not the run, so callers that publish the returned list stay complete.
+    assert paths == [committed]
+
+
+def test_a_missing_receipt_is_still_backfilled(tmp_path, monkeypatch):
+    """The counter-test for the guard above: immutability must protect only
+    what already exists. A run whose receipt was never written still gets one —
+    that is the backfill's actual job, and a guard that swallowed it would
+    silently empty the public evidence feed on a fresh clone."""
+    reports, lab_home = _patch(tmp_path, monkeypatch)
+    receipts = reports / "receipts"
+    _lab_report(lab_home, "2026-08-01", "k01", [1.0, 42.0, 1.0])
+
+    paths = publish.ensure_public_receipts()
+
+    written = receipts / "run-2026-08-01-k01.json"
+    assert paths == [written]
+    assert json.loads(written.read_text(encoding="utf-8"))["chi"] == [1.0, 42.0, 1.0]
+
+
 def test_same_day_turns_order_by_stamp_in_a_fresh_clone(tmp_path, monkeypatch):
     """A fresh clone flattens every mtime, so the sort has to fall back to
     content. Date alone can't order two turns of one day — the stamp can."""
