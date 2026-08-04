@@ -428,28 +428,28 @@
     }
   ],
   "total": 34,
-  "last_run": "2026-08-03T23:30:34.800768+00:00",
-  "runs": 43,
+  "last_run": "2026-08-04T05:30:15.232946+00:00",
+  "runs": 44,
   "temp_c": 52.0,
   "latest_report": {
-    "date": "2026-08-03",
+    "date": "2026-08-04",
     "milestone": "M02",
     "verdict": "verified",
-    "headline": "finite-size scaling: \u03c7_max \u221d L^1.739 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16232s on GPU",
+    "headline": "finite-size scaling: \u03c7_max \u221d L^1.749 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16213s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-03-1930-m02.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-04-0130-m02.json",
     "machine": "linux-rocm",
-    "at": "2026-08-03T23:30:34.800768+00:00",
-    "group_count": 4,
+    "at": "2026-08-04T05:30:15.232946+00:00",
+    "group_count": 6,
     "group_first_date": "2026-08-03",
     "group_machines": [
       "linux-rocm"
     ]
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-03T23:30:35.116521+00:00",
+  "updated": "2026-08-04T05:30:15.534450+00:00",
   "provenance": {
-    "code_sha": "1f21b14",
+    "code_sha": "6da94bd",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -459,15 +459,15 @@
   },
   "reports": [
     {
-      "date": "2026-08-03",
+      "date": "2026-08-04",
       "milestone": "M02",
       "verdict": "verified",
-      "headline": "finite-size scaling: \u03c7_max \u221d L^1.739 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16232s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-03-1930-m02",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-03-1930-m02.json",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.749 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16213s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-04-0130-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-04-0130-m02.json",
       "machine": "linux-rocm",
-      "at": "2026-08-03T23:30:34.800768+00:00",
-      "group_count": 4,
+      "at": "2026-08-04T05:30:15.232946+00:00",
+      "group_count": 6,
       "group_first_date": "2026-08-03",
       "group_machines": [
         "linux-rocm"
@@ -910,11 +910,11 @@
     }
   ],
   "turns": {
-    "count": 71,
-    "today": 3,
+    "count": 72,
+    "today": 1,
     "last_by_machine": {
       "windows-cuda": "2026-08-02T21:13:53.735904+00:00",
-      "linux-rocm": "2026-08-03T23:30:34.800768+00:00"
+      "linux-rocm": "2026-08-04T05:30:15.232946+00:00"
     },
     "expected_interval_h": 3
   }
