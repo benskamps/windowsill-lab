@@ -135,7 +135,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Roughening surface",
         "question_plain": "When a surface grows by piling up randomly — like a coffee stain creeping outward or a flame front advancing — do its bumps and wrinkles follow a hidden universal law?",
         "why_it_matters": "A startling range of growing, spreading things share one mathematical fingerprint, and reproducing it would tie the windowsill lab to one of the deepest patterns in non-equilibrium physics.",
-        "result_plain": None,
+        "result_plain": "Yes — the surface roughened as time to the power 0.313 against the predicted 1/3, and to make sure that wasn't the ruler's doing, the same ruler measured two simpler growth rules and each landed on its own different known answer (0.235 vs exact 1/4; 0.500 vs exact 1/2, tracked to 0.6%). Even the lopsidedness of the wrinkles leaned the way the deep theory says it should, for both shapes of growth.",
     },
     "M18": {
         "short_label": "Spreading or dying",
