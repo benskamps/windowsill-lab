@@ -123,13 +123,13 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Domains growing",
         "question_plain": "Cool a hot, scrambled magnet in an instant and watch patches of agreement start to spread — how fast do those patches grow as time ticks on?",
         "why_it_matters": "The same coarsening rhythm governs everything from cooling alloys to separating oil and water, so measuring its pace connects a toy magnet to the everyday physics of things settling down.",
-        "result_plain": "The saved curves pass the machine check: the patches grew with a measured power between about 0.47 and 0.49, consistent with the expected one-half growth law once early-time bias is included. It remains amber, not green, until a human promotes the claim.",
+        "result_plain": "The patches grew with a measured power of 0.47 to 0.49, against the predicted one-half. The spread is the real uncertainty: the growth law is approached from below, so a young pattern reads slightly low, and the number drifts up to 0.494 late in the run. Measured across 48 separate quenches on a 512-wide grid.",
     },
     "M16": {
         "short_label": "Aging memory",
         "question_plain": "After a tangled magnet is suddenly chilled, does it keep changing in a way that depends on how long ago it was chilled — in other words, does it carry a memory of its own age?",
         "why_it_matters": "This 'getting older' behaviour is how real glasses and disordered solids quietly evolve for years, and catching it would show the lab can study things that never fully settle.",
-        "result_plain": "Yes — when the lab compared the same tangled magnet at different ages, the older version held onto its past more strongly and all four histories lined up on the clock that measures time relative to age. The machine check passed; it remains amber until a human reviews it.",
+        "result_plain": "The older the magnet, the more strongly it held onto its past. Compared at a fixed delay, correlation with its own history rose from 0.714 to 0.818 as the magnet aged. Its four separate histories line up when time is measured relative to age rather than absolutely — scattering only a quarter as much that way. Time has stopped meaning the same thing to it at every moment, which is what aging is.",
     },
     "M17": {
         "short_label": "Roughening surface",
@@ -148,7 +148,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Clocks finding a beat",
         "question_plain": "If you fill a room with clocks that all tick at slightly different speeds, and let each one nudge the others, how hard do they have to pull before they suddenly all tick together?",
         "why_it_matters": "The same tipping point governs fireflies flashing in unison, heart cells beating as one, and power grids staying in step — and there is an exact answer to check the lab against.",
-        "result_plain": "The lab found the tipping point at a nudging strength of 1.0007, on top of the exact answer of 1, and — the harder test — reproduced the whole curve of how much the clocks agree above that point to within two ten-thousandths, without fitting anything. It remains amber until human review.",
+        "result_plain": "The clocks snapped into step at a nudging strength of 1.0007, against the exact answer of 1. The harder test: above that point, theory predicts the whole curve of how much they agree, and the lab reproduced seven points on it to within two ten-thousandths with nothing fitted. With no nudging at all the clocks read 0.0203 together, which is just the accidental agreement of 2000 random things, so the effect is not an artefact of the setup.",
     },
     # The earlier entry here asked about the *cost* of coordination — a different
     # question from the one MILESTONES.md K02 actually poses, which is whether a
@@ -157,7 +157,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Twitchiest in between",
         "question_plain": "A room of clocks is at its twitchiest somewhere between total disagreement and perfect lockstep — but is the exact spot where that happens a real law, or just a side effect of how many clocks were in the room?",
         "why_it_matters": "An earlier experiment in this lab fitted a tidy formula putting that sweet spot at 40% agreement; if the number is really just counting the crowd, then anyone building on the formula would be quietly wrong at every other size. Checking it also gives the lab a chance to measure a number physicists already published — the honest way to find out whether a windowsill instrument can be trusted.",
-        "result_plain": "The twitchiest point is genuinely somewhere in the middle — that held at every crowd size from 250 clocks up to 4000. But it is nowhere near 40% agreement, and it fades as the crowd grows, so the 40% was reading the size of the room rather than a law. The lab then measured that fading directly and got the same number physicists published for this exact setup in 2015, which is the real result here: not a discovery, but proof the windowsill instrument reproduces a known one. The machine check passed; it remains amber until a human reviews it.",
+        "result_plain": "The twitchiest point does sit somewhere in the middle, at every crowd size from 250 clocks up to 4000. But it is not at 40% agreement, and it slides lower as the crowd grows — so this lab's earlier 40% was measuring the size of the room, not a law, and that claim is withdrawn. Measuring the slide directly: agreement falls as the crowd size to the power 0.401, give or take 0.017, against the 0.39 published for this exact setup in 2015. The two agree well within their error bars.",
     },
     "K03": {
         "short_label": "When to stop talking",
@@ -170,7 +170,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Trust the arithmetic",
         "question_plain": "Before we hunt for new numbers, can we prove our machine even does math we can trust?",
         "why_it_matters": "Every later number-hunting result is worthless unless the basic arithmetic is provably correct first.",
-        "result_plain": "Yes — the machine rebuilt the first 40 Fibonacci entries exactly as the official catalog stores them, byte for byte, and independently confirmed a known prime-number test with a final remainder of zero. It remains amber until human review.",
+        "result_plain": "A check of the arithmetic itself, not a finding. The machine rebuilt the first 40 Fibonacci numbers and matched the official catalogue byte for byte, then re-ran a known primality test on 2 to the 31st minus 1 and got the expected remainder of zero. This exists so the number-handling can be trusted before it is pointed at anything unknown.",
     },
     "C02": {
         "short_label": "Hunt a giant prime",
@@ -195,7 +195,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Weigh starlight",
         "question_plain": "From free telescope data, can we catch a known planet dimming its star and measure its year correctly?",
         "why_it_matters": "It proves our analysis of real survey data lands inside the numbers professional astronomers already published.",
-        "result_plain": "Yes — across eight public telescope visits and 177 crossings, the lab recovered the known planet's 0.941452-day year and roughly one-percent starlight dip inside the professional published uncertainties. It remains amber until human review.",
+        "result_plain": "From eight public telescope visits spanning seven years, the lab timed 177 crossings and measured the planet's year at 0.94145236 days, against the published 0.94145223. That is a difference of about 11 milliseconds. The star dims by 1.022% as the planet passes, against a published 1.041%. Both sit inside the published error bars. The catalogue value was never used in the fit.",
     },
     "A02": {
         "short_label": "Track a pulsing star",
