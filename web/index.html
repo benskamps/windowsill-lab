@@ -2691,6 +2691,32 @@
       document.body.appendChild(walk);
     }
   </script>
+  <script>
+    // Vercel Web Analytics, host-gated exactly like the walk above.
+    //
+    // This page is mirrored VERBATIM into the site repo, which is why it has to
+    // carry its own beacon: the site's other 23 pages have the two <script> tags
+    // hand-added per file, and any copy added on the site side is clobbered by the
+    // next mirror-pull. windowsill and leanto were the only two unmeasured pages
+    // on brokenbranch.dev for exactly that reason — the measurement gap was a
+    // side effect of being a mirror target, not an oversight.
+    //
+    // The site loads /js/va-shim.js for the queue stub; that one line is inlined
+    // here instead so this file stays a self-contained downloadable instrument,
+    // and the whole thing is skipped off-host so a local `lab web` copy never
+    // 404s on /_vercel/*.
+    //
+    // IIFE, not top-level vars: at the top level of a classic script `var va`
+    // would become window.va and overwrite the queue stub below it.
+    (function () {
+      if (!/(^|\.)brokenbranch\.dev$/i.test(location.hostname)) return;
+      window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+      var s = document.createElement('script');
+      s.src = '/_vercel/insights/script.js';
+      s.defer = true;
+      document.body.appendChild(s);
+    })();
+  </script>
 
   <!-- Look through the instrument: fetch physics-latest.json and plot the real
        measurements. Self-contained + progressive: any failure leaves the panel

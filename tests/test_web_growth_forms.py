@@ -103,6 +103,38 @@ def test_host_only_walk_does_not_404_in_local_file_mode():
     assert "brokenbranch\\.dev" in html
 
 
+def test_the_page_carries_its_own_host_gated_analytics_beacon():
+    """The page must measure itself, and only on the host.
+
+    The page is mirrored VERBATIM into the site repo, where the other 23 pages
+    have the Vercel beacon hand-added per file. Anything added on the site side is
+    clobbered by the next mirror-pull, so windowsill and leanto were the only two
+    unmeasured pages on brokenbranch.dev — a side effect of being a mirror target,
+    not an oversight. The beacon therefore has to live upstream, here.
+
+    Two invariants:
+
+    * host-gated, like the walk — a downloadable ``lab web`` copy must not 404 on
+      ``/_vercel/*``, so there is no unconditional beacon <script> tag;
+    * the queue stub must not be clobbered. At the top level of a classic script
+      ``var va`` becomes ``window.va``, which would overwrite the stub that the
+      real script drains, so the loader is wrapped in an IIFE and must not
+      declare a top-level ``va``.
+    """
+    html = PAGE.read_text(encoding="utf-8")
+
+    # No unconditional beacon: it is injected behind the host check, never a tag.
+    assert '<script defer src="/_vercel/insights/script.js"></script>' not in html
+    assert "'/_vercel/insights/script.js'" in html
+    # The queue stub is inlined (the site's /js/va-shim.js is not mirrored here).
+    assert "window.va = window.va ||" in html
+    # The comment above the loader names the shim; what must not appear is a
+    # *reference* to it, since that asset is not mirrored with this page.
+    assert 'src="/js/va-shim.js"' not in html, "site-only asset must not be loaded"
+    # ...and it is never shadowed by a top-level var of the same name.
+    assert "var va =" not in html, "top-level `var va` would overwrite window.va"
+
+
 def test_conservatory_is_feed_driven_and_opens_real_field_notes():
     """Every specimen must report the feed, not repeat decorative sample plants."""
     html = PAGE.read_text(encoding="utf-8")
