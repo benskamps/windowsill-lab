@@ -548,9 +548,51 @@ def test_no_night_shift_framing_survives_in_visible_copy():
 
 
 def test_the_concept_line_is_on_the_page():
+    """The hero names the agents and names the gate.
+
+    Until 2026-08-05 the page's load-bearing fact — that agents wrote every
+    layer and design the experiments — lived in one sentence inside a
+    ``<details>`` collapsed at the foot of the page, while every visible line
+    attributed the work to "two home machines". A reader took that for a cron
+    job. The machines are still named, one rung down: they take the turns.
+
+    The gate assertion is the honesty half. Naming the agents without naming
+    who promotes a result would overclaim, so the two travel together.
+    """
     html = WEB.read_text(encoding="utf-8")
-    assert "Two home machines tend one small lab in turns." in html
-    assert "A home machine keeps a night shift." not in html
+    assert "A fleet of AI agents wrote this instrument and keeps it running" in html
+    assert "a human decides what earns a leaf" in html
+    assert "Two home machines take the turns" in html
+    for stale in ("A home machine keeps a night shift.",
+                  "Two home machines tend one small lab in turns."):
+        assert stale not in html, f"stale concept line on the page: {stale!r}"
+
+
+def test_the_page_states_the_goal_and_not_only_the_disclaimer():
+    """The page must say what the lab is FOR, not just what it isn't claiming.
+
+    Before 2026-08-05 the word "discovery" appeared on this page exactly twice
+    and both were disclaimers — "does not jump from a pretty simulation to a
+    discovery claim" and "not a new proof... or a discovery". The hedging was
+    load-bearing and correct, and it had eaten the thesis: a reader could finish
+    the whole page without learning that the point is a net-new physical result,
+    given away. Discipline about not overclaiming is not the same as having no
+    stated ambition, and this asserts both halves are present.
+    """
+    html = WEB.read_text(encoding="utf-8")
+
+    # The ambition, in the hero and again at the curriculum.
+    assert "The goal is a measurement nobody has made yet, given away free." in html
+    assert "a measurement nobody has made yet" in html
+
+    # "for all": the result is a gift to the commons, with the mechanism named.
+    assert "MIT-licensed" in html
+    assert "the commons is the destination" in html
+
+    # The ambition never gets to masquerade as an achievement.
+    assert "That is the destination, not the status." in html
+    assert "Nothing on this page is claimed as a\n        new result" in html
+    assert "does not jump from a pretty simulation to a discovery claim" in html
 
 
 def test_machine_marks_are_archive_only():

@@ -24,21 +24,21 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>windowsill — live | Broken Branch</title>
-  <meta name="description" content="Two home machines grow six kinds of patient science: physics, coherence, trusted compute, archive astronomy, hardware instruments, and donated distributed computing. Checked results become leaves; misses stay visible.">
+  <meta name="description" content="Working toward a measurement nobody has made yet, given away free. AI agents wrote this lab and keep it running across six kinds of patient science — physics, coherence, trusted compute, archive astronomy, hardware instruments, and donated distributed computing. Every result is machine-checked, a human decides what counts, and the misses stay visible.">
   <meta name="author" content="Ben Schippers">
   <meta name="theme-color" content="#0d0c0a">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.brokenbranch.dev/windowsill/">
-  <meta property="og:title" content="windowsill — a live readout of the lab">
-  <meta property="og:description" content="Six quiet plants growing from real work: physics, coherence, compute, archive astronomy, instruments, and shared distributed computing. Checked results become leaves, and misses stay visible.">
+  <meta property="og:title" content="windowsill — AI agents running a real physics lab, aimed at new science in the open">
+  <meta property="og:description" content="Working toward a measurement nobody has made yet, given away free. AI agents built every layer and design the experiments; a human decides what earns a leaf. Six quiet plants growing from real work: physics, coherence, compute, archive astronomy, instruments, and shared distributed computing. Misses stay visible.">
   <meta property="og:site_name" content="Broken Branch">
   <meta property="og:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="A single seedling in a clay pot on a windowsill — the lab's calm live readout, a leaf for every verified result.">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="windowsill — a live readout of the lab">
-  <meta name="twitter:description" content="Six quiet plants growing from real work: physics, coherence, compute, archive astronomy, instruments, and shared distributed computing. Checked results become leaves, and misses stay visible.">
+  <meta name="twitter:title" content="windowsill — AI agents running a real physics lab, aimed at new science in the open">
+  <meta name="twitter:description" content="Working toward a measurement nobody has made yet, given away free. AI agents built every layer and design the experiments; a human decides what earns a leaf. Six quiet plants growing from real work: physics, coherence, compute, archive astronomy, instruments, and shared distributed computing. Misses stay visible.">
   <meta name="twitter:image" content="https://www.brokenbranch.dev/assets/og-image.png">
   <link rel="canonical" href="https://www.brokenbranch.dev/windowsill/">
   <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230d0c0a'/%3E%3Cpath d='M32 51V28c0-9 6-15 16-16-1 11-6 17-16 18M32 38c-8-1-13-6-14-15 9 1 14 6 14 14' fill='none' stroke='%237fae6b' stroke-width='5' stroke-linecap='round'/%3E%3C/svg%3E">
@@ -492,6 +492,18 @@
     .garden-specimen .specimen-leaf { fill:var(--specimen); opacity:0.82; }
     .garden-specimen .specimen-leaf.review { fill:var(--review); opacity:0.92; }
     .garden-specimen .specimen-leaf.null { fill:var(--bg); stroke:var(--null); stroke-width:1.5; stroke-dasharray:2 2; opacity:0.92; }
+    /* Rungs the track has not reached yet: the rest of the ladder, sketched in.
+       A young track used to draw as a bare stalk with one blob, which read as
+       broken rather than young — the shape of its whole curriculum was invisible
+       until it was finished. These are deliberately the faintest marks on the
+       card: present enough to show where the plant is going, never mistakable
+       for a measured leaf. */
+    .garden-specimen path.specimen-stem.unreached {
+      stroke:color-mix(in srgb, var(--specimen) 30%, #faf8f4);
+      stroke-width:1.1; stroke-dasharray:2.5 3.5; opacity:0.3;
+    }
+    .garden-specimen path.specimen-branch.unreached { stroke:var(--text-muted); stroke-dasharray:1.5 2.5; opacity:0.26; }
+    .garden-specimen .specimen-leaf.unreached { fill:none; stroke:var(--text-muted); stroke-width:1; stroke-dasharray:1.5 2; opacity:0.34; }
     .specimen-tip { fill:var(--bg); stroke:var(--text-muted); stroke-width:1.4; }
     .specimen-tip.open { stroke:var(--review); fill:color-mix(in srgb, var(--review) 18%, var(--bg)); }
     .specimen-tip.review { stroke:var(--review); }
@@ -661,7 +673,7 @@
       <h1 class="label"><span class="sky" id="sky">☀</span>windowsill</h1>
       <div class="phase-mood"><span id="phase">day</span> · <span id="season">spring</span> · feels <span class="mood" id="mood">—</span></div>
     </div>
-    <div class="tagline"><strong>Two home machines tend one small lab in turns.</strong> Physics, compute, archive astronomy, and instruments each begin with a known answer, earn trust one check at a time, and keep every miss. These plants are the public notebook.</div>
+    <div class="tagline"><strong>The goal is a measurement nobody has made yet, given away free.</strong> A fleet of AI agents wrote this instrument and keeps it running; a human decides what earns a leaf. Physics, compute, archive astronomy, and instruments each begin with a known answer, earn trust one check at a time, and keep every miss. Two home machines take the turns; these plants are the public notebook.</div>
 
     <div class="scene" id="scene">
       <!-- role=group, not img: an img role makes every SVG child presentational,
@@ -865,45 +877,6 @@
       <a id="record-snapshot" href="#" target="_blank" rel="noopener">snapshot.json</a>
     </div>
 
-    <aside class="portable-release" aria-labelledby="portable-title">
-      <span class="release-mark" aria-hidden="true">M14</span>
-      <div>
-        <span class="section-kicker">A result you can take home</span>
-        <h2 id="portable-title">Eight saved measurements. One exact identity. No network required.</h2>
-        <p>The M14 receipt independently regrades the persisted Nishimori-line energies at <code>L=24</code>. It claims statistical agreement—not a new proof, a simulation rerun, or a precise multicritical point.</p>
-        <div class="release-proof" role="group" aria-label="portable release boundary">
-          <span><strong>PASS</strong> · strict regrade</span>
-          <span>8 aggregate points</span>
-          <span>max Δ 0.015 ≤ 0.05</span>
-          <span>sha256 <code>34be3fa6330b…b985</code></span>
-        </div>
-        <div class="release-links">
-          <a href="https://raw.githubusercontent.com/benskamps/windowsill-lab/main/release/m14-nishimori-v1/m14-nishimori-v1.zip">download the portable ZIP</a>
-          <a href="https://raw.githubusercontent.com/benskamps/windowsill-lab/main/release/m14-nishimori-v1.sha256">SHA-256</a>
-          <a href="https://github.com/benskamps/windowsill-lab/tree/main/release/m14-nishimori-v1" target="_blank" rel="noopener">inspect its boundary ↗</a>
-        </div>
-      </div>
-    </aside>
-
-    <section class="fieldnote" id="fieldnote" hidden aria-live="polite" aria-label="field note">
-      <button class="fn-close" id="fn-close" type="button" aria-label="close field note">×</button>
-      <div class="fn-kicker" id="fn-kicker">—</div>
-      <h2 class="fn-label" id="fn-label">—</h2>
-      <p class="fn-q" id="fn-q" hidden></p>
-      <p class="fn-r" id="fn-r" hidden></p>
-      <p class="fn-why" id="fn-why" hidden></p>
-      <details class="fn-receipt" id="fn-receipt" hidden>
-        <summary>show the receipt</summary>
-        <p class="fn-tech" id="fn-tech"></p>
-        <a class="fn-link" id="fn-link" href="#" target="_blank" rel="noopener noreferrer" hidden>view the record ↗</a>
-      </details>
-    </section>
-
-    <details class="archive" id="archive" hidden>
-      <summary id="archive-summary">every run</summary>
-      <div class="arc-list" id="arc-list"></div>
-    </details>
-
     <!-- Look through the instrument: the real measurements, plotted straight
          from physics-latest.json (the plant's own committed heartbeat report).
          Hidden until the feed loads — progressive enhancement over the calm scene. -->
@@ -963,11 +936,56 @@
       <p class="instrument-prov" id="instrument-prov">reading the instrument&hellip;</p>
     </section>
 
+    <aside class="portable-release" aria-labelledby="portable-title">
+      <span class="release-mark" aria-hidden="true">M14</span>
+      <div>
+        <span class="section-kicker">A result you can take home</span>
+        <h2 id="portable-title">Eight saved measurements. One exact identity. No network required.</h2>
+        <p>The M14 receipt independently regrades the persisted Nishimori-line energies at <code>L=24</code>. It claims statistical agreement—not a new proof, a simulation rerun, or a precise multicritical point.</p>
+        <div class="release-proof" role="group" aria-label="portable release boundary">
+          <span><strong>PASS</strong> · strict regrade</span>
+          <span>8 aggregate points</span>
+          <span>max Δ 0.015 ≤ 0.05</span>
+          <span>sha256 <code>34be3fa6330b…b985</code></span>
+        </div>
+        <div class="release-links">
+          <a href="https://raw.githubusercontent.com/benskamps/windowsill-lab/main/release/m14-nishimori-v1/m14-nishimori-v1.zip">download the portable ZIP</a>
+          <a href="https://raw.githubusercontent.com/benskamps/windowsill-lab/main/release/m14-nishimori-v1.sha256">SHA-256</a>
+          <a href="https://github.com/benskamps/windowsill-lab/tree/main/release/m14-nishimori-v1" target="_blank" rel="noopener">inspect its boundary ↗</a>
+        </div>
+      </div>
+    </aside>
+
+    <section class="fieldnote" id="fieldnote" hidden aria-live="polite" aria-label="field note">
+      <button class="fn-close" id="fn-close" type="button" aria-label="close field note">×</button>
+      <div class="fn-kicker" id="fn-kicker">—</div>
+      <h2 class="fn-label" id="fn-label">—</h2>
+      <p class="fn-q" id="fn-q" hidden></p>
+      <p class="fn-r" id="fn-r" hidden></p>
+      <p class="fn-why" id="fn-why" hidden></p>
+      <details class="fn-receipt" id="fn-receipt" hidden>
+        <summary>show the receipt</summary>
+        <p class="fn-tech" id="fn-tech"></p>
+        <a class="fn-link" id="fn-link" href="#" target="_blank" rel="noopener noreferrer" hidden>view the record ↗</a>
+      </details>
+    </section>
+
+    <details class="archive" id="archive" hidden>
+      <summary id="archive-summary">every run</summary>
+      <div class="arc-list" id="arc-list"></div>
+    </details>
+
+
     <section class="journey" id="journey" aria-labelledby="journey-title">
       <div class="section-intro">
         <span class="section-kicker">The curriculum</span>
         <h2 id="journey-title">Trust first. Then harder questions.</h2>
-        <p>The lab does not jump from a pretty simulation to a discovery claim. It climbs in four explicit stages.</p>
+        <p>The point of the ladder is the top of it: a measurement nobody has made yet — a small,
+        real addition to physics, published free for anyone to check, reuse, or run again on their
+        own machine. That is the destination, not the status. Nothing on this page is claimed as a
+        new result, and the lab does not jump from a pretty simulation to a discovery claim: it earns
+        the last stage by climbing the first three in public, misses included. That climb is also the
+        only reason you would have to believe the last one, if it ever arrives.</p>
       </div>
       <ol class="phase-rail" id="phase-rail">
         <li data-curriculum-phase="1"><span>01</span><strong>Verify the instrument</strong><em>M01–M05 · exact answers</em></li>
@@ -998,6 +1016,15 @@
       through hardware sensors — a turn every few hours, around the clock. Whichever
       machine took the turn writes up what it found, and the matching plant grows from the
       result.</p>
+      <p>Every layer underneath was written by <b>AI agents</b>: the GPU physics, the checker that
+      independently re-derives each result, the scheduler, the report format, the published feed, the
+      tests — and this page you're reading. Agents also design the experiments and draft the write-ups.
+      One person set the direction and holds the gate.</p>
+      <p>That gate is the part worth understanding, because it is what keeps this a lab instead of a
+      demo. An agent cannot decide that a result is true. A deterministic check has to pass first —
+      that earns an amber leaf — and then a human reads the evidence and promotes it, which is the
+      only way a leaf turns green. When a run misses, the miss is kept on the plant as a grey folded
+      leaf rather than quietly deleted. The counts under the plant include the nulls on purpose.</p>
       <p>The lower leaves are calibration: phase transitions and magnetic models whose answers are
       known well enough to expose a bad instrument. Higher leaves move into disorder and dynamics,
       where the claims must get narrower as the questions get harder. Tap any leaf—or use the
@@ -1022,6 +1049,17 @@
       hurry to run — one small experiment at a time, turn after turn, filling a real notebook over
       months. First they re-check answers we already know, to earn their trust; once proven steady,
       they can wander toward corners of science nobody has gotten around to mapping yet.</p>
+      <p>The reason this can exist at all is newer than the hardware. A patient instrument like this
+      was never blocked on flops — it was blocked on the months of human evenings it takes to write
+      the simulation, the checker, the provenance, the scheduler and the write-up, for a question
+      nobody is paying you to answer. Agents absorb that cost. What one person still has to supply is
+      the judgement about which answers count, and that has not been handed over.</p>
+      <p>Whatever comes out is meant to be given away. Every run's numbers, every receipt, every
+      kept null, the whole instrument and this page are public and MIT-licensed: you can read how a
+      result was reached, re-derive it from the saved measurements, fork the lab onto your own GPU, or
+      point it at a question you care about instead. A small new result anyone can check and build on
+      is worth more than a private one, so the commons is the destination and not a byproduct — and
+      one home machine finding one such thing is a better use of an idle GPU than another benchmark.</p>
 
       <details class="curious">
         <summary>For the curious — the real names and numbers</summary>
@@ -1070,9 +1108,10 @@
         run's receipt records which box ran it, its exact environment, and the commands to re-run it.
         The lab began as one machine's night shift; a second machine joined in July 2026, and the two
         now alternate.</p>
-        <p>Built by one person and a fleet of agents: the GPU physics, the verification gate, the
-        scheduler, the provenance, the JSON contract, the tests and CI, and the live drawing — every
-        layer from the silicon to the seedling.</p>
+        <p>Every layer above was agent-written — the GPU kernels, the verification gate, the
+        scheduler, the provenance, the JSON contract, the tests and CI, and the live drawing that
+        renders the plant — from the silicon to the seedling. The commits are in the public history if
+        you want to read how it was actually built, misses included.</p>
       </details>
 
       <p class="ex-foot">The live feed, the source, and the full curriculum live at
@@ -2212,6 +2251,49 @@
           }
           svg.appendChild(leaf);
         });
+        // The rest of the ladder, sketched above the growing tip. Node count was
+        // the number of CLOSED milestones, so compute (1 of 4) and astronomy
+        // (1 of 4) drew a bare curve with one blob and boinc (0 of 2) drew a bare
+        // curve with nothing: four of six specimens read as snapped twigs, and how
+        // long each climb actually is was invisible until it was finished.
+        //
+        // These rungs are drawn as a straight dashed continuation rather than by
+        // rebuilding the form at full height — a second build re-parameterizes the
+        // whole path (vine's coil, creeper's sweep), which renders as a SECOND
+        // diverging plant instead of the same plant's future. Every form tips at
+        // the same x by the homogeneity contract, so a vertical from the real tip
+        // is a continuation of any of them. Heights come from the shared envelope
+        // (_nodeY), so an unreached rung sits exactly where its leaf will appear.
+        var reached = closed.length + (open ? 1 : 0);   // the open one IS the tip
+        if (GF._nodeY && total > reached) {
+          var env = { base:142, rise:112, total:total, count:closed.length, openProg:progress };
+          var topY = GF._nodeY(env, total - 1);
+          var ghostStem = document.createElementNS(SVGNS, 'path');
+          ghostStem.setAttribute('class', 'specimen-stem unreached');
+          ghostStem.setAttribute('d', 'M ' + geo.tip.x.toFixed(1) + ' ' + geo.tip.y.toFixed(1) +
+            ' L ' + geo.tip.x.toFixed(1) + ' ' + topY.toFixed(1));
+          svg.appendChild(ghostStem);
+          for (var g = reached; g < total; g++) {
+            var gy = GF._nodeY(env, g);
+            var gdir = (g % 2) ? 1 : -1;
+            var glx = geo.tip.x + gdir * 8;
+            var gly = gy - 4;
+            var gbranch = document.createElementNS(SVGNS, 'path');
+            gbranch.setAttribute('class', 'specimen-branch unreached');
+            gbranch.setAttribute('d', 'M ' + geo.tip.x.toFixed(1) + ' ' + gy.toFixed(1) +
+              ' L ' + glx.toFixed(1) + ' ' + gly.toFixed(1));
+            svg.appendChild(gbranch);
+            var gleaf = document.createElementNS(SVGNS, 'ellipse');
+            gleaf.setAttribute('class', 'specimen-leaf unreached');
+            gleaf.setAttribute('cx', glx.toFixed(1));
+            gleaf.setAttribute('cy', gly.toFixed(1));
+            gleaf.setAttribute('rx', '8.5');
+            gleaf.setAttribute('ry', '3.7');
+            gleaf.setAttribute('transform', 'rotate(' + (gdir < 0 ? -24 : 24) + ' ' +
+              glx.toFixed(1) + ' ' + gly.toFixed(1) + ')');
+            svg.appendChild(gleaf);
+          }
+        }
         var tip = document.createElementNS(SVGNS, 'circle');
         tip.setAttribute('class', 'specimen-tip ' + status.key);
         tip.setAttribute('cx', geo.tip.x.toFixed(1));

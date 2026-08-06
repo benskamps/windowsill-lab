@@ -43,6 +43,32 @@ def test_title_is_first_clause():
     assert ms["M02"]["title"] == "Finite-size scaling"  # split on the colon
 
 
+def test_a_bold_wrapped_title_is_taken_whole_and_unbolded():
+    """An author who bolds the title has already said where it ends.
+
+    The naive first-``.``-or-``:`` split truncates ``**Daido vs Hong: is the
+    exponent asymmetric?**`` to ``**Daido vs Hong`` — a title with a dangling
+    ``**`` and the question amputated, which then ships to the public feed and
+    onto the live page. K03 hit exactly this on 2026-08-05 (the retarget commit
+    changed MILESTONES.md without republishing, so the sync gate went red on main
+    and the stale title was what kept the malformed one off the site).
+    """
+    line = ("- [ ] **K03** — **Daido vs Hong: is the susceptibility exponent "
+            "asymmetric across K_c?** chi ~ |K - K_c|^(-gamma) above. More prose.")
+    ms = {m["id"]: m for m in parse_milestones(line)}
+    assert ms["K03"]["title"] == (
+        "Daido vs Hong: is the susceptibility exponent asymmetric across K_c?"
+    )
+    assert "**" not in ms["K03"]["title"]
+
+
+def test_a_bold_lead_in_that_is_not_the_whole_title_still_splits_normally():
+    """Bold used for emphasis on a first word must not swallow the sentence."""
+    line = "- [ ] **M99** — **Emphasis** here, then a clause. And later prose."
+    ms = {m["id"]: m for m in parse_milestones(line)}
+    assert ms["M99"]["title"] == "Emphasis here, then a clause"
+
+
 def test_verified_result_lifts_parenthetical():
     ms = {m["id"]: m for m in parse_milestones(SAMPLE)}
     assert "peak at T=2.30" in ms["M01"]["result"]

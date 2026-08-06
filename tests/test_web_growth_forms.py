@@ -199,3 +199,41 @@ def test_meta_descriptions_enumerate_every_track():
     assert "six kinds of patient science" in html
     assert "Six quiet plants" in html
     assert "Six instruments. One standard of proof." in html
+
+
+def test_a_garden_card_draws_its_whole_ladder_not_only_the_measured_rungs():
+    """A young track must read as young, not as broken.
+
+    Node count used to equal the number of CLOSED milestones, so compute (1 of
+    4), astronomy (1 of 4) and instrument (1 of 3) each drew a bare stalk with a
+    single blob, and boinc at 0 of 2 drew a stalk with nothing on it at all. Four
+    of the six specimens looked like snapped twigs beside the physics fern, and
+    the length of each climb was invisible until it was finished.
+
+    So the card builds a second geometry over the FULL track length and draws the
+    rungs it has not reached as faint dashed outlines. Two invariants matter and
+    are asserted here:
+
+    * height still means real progress — the SOLID stem and the tip come from the
+      progress-scaled build, never from the full-ladder one;
+    * the open milestone is drawn once. It is already the growing tip, so it must
+      not also get a ghost rung.
+    """
+    html = PAGE.read_text(encoding="utf-8")
+
+    # The measured plant is still the ONLY thing the form builds: one build,
+    # progress-scaled, owning the solid stem and the tip.
+    assert html.count("GF.build(spec.form, {") == 1
+    assert "count:closed.length, total:total, openProg:progress" in html
+    assert "stem.setAttribute('d', geo.stem)" in html
+    assert "tip.setAttribute('cx', geo.tip.x.toFixed(1))" in html
+    # Unreached rungs continue from the real tip on the shared height envelope —
+    # NOT a second build of the form, which re-parameterizes vine's coil and
+    # creeper's sweep and renders as a second, diverging plant.
+    assert "var reached = closed.length + (open ? 1 : 0);" in html
+    assert "GF._nodeY(env, g)" in html
+    assert "if (GF._nodeY && total > reached) {" in html
+    for rule in ("path.specimen-stem.unreached",
+                 "path.specimen-branch.unreached",
+                 ".specimen-leaf.unreached"):
+        assert rule in html, f"missing style for unreached rungs: {rule}"
