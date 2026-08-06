@@ -86,6 +86,18 @@ mkdir -p "$(dirname "$LOG")"
   # the mirror never updates). Refuse rather than publish to the wrong branch.
   branch="$(git rev-parse --abbrev-ref HEAD)"
   if [ "$branch" != "main" ]; then
+    # A deliberate feature branch is benign (skip quietly). A clone stranded
+    # detached mid-rebase is an OUTAGE — and until 2026-08-05 both exited 0. The
+    # 08-04 win nightly conflicted on the derived feeds, left the clone detached,
+    # and every run after it logged "on branch 'HEAD'" and exited 0: six times over
+    # 37h, green to the scheduler each time, while the feed froze. Nothing watches
+    # a job that keeps reporting success.
+    if [ "$branch" = "HEAD" ] || [ -d .git/rebase-merge ] || [ -d .git/rebase-apply ]; then
+      echo "STRANDED: detached/mid-rebase (branch '$branch') — the clone needs repair, NOT a benign skip."
+      echo "   repair: git status; resolve or 'git rebase --abort'; 'git checkout main' before the next run."
+      echo "── done (FAILED: clone stranded)"
+      exit 1
+    fi
     echo "REFUSING: on branch '$branch', not main — nightly publishes only from main. Skipping."
     echo "── done (skipped: not on main)"
     exit 0
@@ -189,6 +201,15 @@ Log "-- $((Get-Date).ToUniversalTime().ToString('s'))Z nightly start"
 # mirror never updates). Refuse rather than publish to the wrong branch.
 $branch = (git rev-parse --abbrev-ref HEAD 2>&1 | Select-Object -First 1).Trim()
 if ($branch -ne 'main') {
+    # See the bash twin above: a deliberate feature branch is benign, a clone
+    # stranded detached mid-rebase is an outage, and until 2026-08-05 both exited 0.
+    $stranded = (Test-Path '.git\rebase-merge') -or (Test-Path '.git\rebase-apply') -or ($branch -eq 'HEAD')
+    if ($stranded) {
+        Log "STRANDED: detached/mid-rebase (branch '$branch') -- the clone needs repair, NOT a benign skip."
+        Log "   repair: git status; resolve or 'git rebase --abort'; 'git checkout main' before the next run."
+        Log "-- done (FAILED: clone stranded)"
+        exit 1
+    }
     Log "REFUSING: on branch '$branch', not main -- nightly publishes only from main. Skipping."
     Log "-- done (skipped: not on main)"
     exit 0
