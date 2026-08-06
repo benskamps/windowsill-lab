@@ -492,6 +492,18 @@
     .garden-specimen .specimen-leaf { fill:var(--specimen); opacity:0.82; }
     .garden-specimen .specimen-leaf.review { fill:var(--review); opacity:0.92; }
     .garden-specimen .specimen-leaf.null { fill:var(--bg); stroke:var(--null); stroke-width:1.5; stroke-dasharray:2 2; opacity:0.92; }
+    /* Rungs the track has not reached yet: the rest of the ladder, sketched in.
+       A young track used to draw as a bare stalk with one blob, which read as
+       broken rather than young — the shape of its whole curriculum was invisible
+       until it was finished. These are deliberately the faintest marks on the
+       card: present enough to show where the plant is going, never mistakable
+       for a measured leaf. */
+    .garden-specimen path.specimen-stem.unreached {
+      stroke:color-mix(in srgb, var(--specimen) 30%, #faf8f4);
+      stroke-width:1.1; stroke-dasharray:2.5 3.5; opacity:0.3;
+    }
+    .garden-specimen path.specimen-branch.unreached { stroke:var(--text-muted); stroke-dasharray:1.5 2.5; opacity:0.26; }
+    .garden-specimen .specimen-leaf.unreached { fill:none; stroke:var(--text-muted); stroke-width:1; stroke-dasharray:1.5 2; opacity:0.34; }
     .specimen-tip { fill:var(--bg); stroke:var(--text-muted); stroke-width:1.4; }
     .specimen-tip.open { stroke:var(--review); fill:color-mix(in srgb, var(--review) 18%, var(--bg)); }
     .specimen-tip.review { stroke:var(--review); }
@@ -2239,6 +2251,49 @@
           }
           svg.appendChild(leaf);
         });
+        // The rest of the ladder, sketched above the growing tip. Node count was
+        // the number of CLOSED milestones, so compute (1 of 4) and astronomy
+        // (1 of 4) drew a bare curve with one blob and boinc (0 of 2) drew a bare
+        // curve with nothing: four of six specimens read as snapped twigs, and how
+        // long each climb actually is was invisible until it was finished.
+        //
+        // These rungs are drawn as a straight dashed continuation rather than by
+        // rebuilding the form at full height — a second build re-parameterizes the
+        // whole path (vine's coil, creeper's sweep), which renders as a SECOND
+        // diverging plant instead of the same plant's future. Every form tips at
+        // the same x by the homogeneity contract, so a vertical from the real tip
+        // is a continuation of any of them. Heights come from the shared envelope
+        // (_nodeY), so an unreached rung sits exactly where its leaf will appear.
+        var reached = closed.length + (open ? 1 : 0);   // the open one IS the tip
+        if (GF._nodeY && total > reached) {
+          var env = { base:142, rise:112, total:total, count:closed.length, openProg:progress };
+          var topY = GF._nodeY(env, total - 1);
+          var ghostStem = document.createElementNS(SVGNS, 'path');
+          ghostStem.setAttribute('class', 'specimen-stem unreached');
+          ghostStem.setAttribute('d', 'M ' + geo.tip.x.toFixed(1) + ' ' + geo.tip.y.toFixed(1) +
+            ' L ' + geo.tip.x.toFixed(1) + ' ' + topY.toFixed(1));
+          svg.appendChild(ghostStem);
+          for (var g = reached; g < total; g++) {
+            var gy = GF._nodeY(env, g);
+            var gdir = (g % 2) ? 1 : -1;
+            var glx = geo.tip.x + gdir * 8;
+            var gly = gy - 4;
+            var gbranch = document.createElementNS(SVGNS, 'path');
+            gbranch.setAttribute('class', 'specimen-branch unreached');
+            gbranch.setAttribute('d', 'M ' + geo.tip.x.toFixed(1) + ' ' + gy.toFixed(1) +
+              ' L ' + glx.toFixed(1) + ' ' + gly.toFixed(1));
+            svg.appendChild(gbranch);
+            var gleaf = document.createElementNS(SVGNS, 'ellipse');
+            gleaf.setAttribute('class', 'specimen-leaf unreached');
+            gleaf.setAttribute('cx', glx.toFixed(1));
+            gleaf.setAttribute('cy', gly.toFixed(1));
+            gleaf.setAttribute('rx', '8.5');
+            gleaf.setAttribute('ry', '3.7');
+            gleaf.setAttribute('transform', 'rotate(' + (gdir < 0 ? -24 : 24) + ' ' +
+              glx.toFixed(1) + ' ' + gly.toFixed(1) + ')');
+            svg.appendChild(gleaf);
+          }
+        }
         var tip = document.createElementNS(SVGNS, 'circle');
         tip.setAttribute('class', 'specimen-tip ' + status.key);
         tip.setAttribute('cx', geo.tip.x.toFixed(1));
