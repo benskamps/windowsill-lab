@@ -193,7 +193,7 @@
       "short_label": "Domains growing",
       "question_plain": "Cool a hot, scrambled magnet in an instant and watch patches of agreement start to spread \u2014 how fast do those patches grow as time ticks on?",
       "why_it_matters": "The same coarsening rhythm governs everything from cooling alloys to separating oil and water, so measuring its pace connects a toy magnet to the everyday physics of things settling down.",
-      "result_plain": "The saved curves pass the machine check: the patches grew with a measured power between about 0.47 and 0.49, consistent with the expected one-half growth law once early-time bias is included. It remains amber, not green, until a human promotes the claim."
+      "result_plain": "The patches grew with a measured power of 0.47 to 0.49, against the predicted one-half. The spread is the real uncertainty: the growth law is approached from below, so a young pattern reads slightly low, and the number drifts up to 0.494 late in the run. Measured across 48 separate quenches on a 512-wide grid."
     },
     {
       "id": "M16",
@@ -206,7 +206,7 @@
       "short_label": "Aging memory",
       "question_plain": "After a tangled magnet is suddenly chilled, does it keep changing in a way that depends on how long ago it was chilled \u2014 in other words, does it carry a memory of its own age?",
       "why_it_matters": "This 'getting older' behaviour is how real glasses and disordered solids quietly evolve for years, and catching it would show the lab can study things that never fully settle.",
-      "result_plain": "Yes \u2014 when the lab compared the same tangled magnet at different ages, the older version held onto its past more strongly and all four histories lined up on the clock that measures time relative to age. The machine check passed; it remains amber until a human reviews it."
+      "result_plain": "The older the magnet, the more strongly it held onto its past. Compared at a fixed delay, correlation with its own history rose from 0.714 to 0.818 as the magnet aged. Its four separate histories line up when time is measured relative to age rather than absolutely \u2014 scattering only a quarter as much that way. Time has stopped meaning the same thing to it at every moment, which is what aging is."
     },
     {
       "id": "M17",
@@ -218,7 +218,8 @@
       "result": "22; machine check passed; reviewed 2026-08-02 \u2014 Ben's delegated batch approval, substance reviewed by Claude. The lab's first milestone that watches a **surface** rather than spins. A 1+1d interface was grown on a periodic ring under **single-step (corner) growth** \u2014 the textbook lattice KPZ model, equivalent to TASEP under the usual slope\u2194particle map \u2014 with sublattice-parallel updates that are *exact* here rather than approximate (same-parity sites are never adjacent, so no two corner flips can interfere; the same checkerboard argument that makes `ising.py`'s red/black sweep exact). Measured on L=4096 over 64 rings and 8,000 sweeps: **\u03b2 = 0.3127** against the exact KPZ **1/3** (R\u00b2=0.9994 over 29 points spanning t\u2208[23, 8000], ~2.5 decades), **\u03b1 = 0.4840** from the saturated width across L=16\u2026192 against the exact **1/2**, giving **z = \u03b1/\u03b2 = 1.548** vs the exact **3/2** and **1/z = 0.646** vs the exact **2/3** \u2014 the milestone's \"2/3 in space\", *derived* from the two measured exponents rather than assumed. **What makes the 1/3 a measurement rather than a fit:** the same width estimator and the same scaling-window rule were pointed at two more growth rules whose exponents are exactly known and *different* \u2014 Edwards\u2013Wilkinson (KPZ minus the (\u2207h)\u00b2 term) came out **0.2354** against its exact **1/4**, and random deposition **0.5003** against its exact **1/2**. Random deposition is the strongest anchor in the milestone because it is not an exponent but a **closed form**, w\u00b2(t) = p(1\u2212p)t at every t with nothing fitted; the run tracks it to **0.6%**. A pipeline that manufactured \u03b2=1/3 out of any curve would have to report 1/3 three times, and `check_m17` refuses the run unless all three land on their *own* exact values and genuinely separate. **The distribution:** height fluctuations came out skewed **\u22120.1651** (droplet/curved) and **\u22120.2732** (flat) against the Tracy\u2013Widom predictions \u22120.2241 (GUE) and \u22120.2935 (GOE) \u2014 each geometry landing nearer its *own* law by 2.2\u00d7 and 2.4\u00d7. The **negative sign is the prediction, not a bug**: the local-minimum density is exactly q(1\u2212q) (brute-forced in the tests), so v(u) = (p/2)(1\u2212u\u00b2) and the KPZ nonlinearity \u03bb = \u2202\u00b2v/\u2202u\u00b2 = \u2212p < 0, which predicts the *mirrored* Tracy\u2013Widom law. Skewness is the graded statistic because it is invariant under the affine rescaling \u03c7=(h\u2212v_\u221et)/(\u0393t)^{1/3}, so neither model constant has to be fitted. **Boundary:** \u03b2 sits 0.021 *below* the exact 1/3 \u2014 the documented preasymptotic approach from below, and the tell that this is the finite fit window rather than a defect is that EW misses its own exact 1/4 by 0.015 **in the same direction** while RD, which has no correlation time to be preasymptotic about, lands essentially exactly. The distributional claim is **class assignment**, not a full Tracy\u2013Widom collapse: the droplet's third moment is the least-converged graded number in the run (gap 0.059, 1.9\u00d7 its sampling sigma, against a \u00b10.06 band), and the report's boundary text is **derived** from the measured moment gaps rather than hand-written, so prose and data cannot drift apart. Kurtosis is carried as evidence and deliberately **not** graded. Report reports/2026-07-22-m17.html.",
       "short_label": "Roughening surface",
       "question_plain": "When a surface grows by piling up randomly \u2014 like a coffee stain creeping outward or a flame front advancing \u2014 do its bumps and wrinkles follow a hidden universal law?",
-      "why_it_matters": "A startling range of growing, spreading things share one mathematical fingerprint, and reproducing it would tie the windowsill lab to one of the deepest patterns in non-equilibrium physics."
+      "why_it_matters": "A startling range of growing, spreading things share one mathematical fingerprint, and reproducing it would tie the windowsill lab to one of the deepest patterns in non-equilibrium physics.",
+      "result_plain": "Yes \u2014 the surface roughened as time to the power 0.313 against the predicted 1/3, and to make sure that wasn't the ruler's doing, the same ruler measured two simpler growth rules and each landed on its own different known answer (0.235 vs exact 1/4; 0.500 vs exact 1/2, tracked to 0.6%). Even the lopsidedness of the wrinkles leaned the way the deep theory says it should, for both shapes of growth."
     },
     {
       "id": "M18",
@@ -242,7 +243,7 @@
       "short_label": "Clocks finding a beat",
       "question_plain": "If you fill a room with clocks that all tick at slightly different speeds, and let each one nudge the others, how hard do they have to pull before they suddenly all tick together?",
       "why_it_matters": "The same tipping point governs fireflies flashing in unison, heart cells beating as one, and power grids staying in step \u2014 and there is an exact answer to check the lab against.",
-      "result_plain": "The lab found the tipping point at a nudging strength of 1.0007, on top of the exact answer of 1, and \u2014 the harder test \u2014 reproduced the whole curve of how much the clocks agree above that point to within two ten-thousandths, without fitting anything. It remains amber until human review."
+      "result_plain": "The clocks snapped into step at a nudging strength of 1.0007, against the exact answer of 1. The harder test: above that point, theory predicts the whole curve of how much they agree, and the lab reproduced seven points on it to within two ten-thousandths with nothing fitted. With no nudging at all the clocks read 0.0203 together, which is just the accidental agreement of 2000 random things, so the effect is not an artefact of the setup."
     },
     {
       "id": "K02",
@@ -255,11 +256,11 @@
       "short_label": "Twitchiest in between",
       "question_plain": "A room of clocks is at its twitchiest somewhere between total disagreement and perfect lockstep \u2014 but is the exact spot where that happens a real law, or just a side effect of how many clocks were in the room?",
       "why_it_matters": "An earlier experiment in this lab fitted a tidy formula putting that sweet spot at 40% agreement; if the number is really just counting the crowd, then anyone building on the formula would be quietly wrong at every other size. Checking it also gives the lab a chance to measure a number physicists already published \u2014 the honest way to find out whether a windowsill instrument can be trusted.",
-      "result_plain": "The twitchiest point is genuinely somewhere in the middle \u2014 that held at every crowd size from 250 clocks up to 4000. But it is nowhere near 40% agreement, and it fades as the crowd grows, so the 40% was reading the size of the room rather than a law. The lab then measured that fading directly and got the same number physicists published for this exact setup in 2015, which is the real result here: not a discovery, but proof the windowsill instrument reproduces a known one. The machine check passed; it remains amber until a human reviews it."
+      "result_plain": "The twitchiest point does sit somewhere in the middle, at every crowd size from 250 clocks up to 4000. But it is not at 40% agreement, and it slides lower as the crowd grows \u2014 so this lab's earlier 40% was measuring the size of the room, not a law, and that claim is withdrawn. Measuring the slide directly: agreement falls as the crowd size to the power 0.401, give or take 0.017, against the 0.39 published for this exact setup in 2015. The two agree well within their error bars."
     },
     {
       "id": "K03",
-      "title": "**Daido vs Hong",
+      "title": "Daido vs Hong: is the susceptibility exponent asymmetric across K_c?",
       "status": "pending",
       "track": "coherence",
       "growth_form": "fern",
@@ -279,7 +280,7 @@
       "short_label": "Trust the arithmetic",
       "question_plain": "Before we hunt for new numbers, can we prove our machine even does math we can trust?",
       "why_it_matters": "Every later number-hunting result is worthless unless the basic arithmetic is provably correct first.",
-      "result_plain": "Yes \u2014 the machine rebuilt the first 40 Fibonacci entries exactly as the official catalog stores them, byte for byte, and independently confirmed a known prime-number test with a final remainder of zero. It remains amber until human review."
+      "result_plain": "A check of the arithmetic itself, not a finding. The machine rebuilt the first 40 Fibonacci numbers and matched the official catalogue byte for byte, then re-ran a known primality test on 2 to the 31st minus 1 and got the expected remainder of zero. This exists so the number-handling can be trusted before it is pointed at anything unknown."
     },
     {
       "id": "C02",
@@ -328,7 +329,7 @@
       "short_label": "Weigh starlight",
       "question_plain": "From free telescope data, can we catch a known planet dimming its star and measure its year correctly?",
       "why_it_matters": "It proves our analysis of real survey data lands inside the numbers professional astronomers already published.",
-      "result_plain": "Yes \u2014 across eight public telescope visits and 177 crossings, the lab recovered the known planet's 0.941452-day year and roughly one-percent starlight dip inside the professional published uncertainties. It remains amber until human review."
+      "result_plain": "From eight public telescope visits spanning seven years, the lab timed 177 crossings and measured the planet's year at 0.94145236 days, against the published 0.94145223. That is a difference of about 11 milliseconds. The star dims by 1.022% as the planet passes, against a published 1.041%. Both sit inside the published error bars. The catalogue value was never used in the fit."
     },
     {
       "id": "A02",
@@ -428,28 +429,28 @@
     }
   ],
   "total": 34,
-  "last_run": "2026-08-06T05:31:17.993190+00:00",
+  "last_run": "2026-08-06T11:29:56.647805+00:00",
   "runs": 46,
-  "temp_c": 53.0,
+  "temp_c": 52.0,
   "latest_report": {
     "date": "2026-08-06",
     "milestone": "M02",
     "verdict": "verified",
-    "headline": "finite-size scaling: \u03c7_max \u221d L^1.745 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16276s on GPU",
+    "headline": "finite-size scaling: \u03c7_max \u221d L^1.735 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16194s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-06-0131-m02.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-06-0729-m02.json",
     "machine": "linux-rocm",
-    "at": "2026-08-06T05:31:17.993190+00:00",
-    "group_count": 2,
+    "at": "2026-08-06T11:29:56.647805+00:00",
+    "group_count": 3,
     "group_first_date": "2026-08-06",
     "group_machines": [
       "linux-rocm"
     ]
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-06T05:31:18.296300+00:00",
+  "updated": "2026-08-06T11:29:56.948765+00:00",
   "provenance": {
-    "code_sha": "77375fa",
+    "code_sha": "3bbdb3e",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -462,12 +463,12 @@
       "date": "2026-08-06",
       "milestone": "M02",
       "verdict": "verified",
-      "headline": "finite-size scaling: \u03c7_max \u221d L^1.745 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16276s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-06-0131-m02",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-06-0131-m02.json",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.735 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16194s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-06-0729-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-06-0729-m02.json",
       "machine": "linux-rocm",
-      "at": "2026-08-06T05:31:17.993190+00:00",
-      "group_count": 2,
+      "at": "2026-08-06T11:29:56.647805+00:00",
+      "group_count": 3,
       "group_first_date": "2026-08-06",
       "group_machines": [
         "linux-rocm"
@@ -935,11 +936,11 @@
     }
   ],
   "turns": {
-    "count": 81,
-    "today": 1,
+    "count": 82,
+    "today": 2,
     "last_by_machine": {
       "windows-cuda": "2026-08-04T13:35:11.760144+00:00",
-      "linux-rocm": "2026-08-06T05:31:17.993190+00:00"
+      "linux-rocm": "2026-08-06T11:29:56.647805+00:00"
     },
     "expected_interval_h": 3
   }
