@@ -162,6 +162,31 @@ def _parenthetical_groups(text: str) -> list[str]:
     return groups
 
 
+_BOLD_LEAD_RE = re.compile(r"^\*\*(?P<bold>.+?)\*\*")
+
+
+def _title_for(body: str) -> str:
+    """The milestone's short title, from the head of its prose.
+
+    Normally the title is the first clause — everything up to the first ``.`` or
+    ``:``. But an author who wraps the whole title in ``**bold**`` has already
+    marked where it ends, and that span may legitimately contain a colon or a
+    question mark: K03's ``**Daido vs Hong: is the exponent asymmetric?**``
+    truncated to ``**Daido vs Hong`` under the naive split, dangling asterisks
+    and all. So a bold span is honoured as the title when it spans a whole
+    clause, and otherwise treated as mere emphasis and split through as before.
+    """
+    lead = _BOLD_LEAD_RE.match(body)
+    if lead:
+        bold = lead.group("bold").strip()
+        # Emphasis on a word or two is not a title; a bold span that runs to a
+        # clause boundary is. Require the span to look like a phrase, and to be
+        # the reason the naive split would have cut early.
+        if len(bold.split()) >= 3 and re.search(r"[.:?]", bold):
+            return bold
+    return re.split(r"[.:]", body, maxsplit=1)[0].replace("**", "").strip()
+
+
 def parse_milestones(text: str) -> list[dict]:
     """Parse MILESTONES.md checklist lines into milestone dicts.
 
@@ -182,7 +207,7 @@ def parse_milestones(text: str) -> list[dict]:
             continue
         box = m.group("box").lower()
         body, tags = _parse_tags(m.group("body").strip())
-        title = re.split(r"[.:]", body, maxsplit=1)[0].strip()
+        title = _title_for(body)
 
         if box == "x":
             status = "verified"
