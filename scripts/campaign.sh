@@ -74,9 +74,24 @@ resolve_by_regeneration(){
     log "campaign: ERROR mid-rebase with no unmerged paths; not auto-resolving"
     return 1
   fi
-  # Only the two derived feeds may be resolved this way. A conflict anywhere else is a
-  # real divergence of authored content and a human has to look at it.
-  if printf '%s\n' "$conflicted" | grep -qvx -e 'pot.json' -e 'physics-latest.json'; then
+  # Only DERIVED feeds may be resolved this way. A conflict anywhere else is a real
+  # divergence of authored content and a human has to look at it.
+  #
+  # reports/*.html belong on this list and were missing from it until 2026-08-05.
+  # They are derived by the very same `lab.cli publish` below, and the rest of this
+  # function already treats reports/ as campaign-owned (the ahead_paths guard allows
+  # '^reports/'; the staging step runs `git add -A -- reports/`). Only THIS guard
+  # disagreed — so the 2026-08-04 09:35 nightly, whose conflict was
+  # pot.json + reports/index.html + reports/latest.html, bailed out here and left the
+  # clone detached mid-rebase. The campaign then ran zero passes for ~37h (last pass
+  # 08-04 07:30) with no louder signal than a line in the log.
+  #
+  # reports/receipts/** is deliberately NOT allowed: receipts are immutable and
+  # append-only (#83) and are the only irreplaceable thing in flight. A receipt that
+  # genuinely conflicts is a real divergence and must stop for a human.
+  if printf '%s\n' "$conflicted" | grep -qvx \
+       -e 'pot.json' -e 'physics-latest.json' \
+       -e 'reports/index.html' -e 'reports/latest.html'; then
     log "campaign: ERROR conflict touches non-derived paths ($(printf '%s' "$conflicted" | tr '\n' ' ')); not auto-resolving"
     return 1
   fi
