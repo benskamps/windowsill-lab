@@ -548,9 +548,24 @@ def test_no_night_shift_framing_survives_in_visible_copy():
 
 
 def test_the_concept_line_is_on_the_page():
+    """The hero names the agents and names the gate.
+
+    Until 2026-08-05 the page's load-bearing fact — that agents wrote every
+    layer and design the experiments — lived in one sentence inside a
+    ``<details>`` collapsed at the foot of the page, while every visible line
+    attributed the work to "two home machines". A reader took that for a cron
+    job. The machines are still named, one rung down: they take the turns.
+
+    The gate assertion is the honesty half. Naming the agents without naming
+    who promotes a result would overclaim, so the two travel together.
+    """
     html = WEB.read_text(encoding="utf-8")
-    assert "Two home machines tend one small lab in turns." in html
-    assert "A home machine keeps a night shift." not in html
+    assert "A fleet of AI agents wrote this instrument and keeps it running." in html
+    assert "A human decides what earns a leaf." in html
+    assert "Two home machines take the turns" in html
+    for stale in ("A home machine keeps a night shift.",
+                  "Two home machines tend one small lab in turns."):
+        assert stale not in html, f"stale concept line on the page: {stale!r}"
 
 
 def test_machine_marks_are_archive_only():
