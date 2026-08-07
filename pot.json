@@ -227,7 +227,7 @@
       "status": "review",
       "track": "physics",
       "growth_form": "fern",
-      "runner_available": true,
+      "runner_available": false,
       "result": "machine check passed; **awaiting Ben's green-leaf review**. The lab's first **absorbing-state** transition: every rung up to M17 relaxed toward an equilibrium the dynamics could always leave again, but here the all-zero lattice is a trap with no thermal escape, and the transition is between activity surviving forever and activity dying. Model: a synchronous probabilistic cellular automaton on a periodic L=2048 lattice, five parents per site (itself + 4 nearest neighbours), each transmitting independently \u2014 `P(active) = 1 \u2212 (1\u2212p)^n`. All-zero is absorbing *by construction*: n=0 gives probability exactly 0. **The graded claim is a bracket, not a single number, and that is the methodological point.** Because `\u03b4_eff(t) = \u2212dln \u03c1/dln t` is monotonically decreasing in p, a subcritical and a supercritical run *bound* the true exponent between their curves \u2014 a statement a finite lattice can actually support, where quoting \u03b4 at one p would demand knowing p_c to more digits than this box resolves and would quietly turn an unresolved p_c into a fitted knob. **Result: \u03b4 bracketed to [0.4114, 0.5450]** over t \u2208 [1000, 5000] by a straddling pair at p = 0.22410 / 0.22420 (R\u00b2 = 0.9978 / 0.9928, 4001 points each), which **contains the (2+1)d DP value 0.4505** (Hinrichsen 2000, Adv. Phys. 49, 815, from \u03b2 = 0.583(4), \u03bd_\u2225 = 1.295(6)) **and excludes the mean-field value 1.0** \u2014 the second half matters as much as the first, because without it the run has shown only that something decreases, not which universality class it belongs to (d_c = 4, so 2+1d sits genuinely below the upper critical dimension). The straddle is *verified, not assumed*: curvature of \u03b4_eff over the last two octaves is **+1.209 at p_low and \u22120.153 at p_high**, opposite signs, and the runner refuses if they are not. **p_c = 0.22415 \u00b1 0.00005 is a measurement** \u2014 the bracket midpoint and half-width \u2014 never read from a table; it is a property of this transmission rule, not a universal number, which is why only \u03b4 is compared to the literature. **Three controls, each catching a specific lie.** Deep subcritical (p=0.15): the decay must be exponential, not a power law, and the two fits are compared head to head \u2014 exponential R\u00b2=0.9953 beats power-law R\u00b2=0.9383, catching the pipeline's likeliest failure of calling any falling curve critical. Deep supercritical (p=0.32): density saturates at \u03c1=0.736 with \u03b4_eff=0.0008. Absorbing-state integrity: from an all-zero lattice at p=0.9, nothing switches on across 200 steps \u2014 a sign slip or off-by-one in the parent count would let activity appear from nothing and every exponent above it would describe a different model. Finite-size guard is headroom, not extrapolation: \u03be_\u22a5 ~ t^(1/z) with z=1.766 reaches 457 sites at t=50000, so **L/\u03be = 4.5**. 227 s on the RX 6900 XT. **Boundary:** this brackets the exponent and locates p_c to the bracket width; it is not a precision determination of either. One lattice size, so no finite-size-scaling collapse is claimed. A `--quick` CPU pass ships a `[~]` null by design \u2014 at L=256/t=2000 the bracket is [0.1691, 0.3552] and misses, which is the convention working. Report `reports/2026-08-07-m18.html`; rerun `lab m18`.",
       "short_label": "Spreading or dying",
       "question_plain": "If an activity can either spread to its neighbours or fizzle out for good, is there a knife's-edge setting where it just barely survives forever?",
@@ -430,18 +430,18 @@
     }
   ],
   "total": 34,
-  "last_run": "2026-08-07T14:12:57.025980+00:00",
+  "last_run": "2026-08-07T17:51:55.999583+00:00",
   "runs": 47,
-  "temp_c": 50.0,
+  "temp_c": 52.0,
   "latest_report": {
     "date": "2026-08-07",
-    "milestone": "M18",
+    "milestone": "M02",
     "verdict": "verified",
-    "headline": "2+1d DP: delta bracketed to [0.4114, 0.5450] around p_c = 0.22415\u00b10.00005; contains the DP value 0.4505 and excludes mean-field 1.0",
+    "headline": "finite-size scaling: \u03c7_max \u221d L^1.748 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 17513s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-1012-m18.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-1351-m02.json",
     "machine": "linux-rocm",
-    "at": "2026-08-07T14:12:57.025980+00:00",
+    "at": "2026-08-07T17:51:55.999583+00:00",
     "group_count": 2,
     "group_first_date": "2026-08-07",
     "group_machines": [
@@ -449,9 +449,9 @@
     ]
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-07T14:21:38.884121+00:00",
+  "updated": "2026-08-07T17:51:56.336567+00:00",
   "provenance": {
-    "code_sha": "879a272",
+    "code_sha": "6050d0b",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -462,13 +462,13 @@
   "reports": [
     {
       "date": "2026-08-07",
-      "milestone": "M18",
+      "milestone": "M02",
       "verdict": "verified",
-      "headline": "2+1d DP: delta bracketed to [0.4114, 0.5450] around p_c = 0.22415\u00b10.00005; contains the DP value 0.4505 and excludes mean-field 1.0",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-07-1012-m18",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-1012-m18.json",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.748 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 17513s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-07-1351-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-1351-m02.json",
       "machine": "linux-rocm",
-      "at": "2026-08-07T14:12:57.025980+00:00",
+      "at": "2026-08-07T17:51:55.999583+00:00",
       "group_count": 2,
       "group_first_date": "2026-08-07",
       "group_machines": [
@@ -484,6 +484,21 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-1008-m18.json",
       "machine": "linux-rocm",
       "at": "2026-08-07T14:08:58.538094+00:00"
+    },
+    {
+      "date": "2026-08-07",
+      "milestone": "M18",
+      "verdict": "verified",
+      "headline": "2+1d DP: delta bracketed to [0.4114, 0.5450] around p_c = 0.22415\u00b10.00005; contains the DP value 0.4505 and excludes mean-field 1.0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-07-1012-m18",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-1012-m18.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-07T14:12:57.025980+00:00",
+      "group_count": 2,
+      "group_first_date": "2026-08-07",
+      "group_machines": [
+        "linux-rocm"
+      ]
     },
     {
       "date": "2026-08-07",
@@ -509,7 +524,7 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-0736-m02.json",
       "machine": "linux-rocm",
       "at": "2026-08-07T11:36:49.476934+00:00",
-      "group_count": 8,
+      "group_count": 7,
       "group_first_date": "2026-08-06",
       "group_machines": [
         "linux-rocm"
@@ -977,11 +992,11 @@
     }
   ],
   "turns": {
-    "count": 89,
-    "today": 5,
+    "count": 90,
+    "today": 6,
     "last_by_machine": {
       "windows-cuda": "2026-08-04T13:35:11.760144+00:00",
-      "linux-rocm": "2026-08-07T14:12:57.025980+00:00"
+      "linux-rocm": "2026-08-07T17:51:55.999583+00:00"
     },
     "expected_interval_h": 3
   }
