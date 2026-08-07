@@ -23,7 +23,7 @@ from .m01_quality import assess_m01_quality
 from .onsager import onsager_magnetization, T_C
 
 
-LAB_HOME = Path.home() / ".lab"
+from .labhome import LAB_HOME
 # Permanent per-run reports are committed here so the windowsill page can
 # deep-link every node on the seedling stem; the nightly commits the whole
 # reports/ tree on every run.

@@ -43,7 +43,9 @@ EVENT_API = "https://gwosc.org/eventapi/json/{catalog}/{event}/{version}/"
 DEFAULT_CATALOG = "GWTC-1-confident"
 DEFAULT_EVENT = "GW170817"
 DEFAULT_VERSION = "v3"
-CACHE_DIR = Path.home() / ".lab" / "cache" / "a03"
+from .labhome import CACHE as LAB_CACHE
+
+CACHE_DIR = LAB_CACHE / "a03"
 USER_AGENT = "windowsill-lab/a03 (+https://github.com/benskamps/windowsill-lab)"
 
 FS_RAW = 4096

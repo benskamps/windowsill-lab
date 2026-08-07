@@ -28,7 +28,7 @@ from .curriculum import RUNNERS
 from .m01_quality import assess_m01_quality
 
 # Mirror render.LAB_HOME without importing it (render pulls matplotlib).
-LAB_HOME = Path.home() / ".lab"
+from .labhome import LAB_HOME
 REPO_ROOT = Path(__file__).resolve().parents[2]
 MILESTONES_MD = REPO_ROOT / "MILESTONES.md"
 REPORTS_DIR = REPO_ROOT / "reports"

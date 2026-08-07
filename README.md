@@ -31,16 +31,18 @@ machine.
 ```bash
 git clone https://github.com/benskamps/windowsill-lab
 cd windowsill-lab
-python -m venv .venv
+python3 -m venv .venv          # `python3` — Debian/Ubuntu ship no bare `python`
 
 # macOS / Linux
 source .venv/bin/activate
 
-# Windows PowerShell (use this instead of the line above)
+# Windows PowerShell (use `python` there, then activate with this line)
 # .\.venv\Scripts\Activate.ps1
 
-# PyTorch with ROCm support (adjust the channel if you're on CUDA)
-pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/rocm6.4
+# PyTorch. Heads-up: this is a big download — ~4.6 GB for the ROCm wheel,
+# ~3 GB for the default CUDA build, and several minutes either way.
+pip install --pre torch --index-url https://download.pytorch.org/whl/nightly/rocm6.4  # AMD
+# pip install torch                                                                   # NVIDIA / CPU
 pip install -e .
 
 lab run     # run today's experiment (Phase 1: Ising)
@@ -48,6 +50,16 @@ lab         # open the latest report in your browser
 lab web     # open your seed-in-the-pot page locally (web/index.html)
 lab setup   # install the scheduled job so the windowsill grows on its own
 ```
+
+**No GPU? It still runs.** Every engine takes `--device cpu`, and the smaller
+milestones are honest on a CPU in seconds — `lab m18 --quick --device cpu` proves
+the whole pipeline end to end. The GPU buys lattice size and patience, not
+correctness.
+
+**Trying it without disturbing an existing lab.** Working data (dated reports,
+caches, the turn lock) lives in `~/.lab`. Set `LAB_HOME` to point a clone
+somewhere else — `LAB_HOME=~/.lab-test lab run` — so a fork can be driven side by
+side with the original.
 
 One repo, everything in it: the **engine** (`src/`), the published **feed**
 (`pot.json`), and the **page** people see (`web/` — see [`web/README.md`](web/README.md)).
@@ -114,8 +126,9 @@ lab i01 --camera 0              # bounded live capture (install .[camera])
 
 `lab i01` without real frames deliberately writes a grey hardware-null report.
 Synthetic fixtures test the classifier but can never masquerade as a sensor run.
-The three successful calibrations remain amber until a human promotes them; a
-machine pass alone never awards a green leaf.
+M16, C01 and A01 were promoted to green on 2026-08-02; a machine pass alone never
+awards a green leaf, so anything measured since then sits amber until a human
+reviews it.
 
 ## The Citizen Science book
 

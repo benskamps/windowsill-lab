@@ -29,7 +29,7 @@ from .m01_quality import assess_m01_quality
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTS_DIR = REPO_ROOT / "reports"
-LAB_HOME = Path.home() / ".lab"
+from .labhome import LAB_HOME
 PHYSICS_JSON = REPO_ROOT / "physics-latest.json"   # committed feed the page reads
 
 # Bump when the feed contract changes in a way the page must adapt to.
