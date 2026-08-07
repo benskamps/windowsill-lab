@@ -231,6 +231,7 @@ Usage:
   lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
   lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
   lab a03             run A03: chirp mass of a GWOSC event by matched filtering
+  lab m18             run M18: directed percolation in 2+1d (absorbing-state transition)
   lab i01             run I01: calibrate a real capped-CMOS dark-frame stack
   lab i01 --camera 0  acquire a bounded live grayscale stack, then calibrate it
   lab open            open the latest report (no run)
@@ -630,6 +631,28 @@ def _parse_m16(args):
     p.add_argument("--delta-times", default="8,16,32,64,128,256")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m18(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # M18 is an ABSORBING-STATE transition: the all-zero lattice is a trap with no
+    # thermal escape, so there is no temperature and the control parameter is the
+    # transmission probability p. The measurement is a BRACKET — a subcritical and
+    # a supercritical run bound delta between them — so the two p values are the
+    # experiment's input and the run refuses if they turn out not to straddle p_c.
+    # L must stay well above xi_perp ~ t_max^(1/1.766) or the box is being measured.
+    p.add_argument("--p-low", type=float, default=None,
+                   help="subcritical bracket endpoint (default 0.22410)")
+    p.add_argument("--p-high", type=float, default=None,
+                   help="supercritical bracket endpoint (default 0.22420)")
+    p.add_argument("--L", type=int, default=None, help="lattice side (default 2048)")
+    p.add_argument("--batch", type=int, default=None, help="independent lattices (default 4)")
+    p.add_argument("--t-max", type=int, default=None, help="time steps (default 50000)")
+    p.add_argument("--seed", type=int, default=2026)
+    p.add_argument("--device", default="cuda", help="cuda (ROCm HIP) or cpu")
+    p.add_argument("--quick", action="store_true",
+                   help="small fast pass — proves bracket + controls end to end on CPU")
     return p.parse_args(args)
 
 
@@ -1618,6 +1641,47 @@ def main(argv=None):
               f"residual · ΔC={result.fixed_lag_separation:+.3f} at Δt={result.fixed_lag} · "
               f"{'aging resolved' if result.aging_resolved else '[~] null'} · "
               f"{result.wall_seconds:.1f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m18":
+        ns = _parse_m18(args[1:])
+        from . import m18 as m18_mod
+        from . import render as render_mod
+        if ns.quick:
+            kw = dict(L=256, batch=4, t_max=2000)
+        else:
+            kw = dict(L=ns.L or m18_mod.L_DEFAULT,
+                      batch=ns.batch or m18_mod.BATCH_DEFAULT,
+                      t_max=ns.t_max or m18_mod.T_MAX_DEFAULT)
+        p_low = ns.p_low if ns.p_low is not None else m18_mod.P_LOW_DEFAULT
+        p_high = ns.p_high if ns.p_high is not None else m18_mod.P_HIGH_DEFAULT
+        print(f"M18 directed percolation in 2+1d · L={kw['L']} × {kw['batch']} lattices · "
+              f"t_max={kw['t_max']:,} steps · bracketing p_c with p={p_low}/{p_high} · "
+              f"grading delta against the (2+1)d DP value 0.4505, with mean-field 1.0 "
+              f"as the class that must be excluded")
+
+        def _phase(kind, payload):
+            if kind in ("bracket-low", "bracket-high"):
+                print(f"  · {kind}: p={payload['p']}")
+            elif kind == "control":
+                print(f"    control: {payload['name']}")
+
+        result = m18_mod.run_m18(p_low=p_low, p_high=p_high, seed=ns.seed,
+                                 device=ns.device, phase=_phase, **kw)
+        report = m18_mod.to_report(result)
+        print(f"  → bracket [{result.bracket[0]:.4f}, {result.bracket[1]:.4f}] · "
+              f"p_c={result.p_c_estimate:.5f}±{result.p_c_uncertainty:.5f} · "
+              f"{'contains 0.4505' if result.contains_dp else 'MISSES 0.4505'} · "
+              f"{'excludes mean-field' if result.excludes_mean_field else 'MEAN-FIELD NOT EXCLUDED'} · "
+              f"{'calibrated' if result.calibration_passed else '[~] null'} · "
+              f"{result.wall_seconds:.0f}s")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")
         try:

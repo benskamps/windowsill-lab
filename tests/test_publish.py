@@ -112,7 +112,7 @@ def test_runner_availability_is_feed_visible():
     later = parse_milestones("- [ ] **M17** — KPZ growth.\n")[0]
     assert later["status"] == "open"
     assert later["runner_available"] is True
-    assert parse_milestones("- [ ] **M18** — Contact process.\n")[0]["runner_available"] is False
+    assert parse_milestones("- [ ] **M99** — Unregistered.\n")[0]["runner_available"] is False
 
 
 def test_build_snapshot_shape():

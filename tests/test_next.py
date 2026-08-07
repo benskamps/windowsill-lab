@@ -5,7 +5,7 @@ runnable milestones, and only then the M01 heartbeat.
 Torch-free: selection is pure (reads parsed milestone dicts / receipt tuples),
 and the routing tests stub the target runner + renderer + publish so no
 Monte-Carlo sweep or GPU is touched. These lock in the fix for the bug where
-the scheduler re-ran M01 every pass because the open frontier (M18) has no
+the scheduler re-ran M01 every pass because the open frontier had no
 runner and the fallback was a single hardcoded heartbeat instead of a rotation
 (docs/investigations/2026-08-01-portfolio-rotation.md).
 """
@@ -26,6 +26,16 @@ def _isolated_lab_home(tmp_path, monkeypatch):
     home = tmp_path / "lab-home"
     home.mkdir()
     monkeypatch.setattr(cli, "LAB_HOME", home)
+
+
+#: A milestone id deliberately NOT in RUNNERS. These tests need "an open
+#: frontier with no engine"; they spelled that "M18", which was true until M18
+#: got a runner on 2026-08-07 and silently turned eleven tests into assertions
+#: about the wrong thing. The guard fails loudly if this id is ever registered,
+#: instead of the tests quietly changing meaning.
+NO_RUNNER_ID = "M99"
+assert NO_RUNNER_ID not in curriculum.RUNNERS, (
+    f"{NO_RUNNER_ID} gained a runner — pick another unregistered id here")
 
 
 def _rotation_receipts(tmp_path, *entries):
@@ -100,15 +110,15 @@ def test_select_next_picks_the_lowest_open_milestone():
 
 
 def test_select_next_flags_missing_runner_for_frontier_without_engine():
-    """When the open milestone has no runner registered (e.g. M18, past the runner
+    """When the open milestone has no runner registered (e.g. an id past the runner
     frontier), selection still names it but reports has_runner=False so the caller
     can heartbeat."""
     milestones = [
         {"id": "M17", "status": "verified"},
-        {"id": "M18", "status": "open"},
+        {"id": NO_RUNNER_ID, "status": "open"},
     ]
     mid, has_runner = cli._select_next(milestones)
-    assert mid == "M18"
+    assert mid == NO_RUNNER_ID
     assert has_runner is False
 
 
@@ -170,14 +180,14 @@ def test_next_dry_run_names_open_milestone_not_m01(monkeypatch, capsys):
 
 
 def test_next_dry_run_rotates_when_frontier_has_no_runner(monkeypatch, capsys, tmp_path):
-    """Open milestone past the runner frontier (M18) → the portfolio rotation
+    """Open milestone past the runner frontier → the portfolio rotation
     advances past the ledger pointer instead of heartbeating M01 forever. This
     rewrites the old 'falls back to heartbeat' expectation: the M01-every-pass
-    behavior WAS this branch (M18 open, no runner, hardcoded fallback)."""
+    behavior WAS this branch (open frontier, no runner, hardcoded fallback)."""
     from lab import publish as publish_mod
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
         {"id": "M17", "status": "verified"},
-        {"id": "M18", "status": "open"},
+        {"id": NO_RUNNER_ID, "status": "open"},
     ])
     receipts = _rotation_receipts(
         tmp_path, ("2026-07-30", "m01", "2026-07-30T09:00:00+00:00"),
@@ -187,7 +197,7 @@ def test_next_dry_run_rotates_when_frontier_has_no_runner(monkeypatch, capsys, t
     out = capsys.readouterr().out
     assert rc == 0
     assert "would run `lab m02`" in out          # pointer M01 → next slot M02
-    assert "no runner for M18" in out            # the branch still names its cause
+    assert f"no runner for {NO_RUNNER_ID}" in out            # the branch still names its cause
 
 
 def test_next_dry_run_selects_m17_kpz_runner(monkeypatch, capsys):
@@ -318,7 +328,8 @@ def test_next_routes_to_the_open_milestones_runner(monkeypatch, capsys):
 def test_rotation_is_curated_and_every_slot_is_dispatchable():
     """ROTATION is a curated committed list, not blanket RUNNERS: M12/M16 are
     excluded by name (wall-clock class exceeds the Windows PT2H slot; --quick
-    variants ship a null every pass), M18+ has no runner. M01 stays as one slot
+    variants ship a null every pass), M18 is measured-but-unreviewed so it is
+    not a rotation member yet. M01 stays as one slot
     — the calibration pulse, demoted from daily headline."""
     assert curriculum.ROTATION[0] == "M01"
     assert "M12" not in curriculum.ROTATION
@@ -442,7 +453,7 @@ def test_next_dry_run_with_no_receipts_starts_rotation_at_the_pulse(
     disclosed, never silent."""
     from lab import publish as publish_mod
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
-        {"id": "M18", "status": "open"},
+        {"id": NO_RUNNER_ID, "status": "open"},
     ])
     monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", tmp_path / "empty-receipts")
     rc = cli.main(["next", "--dry-run"])
@@ -458,7 +469,7 @@ def test_next_falls_back_to_heartbeat_when_rotation_is_empty(
     an empty ROTATION must still produce a run, and say why."""
     from lab import publish as publish_mod
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
-        {"id": "M18", "status": "open"},
+        {"id": NO_RUNNER_ID, "status": "open"},
     ])
     monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", tmp_path / "empty-receipts")
     monkeypatch.setattr(curriculum, "ROTATION", ())
@@ -493,7 +504,7 @@ def test_two_boxes_advance_the_rotation_not_repeat_it(monkeypatch, capsys, tmp_p
     box lands its receipt the other box picks the NEXT slot, not the same one."""
     from lab import publish as publish_mod
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
-        {"id": "M18", "status": "open"},
+        {"id": NO_RUNNER_ID, "status": "open"},
     ])
     receipts = _rotation_receipts(
         tmp_path, ("2026-08-01", "m02", "2026-08-01T00:10:00+00:00"),  # Win's pass
@@ -521,7 +532,7 @@ def test_rotation_pass_never_dispatches_gated_i01(monkeypatch, capsys, tmp_path)
     repo_before = _repo_report_files()
 
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
-        {"id": "M18", "status": "open"},
+        {"id": NO_RUNNER_ID, "status": "open"},
     ])
     receipts = _rotation_receipts(
         tmp_path, ("2026-07-31", curriculum.ROTATION[-2].lower(),
@@ -562,7 +573,7 @@ def test_rotation_pass_runs_no_engine_when_the_wrap_target_moves(
     repo_before = _repo_report_files()
 
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
-        {"id": "M18", "status": "open"},
+        {"id": NO_RUNNER_ID, "status": "open"},
     ])
     monkeypatch.setattr(curriculum, "ROTATION", ("M13", "M02", "I01"))
     receipts = _rotation_receipts(
@@ -610,7 +621,7 @@ def test_next_dry_run_names_the_restart_when_pointer_is_outside_the_rotation(
     the reason line is the claim."""
     from lab import publish as publish_mod
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
-        {"id": "M18", "status": "open"},
+        {"id": NO_RUNNER_ID, "status": "open"},
     ])
     receipts = _rotation_receipts(
         tmp_path, ("2026-08-01", "m12", "2026-08-01T10:00:00+00:00"),
@@ -640,7 +651,7 @@ def test_rotation_pointer_ignores_receipts_outside_the_rotation():
     ]
     assert curriculum.rotation_pointer(records) == "M07"
     assert curriculum.select_rotation(_all_verified(), "M07")[0] == "M08"
-    # M16 and a future frontier receipt (M18) are skipped on the same rule.
+    # M16 and a non-rotation frontier receipt (M18) are skipped on the same rule.
     for outsider in ("M16", "M18"):
         assert curriculum.rotation_pointer(
             [("2026-08-01T02:00:00+00:00", "M07"),
@@ -659,7 +670,7 @@ def test_next_dry_run_resumes_the_rotation_past_a_manual_out_of_rotation_run(
     rotation owns (M07 → M08) and says so."""
     from lab import publish as publish_mod
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
-        {"id": "M18", "status": "open"},
+        {"id": NO_RUNNER_ID, "status": "open"},
     ])
     receipts = _rotation_receipts(
         tmp_path,
@@ -697,7 +708,7 @@ def test_next_dry_run_runs_nothing_and_writes_nothing(monkeypatch, capsys, tmp_p
     from lab import render as render_mod
     _no_camera(monkeypatch)
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
-        {"id": "M18", "status": "open"},
+        {"id": NO_RUNNER_ID, "status": "open"},
     ])
     receipts = _rotation_receipts(
         tmp_path, ("2026-07-31", curriculum.ROTATION[-2].lower(),
