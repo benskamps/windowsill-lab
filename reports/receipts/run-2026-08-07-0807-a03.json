@@ -1,0 +1,132 @@
+{
+  "api_sha256": "2cd7e903b895f5d3a406383362172a411b127efdcf9be65590a8234b9352ddcb",
+  "api_url": "https://gwosc.org/eventapi/json/GWTC-1-confident/GW170817/v3/",
+  "band_hz": [
+    25.0,
+    480.0
+  ],
+  "calibration_passed": false,
+  "catalog": "GWTC-1-confident",
+  "chirp_mass_grid": {
+    "hi": 1.26,
+    "lo": 1.15,
+    "step": 2e-05
+  },
+  "claim_boundary": "The injection is drawn from the SAME 3.5PN TaylorF2 family as the search template, so the control validates the filter, the whitening, the gating and the chirp-mass grid — it does NOT validate the waveform's fidelity to a real source. A real binary neutron star carries spin, tidal and higher-order structure this template omits, and that mismatch is the leading candidate for any gap between the control and the sky. This is a reprocessing of public archival strain, not an independent detection, and no result here is submitted to GWOSC or any collaboration.",
+  "control_max_error_msun": 4.0000000217643716e-05,
+  "control_passed": true,
+  "control_tolerance_msun": 0.001,
+  "detectors": [
+    {
+      "control": {
+        "background_max": 10.571543803724094,
+        "gps_peak": 1187008882.3999023,
+        "mc_detector": 1.1978199999997823,
+        "peak_snr": 38.1034679445745
+      },
+      "control_error_msun": 4.0000000217643716e-05,
+      "detector": "H1",
+      "real": {
+        "background_max": 10.58834330830775,
+        "gps_peak": 1187008882.4282227,
+        "mc_detector": 1.152599999999988,
+        "peak_snr": 6.5843425371317865
+      },
+      "real_detected": false,
+      "real_error_msun": 0.04481188118813062,
+      "real_mc_source": 1.1411881188118693,
+      "seconds_from_merger": 0.02822256088256836
+    },
+    {
+      "control": {
+        "background_max": 10.777670430822324,
+        "gps_peak": 1187008882.3999023,
+        "mc_detector": 1.1978399999997822,
+        "peak_snr": 37.81584106794971
+      },
+      "control_error_msun": 2.0000000217734737e-05,
+      "detector": "L1",
+      "real": {
+        "background_max": 10.785631426042807,
+        "gps_peak": 1187008882.425293,
+        "mc_detector": 1.157679999999965,
+        "peak_snr": 6.55430091501437
+      },
+      "real_detected": false,
+      "real_error_msun": 0.039782178217856456,
+      "real_mc_source": 1.1462178217821435,
+      "seconds_from_merger": 0.02529287338256836
+    }
+  ],
+  "eta_assumed": 0.249,
+  "event": "GW170817-v3",
+  "event_gps": 1187008882.4,
+  "experiment": "A03-gwosc-chirp-mass",
+  "gates": [
+    {
+      "detector": "L1",
+      "peak_sigma": 209.01855338929903,
+      "samples": 57,
+      "seconds_from_merger": -1.0586915016174316
+    }
+  ],
+  "generated_at": "2026-08-07T12:07:32.759249+00:00",
+  "headline": "GW170817-v3: pipeline recovers an injected chirp mass to 4.0e-05 Msun in 2 detectors; the event itself is NOT recovered",
+  "injection_snr": 25.0,
+  "products": [
+    {
+      "bytes": 163892119,
+      "detector": "H1",
+      "file_gps_start": 1187006835,
+      "segment_gps_start": 1187008682.3999023,
+      "segment_seconds": 256,
+      "sha256": "74d8c60ae46f082c0186de41e237f4af39719ddc55c38ea74909f8a8e2ff9288",
+      "uri": "https://gwosc.org/eventapi/json/GWTC-1-confident/GW170817/v3/H-H1_GWOSC_4KHZ_R1-1187006835-4096.txt.gz"
+    },
+    {
+      "bytes": 164548277,
+      "detector": "L1",
+      "file_gps_start": 1187006835,
+      "segment_gps_start": 1187008682.3999023,
+      "segment_seconds": 256,
+      "sha256": "e8c7f49c0711955a8100b062ae168e01bba22c4899818fb6495fc1bdd44a979b",
+      "uri": "https://gwosc.org/eventapi/json/GWTC-1-confident/GW170817/v3/L-L1_GWOSC_4KHZ_R1-1187006835-4096.txt.gz"
+    }
+  ],
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.1",
+      "numpy": "2.5.1",
+      "torch": "2.10.0.dev20251031+rocm6.4"
+    },
+    "platform": "linux-x86_64",
+    "python": "3.14.4",
+    "source_clean": false,
+    "source_commit": "518179c4ad6e85fbfff87cc388495866ce8142a4",
+    "source_diff_sha256": "52918a2356ae49e4f20c6f92c46576749287a7baedbd913b280f5bf56e20a24b",
+    "source_tree_sha256": "17bc6c29ddfe822a159d1ad7a398f5de42b454d472a27662ea2399c7f2890657"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "28ad7f49fd79104b8510a6330fc206be4ae912d96a9f25cda287b5018f921e8f"
+  },
+  "published_chirp_mass_detector": 1.19786,
+  "published_chirp_mass_source": 1.186,
+  "published_chirp_mass_source_lower": 0.001,
+  "published_chirp_mass_source_upper": 0.001,
+  "published_network_snr": 33.0,
+  "recovered": false,
+  "redshift": 0.01,
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify A03",
+    "rerun": "python -m lab.cli a03"
+  },
+  "sample_rate_hz": 1024,
+  "segment_seconds": 256,
+  "status": "null",
+  "wall_seconds": 444.9305212497711,
+  "waveform": "TaylorF2 3.5PN stationary-phase inspiral, non-spinning, no tides"
+}
