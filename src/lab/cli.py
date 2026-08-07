@@ -13,7 +13,7 @@ from .curriculum import RUNNERS, filter_scheduler_options
 # Lightweight commands (open / publish / help) must work without torch or
 # matplotlib, so ising/render are imported lazily inside `run`. LAB_HOME is a
 # trivial constant we keep here to avoid importing render just for the path.
-LAB_HOME = Path.home() / ".lab"
+from .labhome import LAB_HOME  # ~/.lab, or $LAB_HOME when set
 
 # One turn per box. See `next_run_lock` below and tests/test_next_lock.py.
 NEXT_LOCK_NAME = "next.lock"

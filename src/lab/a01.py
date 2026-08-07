@@ -28,7 +28,9 @@ TIC_ID = "100100827"
 MAST_INVOKE = "https://mast.stsci.edu/api/v0/invoke"
 MAST_DOWNLOAD = "https://mast.stsci.edu/api/v0.1/Download/file?uri="
 NASA_TAP = "https://exoplanetarchive.ipac.caltech.edu/TAP/sync"
-CACHE_DIR = Path.home() / ".lab" / "cache" / "a01"
+from .labhome import CACHE as LAB_CACHE
+
+CACHE_DIR = LAB_CACHE / "a01"
 DEFAULT_DEADLINE_SECONDS = 10 * 60
 DEFAULT_REQUEST_RETRIES = 2
 
