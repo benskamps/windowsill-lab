@@ -346,11 +346,11 @@
     {
       "id": "A03",
       "title": "Reprocess one open LIGO/Virgo event from GWOSC and reproduce its published chirp mass within error",
-      "status": "pending",
+      "status": "null",
       "track": "astronomy",
       "growth_form": "creeper",
-      "runner_available": false,
-      "short_label": "Reweigh two black holes",
+      "runner_available": true,
+      "short_label": "Reweigh a neutron-star collision",
       "question_plain": "From open gravitational-wave data, can we re-measure the mass of a collision that shook spacetime and match the official answer?",
       "why_it_matters": "It shows a home machine can independently re-derive a landmark physics result from the same public data the discoverers used.",
       "venue": "GWOSC"
@@ -438,9 +438,7 @@
     "verdict": "null",
     "headline": "GW170817-v3: pipeline recovers an injected chirp mass to 4.0e-05 Msun in 2 detectors; the event itself is NOT recovered",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-0807-a03.json",
-    "machine": "linux-rocm",
-    "at": "2026-08-07T12:07:32.759249+00:00",
+    "receipt_url": null,
     "group_count": 2,
     "group_first_date": "2026-08-07",
     "group_machines": [
@@ -448,9 +446,9 @@
     ]
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-07T12:07:33.073005+00:00",
+  "updated": "2026-08-07T12:23:27.037547+00:00",
   "provenance": {
-    "code_sha": "518179c-dirty",
+    "code_sha": "946e895-dirty",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -464,10 +462,8 @@
       "milestone": "A03",
       "verdict": "null",
       "headline": "GW170817-v3: pipeline recovers an injected chirp mass to 4.0e-05 Msun in 2 detectors; the event itself is NOT recovered",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-07-0807-a03",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-0807-a03.json",
-      "machine": "linux-rocm",
-      "at": "2026-08-07T12:07:32.759249+00:00",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-07-a03",
+      "receipt_url": null,
       "group_count": 2,
       "group_first_date": "2026-08-07",
       "group_machines": [

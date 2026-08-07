@@ -868,11 +868,11 @@
         <!-- ── the pot ── -->
         <g>
           <!-- cast shadow on the sill — placeSun() leans it away from the light -->
-          <ellipse id="pot-shadow" cx="404" cy="471" rx="96" ry="13" fill="#000" opacity="0.4" filter="url(#soft)"/>
-          <!-- body: thrown clay, not cut board — the sides carry a wheel's
-               gentle belly, and the same curve holds both gradient passes -->
-          <path d="M330 470 C322 434 331 396 345 360 L455 360 C469 396 478 434 470 470 Z" fill="url(#clayGrad)"/>
-          <path d="M330 470 C322 434 331 396 345 360 L455 360 C469 396 478 434 470 470 Z" fill="url(#clayGradV)"/>
+          <ellipse id="pot-shadow" cx="402" cy="471" rx="84" ry="13" fill="#000" opacity="0.4" filter="url(#soft)"/>
+          <!-- body: a thrown pot's honest taper — broad at the shoulder,
+               narrow at the foot, sides very gently eased off the straight -->
+          <path d="M354 470 C348 434 345 398 343 362 L457 362 C455 398 452 434 446 470 Z" fill="url(#clayGrad)"/>
+          <path d="M354 470 C348 434 345 398 343 362 L457 362 C455 398 452 434 446 470 Z" fill="url(#clayGradV)"/>
           <!-- weathering: a kiln speckle here and there, and the pale mineral
                bloom every terracotta pot earns near its foot after real waterings -->
           <g fill="#5e3018" opacity="0.14">
@@ -882,7 +882,7 @@
             <ellipse cx="445" cy="430" rx="2.2" ry="1.2"/>
             <ellipse cx="371" cy="368" rx="2" ry="1.1"/>
           </g>
-          <ellipse cx="400" cy="456" rx="58" ry="9" fill="#f2ddc6" opacity="0.09" filter="url(#soft)"/>
+          <ellipse cx="400" cy="456" rx="42" ry="8" fill="#f2ddc6" opacity="0.09" filter="url(#soft)"/>
           <!-- soft specular highlight, upper-left -->
           <ellipse cx="368" cy="392" rx="26" ry="40" fill="url(#potSpec)" filter="url(#soft)"/>
           <!-- the sky's reflection on the glazeless shoulder — reads the phase
@@ -1540,8 +1540,8 @@
       }
       var shadow = $('pot-shadow');
       if (shadow) {
-        shadow.setAttribute('cx', (404 - (x - 400) * 0.22).toFixed(0));
-        shadow.setAttribute('rx', (96 + Math.abs(x - 400) * 0.06).toFixed(0));
+        shadow.setAttribute('cx', (402 - (x - 400) * 0.22).toFixed(0));
+        shadow.setAttribute('rx', (84 + Math.abs(x - 400) * 0.06).toFixed(0));
       }
     }
 
@@ -1576,7 +1576,7 @@
         host.style.setProperty('--b', (0.35 + Math.random() * 0.55).toFixed(2));
         host.style.animationDelay = (Math.random() * 5).toFixed(1) + 's';
         if (bright) {
-          var s = (r * 3.2).toFixed(1);
+          var s = r * 3.2;
           var core = document.createElementNS(SVGNS, 'circle');
           core.setAttribute('cx', cx.toFixed(0));
           core.setAttribute('cy', cy.toFixed(0));
@@ -1714,7 +1714,7 @@
       var frag = document.createDocumentFragment();
       closed.forEach(function (m, i) {
         var node = geo.nodes[i] || { x: 400, y: topY, dir: (i % 2) ? 1 : -1 };
-        frag.appendChild(milestoneLeaf(node.x, node.y, node.dir, m, leafColor));
+        frag.appendChild(milestoneLeaf(node.x, node.y, node.dir, m, leafColor, node.t));
       });
       leaves.appendChild(frag);
 
@@ -1757,14 +1757,20 @@
       drawFlower(topY, closed.length >= total ? 1 : 0);
     }
 
-    // Nudge a hex color lighter (+) or darker (−) for leaf edges and veins.
-    function shade(hex, amt) {
-      var c = hex.replace('#', '');
-      if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
-      var n = parseInt(c, 16);
+    // Nudge a color lighter (+) or darker (−) for leaf edges and veins.
+    // Accepts hex or its own rgb() output, so nudges compose (a jittered fill
+    // can be shaded again for its stroke without silently going black).
+    function shade(color, amt) {
+      var r, g, b, m = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(color);
+      if (m) { r = +m[1]; g = +m[2]; b = +m[3]; }
+      else {
+        var c = color.replace('#', '');
+        if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+        var n = parseInt(c, 16);
+        r = n >> 16; g = (n >> 8) & 255; b = n & 255;
+      }
       var clamp = function (v) { return Math.max(0, Math.min(255, v)); };
-      return 'rgb(' + clamp((n >> 16) + amt) + ',' + clamp(((n >> 8) & 255) + amt) +
-        ',' + clamp((n & 255) + amt) + ')';
+      return 'rgb(' + clamp(r + amt) + ',' + clamp(g + amt) + ',' + clamp(b + amt) + ')';
     }
 
     // A tiny deterministic hash so each milestone's leaf is ITSELF — same size,
@@ -1777,17 +1783,22 @@
     }
 
     // A milestone leaf: green = human-promoted, amber = machine-checked and
-    // awaiting review, folded grey = a null kept on the books.
-    function milestoneLeaf(x, y, dir, m, color) {
+    // awaiting review, folded grey = a null kept on the books. `t` is the
+    // node's height up the ladder (0 soil → 1 tip): a real plant keeps its
+    // oldest, largest leaves low and reaching outward, its youngest small and
+    // upright near the growing tip — so age shapes both size and pitch.
+    function milestoneLeaf(x, y, dir, m, color, t) {
       var nul = (m.status === 'null');
       var review = (m.status === 'review');
       var seed = leafSeed(m.id);
-      // Per-milestone variation, ±10% around the old fixed sizes: real growth
-      // is uneven, and the eye reads sameness as artifice.
-      var len = (nul ? 12 : 18) * (0.9 + (seed % 100) / 500);
-      var ey = nul ? y + len * 0.35 : y - len * 0.55;   // null leaves droop downward
+      var age = 1 - Math.max(0, Math.min(1, t == null ? 0.5 : t));   // 1 = oldest, lowest
+      // Per-milestone variation (±10%, seeded so each leaf is itself on every
+      // visit) on top of the age taper: the eye reads sameness as artifice.
+      var len = (nul ? 12 : 18) * (0.9 + (seed % 100) / 500) * (0.92 + age * 0.18);
+      var ey = nul ? y + len * 0.35
+                   : y - len * (0.62 - age * 0.14);     // young leaves pitch upward
       var ex = x + dir * len;
-      var fill = nul ? '#8a8f82' : (review ? '#d2aa67' : color);
+      var fill = nul ? '#8a8f82' : (review ? '#d2aa67' : shade(color, (seed % 17) - 8));
 
       var g = document.createElementNS(SVGNS, 'g');
       g.setAttribute('class', nul ? 'leaf null-leaf' : 'leaf');
@@ -1836,16 +1847,16 @@
       // B(t) = (1-t)²P0 + 2(1-t)t·C + t²P1, for the midrib's own control point.
       if (!nul) {
         var vcx = x + dir * len * 0.5, vcy = y - len * 0.7;
-        [0.42, 0.68].forEach(function (t, vi) {
-          var u = 1 - t;
-          var px = u * u * x + 2 * u * t * vcx + t * t * ex;
-          var py = u * u * y + 2 * u * t * vcy + t * t * ey;
+        [0.35, 0.55].forEach(function (vt, vi) {
+          var u = 1 - vt;
+          var px = u * u * x + 2 * u * vt * vcx + vt * vt * ex;
+          var py = u * u * y + 2 * u * vt * vcy + vt * vt * ey;
           var vein = document.createElementNS(SVGNS, 'path');
           vein.setAttribute('d', 'M' + px.toFixed(1) + ' ' + py.toFixed(1) +
-            ' q' + (dir * len * 0.16).toFixed(1) + ' ' +
-            ((vi ? -1 : 1) * len * 0.14).toFixed(1) + ' ' +
-            (dir * len * 0.3).toFixed(1) + ' ' +
-            ((vi ? -1 : 1) * len * 0.1).toFixed(1));
+            ' q' + (dir * len * 0.1).toFixed(1) + ' ' +
+            ((vi ? -1 : 1) * len * 0.09).toFixed(1) + ' ' +
+            (dir * len * 0.19).toFixed(1) + ' ' +
+            ((vi ? -1 : 1) * len * 0.06).toFixed(1));
           vein.setAttribute('fill', 'none');
           vein.setAttribute('stroke', shade(fill, 22));
           vein.setAttribute('stroke-width', '0.5');

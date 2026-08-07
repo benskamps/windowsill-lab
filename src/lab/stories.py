@@ -204,7 +204,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "result_plain": None,
     },
     "A03": {
-        "short_label": "Reweigh two black holes",
+        "short_label": "Reweigh a neutron-star collision",
         "question_plain": "From open gravitational-wave data, can we re-measure the mass of a collision that shook spacetime and match the official answer?",
         "why_it_matters": "It shows a home machine can independently re-derive a landmark physics result from the same public data the discoverers used.",
         "result_plain": None,
