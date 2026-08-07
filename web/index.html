@@ -1712,10 +1712,17 @@
       var leaves = $('leaves');
       leaves.textContent = '';
       var frag = document.createDocumentFragment();
+      // Living leaves first, folded nulls LAST — bigger green blades were
+      // burying the small grey folds, and a kept miss that cannot be seen is
+      // not kept. Paint order, not size, is what keeps the misses visible.
+      var folded = [];
       closed.forEach(function (m, i) {
         var node = geo.nodes[i] || { x: 400, y: topY, dir: (i % 2) ? 1 : -1 };
-        frag.appendChild(milestoneLeaf(node.x, node.y, node.dir, m, leafColor, node.t));
+        var el = milestoneLeaf(node.x, node.y, node.dir, m, leafColor, node.t);
+        if (m.status === 'null') folded.push(el);
+        else frag.appendChild(el);
       });
+      folded.forEach(function (el) { frag.appendChild(el); });
       leaves.appendChild(frag);
 
       // The open experiment is the tender bud at the very tip. "Open" means
@@ -1794,7 +1801,7 @@
       var age = 1 - Math.max(0, Math.min(1, t == null ? 0.5 : t));   // 1 = oldest, lowest
       // Per-milestone variation (±10%, seeded so each leaf is itself on every
       // visit) on top of the age taper: the eye reads sameness as artifice.
-      var len = (nul ? 12 : 18) * (0.9 + (seed % 100) / 500) * (0.92 + age * 0.18);
+      var len = (nul ? 14 : 23) * (0.9 + (seed % 100) / 500) * (0.92 + age * 0.18);
       var ey = nul ? y + len * 0.35
                    : y - len * (0.62 - age * 0.14);     // young leaves pitch upward
       var ex = x + dir * len;
@@ -1810,14 +1817,35 @@
         g.style.animationDelay = '-' + ((seed % 70) / 10).toFixed(1) + 's';
       }
 
+      // The living blade is a full lens; the null is a real little folded
+      // leaf hanging from its node — closed shape with visible grey area and
+      // a crease, not the near-zero sliver that used to render as a scratch.
       var blade = document.createElementNS(SVGNS, 'path');
-      blade.setAttribute('d', 'M' + x + ' ' + y +
-        ' Q' + (x + dir * len * 0.5) + ' ' + (y - (nul ? len * 0.2 : len)) + ' ' + ex + ' ' + ey +
-        ' Q' + (x + dir * len * 0.62) + ' ' + (y - len * 0.05) + ' ' + x + ' ' + y + ' Z');
+      blade.setAttribute('d', nul
+        ? 'M' + x + ' ' + y +
+          ' Q' + (x + dir * len * 0.55) + ' ' + (y - len * 0.12) + ' ' + ex + ' ' + ey +
+          ' Q' + (x + dir * len * 0.4) + ' ' + (y + len * 0.4) + ' ' + x + ' ' + y + ' Z'
+        : 'M' + x + ' ' + y +
+          ' Q' + (x + dir * len * 0.5) + ' ' + (y - len) + ' ' + ex + ' ' + ey +
+          ' Q' + (x + dir * len * 0.62) + ' ' + (y - len * 0.05) + ' ' + x + ' ' + y + ' Z');
       blade.setAttribute('fill', fill);
       blade.setAttribute('stroke', shade(fill, -34));
-      blade.setAttribute('stroke-width', '0.6');
+      blade.setAttribute('stroke-width', '0.8');
       g.appendChild(blade);
+
+      // The crease that says "folded": one soft line down the middle of the fold.
+      if (nul) {
+        var crease = document.createElementNS(SVGNS, 'path');
+        crease.setAttribute('d', 'M' + x + ' ' + y +
+          ' Q' + (x + dir * len * 0.45) + ' ' + (y + len * 0.16) + ' ' +
+          (x + dir * len * 0.9) + ' ' + (y + len * 0.3));
+        crease.setAttribute('fill', 'none');
+        crease.setAttribute('stroke', shade(fill, -20));
+        crease.setAttribute('stroke-width', '0.7');
+        crease.setAttribute('stroke-linecap', 'round');
+        crease.setAttribute('opacity', '0.75');
+        g.appendChild(crease);
+      }
 
       // The lit edge: the blade's upper curve retraced in a lighter stroke, the
       // one place window light actually lands on a leaf.
@@ -1827,20 +1855,25 @@
           ' Q' + (x + dir * len * 0.5) + ' ' + (y - len) + ' ' + ex + ' ' + ey);
         lit.setAttribute('fill', 'none');
         lit.setAttribute('stroke', shade(fill, 48));
-        lit.setAttribute('stroke-width', '0.7');
+        lit.setAttribute('stroke-width', '1.1');
         lit.setAttribute('stroke-linecap', 'round');
         lit.setAttribute('opacity', '0.55');
         g.appendChild(lit);
       }
 
-      var rib = document.createElementNS(SVGNS, 'path');   // midrib vein, lighter
-      rib.setAttribute('d', 'M' + x + ' ' + y +
-        ' Q' + (x + dir * len * 0.5) + ' ' + (y - (nul ? len * 0.15 : len * 0.7)) + ' ' + ex + ' ' + ey);
-      rib.setAttribute('fill', 'none');
-      rib.setAttribute('stroke', shade(fill, 30));
-      rib.setAttribute('stroke-width', '0.8');
-      rib.setAttribute('stroke-linecap', 'round');
-      g.appendChild(rib);
+      // Midrib vein, lighter. A folded null carries no shine line — its rib
+      // poked past the neighbouring blades and read as a stray scratch; the
+      // fold and the grey are the whole statement.
+      if (!nul) {
+        var rib = document.createElementNS(SVGNS, 'path');
+        rib.setAttribute('d', 'M' + x + ' ' + y +
+          ' Q' + (x + dir * len * 0.5) + ' ' + (y - len * 0.7) + ' ' + ex + ' ' + ey);
+        rib.setAttribute('fill', 'none');
+        rib.setAttribute('stroke', shade(fill, 30));
+        rib.setAttribute('stroke-width', '1.15');
+        rib.setAttribute('stroke-linecap', 'round');
+        g.appendChild(rib);
+      }
 
       // Two side-veins branching off the midrib toward the blade's edge — the
       // difference between a green shape and a leaf. Quadratic point at t:
@@ -1859,7 +1892,7 @@
             ((vi ? -1 : 1) * len * 0.06).toFixed(1));
           vein.setAttribute('fill', 'none');
           vein.setAttribute('stroke', shade(fill, 22));
-          vein.setAttribute('stroke-width', '0.5');
+          vein.setAttribute('stroke-width', '0.8');
           vein.setAttribute('stroke-linecap', 'round');
           vein.setAttribute('opacity', '0.8');
           g.appendChild(vein);
