@@ -2272,7 +2272,7 @@
       // swollen node, and — for some milestones — a coiled tendril. All one
       // organ; the tendril sways with its leaf, never on its own.
       vine: function (o) {
-        var parts = [], p = 6 + (o.seed % 7), L = o.len * 0.95;
+        var parts = [], p = 6 + (o.seed % 7), L = o.len * 0.82;
         parts.push({ ellipse: [0, 0, 2.7, 1.9], fill: '#41682f' });
         if (o.folded) {
           parts.push(petioleSpec(p, '#8a8f82'));
@@ -2458,7 +2458,10 @@
       // Age pitches the organ: old leaves droop off the horizontal, young ones
       // reach for the light. Succulents hold their fixed rosette angle; moss
       // lies flat on its colony.
-      var pitch = form === 'succulent' ? 15 : (form === 'moss' ? 0 : 34 * t - 8 + ((seed % 9) - 4));
+      // Vine coils crowd nodes at similar heights: a wider seeded fan keeps
+      // neighbouring blades from stacking into one clump.
+      var jitter = form === 'vine' ? ((seed % 25) - 12) : ((seed % 9) - 4);
+      var pitch = form === 'succulent' ? 15 : (form === 'moss' ? 0 : 34 * t - 8 + jitter);
       var len = (nul ? 14 : 23) * (0.9 + (seed % 100) / 500) * (0.92 + age * 0.18);
       // Reach clamp: nothing grows past the pot rim or into the window frame.
       var cosOut = Math.abs(Math.cos(out));
