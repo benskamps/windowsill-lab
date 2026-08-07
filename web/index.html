@@ -180,12 +180,41 @@
     .moon-crater { opacity: 0; transition: opacity 3s ease; }
     body[data-phase="night"] .moon-crater { opacity: 0.16; }
 
-    /* Stars are hidden by day; --b is each star's own brightness (set inline). */
+    /* Stars are hidden by day; --b is each star's own brightness (set inline).
+       Each star carries its own colour temperature inline (warm giants, cool
+       dwarfs, plain white) — the class only gates visibility and twinkle. */
     .star { fill:#fff; opacity: 0; transition: opacity 3s ease; }
     body[data-phase="night"] .star { opacity: var(--b, 0.7); animation: twinkle 5s ease-in-out infinite; }
     body[data-phase="dawn"] .star, body[data-phase="dusk"] .star { opacity: calc(var(--b, 0.7) * 0.22); }
     @keyframes twinkle { 0%,100%{opacity:var(--b,0.7)} 50%{opacity:calc(var(--b,0.7) * 0.4)} }
     #galaxy { opacity: calc(var(--star-op, 0) * 0.55); transition: opacity 3s ease; }
+
+    /* A meteor: one thin line that falls and is gone. Rare on purpose — the JS
+       waits minutes between them, night only, and never under reduced motion.
+       If you see one, you were watching; that is the whole point of it. */
+    .meteor { stroke:#e9f1ff; stroke-width:1.3; stroke-linecap:round; opacity:0;
+              animation: meteor 1.6s ease-out forwards; }
+    @keyframes meteor {
+      0%   { opacity:0; transform: translate(0,0); }
+      12%  { opacity:0.85; }
+      100% { opacity:0; transform: translate(-150px, 92px); }
+    }
+
+    /* Fireflies in the garden beyond the glass — dusk and night only. They live
+       low in the pane, below the hills' horizon, so they read as near-ground
+       lights outside, not as misplaced stars. Loop returns each to its origin;
+       most of every cycle is spent dark, the way real ones are. */
+    .firefly { fill:#e6f2a4; opacity:0; }
+    body[data-phase="dusk"] .firefly, body[data-phase="night"] .firefly {
+      animation: firefly var(--fdur, 9s) ease-in-out infinite;
+    }
+    @keyframes firefly {
+      0%, 100% { transform: translate(0,0); opacity:0; }
+      12%      { opacity:0.8; }
+      38%      { opacity:0.08; }
+      58%      { transform: translate(var(--fx, 14px), var(--fy, -10px)); opacity:0.7; }
+      82%      { opacity:0.04; }
+    }
 
     /* Soft clouds drift slowly across the pane; opacity rides the phase. */
     .clouds { opacity: var(--cloud-op, 0); transition: opacity 3s ease;
@@ -215,8 +244,24 @@
     #plant { transform-origin: 400px 344px; animation: sway 11s ease-in-out infinite alternate; }
     .scene:hover #plant, .scene:focus-within #plant { animation-play-state:paused; }
     @keyframes sway { from { transform: rotate(-1deg); } to { transform: rotate(1deg); } }
-    .leaf { transform-box: fill-box; transform-origin:center; }
+    /* Each leaf also flutters on its own, a degree or two out of phase with its
+       neighbours (duration + delay seeded per milestone in JS) — the difference
+       between a drawing of a plant and a plant. Folded nulls hang still: a kept
+       miss is at rest, and stillness is part of how it reads. */
+    .leaf { transform-box: fill-box; transform-origin:center;
+            animation: flutter var(--fdur, 7s) ease-in-out infinite alternate; }
+    @keyframes flutter { from { transform: rotate(-1.4deg); } to { transform: rotate(1.8deg); } }
+    .leaf.null-leaf { animation:none; }
+    .scene:hover .leaf, .scene:focus-within .leaf { animation-play-state:paused; }
     #stem, #leaves, .leaf, #bud, #flower { transition: opacity 1.2s ease; }
+
+    /* The open experiment keeps a faint light on at its growing tip — barely
+       there by day, and through the night it breathes: the one thing in the
+       dark room that is quietly awake. */
+    #bud-halo { opacity:0; transition: opacity 3s ease; }
+    #bud-halo[data-on] { opacity:0.3; }
+    body[data-phase="night"] #bud-halo[data-on] { animation: bud-breathe 7s ease-in-out infinite; }
+    @keyframes bud-breathe { 0%,100% { opacity:0.72; } 50% { opacity:0.34; } }
 
     /* Soil tone is driven by --soil (set by JS from moisture). */
     #soil { fill: var(--soil, #4a3525); transition: fill 2.5s ease; }
@@ -652,8 +697,12 @@
 
     @media (prefers-reduced-motion: reduce) {
       body { transition: none; }
-      #plant, .dust, .star, .clouds { animation: none; }
+      #plant, .dust, .star, .clouds, .leaf, .firefly, #bud-halo, .meteor { animation: none; }
       .dust { opacity: 0.22; }
+      /* Still scenes keep their inhabitants: fireflies rest visible at dusk and
+         night instead of vanishing, and the tip's light holds steady. */
+      body[data-phase="dusk"] .firefly, body[data-phase="night"] .firefly { opacity: 0.4; }
+      body[data-phase="night"] #bud-halo[data-on] { opacity: 0.6; }
       .fieldnote, .garden-specimen { animation:none !important; }
       .garden-specimen.is-open .specimen-status::before { animation:none; }
       .garden-specimen svg, .specimen-action::before { transition:none; }
@@ -773,6 +822,9 @@
           <path d="M150 300 Q260 252 380 294 T650 284 L650 340 L150 340 Z" fill="var(--haze)" opacity="0.5"/>
           <path d="M150 322 Q300 282 470 318 T650 312 L650 340 L150 340 Z" fill="#05070f" opacity="0.42"/>
 
+          <!-- fireflies over the near ground, seeded by JS; dusk + night only -->
+          <g id="fireflies"></g>
+
           <!-- glass sheen across the pane -->
           <rect x="150" y="40" width="500" height="300" fill="url(#glassSheen)"/>
         </g>
@@ -798,21 +850,44 @@
 
         <!-- ── windowsill ledge: top face + front face for depth ── -->
         <rect x="58" y="463" width="684" height="7" rx="2" fill="#7a6347"/>
+        <!-- the light's kiss on the top face — rides the phase palette -->
+        <rect x="58" y="463" width="684" height="7" rx="2" fill="var(--spill)" opacity="0.7"/>
         <rect x="60" y="470" width="680" height="30" rx="3" fill="url(#sillGrad)"/>
-        <g stroke="#241b12" stroke-width="1" opacity="0.35">
-          <line x1="120" y1="483" x2="700" y2="483"/>
-          <line x1="180" y1="491" x2="640" y2="491"/>
+        <!-- wood grain: long slow waves and one knot, the way a real board
+             remembers being a tree. Curves, not rules — a straight line here
+             read as machining, and this sill is old wood. -->
+        <g stroke="#241b12" fill="none" opacity="0.3" stroke-linecap="round">
+          <path d="M78 478 C220 474.5 430 480.5 722 476.5" stroke-width="1"/>
+          <path d="M96 486 C255 489.5 470 482.5 706 487.5" stroke-width="0.8"/>
+          <path d="M142 494 C300 491 515 496 688 493" stroke-width="0.8"/>
+          <path d="M560 486 C575 481 645 481 660 486" stroke-width="0.8"/>
+          <ellipse cx="612" cy="486" rx="7.5" ry="3.6" stroke-width="0.9"/>
+          <ellipse cx="612" cy="486" rx="3" ry="1.5" stroke-width="0.8"/>
         </g>
 
         <!-- ── the pot ── -->
         <g>
-          <!-- cast shadow on the sill -->
-          <ellipse cx="404" cy="471" rx="96" ry="13" fill="#000" opacity="0.4" filter="url(#soft)"/>
-          <!-- body (trapezoid) with horizontal shading + base grounding -->
-          <path d="M325 470 L475 470 L455 360 L345 360 Z" fill="url(#clayGrad)"/>
-          <path d="M325 470 L475 470 L455 360 L345 360 Z" fill="url(#clayGradV)"/>
+          <!-- cast shadow on the sill — placeSun() leans it away from the light -->
+          <ellipse id="pot-shadow" cx="402" cy="471" rx="84" ry="13" fill="#000" opacity="0.4" filter="url(#soft)"/>
+          <!-- body: a thrown pot's honest taper — broad at the shoulder,
+               narrow at the foot, sides very gently eased off the straight -->
+          <path d="M354 470 C348 434 345 398 343 362 L457 362 C455 398 452 434 446 470 Z" fill="url(#clayGrad)"/>
+          <path d="M354 470 C348 434 345 398 343 362 L457 362 C455 398 452 434 446 470 Z" fill="url(#clayGradV)"/>
+          <!-- weathering: a kiln speckle here and there, and the pale mineral
+               bloom every terracotta pot earns near its foot after real waterings -->
+          <g fill="#5e3018" opacity="0.14">
+            <ellipse cx="356" cy="424" rx="3.2" ry="1.6"/>
+            <ellipse cx="428" cy="382" rx="2.4" ry="1.3"/>
+            <ellipse cx="392" cy="448" rx="2.8" ry="1.4"/>
+            <ellipse cx="445" cy="430" rx="2.2" ry="1.2"/>
+            <ellipse cx="371" cy="368" rx="2" ry="1.1"/>
+          </g>
+          <ellipse cx="400" cy="456" rx="42" ry="8" fill="#f2ddc6" opacity="0.09" filter="url(#soft)"/>
           <!-- soft specular highlight, upper-left -->
           <ellipse cx="368" cy="392" rx="26" ry="40" fill="url(#potSpec)" filter="url(#soft)"/>
+          <!-- the sky's reflection on the glazeless shoulder — reads the phase
+               palette, so dawn puts a rose light on the clay and night a blue one -->
+          <ellipse cx="438" cy="384" rx="16" ry="30" fill="var(--spill)" filter="url(#soft)"/>
           <!-- rim -->
           <path d="M338 366 L462 366 L470 344 L330 344 Z" fill="#c8784f"/>
           <path d="M330 344 L470 344 L468 348 L332 348 Z" fill="#e29a70"/>
@@ -834,6 +909,7 @@
           <path id="stem" d="M400 344 C400 320 400 300 400 280" fill="none"
                 stroke="url(#stemGrad)" stroke-width="5" stroke-linecap="round"/>
           <g id="leaves"></g>
+          <circle id="bud-halo" cx="400" cy="270" r="11" fill="#7fae6b" filter="url(#soft)"/>
           <circle id="bud" cx="400" cy="270" r="6" fill="#7fae6b" opacity="0"/>
           <g id="flower" opacity="0"></g>
         </g>
@@ -1449,6 +1525,24 @@
                     : Math.abs(Math.sin((frac + 0.5) * Math.PI)); // moon arc, offset 12h
       var y = 300 - arc * 210;
       $('sun-g').setAttribute('transform', 'translate(' + x.toFixed(0) + ' ' + y.toFixed(0) + ')');
+
+      // The light is honest about where it comes from: the shaft through the
+      // window tracks the sun (or moon) across the pane, its landing patch
+      // swings the opposite way, and the pot's shadow leans away from the
+      // light and stretches as it lowers — a slow sundial nobody announces.
+      var beam = $('beam');
+      if (beam) {
+        var bx = Math.max(285, Math.min(555, x));     // top of the shaft, under the light
+        var lean = (bx - 400) * 0.45;                 // the patch swings opposite the sun
+        beam.setAttribute('points',
+          (bx - 62).toFixed(0) + ',188 ' + (bx + 68).toFixed(0) + ',188 ' +
+          (472 - lean).toFixed(0) + ',470 ' + (350 - lean).toFixed(0) + ',470');
+      }
+      var shadow = $('pot-shadow');
+      if (shadow) {
+        shadow.setAttribute('cx', (402 - (x - 400) * 0.22).toFixed(0));
+        shadow.setAttribute('rx', (84 + Math.abs(x - 400) * 0.06).toFixed(0));
+      }
     }
 
     function applyPhase(now) {
@@ -1465,16 +1559,92 @@
     }
 
     // ── Stars (night only; opacity gated by CSS phase) ──────────────────────
+    // A real sky is not monochrome: most stars read white, a few burn warm and
+    // a few cool, and the brightest carry the eye's own diffraction spikes.
+    // Inline style.fill (not an attribute) so it wins over the .star fallback.
+    var STAR_HUES = ['#ffffff', '#ffffff', '#ffffff', '#ffe8c8', '#cfdfff'];
     function seedStars() {
       var g = $('stars'), frag = document.createDocumentFragment();
       for (var i = 0; i < 44; i++) {
+        var cx = 158 + Math.random() * 484;
+        var cy = 48 + Math.random() * 240;
+        var r = Math.random() * 1.1 + 0.4;
+        var hue = STAR_HUES[Math.floor(Math.random() * STAR_HUES.length)];
+        var bright = r > 1.15 && Math.random() < 0.6;   // the lucky few get spikes
+        var host = document.createElementNS(SVGNS, bright ? 'g' : 'circle');
+        host.setAttribute('class', 'star');
+        host.style.setProperty('--b', (0.35 + Math.random() * 0.55).toFixed(2));
+        host.style.animationDelay = (Math.random() * 5).toFixed(1) + 's';
+        if (bright) {
+          var s = r * 3.2;
+          var core = document.createElementNS(SVGNS, 'circle');
+          core.setAttribute('cx', cx.toFixed(0));
+          core.setAttribute('cy', cy.toFixed(0));
+          core.setAttribute('r', r.toFixed(1));
+          core.style.fill = hue;
+          host.appendChild(core);
+          [[0, s], [s, 0]].forEach(function (d) {
+            var spike = document.createElementNS(SVGNS, 'line');
+            spike.setAttribute('x1', (cx - d[1]).toFixed(1));
+            spike.setAttribute('y1', (cy - d[0]).toFixed(1));
+            spike.setAttribute('x2', (cx + d[1]).toFixed(1));
+            spike.setAttribute('y2', (cy + d[0]).toFixed(1));
+            spike.style.stroke = hue;
+            spike.style.strokeWidth = '0.5';
+            spike.style.opacity = '0.55';
+            host.appendChild(spike);
+          });
+        } else {
+          host.setAttribute('cx', cx.toFixed(0));
+          host.setAttribute('cy', cy.toFixed(0));
+          host.setAttribute('r', r.toFixed(1));
+          host.style.fill = hue;
+        }
+        frag.appendChild(host);
+      }
+      g.appendChild(frag);
+    }
+
+    // ── One meteor, sometimes ───────────────────────────────────────────────
+    // Minutes apart, night only, gone in under two seconds. Deliberately
+    // unannounced: the reward for sitting with the windowsill a while.
+    function scheduleMeteor() {
+      if (reduce) return;
+      setTimeout(function () {
+        if (document.body.getAttribute('data-phase') === 'night' && !document.hidden) {
+          var g = $('stars');
+          if (g) {
+            var x = 220 + Math.random() * 380;
+            var y = 55 + Math.random() * 90;
+            var m = document.createElementNS(SVGNS, 'line');
+            m.setAttribute('class', 'meteor');
+            m.setAttribute('x1', x.toFixed(0));
+            m.setAttribute('y1', y.toFixed(0));
+            m.setAttribute('x2', (x + 26).toFixed(0));
+            m.setAttribute('y2', (y - 16).toFixed(0));
+            g.appendChild(m);
+            setTimeout(function () { if (m.parentNode) m.parentNode.removeChild(m); }, 2000);
+          }
+        }
+        scheduleMeteor();
+      }, 70000 + Math.random() * 110000);
+    }
+
+    // ── Fireflies over the near ground (dusk + night, via CSS phase) ────────
+    function seedFireflies() {
+      var g = $('fireflies');
+      if (!g) return;
+      var frag = document.createDocumentFragment();
+      for (var i = 0; i < 4; i++) {
         var c = document.createElementNS(SVGNS, 'circle');
-        c.setAttribute('class', 'star');
-        c.setAttribute('cx', (158 + Math.random() * 484).toFixed(0));
-        c.setAttribute('cy', (48 + Math.random() * 240).toFixed(0));
-        c.setAttribute('r', (Math.random() * 1.1 + 0.4).toFixed(1));
-        c.style.setProperty('--b', (0.35 + Math.random() * 0.55).toFixed(2));
-        c.style.animationDelay = (Math.random() * 5).toFixed(1) + 's';
+        c.setAttribute('class', 'firefly');
+        c.setAttribute('cx', (190 + Math.random() * 420).toFixed(0));
+        c.setAttribute('cy', (252 + Math.random() * 72).toFixed(0));
+        c.setAttribute('r', (1.3 + Math.random() * 0.9).toFixed(1));
+        c.style.setProperty('--fdur', (8 + Math.random() * 7).toFixed(1) + 's');
+        c.style.setProperty('--fx', (Math.random() * 34 - 17).toFixed(0) + 'px');
+        c.style.setProperty('--fy', (-4 - Math.random() * 14).toFixed(0) + 'px');
+        c.style.animationDelay = (-Math.random() * 12).toFixed(1) + 's';
         frag.appendChild(c);
       }
       g.appendChild(frag);
@@ -1544,7 +1714,7 @@
       var frag = document.createDocumentFragment();
       closed.forEach(function (m, i) {
         var node = geo.nodes[i] || { x: 400, y: topY, dir: (i % 2) ? 1 : -1 };
-        frag.appendChild(milestoneLeaf(node.x, node.y, node.dir, m, leafColor));
+        frag.appendChild(milestoneLeaf(node.x, node.y, node.dir, m, leafColor, node.t));
       });
       leaves.appendChild(frag);
 
@@ -1554,6 +1724,16 @@
       $('bud').setAttribute('cy', topY.toFixed(0));
       $('bud').setAttribute('fill', leafColor);
       $('bud').setAttribute('opacity', open ? '1' : '0');
+      // The halo travels with the bud; data-on hands visibility to the CSS,
+      // which decides how brightly the tip's light shows for the current phase.
+      var halo = $('bud-halo');
+      if (halo) {
+        halo.setAttribute('cx', geo.tip.x.toFixed(0));
+        halo.setAttribute('cy', topY.toFixed(0));
+        halo.setAttribute('fill', leafColor);
+        if (open) halo.setAttribute('data-on', '');
+        else halo.removeAttribute('data-on');
+      }
       $('bud').textContent = '';
       if (open) {
         var scheduled = open.runner_available === true;
@@ -1577,29 +1757,58 @@
       drawFlower(topY, closed.length >= total ? 1 : 0);
     }
 
-    // Nudge a hex color lighter (+) or darker (−) for leaf edges and veins.
-    function shade(hex, amt) {
-      var c = hex.replace('#', '');
-      if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
-      var n = parseInt(c, 16);
+    // Nudge a color lighter (+) or darker (−) for leaf edges and veins.
+    // Accepts hex or its own rgb() output, so nudges compose (a jittered fill
+    // can be shaded again for its stroke without silently going black).
+    function shade(color, amt) {
+      var r, g, b, m = /^rgb\((\d+),\s*(\d+),\s*(\d+)\)$/.exec(color);
+      if (m) { r = +m[1]; g = +m[2]; b = +m[3]; }
+      else {
+        var c = color.replace('#', '');
+        if (c.length === 3) c = c[0] + c[0] + c[1] + c[1] + c[2] + c[2];
+        var n = parseInt(c, 16);
+        r = n >> 16; g = (n >> 8) & 255; b = n & 255;
+      }
       var clamp = function (v) { return Math.max(0, Math.min(255, v)); };
-      return 'rgb(' + clamp((n >> 16) + amt) + ',' + clamp(((n >> 8) & 255) + amt) +
-        ',' + clamp((n & 255) + amt) + ')';
+      return 'rgb(' + clamp(r + amt) + ',' + clamp(g + amt) + ',' + clamp(b + amt) + ')';
+    }
+
+    // A tiny deterministic hash so each milestone's leaf is ITSELF — same size,
+    // same tilt, same flutter timing on every visit. Random botany would make
+    // the plant a different plant every reload; this one you can come back to.
+    function leafSeed(id) {
+      var s = 0, str = String(id || '');
+      for (var i = 0; i < str.length; i++) s = (s * 31 + str.charCodeAt(i)) % 997;
+      return s;
     }
 
     // A milestone leaf: green = human-promoted, amber = machine-checked and
-    // awaiting review, folded grey = a null kept on the books.
-    function milestoneLeaf(x, y, dir, m, color) {
+    // awaiting review, folded grey = a null kept on the books. `t` is the
+    // node's height up the ladder (0 soil → 1 tip): a real plant keeps its
+    // oldest, largest leaves low and reaching outward, its youngest small and
+    // upright near the growing tip — so age shapes both size and pitch.
+    function milestoneLeaf(x, y, dir, m, color, t) {
       var nul = (m.status === 'null');
       var review = (m.status === 'review');
-      var len = nul ? 12 : 18;
-      var ey = nul ? y + len * 0.35 : y - len * 0.55;   // null leaves droop downward
+      var seed = leafSeed(m.id);
+      var age = 1 - Math.max(0, Math.min(1, t == null ? 0.5 : t));   // 1 = oldest, lowest
+      // Per-milestone variation (±10%, seeded so each leaf is itself on every
+      // visit) on top of the age taper: the eye reads sameness as artifice.
+      var len = (nul ? 12 : 18) * (0.9 + (seed % 100) / 500) * (0.92 + age * 0.18);
+      var ey = nul ? y + len * 0.35
+                   : y - len * (0.62 - age * 0.14);     // young leaves pitch upward
       var ex = x + dir * len;
-      var fill = nul ? '#8a8f82' : (review ? '#d2aa67' : color);
+      var fill = nul ? '#8a8f82' : (review ? '#d2aa67' : shade(color, (seed % 17) - 8));
 
       var g = document.createElementNS(SVGNS, 'g');
-      g.setAttribute('class', 'leaf');
+      g.setAttribute('class', nul ? 'leaf null-leaf' : 'leaf');
       if (nul) g.setAttribute('opacity', '0.78');
+      // Each living leaf flutters to its own clock, out of phase with its
+      // neighbours (the CSS reads both custom properties).
+      if (!nul) {
+        g.style.setProperty('--fdur', (5.5 + (seed % 40) / 10).toFixed(1) + 's');
+        g.style.animationDelay = '-' + ((seed % 70) / 10).toFixed(1) + 's';
+      }
 
       var blade = document.createElementNS(SVGNS, 'path');
       blade.setAttribute('d', 'M' + x + ' ' + y +
@@ -1610,6 +1819,20 @@
       blade.setAttribute('stroke-width', '0.6');
       g.appendChild(blade);
 
+      // The lit edge: the blade's upper curve retraced in a lighter stroke, the
+      // one place window light actually lands on a leaf.
+      if (!nul) {
+        var lit = document.createElementNS(SVGNS, 'path');
+        lit.setAttribute('d', 'M' + x + ' ' + y +
+          ' Q' + (x + dir * len * 0.5) + ' ' + (y - len) + ' ' + ex + ' ' + ey);
+        lit.setAttribute('fill', 'none');
+        lit.setAttribute('stroke', shade(fill, 48));
+        lit.setAttribute('stroke-width', '0.7');
+        lit.setAttribute('stroke-linecap', 'round');
+        lit.setAttribute('opacity', '0.55');
+        g.appendChild(lit);
+      }
+
       var rib = document.createElementNS(SVGNS, 'path');   // midrib vein, lighter
       rib.setAttribute('d', 'M' + x + ' ' + y +
         ' Q' + (x + dir * len * 0.5) + ' ' + (y - (nul ? len * 0.15 : len * 0.7)) + ' ' + ex + ' ' + ey);
@@ -1618,6 +1841,30 @@
       rib.setAttribute('stroke-width', '0.8');
       rib.setAttribute('stroke-linecap', 'round');
       g.appendChild(rib);
+
+      // Two side-veins branching off the midrib toward the blade's edge — the
+      // difference between a green shape and a leaf. Quadratic point at t:
+      // B(t) = (1-t)²P0 + 2(1-t)t·C + t²P1, for the midrib's own control point.
+      if (!nul) {
+        var vcx = x + dir * len * 0.5, vcy = y - len * 0.7;
+        [0.35, 0.55].forEach(function (vt, vi) {
+          var u = 1 - vt;
+          var px = u * u * x + 2 * u * vt * vcx + vt * vt * ex;
+          var py = u * u * y + 2 * u * vt * vcy + vt * vt * ey;
+          var vein = document.createElementNS(SVGNS, 'path');
+          vein.setAttribute('d', 'M' + px.toFixed(1) + ' ' + py.toFixed(1) +
+            ' q' + (dir * len * 0.1).toFixed(1) + ' ' +
+            ((vi ? -1 : 1) * len * 0.09).toFixed(1) + ' ' +
+            (dir * len * 0.19).toFixed(1) + ' ' +
+            ((vi ? -1 : 1) * len * 0.06).toFixed(1));
+          vein.setAttribute('fill', 'none');
+          vein.setAttribute('stroke', shade(fill, 22));
+          vein.setAttribute('stroke-width', '0.5');
+          vein.setAttribute('stroke-linecap', 'round');
+          vein.setAttribute('opacity', '0.8');
+          g.appendChild(vein);
+        });
+      }
 
       // A transparent 44px target makes the small, gently swaying leaf usable
       // by touch and pointer while the visible botany remains delicate.
@@ -2573,6 +2820,8 @@
     applyPhase(now);
     seedStars();
     seedDust();
+    seedFireflies();
+    scheduleMeteor();
     render({ empty:true, reason:'boot' });
 
     // Wire the field note: close button, Escape to dismiss, and the bud (the
