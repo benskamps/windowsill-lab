@@ -2085,6 +2085,80 @@ def check_a01(report: dict) -> tuple[bool | None, str]:
     )
 
 
+def check_a03(report: dict) -> tuple[bool | None, str]:
+    """Re-derive A03's verdict from the saved numbers, not its pass flags.
+
+    Two gates, and the order is the point. The CONTROL gate asks whether the
+    pipeline can recover a chirp mass it planted itself — if that fails, the run
+    says nothing about the sky either way and the milestone is unreadable rather
+    than false. Only if the control holds does the SKY gate mean anything.
+    """
+    if report.get("experiment") != "A03-gwosc-chirp-mass":
+        return None, "not an A03 GWOSC chirp-mass run"
+    dets = report.get("detectors")
+    products = report.get("products")
+    if not isinstance(dets, list) or not dets:
+        return None, "A03 report carries no per-detector results"
+    if len(dets) < 2:
+        return False, "A03 needs at least two independent detectors"
+
+    hashes_ok = isinstance(products, list) and bool(products) and all(
+        isinstance(p, dict) and isinstance(p.get("sha256"), str)
+        and re.fullmatch(r"[0-9a-fA-F]{64}", p["sha256"]) is not None
+        for p in products
+    )
+    if not hashes_ok:
+        return False, "A03 strain products are not pinned by SHA-256"
+
+    try:
+        mc_pub_src = float(report["published_chirp_mass_source"])
+        mc_pub_det = float(report["published_chirp_mass_detector"])
+        tol = max(float(report.get("published_chirp_mass_source_lower") or 0.0),
+                  float(report.get("published_chirp_mass_source_upper") or 0.0))
+        ctrl_tol = float(report.get("control_tolerance_msun", 1e-3))
+    except (KeyError, TypeError, ValueError) as exc:
+        return False, f"A03 published parameters are unusable: {exc}"
+    if tol <= 0:
+        return False, "A03 has no published error bar to grade against"
+
+    ctrl_errs, sky = [], []
+    for d in dets:
+        try:
+            c, r = d["control"], d["real"]
+            ce = abs(float(c["mc_detector"]) - mc_pub_det)
+            ctrl_ok = float(c["peak_snr"]) > float(c["background_max"]) and ce <= ctrl_tol
+            re_src = float(r["mc_detector"]) / (1.0 + float(report["redshift"]))
+            sky_ok = (float(r["peak_snr"]) > float(r["background_max"])
+                      and abs(re_src - mc_pub_src) <= tol)
+        except (KeyError, TypeError, ValueError, ZeroDivisionError) as exc:
+            return False, f"A03 detector row is malformed: {exc}"
+        ctrl_errs.append((d.get("detector", "?"), ce, ctrl_ok, float(c["peak_snr"])))
+        sky.append((d.get("detector", "?"), re_src, sky_ok,
+                    float(r["peak_snr"]), float(r["background_max"])))
+
+    if not all(ok for _, _, ok, _ in ctrl_errs):
+        worst = max(ctrl_errs, key=lambda x: x[1])
+        return None, (
+            f"A03 CONTROL FAILED — the pipeline could not recover its own injection "
+            f"({worst[0]}: {worst[1]:.2e} Msun off, tol {ctrl_tol:.0e}); the sky result "
+            "is uninterpretable, not negative"
+        )
+
+    ctrl_txt = ", ".join(f"{n} {e:.1e} (SNR {s:.1f})" for n, e, _, s in ctrl_errs)
+    sky_txt = ", ".join(
+        f"{n} Mc={v:.5f} (SNR {p:.1f} vs background {b:.1f})" for n, v, _, p, b in sky)
+    ok = all(o for _, _, o, _, _ in sky)
+    return ok, (
+        f"{report.get('event', 'event')}: injection recovered to {ctrl_txt} — "
+        f"pipeline validated at {ctrl_tol:.0e} Msun, "
+        f"{max(1, int(tol / max(max(e for _, e, _, _ in ctrl_errs), 1e-12)))}x "
+        f"tighter than the published +/-{tol:g}; sky: {sky_txt} vs published "
+        f"{mc_pub_src:g} — " + (
+            "published chirp mass reproduced" if ok else
+            "event NOT recovered by an inspiral-only template (see claim_boundary)")
+    )
+
+
 def check_i01(report: dict) -> tuple[bool | None, str]:
     if report.get("experiment") != "I01-cmos-particle-detector-calibration":
         return None, "not an I01 CMOS calibration"
@@ -2290,7 +2364,7 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M10": check_m10, "M11": check_m11, "M12": check_m12,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
           "M16": check_m16, "M17": check_m17, "K01": check_k01, "K02": check_k02,
-          "C01": check_c01, "A01": check_a01,
+          "C01": check_c01, "A01": check_a01, "A03": check_a03,
           "I01": check_i01, "CTRL": check_controls}
 
 

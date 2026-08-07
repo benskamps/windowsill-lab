@@ -230,6 +230,7 @@ Usage:
   lab k02             run K02: does the χ(r) shape survive N? (Track K)
   lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
   lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
+  lab a03             run A03: chirp mass of a GWOSC event by matched filtering
   lab i01             run I01: calibrate a real capped-CMOS dark-frame stack
   lab i01 --camera 0  acquire a bounded live grayscale stack, then calibrate it
   lab open            open the latest report (no run)
@@ -749,6 +750,20 @@ def _parse_a01(args):
                    help="optional FITS cache; defaults to ~/.lab/cache/a01")
     p.add_argument("--deadline", type=float, default=600.0,
                    help="hard end-to-end deadline in seconds (default 600)")
+    return p.parse_args(args)
+
+
+def _parse_a03(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--event", default="GW170817",
+                   help="GWOSC event name (default GW170817 — a BNS, where an "
+                        "inspiral-only template is the correct model)")
+    p.add_argument("--catalog", default="GWTC-1-confident")
+    p.add_argument("--version", default="v3")
+    p.add_argument("--dmc", type=float, default=2e-5,
+                   help="chirp-mass grid step in Msun (default 2e-5)")
+    p.add_argument("--cache-dir", default=None,
+                   help="optional strain cache; defaults to ~/.lab/cache/a03")
     return p.parse_args(args)
 
 
@@ -1823,6 +1838,49 @@ def main(argv=None):
               f"depth={100*result.depth_fraction:.3f}% "
               f"(Δ={100*result.depth_error_fraction:.3f}%) · "
               f"{sum(result.kept_transits)} timed transits · "
+              f"{'calibrated' if result.calibration_passed else '[~] null'} · "
+              f"{result.wall_seconds:.1f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "a03":
+        ns = _parse_a03(args[1:])
+        from . import a03
+        from . import render as render_mod
+        cache = Path(ns.cache_dir) if ns.cache_dir else a03.CACHE_DIR
+        print(f"A03 gravitational-wave chirp mass · {ns.event} from GWOSC · "
+              f"3.5PN TaylorF2 inspiral, {a03.SEG_SEC}s @ {a03.FS} Hz")
+
+        def _progress(detector, nbytes, digest):
+            print(f"  ✓ {detector} strain {nbytes/1e6:.1f} MB  sha256={digest[:16]}…")
+
+        def _phase(kind, payload):
+            if kind == "event":
+                print(f"  · published Mc={payload['chirp_mass_source']:.4f} "
+                      f"+{payload['chirp_mass_source_upper']:g}/"
+                      f"-{payload['chirp_mass_source_lower']:g} Msun (source), "
+                      f"z={payload['redshift']:g} → detector-frame "
+                      f"{payload['chirp_mass_detector']:.5f}")
+            elif kind == "detector":
+                c, r = payload["control"], payload["real"]
+                print(f"    {payload['detector']} control: SNR={c['peak_snr']:.1f} "
+                      f"Mc={c['mc_detector']:.5f} (err {payload['control_error_msun']:.1e})")
+                print(f"    {payload['detector']} sky:     SNR={r['peak_snr']:.1f} "
+                      f"vs background {r['background_max']:.1f} → "
+                      f"{'DETECTED' if payload['real_detected'] else 'no detection'}")
+
+        result = a03.run_a03(catalog=ns.catalog, event=ns.event, version=ns.version,
+                             cache_dir=cache, dmc=ns.dmc,
+                             progress=_progress, phase=_phase)
+        report = a03.to_report(result)
+        print(f"  → control {'PASSED' if result.control_passed else 'FAILED'} · "
+              f"event {'recovered' if result.recovered else 'NOT recovered'} · "
               f"{'calibrated' if result.calibration_passed else '[~] null'} · "
               f"{result.wall_seconds:.1f}s")
         path = render_mod.render_calibration(report)

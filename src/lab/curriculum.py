@@ -33,6 +33,7 @@ RUNNERS = {
     "K02": "k02",
     "C01": "c01",
     "A01": "a01",
+    "A03": "a03",
     "I01": "i01",
 }
 
@@ -50,6 +51,9 @@ RUNNER_SCHEDULER_OPTIONS = {
     "K02": frozenset(),
     "C01": frozenset(),
     "A01": frozenset(),
+    # A03 pins its own event, band and chirp-mass grid; a scheduler seed would
+    # not change the measurement, only pretend to.
+    "A03": frozenset(),
     "I01": frozenset(),
 }
 
@@ -81,9 +85,17 @@ def runner_for(milestone_id: str) -> str | None:
 # grouped: the convergence ladders (M, K) first, then the citizen-science tracks
 # (C, A, I). That keeps I01 — the one gated slot — last, where the wrap lands on
 # the M01 calibration pulse.
+# A03 joined 2026-08-07 beside A01 on the astronomy track: ~445 s of NumPy on
+# CPU after a one-time 328 MB GWOSC fetch that then lives in ~/.lab/cache, so
+# steady-state cost is the same class as C01/A01. It ships a `[~]` null, which
+# would normally read as receipt spam (see the M12 exclusion above) — the
+# difference is that A03's null is CONTROLLED: every pass re-proves the filter
+# recovers an injected chirp mass to ~2e-5 Msun before reporting on the sky, so
+# a passing receipt is a live statement that the pipeline still works, and the
+# day the sky column changes it will be because something real changed.
 ROTATION: tuple[str, ...] = (
     "M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10",
-    "M11", "M13", "M14", "M15", "M17", "K01", "C01", "A01", "I01",
+    "M11", "M13", "M14", "M15", "M17", "K01", "C01", "A01", "A03", "I01",
 )
 
 

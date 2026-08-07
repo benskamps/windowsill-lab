@@ -89,7 +89,11 @@ The first calibration cycle ran on 2026-07-14. C01 reproduced 40 official OEIS
 A000045 b-file lines byte-for-byte and independently verified M31 with
 Lucas–Lehmer. A01 recovered WASP-18 b's period and transit depth from eight
 official TESS SPOC light curves inside the NASA Exoplanet Archive uncertainties.
-Both remain amber pending human review; neither is a submitted contribution.
-I01 recorded a hardware null because no real capped-sensor frames were
-available. As with the physics ladder: verify before claiming, publish the nulls
-too, and let the record accumulate over months.
+Both were reviewed and turned green on 2026-08-02; neither is a submitted
+contribution. I01 recorded a hardware null because no real capped-sensor frames
+were available. A03 (2026-08-07) recorded a *controlled* null on GW170817: the
+matched filter recovers an injected chirp mass to 2×10⁻⁵ M☉ — 24× tighter than
+the published error bar — and does not recover the event, which localises the
+gap to waveform physics rather than to the instrument. As with the physics
+ladder: verify before claiming, publish the nulls too, and let the record
+accumulate over months.

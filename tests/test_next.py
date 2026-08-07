@@ -377,11 +377,12 @@ def test_select_rotation_walks_to_the_next_slot():
 
 
 def test_select_rotation_skips_gated_i01_and_wraps(monkeypatch):
-    """N2: pointer at A01 → next slot is I01 → gated (no camera) → disclosed
-    skip with a named reason, then wrap to M01. The skip is a returned tuple,
-    not a receipt, not a report, not a science row."""
+    """N2: pointer at the last slot before I01 → next slot is I01 → gated (no
+    camera) → disclosed skip with a named reason, then wrap to M01. The skip is
+    a returned tuple, not a receipt, not a report, not a science row."""
     _no_camera(monkeypatch)
-    pick, skips = curriculum.select_rotation(_all_verified(), "A01")
+    assert curriculum.ROTATION[-1] == "I01", "this test pins the pre-I01 slot"
+    pick, skips = curriculum.select_rotation(_all_verified(), curriculum.ROTATION[-2])
     assert pick == "M01"
     assert len(skips) == 1
     mid, reason = skips[0]
@@ -523,7 +524,8 @@ def test_rotation_pass_never_dispatches_gated_i01(monkeypatch, capsys, tmp_path)
         {"id": "M18", "status": "open"},
     ])
     receipts = _rotation_receipts(
-        tmp_path, ("2026-07-31", "a01", "2026-07-31T15:10:00+00:00"),
+        tmp_path, ("2026-07-31", curriculum.ROTATION[-2].lower(),
+                   "2026-07-31T15:10:00+00:00"),
     )
     monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", receipts)
 
@@ -594,7 +596,7 @@ def test_i01_gate_rejects_camera_only_config_the_dispatch_cannot_use(monkeypatch
     reason = curriculum.hardware_gate_reason("I01")
     assert reason is not None
     assert "LAB_I01_CAMERA" in reason and "WINDOWSILL_I01_FRAMES" in reason
-    pick, skips = curriculum.select_rotation(_all_verified(), "A01")
+    pick, skips = curriculum.select_rotation(_all_verified(), curriculum.ROTATION[-2])
     assert pick == "M01"                       # wraps past the gated slot
     assert skips and skips[0][0] == "I01"
 
@@ -698,7 +700,8 @@ def test_next_dry_run_runs_nothing_and_writes_nothing(monkeypatch, capsys, tmp_p
         {"id": "M18", "status": "open"},
     ])
     receipts = _rotation_receipts(
-        tmp_path, ("2026-07-31", "a01", "2026-07-31T15:10:00+00:00"),
+        tmp_path, ("2026-07-31", curriculum.ROTATION[-2].lower(),
+                   "2026-07-31T15:10:00+00:00"),
     )
     monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", receipts)
 
