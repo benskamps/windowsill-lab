@@ -112,6 +112,14 @@ def test_runner_availability_is_feed_visible():
     later = parse_milestones("- [ ] **M17** — KPZ growth.\n")[0]
     assert later["status"] == "open"
     assert later["runner_available"] is True
+    # The negative case needs an id that is genuinely NOT in RUNNERS. This line
+    # used to say "M18", which was true until M18 got a runner on 2026-08-07 —
+    # the same rot that silently turned eleven test_next.py assertions into
+    # statements about the wrong thing. Assert the precondition instead of
+    # trusting it, so registering M99 fails loudly here rather than quietly
+    # inverting what this test checks.
+    from lab.curriculum import RUNNERS
+    assert "M99" not in RUNNERS, "pick another unregistered id for this assertion"
     assert parse_milestones("- [ ] **M99** — Unregistered.\n")[0]["runner_available"] is False
 
 
