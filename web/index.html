@@ -253,7 +253,10 @@
     @keyframes flutter { from { transform: rotate(-1.4deg); } to { transform: rotate(1.8deg); } }
     .leaf.null-leaf { animation:none; }
     .scene:hover .leaf, .scene:focus-within .leaf { animation-play-state:paused; }
-    #stem, #leaves, .leaf, #bud, #flower { transition: opacity 1.2s ease; }
+    #stem, #stem-body, #mat, #leaves, .leaf, #bud, #flower { transition: opacity 1.2s ease; }
+    /* the ribbon's lit edges idle dim; the sundial CSS (data-sunside) brightens
+       the side the light actually falls on */
+    .stem-edge { opacity:0.14; transition:opacity 3s ease; }
 
     /* The open experiment keeps a faint light on at its growing tip — barely
        there by day, and through the night it breathes: the one thing in the
@@ -779,6 +782,15 @@
             <stop offset="0" stop-color="#fff" stop-opacity="0.32"/>
             <stop offset="1" stop-color="#fff" stop-opacity="0"/>
           </radialGradient>
+          <radialGradient id="soilAO" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#120904" stop-opacity="0.55"/>
+            <stop offset="0.7" stop-color="#120904" stop-opacity="0.2"/>
+            <stop offset="1" stop-color="#120904" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="bladeBacklight" cx="0.5" cy="0.35" r="0.75">
+            <stop offset="0" class="backlight-stop" stop-opacity="0.5"/>
+            <stop offset="1" class="backlight-stop" stop-opacity="0"/>
+          </radialGradient>
           <filter id="bloom" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7"/></filter>
           <filter id="soft"  x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6"/></filter>
           <filter id="cloudBlur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5"/></filter>
@@ -905,11 +917,25 @@
 
         <!-- ── the plant ── -->
         <g id="plant">
-          <ellipse cx="400" cy="344" rx="6" ry="3" fill="#4d7a3e"/>
+          <!-- root collar: ambient occlusion where stem meets soil, then the
+               collar itself, darkened now that a ribbon body carries the light -->
+          <ellipse cx="400" cy="344" rx="16" ry="5" fill="url(#soilAO)"/>
+          <ellipse cx="400" cy="344" rx="6" ry="3" fill="#3c5f30"/>
+          <!-- moss only: the colony mat silhouette (other forms leave it 0) -->
+          <path id="mat" fill="#3f5433" stroke="#2c3d24" stroke-width="0.8" opacity="0" d="M0 0"/>
+          <!-- the stem as a BODY: tapered ribbon polygon sampled from #stem's
+               own path, with a lit edge per side the sundial CSS reveals.
+               #stem keeps its id and real d — it IS the progress geometry —
+               and now reads as the core shadow line inside the ribbon. -->
+          <path id="stem-body" fill="url(#stemGrad)"/>
           <path id="stem" d="M400 344 C400 320 400 300 400 280" fill="none"
-                stroke="url(#stemGrad)" stroke-width="5" stroke-linecap="round"/>
+                stroke="#3a5c2f" stroke-width="1.7" stroke-linecap="round" opacity="0.55"/>
+          <path id="stem-edge-l" class="stem-edge" fill="none" stroke="#a5d18d" stroke-width="1" stroke-linecap="round"/>
+          <path id="stem-edge-r" class="stem-edge" fill="none" stroke="#a5d18d" stroke-width="1" stroke-linecap="round"/>
           <g id="leaves"></g>
+          <g id="leaf-hits"></g>
           <circle id="bud-halo" cx="400" cy="270" r="11" fill="#7fae6b" filter="url(#soft)"/>
+          <g id="bud-tip" aria-hidden="true"></g>
           <circle id="bud" cx="400" cy="270" r="6" fill="#7fae6b" opacity="0"/>
           <g id="flower" opacity="0"></g>
         </g>
@@ -1767,7 +1793,13 @@
       });
       var topY = geo.tip.y;
 
-      $('stem').setAttribute('d', geo.stem);
+      // #stem carries the SPINE — identical to stem for five forms; for moss
+      // it's the sprig alone, and the colony mat gets its own silhouette.
+      $('stem').setAttribute('d', geo.spine || geo.stem);
+      var mat = $('mat');
+      if (geo.mat) { mat.setAttribute('d', geo.mat); mat.setAttribute('opacity', '0.92'); }
+      else mat.setAttribute('opacity', '0');
+      paintStemRibbon();
 
       // One leaf per measured milestone. Amber leaves passed the machine check
       // but remain explicitly separate from human-promoted green ones.
@@ -1824,6 +1856,51 @@
 
       // Ladder complete → it flowers. Months out, and honest when it happens.
       drawFlower(topY, closed.length >= total ? 1 : 0);
+    }
+
+    // ── The stem as a body ──────────────────────────────────────────────────
+    // A real stalk carries load: broad at the soil line, slender at the growing
+    // tip. Sample the #stem path the DOM already measures (the browser owns the
+    // arc-length math — the module never duplicates it), offset by unit normals
+    // into one closed tapered polygon, and retrace each side as a lit edge the
+    // sundial CSS reveals on the sun's side only. Once per render, never per frame.
+    function paintStemRibbon() {
+      var stemEl = $('stem'), body = $('stem-body');
+      var eL = $('stem-edge-l'), eR = $('stem-edge-r');
+      var L = 0;
+      try { L = stemEl.getTotalLength(); } catch (e) { /* detached/degenerate */ }
+      if (!L || !isFinite(L) || L < 4) {
+        body.setAttribute('d', 'M0 0');
+        eL.setAttribute('d', 'M0 0'); eR.setAttribute('d', 'M0 0');
+        return;
+      }
+      var N = 22, pts = [], i;
+      for (i = 0; i <= N; i++) pts.push(stemEl.getPointAtLength(L * i / N));
+      // unit normals from successive tangents, with a flip guard so the vine's
+      // coil doesn't twist the ribbon inside out where the tangent reverses
+      var nrm = [], px, py;
+      for (i = 0; i <= N; i++) {
+        var a = pts[Math.max(0, i - 1)], b = pts[Math.min(N, i + 1)];
+        var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
+        var nx = -dy / len, ny = dx / len;
+        if (i > 0 && (nx * px + ny * py) < 0) { nx = -nx; ny = -ny; }
+        nrm.push({ x: nx, y: ny }); px = nx; py = ny;
+      }
+      // half-width: a root flare into the soil, then a long taper to the tip
+      function w(f) {
+        return f < 0.06 ? 4.6 + (2.7 - 4.6) * (f / 0.06)
+                        : 2.7 + (0.9 - 2.7) * ((f - 0.06) / 0.94);
+      }
+      var left = [], right = [];
+      for (i = 0; i <= N; i++) {
+        var hw = w(i / N);
+        left.push((pts[i].x + nrm[i].x * hw).toFixed(1) + ' ' + (pts[i].y + nrm[i].y * hw).toFixed(1));
+        right.push((pts[i].x - nrm[i].x * hw).toFixed(1) + ' ' + (pts[i].y - nrm[i].y * hw).toFixed(1));
+      }
+      body.setAttribute('d', 'M' + left.join(' L') + ' L' + right.slice().reverse().join(' L') + ' Z');
+      // lit edges skip the buried base and the tender tip
+      eL.setAttribute('d', 'M' + left.slice(2, 21).join(' L'));
+      eR.setAttribute('d', 'M' + right.slice(2, 21).join(' L'));
     }
 
     // Nudge a color lighter (+) or darker (−) for leaf edges and veins.
