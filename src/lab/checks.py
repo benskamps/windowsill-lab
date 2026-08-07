@@ -2085,6 +2085,89 @@ def check_a01(report: dict) -> tuple[bool | None, str]:
     )
 
 
+def check_m18(report: dict) -> tuple[bool | None, str]:
+    """Re-derive M18's bracket and every control from the saved numbers.
+
+    The graded claim is deliberately NOT "delta = 0.4505". delta_eff decreases
+    monotonically in p, so a subcritical and a supercritical run BOUND the true
+    exponent, and that bound is what a finite lattice can honestly support. Four
+    things have to hold together:
+
+      1. the two runs really straddle p_c (curvatures of opposite sign) — without
+         this a "bracket" is just two runs on the same side;
+      2. the bracket contains the (2+1)d DP value 0.4505;
+      3. it excludes the mean-field value 1.0 — otherwise the run has shown only
+         that something decreases, not which universality class it belongs to;
+      4. it is narrow enough to mean something; [0, 2] would "contain" 0.4505.
+
+    Plus the controls, because a pipeline that calls any falling curve a critical
+    power law would pass 1-4 on noise alone.
+    """
+    if report.get("experiment") != "M18-directed-percolation-2plus1d":
+        return None, "not an M18 directed-percolation run"
+    try:
+        bracket = report["bracket"]
+        lo, hi = float(bracket[0]), float(bracket[1])
+        c_lo = float(report["curvature_at_p_low"])
+        c_hi = float(report["curvature_at_p_high"])
+        benchmark = float(report["benchmark_delta"])
+        mean_field = float(report["mean_field_delta"])
+        max_width = float(report.get("max_bracket_width", 0.30))
+        headroom = float(report["finite_size_headroom"])
+        min_headroom = float(report.get("min_headroom", 2.0))
+        p_c = float(report["p_c_estimate"])
+        p_c_unc = float(report["p_c_uncertainty"])
+        controls = report["controls"]
+    except (KeyError, TypeError, ValueError, IndexError) as exc:
+        return None, f"M18 report is missing bracket/control fields: {exc}"
+
+    if not isinstance(controls, dict) or len(controls) < 3:
+        return None, "M18 report carries fewer than three controls"
+
+    failed = [name for name, c in controls.items()
+              if not (isinstance(c, dict) and c.get("passed"))]
+    if failed:
+        return False, (
+            f"M18 control(s) failed: {', '.join(sorted(failed))} — the exponent "
+            "is not readable through a pipeline that cannot tell an exponential "
+            "from a power law"
+        )
+
+    straddles = c_lo > 0.0 > c_hi
+    width = hi - lo
+    contains = lo <= benchmark <= hi
+    excludes_mf = hi < mean_field
+
+    problems = []
+    if not straddles:
+        problems.append(
+            f"the runs do not straddle p_c (curvature {c_lo:+.3f} at p_low, "
+            f"{c_hi:+.3f} at p_high — need + then −)")
+    if not contains:
+        problems.append(f"bracket [{lo:.4f}, {hi:.4f}] misses DP {benchmark}")
+    if not excludes_mf:
+        problems.append(f"bracket does not exclude mean-field {mean_field}")
+    if not (0.0 < width <= max_width):
+        problems.append(f"bracket width {width:.4f} outside (0, {max_width}]")
+    if headroom < min_headroom:
+        problems.append(f"finite-size headroom {headroom:.1f} < {min_headroom} "
+                        "— the correlation length reached the box")
+
+    detail = (
+        f"2+1d DP: delta bracketed to [{lo:.4f}, {hi:.4f}] (width {width:.4f}) by a "
+        f"straddling pair at p={report.get('p_low')}/{report.get('p_high')}, "
+        f"curvature {c_lo:+.3f}/{c_hi:+.3f}; p_c = {p_c:.5f}±{p_c_unc:.5f} measured, "
+        f"not assumed; L/xi = {headroom:.1f}; controls: exponential-not-power-law "
+        f"below, saturation above, absorbing state holds"
+    )
+    if problems:
+        return False, detail + " — " + "; ".join(problems)
+    return True, (
+        detail + f" — contains the DP value {benchmark} and excludes mean-field "
+        f"{mean_field}: the absorbing-state transition is in the DP class"
+    )
+
+
 def check_a03(report: dict) -> tuple[bool | None, str]:
     """Re-derive A03's verdict from the saved numbers, not its pass flags.
 
@@ -2363,7 +2446,8 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
           "M10": check_m10, "M11": check_m11, "M12": check_m12,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
-          "M16": check_m16, "M17": check_m17, "K01": check_k01, "K02": check_k02,
+          "M16": check_m16, "M17": check_m17, "M18": check_m18,
+          "K01": check_k01, "K02": check_k02,
           "C01": check_c01, "A01": check_a01, "A03": check_a03,
           "I01": check_i01, "CTRL": check_controls}
 

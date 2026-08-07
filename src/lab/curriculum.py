@@ -29,6 +29,7 @@ RUNNERS = {
     "M15": "m15",
     "M16": "m16",
     "M17": "m17",
+    "M18": "m18",
     "K01": "k01",
     "K02": "k02",
     "C01": "c01",
@@ -44,6 +45,7 @@ _SEEDED_AND_DEVICE = frozenset({"seed", "device"})
 RUNNER_SCHEDULER_OPTIONS = {
     **{f"M{i:02d}": _SEEDED_AND_DEVICE for i in range(1, 17)},
     "M17": frozenset({"seed"}),
+    "M18": frozenset({"seed", "device"}),
     "K01": frozenset({"seed"}),
     # K02 sweeps a LADDER of population sizes over a fixed set of initial
     # conditions (`--seeds`), so a scheduler's single `--seed` is not a thing it
