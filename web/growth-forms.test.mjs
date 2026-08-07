@@ -176,3 +176,41 @@ test("the full contract enum maps to a known builder (no producer/consumer drift
     assert.ok(validPath(g.stem), `feed form "${form}" must render`);
   }
 });
+
+// ── Local frames + spine/mat (the organ-grammar interface growth, 2026-08-07) ──
+// Additive keys only: {stem,nodes,tip} above stay byte-compatible; these prove
+// the painter's new inputs exist and are sane for every form.
+
+test("every node of every form carries a finite local frame `out`", () => {
+  for (const form of ALL_FORMS) {
+    for (const count of [1, 6, 20]) {
+      const g = GF.build(form, { ...CTX, count });
+      for (const n of g.nodes) {
+        assert.ok(Number.isFinite(n.out), `${form}: node.out finite at count=${count}`);
+      }
+    }
+  }
+});
+
+test("every form emits a spine; spine === stem for all but moss", () => {
+  for (const form of ALL_FORMS) {
+    const g = GF.build(form, CTX);
+    assert.ok(validPath(g.spine), `${form}: spine must be a valid SVG path`);
+    if (form === "moss") {
+      assert.notEqual(g.spine, g.stem, "moss: spine is the sprig, not the composite");
+    } else {
+      assert.equal(g.spine, g.stem, `${form}: spine is the stem itself`);
+    }
+  }
+});
+
+test("moss emits a closed colony mat; nobody else does", () => {
+  const g = GF.build("moss", CTX);
+  assert.ok(validPath(g.mat), "moss: mat must be a valid SVG path");
+  assert.ok(/Z\s*$/.test(g.mat), "moss: mat must be a closed silhouette");
+  // deterministic: lumps come from count, not chance
+  assert.equal(g.mat, GF.build("moss", CTX).mat);
+  for (const form of ALL_FORMS.filter((f) => f !== "moss")) {
+    assert.equal(GF.build(form, CTX).mat, undefined, `${form}: no mat`);
+  }
+});
