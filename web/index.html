@@ -240,28 +240,99 @@
     }
 
     /* ── The plant ───────────────────────────────────────────── */
-    /* The whole plant sways once, slowly, from the base. Calm: a single lane. */
-    #plant { transform-origin: 400px 344px; animation: sway 11s ease-in-out infinite alternate; }
+    /* ONE wind, not thirty private flutters: a 47s shared gust timeline the
+       stem and every organ ride together. Each phase sets a plain amplitude
+       (no @property, no transitioned custom property — var()-dependent
+       keyframes must stay static or every frame re-resolves them); the
+       amplitude snaps at the phase boundary, hidden inside the palette
+       hard-switch. Night nearly stills the room, leaving the bud as the one
+       thing awake — which is the true state of the lab. */
+    body { --windamp:1; }
+    body[data-phase="dawn"] { --windamp:0.7; }
+    body[data-phase="dusk"] { --windamp:0.5; }
+    body[data-phase="night"] { --windamp:0.15; }
+    #plant { transform-origin: 400px 344px;
+             animation: sway 47s ease-in-out infinite;
+             rotate: calc(var(--lean, 0) * 1deg);
+             transition: rotate 240s linear; }
     .scene:hover #plant, .scene:focus-within #plant { animation-play-state:paused; }
-    @keyframes sway { from { transform: rotate(-1deg); } to { transform: rotate(1deg); } }
-    /* Each leaf also flutters on its own, a degree or two out of phase with its
-       neighbours (duration + delay seeded per milestone in JS) — the difference
-       between a drawing of a plant and a plant. Folded nulls hang still: a kept
-       miss is at rest, and stillness is part of how it reads. */
-    .leaf { transform-box: fill-box; transform-origin:center;
-            animation: flutter var(--fdur, 7s) ease-in-out infinite alternate; }
-    @keyframes flutter { from { transform: rotate(-1.4deg); } to { transform: rotate(1.8deg); } }
-    .leaf.null-leaf { animation:none; }
-    .scene:hover .leaf, .scene:focus-within .leaf { animation-play-state:paused; }
-    #stem, #leaves, .leaf, #bud, #flower { transition: opacity 1.2s ease; }
+    @keyframes sway {
+      0%  { transform: rotate(calc(var(--windamp,1) * -0.5deg)); }
+      12% { transform: rotate(calc(var(--windamp,1) *  0.8deg)); }
+      24% { transform: rotate(calc(var(--windamp,1) * -0.6deg)); }
+      38% { transform: rotate(calc(var(--windamp,1) *  0.7deg)); }
+      50% { transform: rotate(calc(var(--windamp,1) * -0.4deg)); }
+      62% { transform: rotate(calc(var(--windamp,1) *  1.6deg)); }  /* the gust */
+      74% { transform: rotate(calc(var(--windamp,1) * -0.7deg)); }
+      88% { transform: rotate(calc(var(--windamp,1) *  0.5deg)); }
+      100%{ transform: rotate(calc(var(--windamp,1) * -0.5deg)); }
+    }
+    /* Every organ rides the same gust, lagged by its height up the ladder
+       (delay = t·1.2s, negative so there are no dead frames) and scaled by a
+       seeded amplitude that grows toward the tip — the gust visibly travels
+       root-to-tip, and a taller plant dances more. The hinge is the
+       attachment: archetypes keep local (0,0) on their left bbox edge, so
+       fill-box origin 0% 50% pivots each organ where it meets the stem.
+       Folded nulls hang still: a kept miss is at rest, and stillness is part
+       of how it reads. */
+    .leaf .wind { transform-box: fill-box; transform-origin: 0% 50%;
+                  animation: leaf-wind 47s ease-in-out infinite;
+                  animation-delay: calc(var(--t, 0.5) * 1.2s - 47s); }
+    @keyframes leaf-wind {
+      0%  { transform: rotate(calc(var(--windamp,1)*var(--lamp,1) * -0.5deg)); }
+      12% { transform: rotate(calc(var(--windamp,1)*var(--lamp,1) *  0.8deg)); }
+      24% { transform: rotate(calc(var(--windamp,1)*var(--lamp,1) * -0.6deg)); }
+      38% { transform: rotate(calc(var(--windamp,1)*var(--lamp,1) *  0.7deg)); }
+      50% { transform: rotate(calc(var(--windamp,1)*var(--lamp,1) * -0.4deg)); }
+      62% { transform: rotate(calc(var(--windamp,1)*var(--lamp,1) *  1.6deg)); }
+      74% { transform: rotate(calc(var(--windamp,1)*var(--lamp,1) * -0.7deg)); }
+      88% { transform: rotate(calc(var(--windamp,1)*var(--lamp,1) *  0.5deg)); }
+      100%{ transform: rotate(calc(var(--windamp,1)*var(--lamp,1) * -0.5deg)); }
+    }
+    .leaf.null-leaf .wind { animation:none; }
+    .scene:hover .leaf .wind, .scene:focus-within .leaf .wind { animation-play-state:paused; }
+    #stem, #stem-body, #mat, #leaves, .leaf, #bud, #flower { transition: opacity 1.2s ease; }
+    /* the ribbon's lit edges idle dim; the sundial CSS (data-sunside) brightens
+       the side the light actually falls on */
+    .stem-edge { opacity:0.14; transition:opacity 3s ease; }
+    /* dawn/dusk whispers: revealed by the phase + sundial CSS, never painted on */
+    .dew { opacity:0; transition:opacity 3s ease; }
+    .blade-glow { opacity:0; transition:opacity 3s ease; }
+    .backlight-stop { stop-color: var(--sun); }
+    /* The sundial falls on the plant itself: the ribbon edge and blade rims on
+       the sun's side brighten, the far side falls back — and at night the moon
+       leaves only a weak cool trace of either. */
+    #scene[data-sunside="left"]  #stem-edge-l,
+    #scene[data-sunside="right"] #stem-edge-r { opacity:0.5; }
+    .leaf .rim { transition:opacity 3s ease; }
+    #scene[data-sunside="left"]  .leaf[data-dir="-1"] .rim,
+    #scene[data-sunside="right"] .leaf[data-dir="1"]  .rim { opacity:0.7; }
+    #scene[data-sunside="left"]  .leaf[data-dir="1"]  .rim,
+    #scene[data-sunside="right"] .leaf[data-dir="-1"] .rim { opacity:0.3; }
+    body[data-phase="night"] .stem-edge,
+    body[data-phase="night"] .leaf .rim { opacity:0.12; }
+    /* the backlight hour: sun low behind the blades at dawn and dusk */
+    body[data-phase="dawn"] #scene[data-sunlow] .blade-glow,
+    body[data-phase="dusk"] #scene[data-sunlow] .blade-glow { opacity:0.4; }
+    body[data-phase="dawn"] .dew { opacity:0.6; }
 
     /* The open experiment keeps a faint light on at its growing tip — barely
        there by day, and through the night it breathes: the one thing in the
        dark room that is quietly awake. */
     #bud-halo { opacity:0; transition: opacity 3s ease; }
     #bud-halo[data-on] { opacity:0.3; }
-    body[data-phase="night"] #bud-halo[data-on] { animation: bud-breathe 7s ease-in-out infinite; }
+    body[data-phase="night"] #bud-halo[data-on] { animation: bud-breathe 9.7s ease-in-out infinite; }
     @keyframes bud-breathe { 0%,100% { opacity:0.72; } 50% { opacity:0.34; } }
+    /* The bud breathes on its own 9.7s clock — no small common period with the
+       47s wind, so the rhythms never lock. The husks are decoration: clicks
+       belong to the hit rail and #bud. */
+    #bud-tip { pointer-events:none; }
+    #bud, #bud-tip .breath { transform-box:fill-box; transform-origin:center;
+                             animation: bud-breath 9.7s ease-in-out infinite; }
+    @keyframes bud-breath { 50% { transform: scale(1.07); } }
+    .scene:hover #bud, .scene:focus-within #bud,
+    .scene:hover #bud-tip .breath, .scene:focus-within #bud-tip .breath {
+      animation-play-state:paused; }
 
     /* Soil tone is driven by --soil (set by JS from moisture). */
     #soil { fill: var(--soil, #4a3525); transition: fill 2.5s ease; }
@@ -698,6 +769,8 @@
     @media (prefers-reduced-motion: reduce) {
       body { transition: none; }
       #plant, .dust, .star, .clouds, .leaf, .firefly, #bud-halo, .meteor { animation: none; }
+      #plant { rotate: none; transition: none; }
+      .leaf .wind, #bud, #bud-tip .breath { animation: none; }
       .dust { opacity: 0.22; }
       /* Still scenes keep their inhabitants: fireflies rest visible at dusk and
          night instead of vanishing, and the tip's light holds steady. */
@@ -778,6 +851,15 @@
           <radialGradient id="potSpec" cx="0.5" cy="0.5" r="0.5">
             <stop offset="0" stop-color="#fff" stop-opacity="0.32"/>
             <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="soilAO" cx="0.5" cy="0.5" r="0.5">
+            <stop offset="0" stop-color="#120904" stop-opacity="0.55"/>
+            <stop offset="0.7" stop-color="#120904" stop-opacity="0.2"/>
+            <stop offset="1" stop-color="#120904" stop-opacity="0"/>
+          </radialGradient>
+          <radialGradient id="bladeBacklight" cx="0.5" cy="0.35" r="0.75">
+            <stop offset="0" class="backlight-stop" stop-opacity="0.5"/>
+            <stop offset="1" class="backlight-stop" stop-opacity="0"/>
           </radialGradient>
           <filter id="bloom" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7"/></filter>
           <filter id="soft"  x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6"/></filter>
@@ -905,11 +987,25 @@
 
         <!-- ── the plant ── -->
         <g id="plant">
-          <ellipse cx="400" cy="344" rx="6" ry="3" fill="#4d7a3e"/>
+          <!-- root collar: ambient occlusion where stem meets soil, then the
+               collar itself, darkened now that a ribbon body carries the light -->
+          <ellipse cx="400" cy="344" rx="16" ry="5" fill="url(#soilAO)"/>
+          <ellipse cx="400" cy="344" rx="6" ry="3" fill="#3c5f30"/>
+          <!-- moss only: the colony mat silhouette (other forms leave it 0) -->
+          <path id="mat" fill="#3f5433" stroke="#2c3d24" stroke-width="0.8" opacity="0" d="M400 344"/>
+          <!-- the stem as a BODY: tapered ribbon polygon sampled from #stem's
+               own path, with a lit edge per side the sundial CSS reveals.
+               #stem keeps its id and real d — it IS the progress geometry —
+               and now reads as the core shadow line inside the ribbon. -->
+          <path id="stem-body" fill="url(#stemGrad)"/>
           <path id="stem" d="M400 344 C400 320 400 300 400 280" fill="none"
-                stroke="url(#stemGrad)" stroke-width="5" stroke-linecap="round"/>
+                stroke="#3a5c2f" stroke-width="1.7" stroke-linecap="round" opacity="0.55"/>
+          <path id="stem-edge-l" class="stem-edge" fill="none" stroke="#a5d18d" stroke-width="1" stroke-linecap="round"/>
+          <path id="stem-edge-r" class="stem-edge" fill="none" stroke="#a5d18d" stroke-width="1" stroke-linecap="round"/>
           <g id="leaves"></g>
+          <g id="leaf-hits"></g>
           <circle id="bud-halo" cx="400" cy="270" r="11" fill="#7fae6b" filter="url(#soft)"/>
+          <g id="bud-tip" aria-hidden="true"></g>
           <circle id="bud" cx="400" cy="270" r="6" fill="#7fae6b" opacity="0"/>
           <g id="flower" opacity="0"></g>
         </g>
@@ -1225,8 +1321,13 @@
  *
  *     form.build(ctx) -> {
  *       stem:  "M…"  (an SVG path string for #stem),
- *       nodes: [{ x, y, dir, t }],   // one per closed milestone, bottom→top
+ *       nodes: [{ x, y, dir, t, out }], // one per closed milestone, bottom→top;
+ *                                       // `out` = world radians the node's organ
+ *                                       // leaves the stem (local frame)
  *       tip:   { x, y },             // where the open bud / flower sits
+ *       spine: "M…",                 // root→tip centerline the page ribbons
+ *                                    // (=== stem for all forms but moss)
+ *       mat:   "M… Z",               // moss only: closed colony silhouette
  *     }
  *
  *   ctx = { count, total, openProg, base, rise }
@@ -1274,6 +1375,21 @@
 
   function fmt(n) { return Math.round(n * 100) / 100; }
 
+  // ── Local frames ──────────────────────────────────────────────────────────
+  // `out` is the world angle (radians, +y down) an organ leaves the stem at a
+  // node — the stem's own tangent there, rotated a quarter-turn to the node's
+  // side. The painter uses it to attach petioles perpendicular to the stem
+  // instead of floating blades off the path. pointAt(f) is each form's
+  // analytic stem point at height-fraction f; finite differences keep one rule
+  // for beziers and polylines alike. Growth runs upward (ang ≈ −π/2), so
+  // out = ang + dir·π/2 points right for dir=+1, left for dir=−1.
+  function outAngle(pointAt, ny, base, top, dir) {
+    var span = (top - base) || -1;
+    var f = Math.max(0.02, Math.min(0.98, (ny - base) / span));
+    var a = pointAt(f - 0.01), b = pointAt(f + 0.01);
+    return Math.atan2(b.y - a.y, b.x - a.x) + dir * Math.PI / 2;
+  }
+
   // ── FERN — the core physics convergence ladder ──────────────────────────
   // A single upright stem; fronds (nodes) alternate side to side as it climbs.
   // The physics ladder's form, and the homogeneous default the registry falls
@@ -1285,11 +1401,23 @@
       " C" + fmt(midx) + " " + fmt((ctx.base + top) / 2) +
       " " + fmt(800 - midx) + " " + fmt(top + 24) +
       " " + CX + " " + fmt(top);
+    // The cubic's own point function, for node local frames. Parameter ≈
+    // height fraction: close enough for a tangent, and deterministic.
+    var c1y = (ctx.base + top) / 2, c2x = 800 - midx, c2y = top + 24;
+    function pointAt(t) {
+      var u = 1 - t;
+      return {
+        x: u * u * u * CX + 3 * u * u * t * midx + 3 * u * t * t * c2x + t * t * t * CX,
+        y: u * u * u * ctx.base + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * top
+      };
+    }
     var nodes = [];
     for (var i = 0; i < ctx.count; i++) {
-      nodes.push({ x: CX, y: nodeY(ctx, i), dir: (i % 2) ? 1 : -1, t: (i + 1) / Math.max(1, ctx.total) });
+      var ny = nodeY(ctx, i), dir = (i % 2) ? 1 : -1;
+      nodes.push({ x: CX, y: ny, dir: dir, t: (i + 1) / Math.max(1, ctx.total),
+                   out: outAngle(pointAt, ny, ctx.base, top, dir) });
     }
-    return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: stem, spine: stem, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // ── VINE — climbing integer sequences (compute / OEIS extensions) ────────
@@ -1301,12 +1429,14 @@
     var turns = 1.6;                 // how many half-coils over the full reach
     var amp = 26;                    // coil width (px), constant so it stays tidy
     var segs = 18;
+    function pointAt(f) {
+      return { x: CX + Math.sin(f * Math.PI * turns) * amp * (1 - f * 0.35),
+               y: ctx.base + (top - ctx.base) * f };
+    }
     var d = "M" + CX + " " + ctx.base;
     for (var s = 1; s <= segs; s++) {
-      var f = s / segs;
-      var y = ctx.base + (top - ctx.base) * f;
-      var x = CX + Math.sin(f * Math.PI * turns) * amp * (1 - f * 0.35);
-      d += " L" + fmt(x) + " " + fmt(y);
+      var p = pointAt(s / segs);
+      d += " L" + fmt(p.x) + " " + fmt(p.y);
     }
     var nodes = [];
     for (var i = 0; i < ctx.count; i++) {
@@ -1315,9 +1445,11 @@
       // place the node on the stem at its height, pushed to the outside of the coil
       var phase = Math.sin(((ny - ctx.base) / (top - ctx.base || 1)) * Math.PI * turns);
       var nx = CX + phase * amp * 0.9;
-      nodes.push({ x: fmt(nx), y: ny, dir: phase >= 0 ? 1 : -1, t: fi });
+      var dir = phase >= 0 ? 1 : -1;
+      nodes.push({ x: fmt(nx), y: ny, dir: dir, t: fi,
+                   out: outAngle(pointAt, ny, ctx.base, top, dir) });
     }
-    return { stem: d, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: d, spine: d, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // ── SUCCULENT — an instrument calibration: compact, slow, precise ────────
@@ -1338,9 +1470,11 @@
       var r = R * Math.sqrt((i + 1) / Math.max(1, ctx.count));
       var nx = CX + Math.cos(ang) * r;
       var ny = cy - Math.sin(ang) * r * 0.5;       // squashed vertically (a flat rosette)
-      nodes.push({ x: fmt(nx), y: fmt(ny), dir: Math.cos(ang) >= 0 ? 1 : -1, t: (i + 1) / Math.max(1, ctx.total) });
+      nodes.push({ x: fmt(nx), y: fmt(ny), dir: Math.cos(ang) >= 0 ? 1 : -1, t: (i + 1) / Math.max(1, ctx.total),
+                   // pads point outward from the crown, not off a stem tangent
+                   out: Math.atan2(ny - cy, nx - CX) });
     }
-    return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: stem, spine: stem, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // ── CREEPER — a long astronomy time-series, trailing across the seasons ───
@@ -1352,13 +1486,15 @@
     var top = tipY(ctx);
     var reach = 46;                  // how far the runner trails to the side (wide, low)
     var segs = 16;
+    function pointAt(f) {
+      // one broad lateral sweep, widest mid-low, home to the center at the tip
+      return { x: CX - Math.sin(f * Math.PI) * reach * (1 - f * 0.25),
+               y: ctx.base + (top - ctx.base) * f };
+    }
     var d = "M" + CX + " " + ctx.base;
     for (var s = 1; s <= segs; s++) {
-      var f = s / segs;
-      var y = ctx.base + (top - ctx.base) * f;
-      // one broad lateral sweep, widest mid-low, home to the center at the tip
-      var x = CX - Math.sin(f * Math.PI) * reach * (1 - f * 0.25);
-      d += " L" + fmt(x) + " " + fmt(y);
+      var p = pointAt(s / segs);
+      d += " L" + fmt(p.x) + " " + fmt(p.y);
     }
     var nodes = [];
     for (var i = 0; i < ctx.count; i++) {
@@ -1366,9 +1502,10 @@
       var fy = (ny - ctx.base) / (top - ctx.base || 1);   // 0 at soil → 1 at tip
       var nx = CX - Math.sin(fy * Math.PI) * reach * (1 - fy * 0.25);
       // every measurement trails the same way — the series reads as one long runner
-      nodes.push({ x: fmt(nx), y: ny, dir: -1, t: (i + 1) / Math.max(1, ctx.total) });
+      nodes.push({ x: fmt(nx), y: ny, dir: -1, t: (i + 1) / Math.max(1, ctx.total),
+                   out: outAngle(pointAt, ny, ctx.base, top, -1) });
     }
-    return { stem: d, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: d, spine: d, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // ── MOSS — a distributed, mat-forming (BOINC-style) contribution ──────────
@@ -1385,6 +1522,18 @@
                " Q" + CX + " " + fmt(matY + 9) + " " + fmt(CX + mw) + " " + fmt(matY) +
                " L" + CX + " " + ctx.base +
                " L" + CX + " " + fmt(top);            // a thin sprig to the shared tip
+    // The composite `stem` string stays for the garden minis; the page paints
+    // the sprig (spine) as the ribbon and the mat as its own filled silhouette:
+    // a closed, bumpy colony outline whose lumps shift as the colony grows
+    // (count-seeded phase — deterministic, never random).
+    var spine = "M" + CX + " " + ctx.base + " L" + CX + " " + fmt(top);
+    var mat = "M" + fmt(CX - mw) + " " + fmt(matY);
+    for (var s = 0; s <= 12; s++) {
+      var u = s / 12;
+      mat += " L" + fmt(CX - mw + 2 * mw * u) + " " +
+             fmt(matY - 4.2 * Math.sin(Math.PI * u) - 2.2 * Math.sin(3 * Math.PI * u + ctx.count * 0.7));
+    }
+    mat += " L" + fmt(CX + mw) + " " + fmt(matY) + " Z";
     var nodes = [];
     var half = Math.max(1, Math.ceil(ctx.count / 2));
     for (var i = 0; i < ctx.count; i++) {
@@ -1393,9 +1542,10 @@
       var side = (i % 2) ? 1 : -1;
       var nx = CX + side * mw * (rank / half);
       var ny = matY - (i % 3) * 4;                   // a shallow, lumpy mat
-      nodes.push({ x: fmt(nx), y: fmt(ny), dir: side, t: (i + 1) / Math.max(1, ctx.total) });
+      nodes.push({ x: fmt(nx), y: fmt(ny), dir: side, t: (i + 1) / Math.max(1, ctx.total),
+                   out: -Math.PI / 2 });             // tufts point up; the archetype splays
     }
-    return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: stem, spine: spine, mat: mat, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // ── SPROUT — the simplest young seedling (misc / default track) ───────────
@@ -1405,18 +1555,26 @@
   function sprout(ctx) {
     var top = tipY(ctx);
     var lean = 7;                                    // a young shoot leans, then straightens
+    var cy = (ctx.base + top) / 2;
     var stem = "M" + CX + " " + ctx.base +
-               " Q" + fmt(CX + lean) + " " + fmt((ctx.base + top) / 2) +
+               " Q" + fmt(CX + lean) + " " + fmt(cy) +
                " " + CX + " " + fmt(top);
+    function pointAt(t) {
+      var u = 1 - t;
+      return { x: u * u * CX + 2 * u * t * (CX + lean) + t * t * CX,
+               y: u * u * ctx.base + 2 * u * t * cy + t * t * top };
+    }
     var nodes = [];
     var floor = ctx.base - 22;
     for (var i = 0; i < ctx.count; i++) {
       var frac = (i + 1) / Math.max(1, ctx.count);
       // leaves cluster in the lower part of the shoot (a seedling, not a tall fern)
       var ny = floor - (floor - top) * frac * 0.55;
-      nodes.push({ x: CX, y: fmt(ny), dir: (i % 2) ? 1 : -1, t: (i + 1) / Math.max(1, ctx.total) });
+      var dir = (i % 2) ? 1 : -1;
+      nodes.push({ x: CX, y: fmt(ny), dir: dir, t: (i + 1) / Math.max(1, ctx.total),
+                   out: outAngle(pointAt, ny, ctx.base, top, dir) });
     }
-    return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: stem, spine: stem, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // The registry — the single interface. `growth_form` from the feed maps here;
@@ -1542,6 +1700,20 @@
       if (shadow) {
         shadow.setAttribute('cx', (402 - (x - 400) * 0.22).toFixed(0));
         shadow.setAttribute('rx', (84 + Math.abs(x - 400) * 0.06).toFixed(0));
+      }
+
+      // The plant reads the same sundial: which side the light lands on (the
+      // lit rim edges follow), whether the sun rides low (the backlight hour),
+      // and a degree or two of lean toward it — phototropism on a 240s
+      // transition, so posture changes over minutes, never visibly. The moon
+      // exerts no pull. Gate "low" on the clock, not the arc: the day arc
+      // never drops below ~0.6 between 6 and 19 h.
+      var sc = $('scene');
+      if (sc) {
+        sc.dataset.sunside = x < 400 ? 'left' : 'right';
+        var low = day && (frac < 8 / 24 || frac > 17 / 24);
+        if (low) sc.dataset.sunlow = ''; else delete sc.dataset.sunlow;
+        sc.style.setProperty('--lean', (day ? (x - 400) / 400 * 1.8 : 0).toFixed(2));
       }
     }
 
@@ -1687,7 +1859,51 @@
       return m && (m.status === 'verified' || m.status === 'review' || m.status === 'null');
     }
 
-    function drawStalk(milestones, total, season) {
+    // ── Growth theater ──────────────────────────────────────────────────────
+    // When the feed shows a milestone closed since this visitor's last visit,
+    // that one organ unfurls once on load — quiet ceremony for news, including
+    // a null arriving (the miss is also news). Diff is by id MEMBERSHIP, never
+    // status: an amber→green promotion is not a new organ and must not replay.
+    // All storage access is guarded — file:// and private mode mean "no
+    // history", never an error. First-ever visitors get no theater: thirty
+    // unfurls is fireworks, not a windowsill.
+    var SEEN_KEY = 'windowsill:seen-closed-ids';
+    function seenClosedIds() {
+      try {
+        var arr = JSON.parse(localStorage.getItem(SEEN_KEY));
+        return Array.isArray(arr) ? arr : null;
+      } catch (e) { return null; }
+    }
+    function rememberClosedIds(closed) {
+      try {
+        localStorage.setItem(SEEN_KEY, JSON.stringify(
+          closed.map(function (m) { return m.id; }).filter(Boolean)));
+      } catch (e) { /* no storage, no ceremony */ }
+    }
+    function unfurlNewOrgans(closed) {
+      var seen = seenClosedIds();
+      if (!seen) return;
+      var have = {};
+      seen.forEach(function (id) { have[id] = true; });
+      var fresh = closed.filter(function (m) { return m.id && !have[m.id]; }).slice(-3);
+      fresh.forEach(function (m, k) {
+        try {
+          var g = document.querySelector('#leaves .leaf[data-mid="' + m.id + '"]');
+          var wind = g && g.querySelector('.wind');
+          if (!wind || !wind.animate) return;
+          var dir = g.getAttribute('data-dir') === '-1' ? -1 : 1;
+          // Individual scale/rotate properties compose with the CSS transform
+          // animation on the same element; the origin is already the hinge.
+          wind.animate(
+            [{ scale: '0.05', rotate: (dir * -35) + 'deg', opacity: 0.2 },
+             { scale: '1', rotate: '0deg', opacity: 1 }],
+            { duration: 6000, easing: 'cubic-bezier(0.22,0.9,0.3,1)',
+              fill: 'backwards', delay: 600 + k * 900 });
+        } catch (e) { /* older engines: no theater, settled pose */ }
+      });
+    }
+
+    function drawStalk(milestones, total, season, liveFeed) {
       var leafColor = SEASON_LEAF[season] || SEASON_LEAF.spring;
       var closed = milestones.filter(isClosed);
       var open = milestones.find(function (m) { return m && m.status === 'open'; });
@@ -1703,27 +1919,57 @@
       var geo = GF.build(formName, {
         count: closed.length, total: total, openProg: openProg, base: BASE, rise: RISE
       });
+      geo.form = formName;
+      geo.total = total;
       var topY = geo.tip.y;
 
-      $('stem').setAttribute('d', geo.stem);
+      // #stem carries the SPINE — identical to stem for five forms; for moss
+      // it's the sprig alone, and the colony mat gets its own silhouette.
+      $('stem').setAttribute('d', geo.spine || geo.stem);
+      var mat = $('mat');
+      if (geo.mat) { mat.setAttribute('d', geo.mat); mat.setAttribute('opacity', '0.92'); }
+      else mat.setAttribute('opacity', '0');
+      paintStemRibbon();
 
-      // One leaf per measured milestone. Amber leaves passed the machine check
+      // One organ per measured milestone. Amber organs passed the machine check
       // but remain explicitly separate from human-promoted green ones.
       var leaves = $('leaves');
       leaves.textContent = '';
-      var frag = document.createDocumentFragment();
-      // Living leaves first, folded nulls LAST — bigger green blades were
-      // burying the small grey folds, and a kept miss that cannot be seen is
-      // not kept. Paint order, not size, is what keeps the misses visible.
-      var folded = [];
+      var hitRail = $('leaf-hits');
+      hitRail.textContent = '';
+      var living = [], folded = [], hits = [];
       closed.forEach(function (m, i) {
-        var node = geo.nodes[i] || { x: 400, y: topY, dir: (i % 2) ? 1 : -1 };
-        var el = milestoneLeaf(node.x, node.y, node.dir, m, leafColor, node.t);
-        if (m.status === 'null') folded.push(el);
-        else frag.appendChild(el);
+        // Defensive node: upright frame so a missing geometry entry still
+        // renders an organ instead of a broken transform.
+        var node = geo.nodes[i] || { x: 400, y: topY, dir: (i % 2) ? 1 : -1,
+                                     t: 0.5, out: -Math.PI / 2 };
+        var organ = milestoneLeaf(node, m, leafColor, geo, i);
+        (m.status === 'null' ? folded : living).push({ el: organ.g, node: node });
+        hits.push(organ.hit);
       });
-      folded.forEach(function (el) { frag.appendChild(el); });
+      // Depth sort for the living: real foliage keeps its oldest, lowest
+      // organs in front. Succulent stacks its rosette back-to-front instead;
+      // moss colonies keep their center-out order.
+      if (formName === 'succulent') living.sort(function (a, b) { return a.node.y - b.node.y; });
+      else if (formName !== 'moss') living.sort(function (a, b) { return (b.node.t || 0) - (a.node.t || 0); });
+      var frag = document.createDocumentFragment();
+      living.forEach(function (o) { frag.appendChild(o.el); });
+      // Folded nulls LAST — nulls-last supremacy outranks every depth sort. A
+      // kept miss that cannot be seen is not kept; paint order keeps it seen.
+      folded.forEach(function (o) { frag.appendChild(o.el); });
       leaves.appendChild(frag);
+      // Hit targets ride their own always-on-top rail in MILESTONE order, so
+      // the newest results near the crowded tip stay tappable regardless of
+      // the depth sort behind them.
+      hits.forEach(function (h) { hitRail.appendChild(h); });
+
+      // News since last visit unfurls; then remember what this visitor saw.
+      // Only real loaded feeds count — the boot placeholder must not poison
+      // the history with an empty set.
+      if (liveFeed) {
+        if (!reduce) unfurlNewOrgans(closed);
+        rememberClosedIds(closed);
+      }
 
       // The open experiment is the tender bud at the very tip. "Open" means
       // it is on the bench; runner_available says whether a turn can run it.
@@ -1731,6 +1977,45 @@
       $('bud').setAttribute('cy', topY.toFixed(0));
       $('bud').setAttribute('fill', leafColor);
       $('bud').setAttribute('opacity', open ? '1' : '0');
+      // The bud gains a visible body: two husks clasping the growing point,
+      // scaled by the open experiment's real progress (render-time only — the
+      // swell is the feed's number made legible, never animated) and breathing
+      // on its own 9.7s clock, deliberately out of sync with the 47s wind.
+      var tipG = $('bud-tip');
+      tipG.textContent = '';
+      if (open) {
+        var S = 0.6 + 0.4 * openProg;
+        tipG.setAttribute('transform', 'translate(' + geo.tip.x.toFixed(1) + ' ' +
+          topY.toFixed(1) + ') scale(' + S.toFixed(2) + ')');
+        var breath = document.createElementNS(SVGNS, 'g');
+        breath.setAttribute('class', 'breath');
+        [['M0 6 Q-5.5 1.5 -2.6 -6.2 Q-0.8 -2.5 0 6 Z'],
+         ['M0 6 Q5.5 1.5 2.6 -6.2 Q0.8 -2.5 0 6 Z']].forEach(function (dd) {
+          var husk = document.createElementNS(SVGNS, 'path');
+          husk.setAttribute('d', dd[0]);
+          husk.setAttribute('fill', shade(leafColor, -12));
+          husk.setAttribute('stroke', shade(leafColor, -30));
+          husk.setAttribute('stroke-width', '0.8');
+          breath.appendChild(husk);
+        });
+        var tipDot = document.createElementNS(SVGNS, 'ellipse');
+        tipDot.setAttribute('cx', '0'); tipDot.setAttribute('cy', '-6.5');
+        tipDot.setAttribute('rx', '1.4'); tipDot.setAttribute('ry', '2');
+        tipDot.setAttribute('fill', shade(leafColor, 20));
+        breath.appendChild(tipDot);
+        tipG.appendChild(breath);
+        // The husks are decoration; the tappable bud is a 44px target on the
+        // hit rail, forwarding to the same field note #bud opens.
+        var budHit = document.createElementNS(SVGNS, 'circle');
+        budHit.setAttribute('class', 'leaf-hit');
+        budHit.setAttribute('cx', geo.tip.x.toFixed(1));
+        budHit.setAttribute('cy', topY.toFixed(1));
+        budHit.setAttribute('r', '22');
+        budHit.addEventListener('click', function () {
+          if (_openMilestone) openFieldNote(_openMilestone, $('bud'));
+        });
+        $('leaf-hits').appendChild(budHit);
+      }
       // The halo travels with the bud; data-on hands visibility to the CSS,
       // which decides how brightly the tip's light shows for the current phase.
       var halo = $('bud-halo');
@@ -1764,6 +2049,51 @@
       drawFlower(topY, closed.length >= total ? 1 : 0);
     }
 
+    // ── The stem as a body ──────────────────────────────────────────────────
+    // A real stalk carries load: broad at the soil line, slender at the growing
+    // tip. Sample the #stem path the DOM already measures (the browser owns the
+    // arc-length math — the module never duplicates it), offset by unit normals
+    // into one closed tapered polygon, and retrace each side as a lit edge the
+    // sundial CSS reveals on the sun's side only. Once per render, never per frame.
+    function paintStemRibbon() {
+      var stemEl = $('stem'), body = $('stem-body');
+      var eL = $('stem-edge-l'), eR = $('stem-edge-r');
+      var L = 0;
+      try { L = stemEl.getTotalLength(); } catch (e) { /* detached/degenerate */ }
+      if (!L || !isFinite(L) || L < 4) {
+        body.setAttribute('d', 'M400 344');
+        eL.setAttribute('d', 'M400 344'); eR.setAttribute('d', 'M400 344');
+        return;
+      }
+      var N = 22, pts = [], i;
+      for (i = 0; i <= N; i++) pts.push(stemEl.getPointAtLength(L * i / N));
+      // unit normals from successive tangents, with a flip guard so the vine's
+      // coil doesn't twist the ribbon inside out where the tangent reverses
+      var nrm = [], px, py;
+      for (i = 0; i <= N; i++) {
+        var a = pts[Math.max(0, i - 1)], b = pts[Math.min(N, i + 1)];
+        var dx = b.x - a.x, dy = b.y - a.y, len = Math.sqrt(dx * dx + dy * dy) || 1;
+        var nx = -dy / len, ny = dx / len;
+        if (i > 0 && (nx * px + ny * py) < 0) { nx = -nx; ny = -ny; }
+        nrm.push({ x: nx, y: ny }); px = nx; py = ny;
+      }
+      // half-width: a root flare into the soil, then a long taper to the tip
+      function w(f) {
+        return f < 0.06 ? 4.6 + (2.7 - 4.6) * (f / 0.06)
+                        : 2.7 + (0.9 - 2.7) * ((f - 0.06) / 0.94);
+      }
+      var left = [], right = [];
+      for (i = 0; i <= N; i++) {
+        var hw = w(i / N);
+        left.push((pts[i].x + nrm[i].x * hw).toFixed(1) + ' ' + (pts[i].y + nrm[i].y * hw).toFixed(1));
+        right.push((pts[i].x - nrm[i].x * hw).toFixed(1) + ' ' + (pts[i].y - nrm[i].y * hw).toFixed(1));
+      }
+      body.setAttribute('d', 'M' + left.join(' L') + ' L' + right.slice().reverse().join(' L') + ' Z');
+      // lit edges skip the buried base and the tender tip
+      eL.setAttribute('d', 'M' + left.slice(2, 21).join(' L'));
+      eR.setAttribute('d', 'M' + right.slice(2, 21).join(' L'));
+    }
+
     // Nudge a color lighter (+) or darker (−) for leaf edges and veins.
     // Accepts hex or its own rgb() output, so nudges compose (a jittered fill
     // can be shaded again for its stroke without silently going black).
@@ -1789,124 +2119,438 @@
       return s;
     }
 
-    // A milestone leaf: green = human-promoted, amber = machine-checked and
-    // awaiting review, folded grey = a null kept on the books. `t` is the
-    // node's height up the ladder (0 soil → 1 tip): a real plant keeps its
-    // oldest, largest leaves low and reaching outward, its youngest small and
-    // upright near the growing tip — so age shapes both size and pitch.
-    function milestoneLeaf(x, y, dir, m, color, t) {
+    // ── The organ grammar ───────────────────────────────────────────────────
+    // One organ per closed milestone, composed from a per-form archetype in
+    // LOCAL coordinates — origin at the attachment, +x outward along the organ,
+    // −y toward the sky (a scale(1,dir) on the placement flips sides, so every
+    // archetype is written once) — and instanced with a single translate+rotate.
+    // Attachment, age pitch, and the wind hinge are correct by construction:
+    // local (0,0) IS the attachment, so transform-box:fill-box with origin
+    // 0% 50% hinges each organ where it meets the stem. Archetype invariant:
+    // no geometry crosses local x<0 (the hinge and the unfurl depend on it).
+    //
+    // Every pathSpec is { d | ellipse fields, fill?, stroke?, sw?, op?, cls?,
+    // cap?, dash?, tf? } — static paint, zero filters, zero gradients per leaf.
+
+    // A midrib-split blade: the one shading rule large blades share. Upper
+    // edge bulges toward the sky, lower toward the ground; the midrib curve
+    // splits the fill into a lit face and a shadow face — pseudo-depth with
+    // two closed paths and no gradient anywhere.
+    function splitBlade(x0, L, ty, upBulge, dnBulge) {
+      var f1 = function (n) { return n.toFixed(1); };
+      var b = f1(x0) + ' 0';
+      var tip = f1(x0 + L) + ' ' + f1(ty);
+      var cu = f1(x0 + 0.5 * L) + ' ' + f1(ty * 0.5 - upBulge);
+      var cd = f1(x0 + 0.55 * L) + ' ' + f1(ty * 0.5 + dnBulge);
+      var cm = f1(x0 + 0.5 * L) + ' ' + f1(ty * 0.5 - upBulge * 0.28);
+      return {
+        shadow: 'M' + b + ' Q' + cm + ' ' + tip + ' Q' + cd + ' ' + b + ' Z',
+        lit: 'M' + b + ' Q' + cu + ' ' + tip + ' Q' + cm + ' ' + b + ' Z',
+        rimD: 'M' + b + ' Q' + cu + ' ' + tip,
+        outline: 'M' + b + ' Q' + cu + ' ' + tip + ' Q' + cd + ' ' + b + ' Z',
+        midribD: 'M' + b + ' Q' + cm + ' ' + tip,
+        cmx: x0 + 0.5 * L, cmy: ty * 0.5 - upBulge * 0.28,
+        tipX: x0 + L, tipY: ty
+      };
+    }
+
+    // The universal petiole: a short curved stalk leaving the stem before any
+    // blade begins — the single highest-leverage "it's attached" cue.
+    function petioleSpec(p, fill) {
+      return { d: 'M0 0 Q' + (p * 0.5).toFixed(1) + ' 2.5 ' + p.toFixed(1) + ' 1.2',
+               stroke: shade(fill, -20), sw: 1.5, cap: 'round' };
+    }
+
+    // The folded-null law: the lit/shadow split collapses into a two-face grey
+    // fold — the hard value step IS the fold — plus a crease and a shorter
+    // micro-crease. Grey never gains hue, never a rim, never dew, never glow.
+    function foldedBlade(parts, x0, L) {
+      var b = splitBlade(x0, L * 0.9, L * 0.22, L * 0.18, L * 0.34);
+      parts.push({ d: b.shadow, fill: shade('#8a8f82', -14) });
+      parts.push({ d: b.lit, fill: shade('#8a8f82', 8) });
+      parts.push({ d: b.midribD, stroke: shade('#8a8f82', -25), sw: 1.5, cap: 'round', op: 0.85 });
+      parts.push({ d: 'M' + (x0 + 0.12 * L).toFixed(1) + ' 1 Q' + (x0 + 0.4 * L).toFixed(1) +
+                      ' ' + (L * 0.16).toFixed(1) + ' ' + (x0 + 0.6 * L).toFixed(1) +
+                      ' ' + (L * 0.2).toFixed(1),
+                   stroke: shade('#8a8f82', -20), sw: 0.9, cap: 'round', op: 0.4 });
+      return b;
+    }
+
+    // Veins for living blades: midrib (doubled for review — the amber statuses'
+    // season-proof second channel) and two side-veins branching toward the edge.
+    function veinSpecs(parts, b, fill, review) {
+      parts.push({ d: b.midribD, stroke: shade(fill, 26), sw: 1.1, cap: 'round', cls: 'midrib' });
+      if (review) {
+        parts.push({ d: b.midribD, stroke: shade(fill, 26), sw: 1.1, cap: 'round',
+                     tf: 'translate(0 1.6)', op: 0.85 });
+      }
+      [0.35, 0.55].forEach(function (vt, vi) {
+        var u = 1 - vt, sgn = vi ? -1 : 1;
+        var px = u * u * 0 + 2 * u * vt * b.cmx + vt * vt * b.tipX;
+        var py = 2 * u * vt * b.cmy + vt * vt * b.tipY;
+        var L = b.tipX;
+        parts.push({ d: 'M' + px.toFixed(1) + ' ' + py.toFixed(1) +
+                        ' q' + (L * 0.1).toFixed(1) + ' ' + (sgn * -L * 0.09).toFixed(1) +
+                        ' ' + (L * 0.19).toFixed(1) + ' ' + (sgn * -L * 0.06).toFixed(1),
+                     stroke: shade(fill, 22), sw: 0.8, cap: 'round', op: 0.8 });
+      });
+    }
+
+    // Dew anchor points along a blade's upper edge (deterministic; the painter
+    // gates which organs actually bead — dew is a dawn whisper, not a speckle).
+    function dewOn(b, seed) {
+      var beads = [];
+      [[0.25 + (seed % 13) / 40, 0.9], [0.6 + (seed % 7) / 30, 0.7]].forEach(function (bd) {
+        var vt = Math.min(0.92, bd[0]), u = 1 - vt;
+        beads.push({ x: 2 * u * vt * b.cmx + vt * vt * b.tipX,
+                     y: 2 * u * vt * (b.cmy - 2) + vt * vt * b.tipY, r: bd[1] });
+      });
+      return beads;
+    }
+
+    var ARCHETYPES = {
+      // The physics ladder's form and the page default: one arching compound
+      // frond per milestone — a rachis carrying paired pinnae that taper
+      // toward the tip. Pinna count is seeded cosmetic detail inside ONE
+      // organ; the organ count is the only number the plant asserts.
+      fern: function (o) {
+        var parts = [], p = 4 + (o.seed % 5), L = o.len * 1.25;
+        var ex = p + 0.92 * L, ey = -0.14 * L - (1 - o.age) * 0.1 * L;
+        var cx = p + 0.45 * L, cy = -0.42 * L;
+        if (o.folded) { ex = p + 0.8 * L; ey = 0.25 * L; cy = 0.02 * L; }
+        function at(vt) {
+          var u = 1 - vt;
+          return { x: u * u * p + 2 * u * vt * cx + vt * vt * ex,
+                   y: 2 * u * vt * cy + vt * vt * ey };
+        }
+        parts.push(petioleSpec(p, o.fill));
+        var N = 7 + (o.seed % 5), pinnae = '', k;
+        for (k = 0; k < N; k++) {
+          var vt = 0.12 + 0.82 * k / (N - 1), pt = at(vt);
+          var u = 1 - vt;
+          var tx = 2 * u * (cx - p) + 2 * vt * (ex - cx),
+              tyv = 2 * u * cy + 2 * vt * (ey - cy);
+          var tl = Math.sqrt(tx * tx + tyv * tyv) || 1;
+          var li = 9 * (0.9 + o.age * 0.25) * Math.sin(Math.PI * (0.22 + 0.78 * vt));
+          var side = (k % 2) ? 1 : -1;
+          var a = Math.atan2(tyv / tl, tx / tl) + side * (o.folded ? 0.26 : 1.08);
+          var qx = pt.x + Math.cos(a) * li, qy = pt.y + Math.sin(a) * li;
+          if (o.folded) {
+            pinnae += 'M' + pt.x.toFixed(1) + ' ' + pt.y.toFixed(1) +
+                      'L' + qx.toFixed(1) + ' ' + qy.toFixed(1);
+          } else {
+            var wx = Math.cos(a + side * 0.6) * li * 0.46,
+                wy = Math.sin(a + side * 0.6) * li * 0.46;
+            pinnae += 'M' + pt.x.toFixed(1) + ' ' + pt.y.toFixed(1) +
+                      'Q' + (pt.x + wx + (qx - pt.x) * 0.4).toFixed(1) + ' ' + (pt.y + wy + (qy - pt.y) * 0.4).toFixed(1) +
+                      ' ' + qx.toFixed(1) + ' ' + qy.toFixed(1) +
+                      'Q' + (pt.x - wx * 0.45 + (qx - pt.x) * 0.5).toFixed(1) + ' ' + (pt.y - wy * 0.45 + (qy - pt.y) * 0.5).toFixed(1) +
+                      ' ' + pt.x.toFixed(1) + ' ' + pt.y.toFixed(1) + 'Z';
+          }
+        }
+        var rachisD = 'M' + p.toFixed(1) + ' 0 Q' + cx.toFixed(1) + ' ' + cy.toFixed(1) +
+                      ' ' + ex.toFixed(1) + ' ' + ey.toFixed(1);
+        if (o.folded) {
+          parts.push({ d: rachisD, stroke: shade('#8a8f82', -14), sw: 1.3, cap: 'round' });
+          parts.push({ d: pinnae, stroke: shade('#8a8f82', 8), sw: 1.2, cap: 'round' });
+        } else {
+          parts.push({ d: pinnae, fill: o.fill, stroke: shade(o.fill, -30), sw: 0.5 });
+          parts.push({ d: rachisD, stroke: shade(o.fill, -15), sw: 1.3, cap: 'round',
+                       cls: 'midrib' });
+          if (o.review) parts.push({ d: rachisD, stroke: shade(o.fill, -15), sw: 1.3,
+                                     cap: 'round', tf: 'translate(0 1.8)', op: 0.85 });
+          parts.push({ d: rachisD, stroke: shade(o.fill, 48), sw: 1, cap: 'round',
+                       op: 0.55, cls: 'rim' });
+        }
+        var mid = at(0.5);
+        return { parts: parts, glow: o.folded ? null : pinnae,
+                 dew: [{ x: mid.x, y: mid.y - 3, r: 0.9 }],
+                 centroid: { x: p + 0.55 * L, y: -0.1 * L }, extent: p + L };
+      },
+
+      // Climbing integer sequences: a cordate blade with a drip tip off a
+      // swollen node, and — for some milestones — a coiled tendril. All one
+      // organ; the tendril sways with its leaf, never on its own.
+      vine: function (o) {
+        var parts = [], p = 6 + (o.seed % 7), L = o.len * 0.82;
+        parts.push({ ellipse: [0, 0, 2.7, 1.9], fill: '#41682f' });
+        if (o.folded) {
+          parts.push(petioleSpec(p, '#8a8f82'));
+          foldedBlade(parts, p, L);
+          return { parts: parts, glow: null, dew: [],
+                   centroid: { x: p + L * 0.5, y: L * 0.1 }, extent: p + L };
+        }
+        parts.push(petioleSpec(p, o.fill));
+        var b = splitBlade(p, L, -0.08 * L, 0.5 * L, 0.34 * L);
+        parts.push({ d: b.shadow, fill: shade(o.fill, -26) });
+        parts.push({ d: b.lit, fill: shade(o.fill, 8) });
+        // the drip tip: a small cusp past the blade's point
+        parts.push({ d: 'M' + (b.tipX - 1).toFixed(1) + ' ' + b.tipY.toFixed(1) +
+                        ' q3.4 0.6 4.6 3.2', stroke: shade(o.fill, -10), sw: 1.1, cap: 'round' });
+        parts.push({ d: b.rimD, stroke: shade(o.fill, 48), sw: 1.1, cap: 'round',
+                     op: 0.55, cls: 'rim' });
+        veinSpecs(parts, b, o.fill, o.review);
+        if (o.seed % 3 === 0) {
+          var sx = p + L * 0.35, sy = 3, td = 'M' + sx.toFixed(1) + ' ' + sy.toFixed(1), kk;
+          var maxR = Math.min(8.5, sx - 0.5);   // x>=0 invariant: never cross the hinge
+          for (kk = 1; kk <= 14; kk++) {
+            var th = kk * 0.55, r = maxR * (1 - kk / 16);
+            td += ' L' + (sx + Math.cos(th) * r).toFixed(1) + ' ' + (sy + Math.sin(th) * r * 0.8).toFixed(1);
+          }
+          parts.push({ d: td, stroke: shade(o.fill, -10), sw: 1, op: 0.7, cap: 'round' });
+        }
+        return { parts: parts, glow: b.outline, dew: dewOn(b, o.seed),
+                 centroid: { x: p + L * 0.55, y: -L * 0.1 }, extent: p + L + 4 };
+      },
+
+      // A long astronomy time-series: near-round blades along the trailing
+      // runner. The lowest node or two put down rootlets (world-space, painted
+      // by the instancer); a null writes its miss into the runner itself.
+      creeper: function (o) {
+        var parts = [], p = 3, L = o.len * 0.85;
+        if (o.folded) {
+          parts.push(petioleSpec(p, '#8a8f82'));
+          foldedBlade(parts, p, L);
+          return { parts: parts, glow: null, dew: [],
+                   centroid: { x: p + L * 0.5, y: L * 0.1 }, extent: p + L };
+        }
+        parts.push(petioleSpec(p, o.fill));
+        var b = splitBlade(p, L, -0.04 * L, 0.5 * L, 0.45 * L);
+        parts.push({ d: b.shadow, fill: shade(o.fill, -26) });
+        parts.push({ d: b.lit, fill: shade(o.fill, 8) });
+        parts.push({ d: b.rimD, stroke: shade(o.fill, 48), sw: 1.1, cap: 'round',
+                     op: 0.55, cls: 'rim' });
+        veinSpecs(parts, b, o.fill, o.review);
+        return { parts: parts, glow: b.outline, dew: dewOn(b, o.seed),
+                 centroid: { x: p + L * 0.5, y: 0 }, extent: p + L };
+      },
+
+      // An instrument calibration: compact, fleshy, precise. Near-sessile
+      // obovate pads with a thickness under-lip — the one archetype whose
+      // depth cue is mass, not spread. Succulents pool their dew in one bead.
+      succulent: function (o) {
+        var parts = [], p = 1.5, L = o.len * (o.folded ? 0.62 : 0.8);
+        var b = splitBlade(p, L, 0, 0.34 * L, 0.3 * L);
+        if (o.folded) {
+          parts.push({ d: b.shadow, fill: shade('#8a8f82', -14) });
+          parts.push({ d: b.lit, fill: shade('#8a8f82', 8) });
+          parts.push({ d: b.midribD, stroke: shade('#8a8f82', -25), sw: 1.5, cap: 'round' });
+          parts.push({ d: 'M' + (p + L * 0.3).toFixed(1) + ' -1 q3 1.4 5.5 0.6',
+                       stroke: shade('#8a8f82', -18), sw: 0.9, cap: 'round', op: 0.6 });
+          parts.push({ d: 'M' + (p + L * 0.4).toFixed(1) + ' 2 q2.6 1 4.8 0.4',
+                       stroke: shade('#8a8f82', -18), sw: 0.9, cap: 'round', op: 0.5 });
+          return { parts: parts, glow: null, dew: [],
+                   centroid: { x: p + L * 0.5, y: 0 }, extent: p + L };
+        }
+        parts.push({ d: b.outline, fill: shade(o.fill, -38), tf: 'translate(0 1.7)' });
+        parts.push({ d: b.shadow, fill: shade(o.fill, -26) });
+        parts.push({ d: b.lit, fill: shade(o.fill, 8) });
+        if (o.review) parts.push({ d: b.midribD, stroke: shade(o.fill, 26), sw: 1.1,
+                                   cap: 'round', tf: 'translate(0 1.6)', op: 0.85 });
+        parts.push({ d: 'M' + (p + L * 0.08).toFixed(1) + ' ' + (-0.1 * L).toFixed(1) +
+                        ' Q' + (p + L * 0.3).toFixed(1) + ' ' + (-0.36 * L).toFixed(1) +
+                        ' ' + (p + L * 0.55).toFixed(1) + ' ' + (-0.3 * L).toFixed(1),
+                     stroke: shade(o.fill, 42), sw: 1.5, cap: 'round', op: 0.5, cls: 'rim' });
+        return { parts: parts, glow: b.outline,
+                 dew: [{ x: p + L * 0.5, y: 0.3 * L * 0.5, r: 1.2 }],
+                 centroid: { x: p + L * 0.5, y: 0 }, extent: p + L };
+      },
+
+      // A distributed colony: each contribution is a small tuft on the shared
+      // mat — three splayed strokes and a base dome. Local +x maps to
+      // screen-up here (out = −π/2), so tufts are drawn "lying down".
+      moss: function (o) {
+        var parts = [], L = o.len * 0.55, k;
+        if (o.folded) {
+          // a folded fan at full tuft size: two grey faces + a bright outline
+          // so the miss clears the dark mat behind it
+          var fan = splitBlade(0, Math.max(12, L), 3, 0.45 * L, 0.1 * L);
+          parts.push({ d: fan.shadow, fill: shade('#8a8f82', -14) });
+          parts.push({ d: fan.lit, fill: shade('#8a8f82', 8) });
+          parts.push({ d: fan.outline, stroke: shade('#8a8f82', 26), sw: 0.8, op: 0.9 });
+          parts.push({ d: fan.midribD, stroke: shade('#8a8f82', -25), sw: 1.5, cap: 'round' });
+          return { parts: parts, glow: null, dew: [],
+                   centroid: { x: L * 0.5, y: 0 }, extent: Math.max(12, L) };
+        }
+        parts.push({ d: 'M0 0 A2.5 2.5 0 0 1 0 -4.6', fill: shade(o.fill, -18), op: 0.9 });
+        var tuft = '';
+        for (k = 0; k < 3; k++) {
+          var a = (k - 1) * 0.44 + ((o.seed >> k) % 3 - 1) * 0.1;
+          var li = L * (0.75 + ((o.seed >> (k + 2)) % 3) * 0.12);
+          tuft += 'M0 0 Q' + (li * 0.5).toFixed(1) + ' ' + (Math.sin(a) * li * 0.4).toFixed(1) +
+                  ' ' + (Math.cos(a) * li).toFixed(1) + ' ' + (Math.sin(a) * li).toFixed(1);
+        }
+        parts.push({ d: tuft, stroke: o.fill, sw: 1.2, cap: 'round' });
+        parts.push({ d: tuft, stroke: shade(o.fill, 30), sw: 0.5, cap: 'round', op: 0.6,
+                     tf: 'translate(0 -0.5)', cls: 'rim' });
+        if (o.review) parts.push({ ellipse: [L * 0.4, 0, 1.4, 1.4], fill: shade(o.fill, 26), op: 0.9 });
+        return { parts: parts, glow: null, dew: [],
+                 centroid: { x: L * 0.5, y: 0 }, extent: L };
+      },
+
+      // The youngest form: the first two milestones open as cotyledons —
+      // smooth, veinless seed leaves — and everything after is a true leaf.
+      sprout: function (o) {
+        var parts = [], cot = o.index < 2;
+        var p = cot ? 3 : 5 + (o.seed % 5);
+        var L = o.len * (cot ? 0.85 : 0.95);
+        if (o.folded) {
+          parts.push(petioleSpec(p, '#8a8f82'));
+          foldedBlade(parts, p, L);
+          return { parts: parts, glow: null, dew: [],
+                   centroid: { x: p + L * 0.5, y: L * 0.1 }, extent: p + L };
+        }
+        parts.push(petioleSpec(p, o.fill));
+        var b = splitBlade(p, L, -0.05 * L, (cot ? 0.31 : 0.42) * L, (cot ? 0.31 : 0.36) * L);
+        parts.push({ d: b.shadow, fill: shade(o.fill, -26) });
+        parts.push({ d: b.lit, fill: shade(o.fill, 8) });
+        parts.push({ d: b.rimD, stroke: shade(o.fill, 48), sw: 1.1, cap: 'round',
+                     op: 0.55, cls: 'rim' });
+        if (!cot) veinSpecs(parts, b, o.fill, o.review);
+        else if (o.review) parts.push({ d: b.midribD, stroke: shade(o.fill, 26), sw: 1.1,
+                                        cap: 'round', tf: 'translate(0 1.4)', op: 0.85 });
+        return { parts: parts, glow: b.outline, dew: dewOn(b, o.seed),
+                 centroid: { x: p + L * 0.55, y: -L * 0.05 }, extent: p + L };
+      }
+    };
+
+    function partEl(spec) {
+      var el;
+      if (spec.ellipse) {
+        el = document.createElementNS(SVGNS, 'ellipse');
+        el.setAttribute('cx', spec.ellipse[0]); el.setAttribute('cy', spec.ellipse[1]);
+        el.setAttribute('rx', spec.ellipse[2]); el.setAttribute('ry', spec.ellipse[3]);
+      } else {
+        el = document.createElementNS(SVGNS, 'path');
+        el.setAttribute('d', spec.d);
+      }
+      el.setAttribute('fill', spec.fill || 'none');
+      if (spec.stroke) {
+        el.setAttribute('stroke', spec.stroke);
+        el.setAttribute('stroke-width', spec.sw == null ? 1 : spec.sw);
+        if (spec.cap) el.setAttribute('stroke-linecap', spec.cap);
+        if (spec.dash) el.setAttribute('stroke-dasharray', spec.dash);
+      }
+      if (spec.op != null) el.setAttribute('opacity', spec.op);
+      if (spec.cls) el.setAttribute('class', spec.cls);
+      if (spec.tf) el.setAttribute('transform', spec.tf);
+      return el;
+    }
+
+    // A milestone organ: green = human-promoted, amber = machine-checked and
+    // awaiting review, folded grey = a null kept on the books. The node's `t`
+    // (0 soil → 1 tip) drives the age taper — a real plant keeps its oldest,
+    // largest organs low and reaching outward, its youngest small and upright
+    // near the growing tip — and the node's `out` frame decides which way the
+    // organ leaves the stem. Returns { g, hit }: the organ, and its 44px hit
+    // circle for the always-on-top target rail.
+    function milestoneLeaf(node, m, color, geo, idx) {
       var nul = (m.status === 'null');
       var review = (m.status === 'review');
       var seed = leafSeed(m.id);
-      var age = 1 - Math.max(0, Math.min(1, t == null ? 0.5 : t));   // 1 = oldest, lowest
-      // Per-milestone variation (±10%, seeded so each leaf is itself on every
-      // visit) on top of the age taper: the eye reads sameness as artifice.
-      var len = (nul ? 14 : 23) * (0.9 + (seed % 100) / 500) * (0.92 + age * 0.18);
-      var ey = nul ? y + len * 0.35
-                   : y - len * (0.62 - age * 0.14);     // young leaves pitch upward
-      var ex = x + dir * len;
+      var t = node.t == null ? 0.5 : Math.max(0, Math.min(1, node.t));
+      var age = 1 - t;
+      var dir = node.dir === -1 ? -1 : 1;
+      var out = isFinite(node.out) ? node.out : -Math.PI / 2;
+      var form = ARCHETYPES[geo.form] ? geo.form : 'fern';
       var fill = nul ? '#8a8f82' : (review ? '#d2aa67' : shade(color, (seed % 17) - 8));
+
+      // Age pitches the organ: old leaves droop off the horizontal, young ones
+      // reach for the light. Succulents hold their fixed rosette angle; moss
+      // lies flat on its colony.
+      // Vine coils crowd nodes at similar heights: a wider seeded fan keeps
+      // neighbouring blades from stacking into one clump.
+      var jitter = form === 'vine' ? ((seed % 25) - 12) : ((seed % 9) - 4);
+      var pitch = form === 'succulent' ? 15 : (form === 'moss' ? 0 : 34 * t - 8 + jitter);
+      var len = (nul ? 14 : 23) * (0.9 + (seed % 100) / 500) * (0.92 + age * 0.18);
+      // Reach clamp: nothing grows past the pot rim or into the window frame.
+      var cosOut = Math.abs(Math.cos(out));
+      if (cosOut > 0.2) {
+        var excess = 78 - Math.abs(node.x - 400) - cosOut * 8;
+        if (cosOut * len * 1.35 > excess) len = Math.max(6, excess / (cosOut * 1.35));
+      }
+
+      var org = ARCHETYPES[form]({ seed: seed, len: len, age: age, folded: nul,
+                                   review: review, fill: fill, index: idx });
 
       var g = document.createElementNS(SVGNS, 'g');
       g.setAttribute('class', nul ? 'leaf null-leaf' : 'leaf');
       if (nul) g.setAttribute('opacity', '0.78');
-      // Each living leaf flutters to its own clock, out of phase with its
-      // neighbours (the CSS reads both custom properties).
-      if (!nul) {
-        g.style.setProperty('--fdur', (5.5 + (seed % 40) / 10).toFixed(1) + 's');
-        g.style.animationDelay = '-' + ((seed % 70) / 10).toFixed(1) + 's';
-      }
+      g.setAttribute('data-dir', dir);
 
-      // The living blade is a full lens; the null is a real little folded
-      // leaf hanging from its node — closed shape with visible grey area and
-      // a crease, not the near-zero sliver that used to render as a scratch.
-      var blade = document.createElementNS(SVGNS, 'path');
-      blade.setAttribute('d', nul
-        ? 'M' + x + ' ' + y +
-          ' Q' + (x + dir * len * 0.55) + ' ' + (y - len * 0.12) + ' ' + ex + ' ' + ey +
-          ' Q' + (x + dir * len * 0.4) + ' ' + (y + len * 0.4) + ' ' + x + ' ' + y + ' Z'
-        : 'M' + x + ' ' + y +
-          ' Q' + (x + dir * len * 0.5) + ' ' + (y - len) + ' ' + ex + ' ' + ey +
-          ' Q' + (x + dir * len * 0.62) + ' ' + (y - len * 0.05) + ' ' + x + ' ' + y + ' Z');
-      blade.setAttribute('fill', fill);
-      blade.setAttribute('stroke', shade(fill, -34));
-      blade.setAttribute('stroke-width', '0.8');
-      g.appendChild(blade);
-
-      // The crease that says "folded": one soft line down the middle of the fold.
-      if (nul) {
-        var crease = document.createElementNS(SVGNS, 'path');
-        crease.setAttribute('d', 'M' + x + ' ' + y +
-          ' Q' + (x + dir * len * 0.45) + ' ' + (y + len * 0.16) + ' ' +
-          (x + dir * len * 0.9) + ' ' + (y + len * 0.3));
-        crease.setAttribute('fill', 'none');
-        crease.setAttribute('stroke', shade(fill, -20));
-        crease.setAttribute('stroke-width', '0.7');
-        crease.setAttribute('stroke-linecap', 'round');
-        crease.setAttribute('opacity', '0.75');
-        g.appendChild(crease);
-      }
-
-      // The lit edge: the blade's upper curve retraced in a lighter stroke, the
-      // one place window light actually lands on a leaf.
-      if (!nul) {
-        var lit = document.createElementNS(SVGNS, 'path');
-        lit.setAttribute('d', 'M' + x + ' ' + y +
-          ' Q' + (x + dir * len * 0.5) + ' ' + (y - len) + ' ' + ex + ' ' + ey);
-        lit.setAttribute('fill', 'none');
-        lit.setAttribute('stroke', shade(fill, 48));
-        lit.setAttribute('stroke-width', '1.1');
-        lit.setAttribute('stroke-linecap', 'round');
-        lit.setAttribute('opacity', '0.55');
-        g.appendChild(lit);
-      }
-
-      // Midrib vein, lighter. A folded null carries no shine line — its rib
-      // poked past the neighbouring blades and read as a stray scratch; the
-      // fold and the grey are the whole statement.
-      if (!nul) {
-        var rib = document.createElementNS(SVGNS, 'path');
-        rib.setAttribute('d', 'M' + x + ' ' + y +
-          ' Q' + (x + dir * len * 0.5) + ' ' + (y - len * 0.7) + ' ' + ex + ' ' + ey);
-        rib.setAttribute('fill', 'none');
-        rib.setAttribute('stroke', shade(fill, 30));
-        rib.setAttribute('stroke-width', '1.15');
-        rib.setAttribute('stroke-linecap', 'round');
-        g.appendChild(rib);
-      }
-
-      // Two side-veins branching off the midrib toward the blade's edge — the
-      // difference between a green shape and a leaf. Quadratic point at t:
-      // B(t) = (1-t)²P0 + 2(1-t)t·C + t²P1, for the midrib's own control point.
-      if (!nul) {
-        var vcx = x + dir * len * 0.5, vcy = y - len * 0.7;
-        [0.35, 0.55].forEach(function (vt, vi) {
-          var u = 1 - vt;
-          var px = u * u * x + 2 * u * vt * vcx + vt * vt * ex;
-          var py = u * u * y + 2 * u * vt * vcy + vt * vt * ey;
-          var vein = document.createElementNS(SVGNS, 'path');
-          vein.setAttribute('d', 'M' + px.toFixed(1) + ' ' + py.toFixed(1) +
-            ' q' + (dir * len * 0.1).toFixed(1) + ' ' +
-            ((vi ? -1 : 1) * len * 0.09).toFixed(1) + ' ' +
-            (dir * len * 0.19).toFixed(1) + ' ' +
-            ((vi ? -1 : 1) * len * 0.06).toFixed(1));
-          vein.setAttribute('fill', 'none');
-          vein.setAttribute('stroke', shade(fill, 22));
-          vein.setAttribute('stroke-width', '0.8');
-          vein.setAttribute('stroke-linecap', 'round');
-          vein.setAttribute('opacity', '0.8');
-          g.appendChild(vein);
+      // World-space extras that must never sway: creeper rootlets on the
+      // lowest node or two, and the null's miss written into the runner.
+      if (form === 'creeper' && geo.total && t <= 2 / geo.total) {
+        [-0.35, 0.35].forEach(function (da, ri) {
+          var a = Math.PI / 2 + da + ((seed >> ri) % 3 - 1) * 0.12;
+          var rl = 5 + seed % 4;
+          var r = document.createElementNS(SVGNS, 'path');
+          r.setAttribute('d', 'M' + node.x + ' ' + node.y +
+            ' q' + (Math.cos(a) * rl * 0.4).toFixed(1) + ' ' + (Math.sin(a) * rl * 0.5).toFixed(1) +
+            ' ' + (Math.cos(a) * rl).toFixed(1) + ' ' + (Math.sin(a) * rl).toFixed(1));
+          r.setAttribute('fill', 'none');
+          r.setAttribute('stroke', shade(fill, -30));
+          r.setAttribute('stroke-width', '0.9');
+          r.setAttribute('stroke-linecap', 'round');
+          r.setAttribute('opacity', '0.6');
+          g.appendChild(r);
         });
       }
+      if (form === 'creeper' && nul) {
+        var prev = idx > 0 && geo.nodes[idx - 1] ? geo.nodes[idx - 1] : { x: 400, y: BASE };
+        var dead = document.createElementNS(SVGNS, 'path');
+        dead.setAttribute('d', 'M' + prev.x + ' ' + prev.y + ' L' + node.x + ' ' + node.y);
+        dead.setAttribute('fill', 'none');
+        dead.setAttribute('stroke', '#8a8f82');
+        dead.setAttribute('stroke-width', '2');
+        dead.setAttribute('stroke-dasharray', '2.5 2');
+        g.appendChild(dead);
+      }
 
-      // A transparent 44px target makes the small, gently swaying leaf usable
-      // by touch and pointer while the visible botany remains delicate.
+      // The placement: attribute transform ONLY (the wind lane below owns the
+      // CSS animation — a CSS transform would silently override an attribute
+      // transform on the same element).
+      var R = out * 180 / Math.PI - dir * pitch;
+      var place = document.createElementNS(SVGNS, 'g');
+      place.setAttribute('class', 'place');
+      place.setAttribute('transform', 'translate(' + node.x + ' ' + node.y + ') rotate(' +
+        R.toFixed(1) + ') scale(1 ' + dir + ')');
+      var wind = document.createElementNS(SVGNS, 'g');
+      wind.setAttribute('class', 'wind');
+      // The wind lane's timing: lag rides ladder height (the gust travels
+      // root→tip), amplitude grows toward the tip with a seeded whisper of
+      // per-organ character — the old private flutter, folded into one wind.
+      wind.style.setProperty('--t', t.toFixed(3));
+      wind.style.setProperty('--lamp', ((0.6 + t * 0.9) * (0.92 + (seed % 13) / 80)).toFixed(3));
+      org.parts.forEach(function (spec) { wind.appendChild(partEl(spec)); });
+      if (!nul && org.glow) {
+        wind.appendChild(partEl({ d: org.glow, fill: 'url(#bladeBacklight)', cls: 'blade-glow' }));
+      }
+      // Dew beads only for a third of the organs — deterministic, capped, a
+      // whisper: sixty white dots at dawn would be speckle, not weather.
+      if (!nul && seed % 3 === 0) {
+        org.dew.forEach(function (bd) {
+          var c = document.createElementNS(SVGNS, 'circle');
+          c.setAttribute('cx', bd.x.toFixed(1)); c.setAttribute('cy', bd.y.toFixed(1));
+          c.setAttribute('r', bd.r); c.setAttribute('fill', '#fff');
+          c.setAttribute('class', 'dew');
+          wind.appendChild(c);
+        });
+      }
+      place.appendChild(wind);
+      g.appendChild(place);
+
+      // The 44px hit target lives on its own always-on-top rail (appended by
+      // drawStalk in milestone order), so crowded tips stay tappable. It
+      // forwards to the same field note; the organ g keeps focus and ARIA.
+      var cR = R * Math.PI / 180;
+      var hx = node.x + Math.cos(cR) * org.centroid.x - Math.sin(cR) * org.centroid.y * dir;
+      var hy = node.y + Math.sin(cR) * org.centroid.x + Math.cos(cR) * org.centroid.y * dir;
       var hit = document.createElementNS(SVGNS, 'circle');
       hit.setAttribute('class', 'leaf-hit');
-      hit.setAttribute('cx', (x + dir * len * 0.5).toFixed(1));
-      hit.setAttribute('cy', (y + ey) / 2);
+      hit.setAttribute('cx', hx.toFixed(1));
+      hit.setAttribute('cy', hy.toFixed(1));
       hit.setAttribute('r', '22');
-      g.appendChild(hit);
 
       // Only http(s) records become links — never javascript:/data: URLs from
       // a snapshot, even though it's self-owned. Defense in depth on the sink.
@@ -1920,17 +2564,23 @@
       if (m.doi) meta.push('doi:' + m.doi);
       var tail = m.result ? ' — ' + m.result
         : (nul ? ' — failed calibration (null, kept on the books)' : ' ✓');
-      var t = document.createElementNS(SVGNS, 'title');
-      t.textContent = (m.id ? m.id + ' · ' : '') + (m.title || '') + tail +
+      var titleText = (m.id ? m.id + ' · ' : '') + (m.title || '') + tail +
         (meta.length ? ' · ' + meta.join(' · ') : '') + (safeUrl ? ' ↗' : '');
-      g.appendChild(t);
+      var tEl = document.createElementNS(SVGNS, 'title');
+      tEl.textContent = titleText;
+      g.appendChild(tEl);
+      // The hit rail sits above the organ, so it needs its own hover story.
+      var tHit = document.createElementNS(SVGNS, 'title');
+      tHit.textContent = titleText;
+      hit.appendChild(tHit);
+      hit.addEventListener('click', function () { openFieldNote(m, g); });
 
       // Tap / click / keyboard-focus a leaf to open its field note — the plain-
       // language story, with the technical result and any public record behind a
       // "show the receipt" disclosure. (The hover <title> stays as a desktop
       // nicety, but the field note is what works on touch and for keyboards.)
       makeLeafInteractive(g, m);
-      return g;
+      return { g: g, hit: hit };
     }
 
     // ── Field notes: a leaf's plain-language story, on tap or keyboard focus ──
@@ -2726,7 +3376,8 @@
                    : (state.last_run ? wetFromRun(state.last_run, state) : 0.3);
 
       $('season').textContent = season;
-      drawStalk(milestones, total, season);
+      drawStalk(milestones, total, season,
+        !state.empty && Array.isArray(state.milestones) && state.milestones.length > 0);
       applyMoisture(moisture);
       drawMilestoneRail(milestones);
       paintCurriculum(milestones);

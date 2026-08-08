@@ -13,8 +13,13 @@
  *
  *     form.build(ctx) -> {
  *       stem:  "M…"  (an SVG path string for #stem),
- *       nodes: [{ x, y, dir, t }],   // one per closed milestone, bottom→top
+ *       nodes: [{ x, y, dir, t, out }], // one per closed milestone, bottom→top;
+ *                                       // `out` = world radians the node's organ
+ *                                       // leaves the stem (local frame)
  *       tip:   { x, y },             // where the open bud / flower sits
+ *       spine: "M…",                 // root→tip centerline the page ribbons
+ *                                    // (=== stem for all forms but moss)
+ *       mat:   "M… Z",               // moss only: closed colony silhouette
  *     }
  *
  *   ctx = { count, total, openProg, base, rise }
@@ -62,6 +67,21 @@
 
   function fmt(n) { return Math.round(n * 100) / 100; }
 
+  // ── Local frames ──────────────────────────────────────────────────────────
+  // `out` is the world angle (radians, +y down) an organ leaves the stem at a
+  // node — the stem's own tangent there, rotated a quarter-turn to the node's
+  // side. The painter uses it to attach petioles perpendicular to the stem
+  // instead of floating blades off the path. pointAt(f) is each form's
+  // analytic stem point at height-fraction f; finite differences keep one rule
+  // for beziers and polylines alike. Growth runs upward (ang ≈ −π/2), so
+  // out = ang + dir·π/2 points right for dir=+1, left for dir=−1.
+  function outAngle(pointAt, ny, base, top, dir) {
+    var span = (top - base) || -1;
+    var f = Math.max(0.02, Math.min(0.98, (ny - base) / span));
+    var a = pointAt(f - 0.01), b = pointAt(f + 0.01);
+    return Math.atan2(b.y - a.y, b.x - a.x) + dir * Math.PI / 2;
+  }
+
   // ── FERN — the core physics convergence ladder ──────────────────────────
   // A single upright stem; fronds (nodes) alternate side to side as it climbs.
   // The physics ladder's form, and the homogeneous default the registry falls
@@ -73,11 +93,23 @@
       " C" + fmt(midx) + " " + fmt((ctx.base + top) / 2) +
       " " + fmt(800 - midx) + " " + fmt(top + 24) +
       " " + CX + " " + fmt(top);
+    // The cubic's own point function, for node local frames. Parameter ≈
+    // height fraction: close enough for a tangent, and deterministic.
+    var c1y = (ctx.base + top) / 2, c2x = 800 - midx, c2y = top + 24;
+    function pointAt(t) {
+      var u = 1 - t;
+      return {
+        x: u * u * u * CX + 3 * u * u * t * midx + 3 * u * t * t * c2x + t * t * t * CX,
+        y: u * u * u * ctx.base + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * top
+      };
+    }
     var nodes = [];
     for (var i = 0; i < ctx.count; i++) {
-      nodes.push({ x: CX, y: nodeY(ctx, i), dir: (i % 2) ? 1 : -1, t: (i + 1) / Math.max(1, ctx.total) });
+      var ny = nodeY(ctx, i), dir = (i % 2) ? 1 : -1;
+      nodes.push({ x: CX, y: ny, dir: dir, t: (i + 1) / Math.max(1, ctx.total),
+                   out: outAngle(pointAt, ny, ctx.base, top, dir) });
     }
-    return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: stem, spine: stem, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // ── VINE — climbing integer sequences (compute / OEIS extensions) ────────
@@ -89,12 +121,14 @@
     var turns = 1.6;                 // how many half-coils over the full reach
     var amp = 26;                    // coil width (px), constant so it stays tidy
     var segs = 18;
+    function pointAt(f) {
+      return { x: CX + Math.sin(f * Math.PI * turns) * amp * (1 - f * 0.35),
+               y: ctx.base + (top - ctx.base) * f };
+    }
     var d = "M" + CX + " " + ctx.base;
     for (var s = 1; s <= segs; s++) {
-      var f = s / segs;
-      var y = ctx.base + (top - ctx.base) * f;
-      var x = CX + Math.sin(f * Math.PI * turns) * amp * (1 - f * 0.35);
-      d += " L" + fmt(x) + " " + fmt(y);
+      var p = pointAt(s / segs);
+      d += " L" + fmt(p.x) + " " + fmt(p.y);
     }
     var nodes = [];
     for (var i = 0; i < ctx.count; i++) {
@@ -103,9 +137,11 @@
       // place the node on the stem at its height, pushed to the outside of the coil
       var phase = Math.sin(((ny - ctx.base) / (top - ctx.base || 1)) * Math.PI * turns);
       var nx = CX + phase * amp * 0.9;
-      nodes.push({ x: fmt(nx), y: ny, dir: phase >= 0 ? 1 : -1, t: fi });
+      var dir = phase >= 0 ? 1 : -1;
+      nodes.push({ x: fmt(nx), y: ny, dir: dir, t: fi,
+                   out: outAngle(pointAt, ny, ctx.base, top, dir) });
     }
-    return { stem: d, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: d, spine: d, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // ── SUCCULENT — an instrument calibration: compact, slow, precise ────────
@@ -126,9 +162,11 @@
       var r = R * Math.sqrt((i + 1) / Math.max(1, ctx.count));
       var nx = CX + Math.cos(ang) * r;
       var ny = cy - Math.sin(ang) * r * 0.5;       // squashed vertically (a flat rosette)
-      nodes.push({ x: fmt(nx), y: fmt(ny), dir: Math.cos(ang) >= 0 ? 1 : -1, t: (i + 1) / Math.max(1, ctx.total) });
+      nodes.push({ x: fmt(nx), y: fmt(ny), dir: Math.cos(ang) >= 0 ? 1 : -1, t: (i + 1) / Math.max(1, ctx.total),
+                   // pads point outward from the crown, not off a stem tangent
+                   out: Math.atan2(ny - cy, nx - CX) });
     }
-    return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: stem, spine: stem, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // ── CREEPER — a long astronomy time-series, trailing across the seasons ───
@@ -140,13 +178,15 @@
     var top = tipY(ctx);
     var reach = 46;                  // how far the runner trails to the side (wide, low)
     var segs = 16;
+    function pointAt(f) {
+      // one broad lateral sweep, widest mid-low, home to the center at the tip
+      return { x: CX - Math.sin(f * Math.PI) * reach * (1 - f * 0.25),
+               y: ctx.base + (top - ctx.base) * f };
+    }
     var d = "M" + CX + " " + ctx.base;
     for (var s = 1; s <= segs; s++) {
-      var f = s / segs;
-      var y = ctx.base + (top - ctx.base) * f;
-      // one broad lateral sweep, widest mid-low, home to the center at the tip
-      var x = CX - Math.sin(f * Math.PI) * reach * (1 - f * 0.25);
-      d += " L" + fmt(x) + " " + fmt(y);
+      var p = pointAt(s / segs);
+      d += " L" + fmt(p.x) + " " + fmt(p.y);
     }
     var nodes = [];
     for (var i = 0; i < ctx.count; i++) {
@@ -154,9 +194,10 @@
       var fy = (ny - ctx.base) / (top - ctx.base || 1);   // 0 at soil → 1 at tip
       var nx = CX - Math.sin(fy * Math.PI) * reach * (1 - fy * 0.25);
       // every measurement trails the same way — the series reads as one long runner
-      nodes.push({ x: fmt(nx), y: ny, dir: -1, t: (i + 1) / Math.max(1, ctx.total) });
+      nodes.push({ x: fmt(nx), y: ny, dir: -1, t: (i + 1) / Math.max(1, ctx.total),
+                   out: outAngle(pointAt, ny, ctx.base, top, -1) });
     }
-    return { stem: d, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: d, spine: d, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // ── MOSS — a distributed, mat-forming (BOINC-style) contribution ──────────
@@ -173,6 +214,18 @@
                " Q" + CX + " " + fmt(matY + 9) + " " + fmt(CX + mw) + " " + fmt(matY) +
                " L" + CX + " " + ctx.base +
                " L" + CX + " " + fmt(top);            // a thin sprig to the shared tip
+    // The composite `stem` string stays for the garden minis; the page paints
+    // the sprig (spine) as the ribbon and the mat as its own filled silhouette:
+    // a closed, bumpy colony outline whose lumps shift as the colony grows
+    // (count-seeded phase — deterministic, never random).
+    var spine = "M" + CX + " " + ctx.base + " L" + CX + " " + fmt(top);
+    var mat = "M" + fmt(CX - mw) + " " + fmt(matY);
+    for (var s = 0; s <= 12; s++) {
+      var u = s / 12;
+      mat += " L" + fmt(CX - mw + 2 * mw * u) + " " +
+             fmt(matY - 4.2 * Math.sin(Math.PI * u) - 2.2 * Math.sin(3 * Math.PI * u + ctx.count * 0.7));
+    }
+    mat += " L" + fmt(CX + mw) + " " + fmt(matY) + " Z";
     var nodes = [];
     var half = Math.max(1, Math.ceil(ctx.count / 2));
     for (var i = 0; i < ctx.count; i++) {
@@ -181,9 +234,10 @@
       var side = (i % 2) ? 1 : -1;
       var nx = CX + side * mw * (rank / half);
       var ny = matY - (i % 3) * 4;                   // a shallow, lumpy mat
-      nodes.push({ x: fmt(nx), y: fmt(ny), dir: side, t: (i + 1) / Math.max(1, ctx.total) });
+      nodes.push({ x: fmt(nx), y: fmt(ny), dir: side, t: (i + 1) / Math.max(1, ctx.total),
+                   out: -Math.PI / 2 });             // tufts point up; the archetype splays
     }
-    return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: stem, spine: spine, mat: mat, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // ── SPROUT — the simplest young seedling (misc / default track) ───────────
@@ -193,18 +247,26 @@
   function sprout(ctx) {
     var top = tipY(ctx);
     var lean = 7;                                    // a young shoot leans, then straightens
+    var cy = (ctx.base + top) / 2;
     var stem = "M" + CX + " " + ctx.base +
-               " Q" + fmt(CX + lean) + " " + fmt((ctx.base + top) / 2) +
+               " Q" + fmt(CX + lean) + " " + fmt(cy) +
                " " + CX + " " + fmt(top);
+    function pointAt(t) {
+      var u = 1 - t;
+      return { x: u * u * CX + 2 * u * t * (CX + lean) + t * t * CX,
+               y: u * u * ctx.base + 2 * u * t * cy + t * t * top };
+    }
     var nodes = [];
     var floor = ctx.base - 22;
     for (var i = 0; i < ctx.count; i++) {
       var frac = (i + 1) / Math.max(1, ctx.count);
       // leaves cluster in the lower part of the shoot (a seedling, not a tall fern)
       var ny = floor - (floor - top) * frac * 0.55;
-      nodes.push({ x: CX, y: fmt(ny), dir: (i % 2) ? 1 : -1, t: (i + 1) / Math.max(1, ctx.total) });
+      var dir = (i % 2) ? 1 : -1;
+      nodes.push({ x: CX, y: fmt(ny), dir: dir, t: (i + 1) / Math.max(1, ctx.total),
+                   out: outAngle(pointAt, ny, ctx.base, top, dir) });
     }
-    return { stem: stem, nodes: nodes, tip: { x: CX, y: top } };
+    return { stem: stem, spine: stem, nodes: nodes, tip: { x: CX, y: top } };
   }
 
   // The registry — the single interface. `growth_form` from the feed maps here;
