@@ -116,13 +116,18 @@ def _mast(
     *,
     deadline: float | None = None,
     retries: int = DEFAULT_REQUEST_RETRIES,
+    pagesize: int = 500,
+    page: int = 1,
 ) -> list[dict]:
+    """One MAST query. ``pagesize``/``page`` default to A01's original values, so
+    every existing caller is byte-for-byte unchanged; A04 pages through a whole
+    sector listing, which does not fit in one response."""
     payload = {
         "service": service,
         "params": params,
         "format": "json",
-        "pagesize": 500,
-        "page": 1,
+        "pagesize": pagesize,
+        "page": page,
     }
     data = urllib.parse.urlencode({"request": json.dumps(payload)}).encode("ascii")
     result = json.loads(

@@ -359,10 +359,11 @@
     {
       "id": "A04",
       "title": "Blind transit search across one TESS sector; vet the candidates and report a recovered planet",
-      "status": "pending",
+      "status": "review",
       "track": "astronomy",
       "growth_form": "creeper",
-      "runner_available": false,
+      "runner_available": true,
+      "result": "machine check passed; **awaiting Ben's green-leaf review**. A01 recovered a planet the pipeline was TOLD about, searching a narrow window around WASP-18 b's known period; A04 removes that \u2014 the search gets light curves with no labels, no periods and no hint which host anything. Three of A01's assumptions had to go: the grid widened from 0.85\u20131.05 d to 0.5\u201315 d; the curve is detrended by a running median (stellar variability swamps a 1% transit); and ranking moved from raw box depth \u2014 useless across stars, since a noisy one wins while hosting nothing \u2014 to **SDE**, which is self-normalising and therefore comparable. **Result: both designated planets recovered blind and ranked 1st and 2nd** \u2014 HIP 65 A b at P=0.98124 d vs published 0.98097 (SDE 14.2) and WASP-18 b at 0.94164 vs 0.94145 (SDE 10.2), catalog periods read only at grading time and never entering the search. **The threshold is measured, not chosen:** injections at 1.0/0.4/0.2% depth all recovered (SDE 8.8/9.2/10.1) and the noise floor over 22 sub-threshold targets tops out at 6.6, so SDE \u2265 8 sits in a real gap; `check_a04` refuses if that gap closes. **The vetting step earned its keep twice.** TIC 211438925 was flagged blind at P=4.9014 d, survived odd-even and secondary-eclipse tests as a `planet-candidate`, and the report-time catalog cross-check identified it as **WASP-20 b (TOI 194.01, disposition KP, published 4.89962 d)** \u2014 a *third* known planet recovered without being designated, and an independent validation of the vetting itself. TIC 339607421 (4.78% depth, 11 events) was flagged and correctly **rejected as an eclipsing binary** by an odd-even depth alternation; an earlier run's TIC 287328866, in no TOI or confirmed-planet table, separated at **11\u03c3** the same way. **Five defects were found and fixed, all in the layer that decides what a detection MEANS \u2014 the search itself was right on the first attempt and never wrong since:** the 'deterministic sample' was seeded from a hash of the whole pool, so consecutive runs shared almost no targets (now consistent hashing, stable under pool change); the page-capped listing was reported as 'the sector'; the grid reached to 15 d on a 27-day baseline, returning P=14.86 d at SDE 10.1 with under two transits and no possible odd-even test (now capped at baseline/3); `planet-candidate` was granted on ~1e-5 depths with the **odd-epoch depth negative** (now both parities must show a real positive dip at \u22655\u03c3); and `planet-candidate` was granted at **P=0.5000 d, exactly the search floor** \u2014 a railing artifact that would have entered a public report (now grid-railed periods are rejected at both edges before any other test). Each is a test named for the target that produced it. **Boundary:** a deterministic SAMPLE of one sector, not the sector \u2014 a real TESS sector holds thousands of 2-minute targets \u2014 so no completeness or occurrence-rate statement is implied. The graded claim is RECOVERY of already-confirmed planets by a search never told about them, plus a measured false-alarm floor; it is not a discovery, and nothing here is submitted to ExoFOP. Depths are reported, not graded: the running-median detrend biases them low for long transits, which the injections quantify. Report `reports/2026-08-08-a04.html`; rerun `lab a04`.",
       "short_label": "Search for a planet",
       "question_plain": "Can we comb an entire patch of sky for the faint dip of an unseen planet and confirm a real one?",
       "why_it_matters": "It moves from checking known planets to actually finding one in raw survey data and reporting it for follow-up.",
@@ -430,29 +431,28 @@
     }
   ],
   "total": 34,
-  "last_run": "2026-08-08T23:34:53.871013+00:00",
+  "last_run": "2026-08-09T03:38:36.867562+00:00",
   "runs": 48,
-  "temp_c": 44.0,
+  "temp_c": 50.0,
   "latest_report": {
     "date": "2026-08-08",
-    "milestone": "M02",
+    "milestone": "A04",
     "verdict": "verified",
-    "headline": "finite-size scaling: \u03c7_max \u221d L^1.750 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16491s on GPU",
+    "headline": "blind search of 26 sector-2 targets: 2/2 known planets recovered without being told where; 3/3 injections recovered; 2 candidate(s) vetted; noise floor max SDE 6.6 vs threshold 8.0",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-08-1934-m02.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-08-2338-a04.json",
     "machine": "linux-rocm",
-    "at": "2026-08-08T23:34:53.871013+00:00",
-    "group_count": 9,
-    "group_first_date": "2026-08-07",
+    "at": "2026-08-09T03:38:36.867562+00:00",
+    "group_count": 4,
+    "group_first_date": "2026-08-08",
     "group_machines": [
-      "linux-rocm",
-      "windows-cuda"
+      "linux-rocm"
     ]
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-09T02:54:13.768205+00:00",
+  "updated": "2026-08-09T03:39:32.132959+00:00",
   "provenance": {
-    "code_sha": "232714d",
+    "code_sha": "5c9ab2e-dirty",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -461,6 +461,51 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-08",
+      "milestone": "A04",
+      "verdict": "verified",
+      "headline": "blind search of 26 sector-2 targets: 2/2 known planets recovered without being told where; 3/3 injections recovered; 2 candidate(s) vetted; noise floor max SDE 6.6 vs threshold 8.0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-08-2338-a04",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-08-2338-a04.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-09T03:38:36.867562+00:00",
+      "group_count": 4,
+      "group_first_date": "2026-08-08",
+      "group_machines": [
+        "linux-rocm"
+      ]
+    },
+    {
+      "date": "2026-08-08",
+      "milestone": "A04",
+      "verdict": "unscored",
+      "headline": "blind search of 26 sector-2 targets: 2/2 known planets recovered without being told where; 3/3 injections recovered; 4 candidate(s) vetted; noise floor max SDE 7.3 vs threshold 8.0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-08-2327-a04",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-08-2327-a04.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-09T03:27:36.529361+00:00"
+    },
+    {
+      "date": "2026-08-08",
+      "milestone": "A04",
+      "verdict": "null",
+      "headline": "blind search of 26 sector-2 targets: 2/2 known planets recovered without being told where; 3/3 injections recovered; false-alarm floor max SDE 9.0 vs threshold 8.0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-08-2322-a04",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-08-2322-a04.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-09T03:22:20.973343+00:00"
+    },
+    {
+      "date": "2026-08-08",
+      "milestone": "A04",
+      "verdict": "unscored",
+      "headline": "blind search of 24 sector-2 targets: 0/0 known planets recovered without being told where; 3/3 injections recovered; false-alarm floor max SDE 9.7 vs threshold 8.0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-08-2319-a04",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-08-2319-a04.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-09T03:19:07.848810+00:00"
+    },
     {
       "date": "2026-08-08",
       "milestone": "M02",
@@ -994,11 +1039,11 @@
     }
   ],
   "turns": {
-    "count": 96,
-    "today": 4,
+    "count": 102,
+    "today": 10,
     "last_by_machine": {
       "windows-cuda": "2026-08-07T13:45:52.152078+00:00",
-      "linux-rocm": "2026-08-08T23:34:53.871013+00:00"
+      "linux-rocm": "2026-08-09T03:38:36.867562+00:00"
     },
     "expected_interval_h": 3
   }
