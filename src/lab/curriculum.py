@@ -35,6 +35,7 @@ RUNNERS = {
     "C01": "c01",
     "A01": "a01",
     "A03": "a03",
+    "A04": "a04",
     "I01": "i01",
 }
 
@@ -56,6 +57,7 @@ RUNNER_SCHEDULER_OPTIONS = {
     # A03 pins its own event, band and chirp-mass grid; a scheduler seed would
     # not change the measurement, only pretend to.
     "A03": frozenset(),
+    "A04": frozenset(),
     "I01": frozenset(),
 }
 

@@ -2168,6 +2168,100 @@ def check_m18(report: dict) -> tuple[bool | None, str]:
     )
 
 
+def check_a04(report: dict) -> tuple[bool | None, str]:
+    """Re-derive A04's survey verdict from its saved rows.
+
+    Three gates, ordered so a broken search cannot read as an empty sky:
+
+    1. CONTROL — injected transits must be recovered. If the pipeline cannot find
+       a signal it planted itself, nothing it says about real targets means
+       anything, so this returns None (uninterpretable), never False.
+    2. FLOOR — the false-alarm SDE distribution must sit entirely below the
+       detection threshold. A threshold inside the noise is not a threshold.
+    3. RECOVERY — every known planet in the sample must be found blind, with its
+       period matching the published one and never read from the catalog first.
+    """
+    if report.get("experiment") != "A04-blind-transit-search":
+        return None, "not an A04 blind transit search"
+    injections = report.get("injections")
+    recoveries = report.get("recoveries")
+    floor = report.get("false_alarm_sde")
+    if not isinstance(injections, list) or not injections:
+        return None, "A04 report carries no injection control"
+    if not isinstance(recoveries, list) or not recoveries:
+        return None, "A04 report carries no known-planet recovery targets"
+    if not isinstance(floor, list) or len(floor) < 3:
+        return None, "A04 report carries too few false-alarm samples to set a floor"
+    try:
+        threshold = float(report["sde_threshold"])
+        tol = float(report["period_tolerance_frac"])
+    except (KeyError, TypeError, ValueError) as exc:
+        return None, f"A04 grading constants are unusable: {exc}"
+
+    bad_inj = [i for i in injections
+               if not (abs(float(i["recovered_period_days"]) / float(i["injected_period_days"]) - 1.0) <= tol
+                       and float(i["sde"]) >= threshold)]
+    if bad_inj:
+        worst = bad_inj[0]
+        return None, (
+            f"A04 CONTROL FAILED — an injected transit at P="
+            f"{worst['injected_period_days']} d, depth "
+            f"{100*float(worst['injected_depth']):.2f}% was not recovered "
+            f"(got P={float(worst['recovered_period_days']):.4f}, SDE="
+            f"{float(worst['sde']):.1f}); the survey result is uninterpretable, "
+            "not negative"
+        )
+
+    fa = [float(x) for x in floor]
+    floor_max = max(fa)
+    floor_ok = floor_max < threshold
+
+    # Above-threshold non-planets are CANDIDATES, not false alarms. The survey's
+    # job is to vet them; an unvetted one means the run stopped halfway, so it is
+    # unreadable rather than failing.
+    candidates = report.get("candidates") or []
+    unvetted = [c for c in candidates
+                if (c.get("vetting") or {}).get("verdict") in (None, "insufficient-coverage")]
+    if unvetted:
+        return None, (
+            f"A04 has {len(unvetted)} unvetted candidate(s) above SDE {threshold:g} "
+            f"(e.g. TIC {unvetted[0].get('tic')}); vetting is the milestone's own "
+            "step and its absence makes the survey unreadable, not negative")
+    cand_txt = "; ".join(
+        f"TIC {c.get('tic')} SDE {float(c['sde']):.1f} → {(c.get('vetting') or {}).get('verdict')}"
+        for c in candidates) or "none above threshold"
+
+    found, missed = [], []
+    for r in recoveries:
+        err = abs(float(r["period_days"]) / float(r["published_period_days"]) - 1.0)
+        (found if (err <= tol and float(r["sde"]) >= threshold) else missed).append(
+            (r.get("known_planet", r.get("tic")), float(r["period_days"]),
+             float(r["published_period_days"]), err, float(r["sde"])))
+
+    inj_txt = ", ".join(
+        f"{100*float(i['injected_depth']):.1f}%@{i['injected_period_days']}d"
+        f"→SDE {float(i['sde']):.1f}" for i in injections)
+    rec_txt = ", ".join(
+        f"{n} P={p:.5f} vs {pub:.5f} (Δ={e:.1e}, SDE {s:.1f})"
+        for n, p, pub, e, s in found + missed)
+    ok = bool(floor_ok and not missed)
+    detail = (
+        f"sector {report.get('sector')}: {report.get('targets_searched')} targets searched "
+        f"blind; injections recovered [{inj_txt}]; false-alarm floor n={len(fa)} "
+        f"median {statistics.median(fa):.1f} max {floor_max:.1f} vs threshold "
+        f"{threshold:g}; candidates vetted: {cand_txt}; recoveries: {rec_txt}"
+    )
+    if not ok:
+        problems = []
+        if not floor_ok:
+            problems.append(f"false-alarm max {floor_max:.1f} reaches the threshold "
+                            f"{threshold:g} — no measured gap")
+        if missed:
+            problems.append(f"{len(missed)} known planet(s) not recovered")
+        return False, detail + " — " + "; ".join(problems)
+    return True, detail + " — known planets recovered by a search never told about them"
+
+
 def check_a03(report: dict) -> tuple[bool | None, str]:
     """Re-derive A03's verdict from the saved numbers, not its pass flags.
 
@@ -2448,7 +2542,7 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
           "M16": check_m16, "M17": check_m17, "M18": check_m18,
           "K01": check_k01, "K02": check_k02,
-          "C01": check_c01, "A01": check_a01, "A03": check_a03,
+          "C01": check_c01, "A01": check_a01, "A03": check_a03, "A04": check_a04,
           "I01": check_i01, "CTRL": check_controls}
 
 

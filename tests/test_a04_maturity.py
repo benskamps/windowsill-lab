@@ -1,0 +1,186 @@
+"""A04 maturity regressions — every one of these is a bug the runs actually hit.
+
+The blind search worked on the first try. Everything below is a defect found
+*around* it, in the machinery that decides what a detection means, which is where
+this lab keeps getting caught (A03's phantom chirp masses, K03's four exponents).
+"""
+from __future__ import annotations
+
+import numpy as np
+import pytest
+
+from lab import a04, checks
+
+
+def _flat(days=27.0, cadence=2.0 / 1440, noise=3e-4, seed=1):
+    rng = np.random.default_rng(seed)
+    t = np.arange(0.0, days, cadence)
+    return t, 1.0 + rng.normal(0.0, noise, size=len(t))
+
+
+# ---------------------------------------------------------------- sampling ---
+
+def test_sample_is_stable_when_the_pool_changes():
+    """The 'deterministic sample' was false: seeding from a hash of the WHOLE pool
+    meant any change in what MAST returned reshuffled everything, and two
+    consecutive runs shared almost no targets."""
+    big = [f"{i:09d}" for i in range(400)]
+    small = [t for t in big if t != big[7]]
+    a = set(a04.sample_targets(big, 20, seed=3))
+    b = set(a04.sample_targets(small, 20, seed=3))
+    assert len(a & b) >= 19       # at most the dropped target may differ
+
+
+def test_recovery_targets_are_always_included():
+    """The sector listing is page-capped, so gating inclusion on 'appears in the
+    listing' produced a survey with ZERO known planets and nothing to validate."""
+    s = a04.sample_targets(["111111111", "222222222"], 1, seed=1)
+    assert set(a04.RECOVERY_TARGETS) <= set(s)
+
+
+# ------------------------------------------------------------------ search ---
+
+def test_injected_transit_is_recovered_blind():
+    """The class-6 gate, in miniature."""
+    t, f = _flat()
+    fi = a04.inject_box(t, f, period=3.1, depth=0.01, duration_days=2.5 / 24)
+    det = a04.blind_search(t, fi, n_periods=600)
+    assert det.period_days == pytest.approx(3.1, rel=0.01)
+    assert det.sde > 8.0
+
+
+def test_flat_noise_stays_below_the_threshold():
+    t, f = _flat(seed=9)
+    assert a04.blind_search(t, f, n_periods=600).sde < a04.SDE_THRESHOLD
+
+
+def test_period_grid_is_capped_by_the_baseline():
+    """A 27-day sector cannot confirm a 14-day period — under two transits, no
+    odd-even test, unfalsifiable. One run returned P=14.86 d at SDE 10.1."""
+    t, f = _flat(days=27.0)
+    det = a04.blind_search(t, f, p_hi=15.0, n_periods=400)
+    assert det.period_days <= 27.0 / a04.MIN_TRANSITS + 1e-9
+
+
+def test_a_baseline_too_short_refuses_rather_than_guessing():
+    t, f = _flat(days=1.0)
+    with pytest.raises(a04.A04Error):
+        a04.blind_search(t, f, p_lo=0.5, p_hi=15.0, n_periods=50)
+
+
+# ------------------------------------------------------------------ vetting ---
+
+def test_odd_even_alternation_is_called_an_eclipsing_binary():
+    """The real find: TIC 287328866, absent from every TOI table, separated at
+    11 sigma by depths of 1.565 % vs 1.336 %."""
+    t, f = _flat(noise=1e-4)
+    period = 2.0
+    epoch = np.floor(t / period).astype(int)
+    ph = np.mod(t, period) / period
+    box = np.abs(ph - 0.3) < 0.02
+    f = f.copy()
+    f[box & (epoch % 2 == 0)] *= 1 - 0.020
+    f[box & (epoch % 2 == 1)] *= 1 - 0.010
+    det = a04.Detection(period_days=period, depth=0.015, phase=0.3, sde=12.0)
+    assert a04.vet_candidate(t, f, det)["verdict"] == "eclipsing-binary-odd-even"
+
+
+def test_a_planet_candidate_must_earn_the_label():
+    """TIC 280095254 was blessed a candidate on depths of ~1e-5 with the ODD-epoch
+    depth NEGATIVE. A transit that goes up on half its epochs is noise."""
+    t, f = _flat(noise=3e-4)
+    det = a04.Detection(period_days=3.0, depth=1e-5, phase=0.3, sde=8.4)
+    assert a04.vet_candidate(t, f, det)["verdict"] in (
+        "low-significance", "insufficient-coverage")
+
+
+def test_a_real_transit_does_reach_planet_candidate():
+    t, f = _flat(noise=1e-4)
+    fi = a04.inject_box(t, f, period=3.0, depth=0.01, duration_days=2.5 / 24)
+    det = a04.blind_search(t, fi, n_periods=600)
+    assert a04.vet_candidate(t, fi, det)["verdict"] == "planet-candidate"
+
+
+def test_too_few_events_is_insufficient_coverage_not_a_verdict():
+    t, f = _flat(days=27.0, noise=1e-4)
+    fi = a04.inject_box(t, f, period=12.0, depth=0.02, duration_days=2.5 / 24)
+    det = a04.Detection(period_days=12.0, depth=0.02, phase=0.5, sde=9.0)
+    assert a04.vet_candidate(t, fi, det)["verdict"] == "insufficient-coverage"
+
+
+def test_a_period_railed_to_the_grid_edge_is_not_a_candidate():
+    """The final run surfaced TIC 206502540 at P = 0.5000 d — EXACTLY the search
+    floor — with 52 "events" and a 20-sigma depth. A best period sitting on a
+    grid bound means the true period is probably outside the range and the fold
+    is an alias; without this it would have entered a public report as a planet
+    candidate."""
+    t, f = _flat(noise=1e-4)
+    det = a04.Detection(period_days=a04.P_LO, depth=0.01, phase=0.3, sde=9.0)
+    assert a04.vet_candidate(t, f, det)["verdict"] == "period-railed"
+
+
+def test_railing_is_checked_at_the_baseline_capped_upper_edge_too():
+    t, f = _flat(days=27.0, noise=1e-4)
+    hi = 27.0 / a04.MIN_TRANSITS
+    det = a04.Detection(period_days=hi, depth=0.01, phase=0.3, sde=9.0)
+    assert a04.vet_candidate(t, f, det)["verdict"] == "period-railed"
+
+
+# ------------------------------------------------------------------- check ---
+
+def _report(**kw):
+    base = {
+        "experiment": "A04-blind-transit-search", "sector": 2,
+        "targets_searched": 26, "sde_threshold": 8.0, "period_tolerance_frac": 0.01,
+        "injections": [{"injected_period_days": 3.7, "injected_depth": 0.01,
+                        "recovered_period_days": 3.6985, "sde": 9.0}],
+        "recoveries": [{"known_planet": "WASP-18 b", "period_days": 0.94164,
+                        "published_period_days": 0.94145223, "sde": 10.2}],
+        "candidates": [{"tic": "211438925", "sde": 9.1,
+                        "vetting": {"verdict": "planet-candidate"}}],
+        "false_alarm_sde": [4.2, 5.1, 7.7, 3.9],
+    }
+    base.update(kw)
+    return base
+
+
+def test_check_passes_a_clean_survey():
+    ok, detail = checks.check_a04(_report())
+    assert ok is True
+    assert "never told about them" in detail
+
+
+def test_unvetted_candidate_is_unreadable_not_negative():
+    ok, detail = checks.check_a04(_report(
+        candidates=[{"tic": "279949020", "sde": 8.1,
+                     "vetting": {"verdict": "insufficient-coverage"}}]))
+    assert ok is None
+    assert "unvetted" in detail
+
+
+def test_failed_injection_is_unreadable_not_negative():
+    ok, detail = checks.check_a04(_report(
+        injections=[{"injected_period_days": 3.7, "injected_depth": 0.01,
+                     "recovered_period_days": 1.9, "sde": 4.0}]))
+    assert ok is None
+    assert "CONTROL FAILED" in detail
+
+
+def test_floor_reaching_the_threshold_fails():
+    ok, detail = checks.check_a04(_report(false_alarm_sde=[4.2, 5.1, 8.9, 3.9]))
+    assert ok is False
+    assert "no measured gap" in detail
+
+
+def test_missed_recovery_fails():
+    ok, detail = checks.check_a04(_report(
+        recoveries=[{"known_planet": "WASP-18 b", "period_days": 2.5,
+                     "published_period_days": 0.94145223, "sde": 10.2}]))
+    assert ok is False
+    assert "not recovered" in detail
+
+
+def test_a04_is_registered():
+    from lab import curriculum
+    assert checks.CHECKS["A04"] is checks.check_a04
+    assert curriculum.RUNNERS["A04"] == "a04"

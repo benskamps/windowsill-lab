@@ -232,6 +232,7 @@ Usage:
   lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
   lab a03             run A03: chirp mass of a GWOSC event by matched filtering
   lab m18             run M18: directed percolation in 2+1d (absorbing-state transition)
+  lab a04             run A04: blind transit search across a TESS sector
   lab i01             run I01: calibrate a real capped-CMOS dark-frame stack
   lab i01 --camera 0  acquire a bounded live grayscale stack, then calibrate it
   lab open            open the latest report (no run)
@@ -787,6 +788,18 @@ def _parse_a03(args):
                    help="chirp-mass grid step in Msun (default 2e-5)")
     p.add_argument("--cache-dir", default=None,
                    help="optional strain cache; defaults to ~/.lab/cache/a03")
+    return p.parse_args(args)
+
+
+def _parse_a04(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--sector", type=int, default=None, help="TESS sector (default 2)")
+    p.add_argument("--targets", type=int, default=24,
+                   help="how many sector targets to search (default 24). A full "
+                        "sector is thousands; this is a deterministic SAMPLE and "
+                        "the report says so.")
+    p.add_argument("--seed", type=int, default=2026)
+    p.add_argument("--cache-dir", default=None)
     return p.parse_args(args)
 
 
@@ -1947,6 +1960,49 @@ def main(argv=None):
               f"event {'recovered' if result.recovered else 'NOT recovered'} · "
               f"{'calibrated' if result.calibration_passed else '[~] null'} · "
               f"{result.wall_seconds:.1f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "a04":
+        ns = _parse_a04(args[1:])
+        from . import a04
+        from . import render as render_mod
+        sector = ns.sector or a04.DEFAULT_SECTOR
+        print(f"A04 blind transit search · TESS sector {sector} · {ns.targets} targets · "
+              f"BLS {a04.P_LO}-{a04.P_HI} d, ranked by SDE · injections and a "
+              f"false-alarm floor decide the threshold, not a choice")
+
+        def _phase(kind, payload):
+            if kind == "enumerate":
+                print(f"  · enumerating sector {payload['sector']} SPOC targets")
+            elif kind == "sample":
+                print(f"    enumerated {payload['sector_size']} targets "
+                      f"(page-capped, NOT the whole sector); searching "
+                      f"{payload['sampled']}")
+            elif kind == "injection":
+                print("  · positive control: injecting synthetic transits")
+
+        def _progress(tic, det, known):
+            tag = f" <- {known['name']}" if known else ""
+            print(f"    TIC {tic}: P={det.period_days:7.4f} d  depth={100*det.depth:.3f}%  "
+                  f"SDE={det.sde:5.1f}{tag}")
+
+        result = a04.run_a04(sector=sector, n_targets=ns.targets, seed=ns.seed,
+                             cache_dir=Path(ns.cache_dir) if ns.cache_dir else None,
+                             progress=_progress, phase=_phase)
+        report = a04.to_report(result)
+        print(f"  → control {'PASSED' if result.control_passed else 'FAILED'} · "
+              f"floor {'clear' if result.floor_clear else 'REACHES THRESHOLD'} · "
+              f"recoveries {sum(r.get('recovered', False) for r in result.recoveries)}"
+              f"/{len(result.recoveries)} · "
+              f"{'calibrated' if result.calibration_passed else '[~] null'} · "
+              f"{result.wall_seconds:.0f}s")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")
         try:
