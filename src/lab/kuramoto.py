@@ -131,17 +131,40 @@ def order_parameter(theta: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
     return np.hypot(c, s), np.arctan2(s, c)
 
 
-def _drift(theta: np.ndarray, omega: np.ndarray, coupling: np.ndarray) -> np.ndarray:
-    """``dθ/dt = ω + K·r·sin(ψ − θ)`` via the O(N) mean-field form."""
+def _drift(theta: np.ndarray, omega: np.ndarray, coupling: np.ndarray,
+           field: float | np.ndarray = 0.0) -> np.ndarray:
+    """``dθ/dt = ω + K·r·sin(ψ − θ) + h·sin(Θ − θ)`` via the O(N) mean-field form.
+
+    ``field`` is the external pinning field h, aligned along Θ = 0 (K03). It
+    exists because the LINEAR-RESPONSE susceptibility ∂⟨r⟩/∂h is the quantity
+    Daido and Hong disagree about, and the fluctuation estimator χ = N·Var(r)
+    that K01/K02 use cannot answer them: below K_c the system is incoherent, r
+    sits on the 1/√N floor, and N·Var(r) saturates at the Rayleigh value
+    1 − π/4 ≈ 0.215 — measured flat to within 1.3× across a 25× range in
+    |K−K_c|/K_c, i.e. carrying no subcritical exponent at all.
+
+    **h = 0 is the default and short-circuits**, so every K01/K02 trajectory is
+    bit-identical to the pre-field engine rather than merely close: adding
+    ``0.0 * sin(-θ)`` would also be exact in IEEE arithmetic, but skipping the
+    branch keeps that guarantee independent of how the term is spelled, and
+    costs nothing. `tests/test_kuramoto_field.py` asserts the bit-identity.
+    """
     cos_t, sin_t = np.cos(theta), np.sin(theta)
     c = cos_t.mean(axis=-1, keepdims=True)
     s = sin_t.mean(axis=-1, keepdims=True)
     # r·sin(ψ−θ) = ⟨sin θ⟩·cos θ − ⟨cos θ⟩·sin θ
-    return omega + coupling * (s * cos_t - c * sin_t)
+    out = omega + coupling * (s * cos_t - c * sin_t)
+    # `field` may be a scalar or an ``(n_K, 1)`` column, so one integration can
+    # carry a whole (K, h) grid. np.any keeps the short-circuit working for both.
+    if np.any(field):
+        # h·sin(Θ−θ) with Θ = 0  ⇒  −h·sin θ
+        out = out - field * sin_t
+    return out
 
 
 def rk4_step(
     theta: np.ndarray, omega: np.ndarray, coupling: np.ndarray, dt: float,
+    field: float | np.ndarray = 0.0,
 ) -> np.ndarray:
     """One classical fixed-step RK4 step of the phase dynamics.
 
@@ -149,10 +172,10 @@ def rk4_step(
     each stage recomputes the mean field from that stage's phases (using the
     stage-start centroid instead would silently demote this to Euler).
     """
-    k1 = _drift(theta, omega, coupling)
-    k2 = _drift(theta + 0.5 * dt * k1, omega, coupling)
-    k3 = _drift(theta + 0.5 * dt * k2, omega, coupling)
-    k4 = _drift(theta + dt * k3, omega, coupling)
+    k1 = _drift(theta, omega, coupling, field)
+    k2 = _drift(theta + 0.5 * dt * k1, omega, coupling, field)
+    k3 = _drift(theta + 0.5 * dt * k2, omega, coupling, field)
+    k4 = _drift(theta + dt * k3, omega, coupling, field)
     return theta + (dt / 6.0) * (k1 + 2.0 * k2 + 2.0 * k3 + k4)
 
 
@@ -196,6 +219,7 @@ def run_sweep(
     t_measure: float = 400.0,
     sample_every: int = 10,
     seed: int = 42,
+    field: float = 0.0,
     progress=None,
 ) -> SweepResult:
     """Integrate every coupling in ``K`` at once and measure ⟨r⟩ and N·Var(r).
@@ -232,7 +256,7 @@ def run_sweep(
     n_burn = int(round(t_burn / dt))
     n_meas = int(round(t_measure / dt))
     for step in range(n_burn):
-        theta = rk4_step(theta, omega, column, dt)
+        theta = rk4_step(theta, omega, column, dt, field)
         if progress is not None and step % 2000 == 0:
             progress("burn-in", step, n_burn)
 
@@ -240,7 +264,7 @@ def run_sweep(
     total_sq = np.zeros(couplings.size)
     samples = 0
     for step in range(n_meas):
-        theta = rk4_step(theta, omega, column, dt)
+        theta = rk4_step(theta, omega, column, dt, field)
         if step % sample_every == 0:
             r, _ = order_parameter(theta)
             total += r
