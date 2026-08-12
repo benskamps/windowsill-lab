@@ -6,8 +6,11 @@ falsifiable pure surface is the exact triangular critical temperature it publish
 point of the geometry change) and ``to_report``'s JSON shape. ``run_m05`` (the real
 triangular sweep) is never invoked.
 """
+import json
 import math
+from pathlib import Path
 
+from lab.checks import check_m05
 from lab.m05 import TC_TRI, to_report, M05Result
 
 
@@ -162,3 +165,66 @@ def test_the_honeycomb_runner_records_the_device_so_receipts_label_hardware_hone
     # The failure mode itself, pinned: no device key ⇒ silently "CPU".
     no_device = {k: v for k, v in rep["config"].items() if k != "device"}
     assert hw(no_device) == "CPU"
+
+
+# ── the committed honeycomb receipt: the number itself, pinned ────────────────
+# The canonical 2026-08-11 honeycomb run (L=128, seed=42, 25 temperatures). Its
+# headline T_c is a *published* number: it appears in the receipt, in
+# MILESTONES.md, and in the PR that landed the honeycomb half. Nothing in the
+# suite re-derived it from the artifact, so a change to the peak refinement, the
+# equilibration guard, or the sweep itself could silently move the published
+# value while every test stayed green. This pins it to the digit.
+M05_HEX_RECEIPT = (
+    Path(__file__).resolve().parents[1]
+    / "reports" / "receipts" / "run-2026-08-11-2341-m05.json"
+)
+M05_HEX_TC_CHI_REFINED = 1.5322714093222762
+
+
+def _hex_receipt() -> dict:
+    return json.loads(M05_HEX_RECEIPT.read_text(encoding="utf-8"))
+
+
+def test_the_committed_honeycomb_receipt_still_reports_its_published_tc():
+    """Exact equality, not a tolerance: this is the artifact's own recorded float."""
+    receipt = _hex_receipt()
+    assert receipt["experiment"] == "M05-hexagonal"
+    assert receipt["tc_chi_refined"] == M05_HEX_TC_CHI_REFINED
+
+
+def test_the_published_honeycomb_tc_is_what_the_checker_re_derives():
+    """Engine drift breaks the suite here.
+
+    ``check_m05`` re-runs the guard and the parabola refinement over the receipt's
+    own (T, χ) arrays. Its answer must land on the published headline — if a
+    future change to the refinement or the guard moves the peak, this fails
+    instead of quietly republishing a different number under the same claim.
+    """
+    ok, detail = check_m05(_hex_receipt())
+    assert ok is True, detail
+    re_derived = float(detail.split("T=")[1].split(" ")[0])
+    assert abs(re_derived - M05_HEX_TC_CHI_REFINED) < 5e-4, detail
+
+
+def test_the_published_honeycomb_tc_sits_just_above_the_exact_value():
+    """The physics the number has to satisfy, independent of the recorded float:
+    a finite-L χ peak is shifted *above* the infinite-volume T_c, by ≈1 %."""
+    receipt = _hex_receipt()
+    assert receipt["tc_benchmark"] == TC_HEX
+    assert M05_HEX_TC_CHI_REFINED > TC_HEX
+    assert (M05_HEX_TC_CHI_REFINED - TC_HEX) / TC_HEX < 0.02
+    assert receipt["rel_error"] == abs(
+        M05_HEX_TC_CHI_REFINED - TC_HEX) / TC_HEX
+
+
+def test_the_committed_honeycomb_receipt_reruns_the_honeycomb():
+    """The reproduction command must name the geometry the receipt records.
+
+    ``lab m05`` sweeps the *triangular* lattice at T_c ≈ 3.641; publishing it on
+    a honeycomb receipt sent anyone reproducing this measurement to a different
+    experiment. Derived from the experiment tag as of 2026-08-12.
+    """
+    receipt = _hex_receipt()
+    assert receipt["reproduction"]["rerun"] == "python -m lab.cli m05-hex"
+    assert receipt["reproduction"]["regrade"] == "python -m lab.cli verify M05"
+    assert receipt["config"]["lattice"] == "honeycomb"
