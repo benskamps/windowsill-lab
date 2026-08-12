@@ -666,8 +666,19 @@ def check_m05(report: dict) -> tuple[bool | None, str]:
     forbidden rather than merely unlikely; ``nonequilibrated_indices`` is pure
     relational physics with no lattice-specific constants, so it applies here
     unchanged. Excluded samples are **named in the returned message**, never
-    quietly dropped, and a report whose guard arrays are present but unreadable
-    fails closed rather than grading as clean.
+    quietly dropped.
+
+    **The guard fails closed on both kinds of absent scan.** Guard arrays present
+    but unreadable, *and* guard arrays missing altogether, both return ``False``
+    naming the gap — no T_c is claimed either way. The missing case is the one a
+    hand-written report can reach: ``nonequilibrated_indices`` answers ``[]`` (no
+    exclusions) for a report carrying no magnetization arrays, which is the right
+    tolerance for the M01-era dumps that predate uncertainty arrays but is not a
+    scan. No M05 report is legacy in that sense — ``m05.to_report`` and
+    ``to_report_hex`` have emitted ``abs_mag``/``abs_mag_err`` since the
+    triangular run of 2026-06-24 — so inside this check their absence means the
+    guard could not run, and a check that never ran must not read as a clean
+    pass. The legacy tolerance stays where it belongs, in ``check_m01``.
     """
     lattice = _M05_LATTICES.get(report.get("experiment"))
     if lattice is None:
@@ -676,6 +687,15 @@ def check_m05(report: dict) -> tuple[bool | None, str]:
     T, chi = report.get("T"), report.get("chi")
     if not T or not chi or len(T) != len(chi) or len(T) < 3:
         return None, "M05 report missing (T, χ) arrays"
+
+    if report.get("abs_mag") is None and report.get("abs_mag_err") is None:
+        # No guard arrays at all — the scan had nothing to read, so it did not
+        # run. Disclosed as a failure rather than inheriting check_m01's legacy
+        # tolerance, which would let a hand-written M05 report grade clean on a
+        # guard that never executed.
+        return False, (f"{name} run carries no equilibration guard arrays "
+                       f"(abs_mag / abs_mag_err) — the non-equilibration scan "
+                       f"could not run, so no T_c is claimed")
 
     excluded = nonequilibrated_indices(report)
     if excluded is None:

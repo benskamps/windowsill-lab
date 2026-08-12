@@ -263,11 +263,25 @@ def test_m01_still_grades_its_own_tagged_report():
 
 
 # ── M05: triangular-lattice Ising check ──────────────────────────────────────
+def _equilibrated_guard(T):
+    """A monotone-decreasing ⟨|m|⟩(T) with tight errors — the shape equilibrium
+    demands, so the non-equilibration guard runs and excludes nothing.
+
+    Every M05 report the pipeline has ever written carries these two arrays, and
+    ``check_m05`` refuses to grade one that does not, so the toy fixtures carry
+    them too.
+    """
+    n = len(T)
+    return [0.95 - 0.9 * i / (n - 1) for i in range(n)], [0.001] * n
+
+
 def _m05_report(peak_at=TC_TRI):
     """A toy triangular-Ising report whose χ peaks at temperature ``peak_at``."""
     T = [round(3.3 + 0.03 * i, 3) for i in range(25)]           # 3.3 … 4.02
     chi = [1.0 / (abs(t - peak_at) + 0.02) for t in T]          # sharp peak at peak_at
-    return {"experiment": "M05-triangular", "T": T, "chi": chi}
+    mag, err = _equilibrated_guard(T)
+    return {"experiment": "M05-triangular", "T": T, "chi": chi,
+            "abs_mag": mag, "abs_mag_err": err}
 
 
 def test_m05_passes_near_tc():
@@ -288,7 +302,9 @@ def _m05_hex_report(peak_at=TC_HEX):
     """A toy honeycomb-Ising report whose χ peaks at temperature ``peak_at``."""
     T = [round(1.35 + 0.0146 * i, 4) for i in range(25)]        # 1.35 … 1.70
     chi = [1.0 / (abs(t - peak_at) + 0.01) for t in T]          # sharp peak at peak_at
-    return {"experiment": "M05-hexagonal", "T": T, "chi": chi}
+    mag, err = _equilibrated_guard(T)
+    return {"experiment": "M05-hexagonal", "T": T, "chi": chi,
+            "abs_mag": mag, "abs_mag_err": err}
 
 
 def test_m05_hex_passes_near_its_own_tc():
@@ -1345,9 +1361,56 @@ def test_m05_guard_is_inert_on_a_clean_sweep():
     assert "excluded" not in detail
 
 
-def test_m05_guard_leaves_legacy_reports_without_magnetization_arrays_alone():
-    """The 2026-06-24 triangular receipt carries (T, χ) but the guard reads
-    abs_mag/abs_mag_err; a legacy report missing them must still grade, not fail."""
-    ok, detail = check_m05(_m05_report(TC_TRI))
-    assert ok is True
-    assert "excluded" not in detail
+def test_m05_fails_closed_when_the_guard_arrays_are_absent_entirely():
+    """The gap a hand-written M05 report could walk through.
+
+    ``nonequilibrated_indices`` answers ``[]`` — no exclusions — for a report with
+    no magnetization arrays at all, which is the right tolerance for M01-era
+    legacy dumps but is not a scan. Reaching check_m05 with them missing used to
+    return ``(True, "…χ peak at…")``: a clean pass on a guard that never ran.
+    """
+    for report in (_m05_hex_report(TC_HEX), _m05_report(TC_TRI)):
+        bare = {k: v for k, v in report.items()
+                if k not in ("abs_mag", "abs_mag_err")}
+        ok, detail = check_m05(bare)
+        assert ok is False, detail
+        assert "no equilibration guard arrays" in detail
+        assert "no T_c is claimed" in detail
+
+
+def test_m05_absence_disclosure_names_the_missing_fields_and_the_lattice():
+    bare = {k: v for k, v in _m05_hex_report(TC_HEX).items()
+            if k not in ("abs_mag", "abs_mag_err")}
+    _, detail = check_m05(bare)
+    assert "abs_mag" in detail and "abs_mag_err" in detail
+    assert "honeycomb" in detail
+
+
+def test_every_committed_m05_report_carries_the_guard_arrays():
+    """Why absence can be a hard failure here: no M05 report is legacy.
+
+    ``m05.to_report``/``to_report_hex`` have emitted both arrays since the first
+    triangular run of 2026-06-24, so within M05 a missing guard array means a
+    report the pipeline did not write — never an older honest one.
+    """
+    receipts = sorted((checks.REPORTS_DIR / "receipts").glob("run-*-m05.json"))
+    assert receipts, "no committed M05 receipts to check"
+    for path in receipts:
+        report = json.loads(path.read_text(encoding="utf-8"))
+        assert isinstance(report.get("abs_mag"), list), path.name
+        assert isinstance(report.get("abs_mag_err"), list), path.name
+        assert check_m05(report)[0] is True, path.name
+
+
+def test_m01_still_tolerates_legacy_reports_without_magnetization_arrays():
+    """The legacy tolerance belongs to check_m01 and must survive untouched.
+
+    M05's stricter rule is scoped to check_m05; the shared helper keeps answering
+    "no exclusions" for the pre-uncertainty-array dumps check_m01 grades.
+    """
+    legacy = _ising_report(round(ONSAGER_TC, 1))
+    assert "abs_mag" not in legacy and "abs_mag_err" not in legacy
+    ok, detail = check_m01(legacy)
+    assert ok is True, detail
+    from lab.m01_quality import nonequilibrated_indices
+    assert nonequilibrated_indices(legacy) == []
