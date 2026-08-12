@@ -46,16 +46,48 @@ had no card at all. It gets one here.
 
 ## 2. What is NOT in this pass (and why)
 
-Salvage §6b's "five pots in a row on the hero sill" is **not** built. That
-version requires retiring the conservatory's figure row in the same change,
-which collides head-on with the frozen `drawGarden` literal tests and with
-`test_a_garden_card_draws_its_whole_ladder_not_only_the_measured_rungs`. The
-sill stays **one plant, one pot** — the windowsill's oldest rule — but the hero
-pot is now *the open track's pot*, so the vessel under the hero plant changes as
-the rotation moves between sciences. The row of pots lives in the conservatory,
-where six cards already exist and already carry the reading matter. Also unbuilt:
-the og PNG re-render (the hero still truthfully shows one plant in one pot) and
-any per-machine pot (a machine grows nothing; it waters).
+**Amended mid-run, 2026-08-11.** Ben, while this was being built:
+
+> "I want to see all of the pots out at once. Not one at a time."
+
+So the sill *is* a garden. Every track gets a pot and a plant on the windowsill,
+visible on load — no carousel, no tabs, no featured-one-with-the-rest-hidden, no
+click-to-reveal as the mechanism for seeing a pot. This is salvage §6b's shelf,
+built:
+
+- **Layout.** Read left to right, the shelf is in curriculum order, with
+  whichever experiment is OPEN standing full-size at the centre. That centre
+  specimen is the existing `#plant` group, so it keeps the whole organ grammar,
+  the growth theater, the bud, and every per-leaf field note. The others are
+  placed either side at one shared scale — a sill whose left-hand pots are
+  bigger than its right-hand ones reads as perspective, which is a claim about
+  distance nobody made.
+- **Geometry.** Every specimen is built in the canonical frame (root x=400, soil
+  y=344, foot y=470) and placed with ONE attribute transform:
+  `translate(cx − 400s, 470 − 470s) scale(s)`. So a flank is the same geometry
+  as the centre, smaller, and every foot lands on the same board.
+- **Flank plants** are drawn by `sillPlant()` — stem, one branch+leaf per closed
+  milestone in its status colour, the unreached rungs dashed from the REAL tip
+  up the shared height envelope (never a second build at full height, which
+  re-parameterizes the form into a different, diverging plant).
+- **One wind.** Every specimen rides the same 47s `sway` timeline, offset only by
+  `--lag` = how far down the sill it stands, so a gust crosses the whole shelf.
+  The placement transform is an attribute on the outer group and the animation is
+  a class on an inner one, because a CSS transform overrides the attribute. A pot
+  never sways; only the green thing above it does.
+- **Enrichment on top.** Each flank is a focusable button that opens that track's
+  latest field note. That is enrichment — it is never how a pot becomes visible.
+- **Narrow viewports.** The scene is one SVG, so the whole shelf scales down
+  together and all six stay on screen at 390px. It never degrades to one at a
+  time.
+- **Locked by test:** `test_the_sill_shows_every_track_at_once` and
+  `test_the_shelf_rides_one_wind_and_the_clay_never_sways`.
+
+Still not in this pass: the og PNG re-render (the social card still shows one
+plant in one pot — true of the page until this lands), retiring the conservatory
+figure row (it collides with the frozen `drawGarden` literal tests and the
+2026-08-06 whole-ladder guard), and any per-machine pot — a machine grows
+nothing; it waters.
 
 ## 3. Architecture
 

@@ -209,3 +209,148 @@ def test_the_design_addendum_ships_with_the_layer():
     for mark in ("glaze line", "tally scratches", "rim chips", "repair seams",
                  "damp ring", "matte top band", "patina", "bare pot"):
         assert mark in text, f"{mark!r} has no row in the data -> pot mapping"
+
+
+def test_the_sill_shows_every_track_at_once():
+    """Ben, 2026-08-11 (mid-run steering): "I want to see all of the pots out at
+    once. Not one at a time."
+
+    The hard criterion, made mechanical: every track in the feed's taxonomy gets
+    a pot AND a plant on the sill on load. The mechanism for seeing a pot may
+    never be a tap — no carousel, no tabs, no featured-one-with-the-rest-hidden.
+    Tap enrichment on top is welcome, and is what the click handler is for.
+    """
+    html = _page()
+    from lab import publish
+
+    # one painter, driven by the track list, called from the render path
+    assert 'id="sill-garden"' in html
+    assert "function drawSillGarden(milestones, reports, state, openTrack)" in html
+    assert "var shelf = drawSillGarden(milestones, state.reports, state, heroTrack);" in html
+    # every non-centre track is placed by iterating the SPEC list, not a subset
+    assert "GARDEN_SPECS.slice(0, at)" in html
+    assert "GARDEN_SPECS.slice(at + 1)" in html
+    # ...and the centre one is the full-size #plant, so the union is every track
+    shelf = html.split("function drawSillGarden(", 1)[1].split("\n    }", 1)[0]
+    assert "host.appendChild(outer)" in shelf
+    assert len(publish.TRACKS) == len(
+        html.split("var GARDEN_SPECS = [", 1)[1].split("];", 1)[0].split("{ track:")
+    ) - 1
+
+    # the readout names how many pots are actually on the sill, so a regression
+    # to one-at-a-time is visible to the harness and not only to an eye
+    assert "pots_visible: shelf.length + 1" in html
+
+    # nothing is gated behind a reveal
+    for gate in ("carousel", "data-slide", 'hidden = true;  // pot', "click-to-reveal"):
+        assert gate not in shelf, f"a pot was put behind {gate!r}"
+    # the click handler exists, but as ENRICHMENT: it opens a field note, it is
+    # not how a pot becomes visible
+    assert "openFieldNote(built.focus, outer)" in shelf
+
+
+def test_the_shelf_rides_one_wind_and_the_clay_never_sways():
+    """One wind: every specimen shares the 47s `sway` timeline, offset only by
+    how far down the sill it stands. And the animation sits on an INNER group,
+    because a CSS transform would otherwise clobber the placement attribute."""
+    html = _page()
+    shelf_css = html.split("/* The shelf rides the SAME wind", 1)[1].split("/* ── The pots", 1)[0]
+    assert "animation: sway 47s ease-in-out infinite" in shelf_css
+    assert "animation-delay: calc(var(--lag, 0) * -1s)" in shelf_css
+    # exactly one keyframe name is used by the shelf — no second wind
+    assert shelf_css.count("animation:") + shelf_css.count("animation-play-state") == 2
+
+    shelf = html.split("function drawSillGarden(", 1)[1].split("\n    }", 1)[0]
+    # placement is an attribute on the outer g; the wind is a class on an inner g
+    assert "outer.setAttribute('transform', 'translate(" in shelf
+    assert "wind.setAttribute('class', 'sill-wind')" in shelf
+    # the pot is painted into the OUTER group — clay does not sway
+    assert "paintPot(outer, spec.track," in shelf
+    assert "paintPot(wind" not in shelf
+    # reduced motion kills it with everything else
+    assert ".sill-wind { animation: none; }" in html or "#bud-tip .breath, .sill-wind { animation: none; }" in html
+
+
+# ── "All of the pots out at once" ─────────────────────────────────────────────
+# Ben, 2026-08-11, mid-build: "I want to see all of the pots out at once. Not one
+# at a time." This block is the hard acceptance criterion, written as a guard so
+# a later refactor cannot quietly walk it back into a carousel.
+
+
+def test_every_track_has_a_pot_on_the_sill_at_once():
+    """The sill is a shelf, not a slideshow.
+
+    Every track in publish.TRACKS gets a pot and a plant in the ONE scene, on
+    load: the open experiment stands full-size at the centre (the #plant group,
+    carrying the whole organ grammar) and `drawSillGarden` places every other
+    track beside it. No track is reachable only by clicking.
+    """
+    html = _page()
+    from lab import publish
+
+    # the shelf host lives inside the scene svg, above the centre plant
+    scene = html.split('<div class="scene" id="scene">', 1)[1].split("</svg>", 1)[0]
+    assert '<g id="sill-garden"></g>' in scene, "no shelf group in the scene"
+    assert '<g id="pot-vessel"></g>' in scene, "no centre pot in the scene"
+
+    # it is painted from render(), on the same pass as the centre plant — not
+    # from a click handler, a hash change, or an IntersectionObserver
+    render_block = html.split("function render(state)", 1)[1].split("function wetFromRun", 1)[0]
+    assert "drawSillGarden(milestones, state.reports, state, heroTrack)" in render_block
+    assert "paintPot($('pot-vessel'), heroTrack" in render_block
+
+    # and it walks the whole taxonomy, skipping only the track already standing
+    # at the centre — so centre + shelf == every track, always
+    shelf = html.split("function drawSillGarden(", 1)[1].split("\n    }", 1)[0]
+    assert "GARDEN_SPECS.forEach" in shelf or "GARDEN_SPECS.filter" in shelf
+    assert "sp.track !== openTrack" in shelf, "the shelf must cover every non-centre track"
+    assert "paintPot(outer, spec.track," in shelf, "a shelf slot without its own pot"
+    specs = html.split("var GARDEN_SPECS = [", 1)[1].split("];", 1)[0]
+    for track in publish.TRACKS.values():
+        assert f"track:'{track}'" in specs, f"track {track!r} can never reach the sill"
+
+
+def test_NEGATIVE_no_pot_is_hidden_behind_an_interaction():
+    """A carousel, a tab strip, or a collapsed default state would satisfy every
+    other assertion here and still break the ask. So: nothing in the shelf may
+    hide a slot, and tapping is enrichment on top of an always-visible shelf."""
+    html = _page()
+    shelf = html.split("function drawSillGarden(", 1)[1].split("\n    }", 1)[0]
+    shelf += html.split("function sillPlant(", 1)[1].split("\n    }", 1)[0]
+    for gate in ("hidden", "display:none", "display: none", "aria-expanded",
+                 "carousel", "scrollIntoView", "activeSlide", "aria-selected"):
+        assert gate not in shelf, f"a pot is gated behind {gate!r}"
+    # the click handler opens a field note; it never creates or reveals the slot
+    assert "outer.addEventListener('click'" in shelf
+    assert "openFieldNote(built.focus, outer)" in shelf
+    host_clear = "host.textContent = '';"
+    assert host_clear in shelf, "the shelf must be rebuilt wholesale, not toggled"
+
+
+def test_the_whole_shelf_rides_one_wind():
+    """All the plants animate at once, and that must not cost six clocks. Every
+    specimen rides the SAME 47s `sway` timeline as the centre plant, offset by a
+    negative delay (position lag) rather than a timer of its own."""
+    html = _page()
+    assert html.count("@keyframes sway") == 1, "a second wind appeared"
+    assert "animation: sway 47s ease-in-out infinite" in html          # the centre plant
+    assert ".sill-wind { transform-box:fill-box" in html
+    shelf_css = html.split(".sill-wind {", 1)[1].split("}", 1)[0]
+    assert "animation: sway 47s ease-in-out infinite" in shelf_css
+    assert "animation-delay: calc(var(--lag, 0) * -1s)" in shelf_css
+    # no per-plant JS clock anywhere in the shelf
+    shelf = html.split("function drawSillGarden(", 1)[1].split("\n    }", 1)[0]
+    for timer in ("setInterval", "setTimeout", "requestAnimationFrame"):
+        assert timer not in shelf, f"the shelf started its own {timer} clock"
+    # ...and reduced motion stops the whole shelf with everything else
+    reduce_block = html.split("@media (prefers-reduced-motion: reduce)", 1)[1].split("}\n", 1)[0]
+    assert ".sill-wind" in html.split("@media (prefers-reduced-motion: reduce)", 1)[1][:2000]
+
+
+def test_the_harness_can_count_the_pots_that_are_out():
+    """`render_game_to_text()` reports how many pots are standing, so a browser
+    pass (and a future regression) can assert the number instead of eyeballing."""
+    html = _page()
+    assert "pots_visible: shelf.length + 1" in html
+    assert "centre: heroTrack" in html
+    assert "shelf: shelf" in html

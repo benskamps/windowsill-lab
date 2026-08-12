@@ -329,6 +329,27 @@
     body[data-phase="dusk"] #scene[data-sunlow] .blade-glow { opacity:0.4; }
     body[data-phase="dawn"] .dew { opacity:0.6; }
 
+    /* The shelf rides the SAME wind as the centre plant — one gust timeline,
+       one amplitude, lagged by how far down the sill a specimen stands. The
+       attribute transform (place + scale) lives on the outer g and the CSS
+       animation on the inner one, because a CSS transform overrides the
+       attribute. A pot never sways; only the green thing above it does. */
+    .sill-wind { transform-box:fill-box; transform-origin:50% 100%;
+                 animation: sway 47s ease-in-out infinite;
+                 animation-delay: calc(var(--lag, 0) * -1s); }
+    .scene:hover .sill-wind, .scene:focus-within .sill-wind { animation-play-state:paused; }
+    .sill-specimen { cursor:pointer; }
+    .sill-specimen:focus-visible { outline:2px solid var(--leaf); outline-offset:2px; }
+    .sill-stem { fill:none; stroke:#5f8f4c; stroke-width:5; stroke-linecap:round; }
+    .sill-branch { fill:none; stroke:#6f9c58; stroke-width:3.2; stroke-linecap:round; }
+    .sill-branch.review { stroke:#d2aa67; }
+    .sill-branch.null { stroke:#8a8f82; }
+    .sill-leaf { fill:#7fae6b; }
+    .sill-leaf.review { fill:#d2aa67; }
+    .sill-leaf.null { fill:#8a8f82; opacity:0.78; }
+    .sill-leaf.unreached { fill:none; stroke:#6b7566; stroke-width:2; stroke-dasharray:4 5; opacity:0.4; }
+    .sill-stem.unreached { stroke:#6b7566; stroke-width:3; stroke-dasharray:5 7; opacity:0.32; }
+    .sill-tip { fill:#8fbe77; }
     /* ── The pots ─────────────────────────────────────────────────────────────
        A pot is clay on a board: it never sways, never breathes, and adds no
        animation lane. What it does is catch the light the scene already has.
@@ -809,7 +830,7 @@
       body { transition: none; }
       #plant, .dust, .star, .clouds, .leaf, .firefly, #bud-halo, .meteor { animation: none; }
       #plant { rotate: none; transition: none; }
-      .leaf .wind, #bud, #bud-tip .breath { animation: none; }
+      .leaf .wind, #bud, #bud-tip .breath, .sill-wind { animation: none; }
       .dust { opacity: 0.22; }
       /* Still scenes keep their inhabitants: fireflies rest visible at dusk and
          night instead of vanishing, and the tip's light holds steady. */
@@ -853,7 +874,7 @@
     <div class="scene" id="scene">
       <!-- role=group, not img: an img role makes every SVG child presentational,
            which would strip the leaf/bud button semantics wired on render. -->
-      <svg viewBox="0 0 800 560" role="group" aria-label="A single seedling in a clay pot on a sunlit windowsill">
+      <svg viewBox="0 0 800 560" role="group" aria-label="A row of small clay pots on a sunlit windowsill, one for each science, with the experiment that is open right now standing full-size at the centre">
         <defs>
           <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="1">
             <stop class="sky-stop" offset="0"    stop-color="var(--sky-top)"/>
@@ -999,6 +1020,15 @@
           <ellipse cx="612" cy="486" rx="7.5" ry="3.6" stroke-width="0.9"/>
           <ellipse cx="612" cy="486" rx="3" ry="1.5" stroke-width="0.8"/>
         </g>
+
+        <!-- ── the rest of the shelf ──
+             Every OTHER track's pot and plant, out at the same time. The sill
+             reads left-to-right in curriculum order with the experiment that is
+             open right now standing full-size at the centre. Nothing here is
+             behind a tap: the whole garden is visible on load, and every
+             specimen rides the SAME 47s wind as the centre plant, lagged by its
+             distance down the shelf. -->
+        <g id="sill-garden"></g>
 
         <!-- ── the pot ──
              One vessel per track. The SILHOUETTE says which science this is
@@ -2431,6 +2461,161 @@
         if (m && isClosed(m) && m.track) return m.track;
       }
       return PT.DEFAULT_TRACK;
+    }
+
+    // ── The shelf: every track's pot and plant, out at once ──────────────────
+    // Ben, 2026-08-11: "I want to see all of the pots out at once. Not one at a
+    // time." So the sill is a garden, not a single specimen. Every track in the
+    // feed gets a pot and a plant on load — no carousel, no tabs, no
+    // click-to-reveal. Read left to right the shelf is in curriculum order,
+    // with whichever experiment is OPEN standing full-size at the centre (that
+    // one is the #plant group, carrying the whole organ grammar and every field
+    // note). Prominence is scale and soil, never concealment.
+    //
+    // Everything is built in the canonical frame (root x=400, soil y=344, foot
+    // y=470) and placed with ONE attribute transform, so a flank specimen is the
+    // same geometry as the centre one, smaller — and its foot lands on the same
+    // board:  translate(cx - 400s, 470 - 470s) scale(s)
+    var SILL_LEFT = [58, 318], SILL_RIGHT = [482, 742];
+
+    function sillPlant(spec, milestones, into) {
+      var track = (milestones || []).filter(function (m) { return m && m.track === spec.track; });
+      var closed = track.filter(isClosed);
+      var open = track.find(function (m) { return m.status === 'open'; }) || null;
+      var total = track.length || spec.expected;
+      var progress = open && Number.isFinite(Number(open.progress)) ? Number(open.progress) : (open ? 0.32 : 0.16);
+      var env = { count:closed.length, total:total, openProg:progress, base:344, rise:154 };
+      var geo = GF.build(spec.form, env);
+      var stem = document.createElementNS(SVGNS, 'path');
+      stem.setAttribute('class', 'sill-stem');
+      stem.setAttribute('d', geo.stem);
+      into.appendChild(stem);
+      geo.nodes.forEach(function (node, i) {
+        var milestone = closed[i] || {};
+        var lx = node.x + node.dir * 16, ly = node.y - 8;
+        var bx = spec.form === 'succulent' ? geo.tip.x : node.x;
+        var branch = document.createElementNS(SVGNS, 'path');
+        branch.setAttribute('class', 'sill-branch ' + (milestone.status || 'verified'));
+        branch.setAttribute('d', 'M ' + bx.toFixed(1) + ' ' + node.y.toFixed(1) +
+          ' L ' + lx.toFixed(1) + ' ' + ly.toFixed(1));
+        into.appendChild(branch);
+        var leaf = document.createElementNS(SVGNS, 'ellipse');
+        leaf.setAttribute('class', 'sill-leaf ' + (milestone.status || 'verified'));
+        leaf.setAttribute('cx', lx.toFixed(1)); leaf.setAttribute('cy', ly.toFixed(1));
+        leaf.setAttribute('rx', spec.form === 'fern' ? '15' : '17');
+        leaf.setAttribute('ry', spec.form === 'succulent' ? '11' : '7');
+        leaf.setAttribute('transform', 'rotate(' + (node.dir < 0 ? -24 : 24) + ' ' +
+          lx.toFixed(1) + ' ' + ly.toFixed(1) + ')');
+        into.appendChild(leaf);
+      });
+      // The rest of the ladder, sketched from the REAL tip up the shared height
+      // envelope — never a second build at full height, which re-parameterizes
+      // the form and renders as a different, diverging plant.
+      var reached = closed.length + (open ? 1 : 0);
+      if (GF._nodeY && total > reached) {
+        var topY = GF._nodeY(env, total - 1);
+        var ghost = document.createElementNS(SVGNS, 'path');
+        ghost.setAttribute('class', 'sill-stem unreached');
+        ghost.setAttribute('d', 'M ' + geo.tip.x.toFixed(1) + ' ' + geo.tip.y.toFixed(1) +
+          ' L ' + geo.tip.x.toFixed(1) + ' ' + topY.toFixed(1));
+        into.appendChild(ghost);
+        for (var g = reached; g < total; g++) {
+          var gy = GF._nodeY(env, g), gdir = (g % 2) ? 1 : -1;
+          var gleaf = document.createElementNS(SVGNS, 'ellipse');
+          gleaf.setAttribute('class', 'sill-leaf unreached');
+          gleaf.setAttribute('cx', (geo.tip.x + gdir * 16).toFixed(1));
+          gleaf.setAttribute('cy', (gy - 8).toFixed(1));
+          gleaf.setAttribute('rx', '13'); gleaf.setAttribute('ry', '6');
+          into.appendChild(gleaf);
+        }
+      }
+      var tip = document.createElementNS(SVGNS, 'circle');
+      tip.setAttribute('class', 'sill-tip');
+      tip.setAttribute('cx', geo.tip.x.toFixed(1)); tip.setAttribute('cy', geo.tip.y.toFixed(1));
+      tip.setAttribute('r', open ? '7' : '5');
+      into.appendChild(tip);
+      return { closed:closed, open:open, total:total, focus:open || closed[closed.length - 1] || null };
+    }
+
+    function drawSillGarden(milestones, reports, state, openTrack) {
+      var host = $('sill-garden');
+      if (!host || !PT) return [];
+      host.textContent = '';
+      var at = -1;
+      GARDEN_SPECS.forEach(function (sp, i) { if (sp.track === openTrack) at = i; });
+      var rest = GARDEN_SPECS.filter(function (sp) { return sp.track !== openTrack; });
+      var lefts = at < 0 ? rest.slice(0, Math.ceil(rest.length / 2)) : GARDEN_SPECS.slice(0, at);
+      var rights = at < 0 ? rest.slice(Math.ceil(rest.length / 2)) : GARDEN_SPECS.slice(at + 1);
+      var placed = [];
+
+      // ONE scale for the whole shelf, set by the busier side, and each side's
+      // row centred in its own half. A sill where the left-hand pots are bigger
+      // than the right-hand ones reads as perspective — a claim about distance
+      // nobody made. Same clay, same size, one board.
+      var busiest = Math.max(lefts.length, rights.length) || 1;
+      var slotW = (SILL_LEFT[1] - SILL_LEFT[0]) / busiest;
+      var SCALE = Math.min(34, slotW / 2 - 6) / 70;
+
+      [[lefts, SILL_LEFT], [rights, SILL_RIGHT]].forEach(function (side) {
+        var list = side[0], region = side[1];
+        if (!list.length) return;
+        var scale = SCALE;
+        var mid = (region[0] + region[1]) / 2;
+        var start = mid - slotW * (list.length - 1) / 2;
+        list.forEach(function (spec, i) {
+          var cx = start + slotW * i;
+          var outer = document.createElementNS(SVGNS, 'g');
+          outer.setAttribute('class', 'sill-specimen');
+          outer.setAttribute('data-track', spec.track);
+          outer.setAttribute('transform', 'translate(' + (cx - 400 * scale).toFixed(2) + ' ' +
+            (470 - 470 * scale).toFixed(2) + ') scale(' + scale.toFixed(4) + ')');
+
+          var shadow = document.createElementNS(SVGNS, 'ellipse');
+          shadow.setAttribute('cx', '402'); shadow.setAttribute('cy', '471');
+          shadow.setAttribute('rx', '80'); shadow.setAttribute('ry', '12');
+          shadow.setAttribute('fill', '#000'); shadow.setAttribute('opacity', '0.34');
+          shadow.setAttribute('filter', 'url(#soft)');
+          outer.appendChild(shadow);
+
+          paintPot(outer, spec.track, potMarksFor(spec.track, milestones, reports, state),
+                   { mouth:70, depth:126 }, 400, 344);
+          var mouthEl = document.createElementNS(SVGNS, 'ellipse');
+          mouthEl.setAttribute('cx', '400'); mouthEl.setAttribute('cy', '344');
+          mouthEl.setAttribute('rx', '62'); mouthEl.setAttribute('ry', '9');
+          mouthEl.setAttribute('fill', 'var(--soil, #4a3525)');
+          outer.appendChild(mouthEl);
+
+          // One wind: the same 47s gust timeline the centre plant rides, lagged
+          // by how far down the sill this specimen stands. Only the green thing
+          // sways — the clay stands still, as clay does.
+          var wind = document.createElementNS(SVGNS, 'g');
+          wind.setAttribute('class', 'sill-wind');
+          wind.style.setProperty('--lag', (Math.abs(cx - 400) / 400 * 1.4).toFixed(2));
+          var built = sillPlant(spec, milestones, wind);
+          outer.appendChild(wind);
+
+          var status = gardenStatus(built.closed[built.closed.length - 1] || null, built.open);
+          outer.setAttribute('tabindex', '0');
+          outer.setAttribute('role', 'button');
+          outer.setAttribute('aria-label', spec.label + ': ' + built.closed.length + ' of ' +
+            built.total + ' measured, ' + status.label +
+            (built.focus ? '. Open ' + built.focus.id + ' field note.' : '.'));
+          var title = document.createElementNS(SVGNS, 'title');
+          title.textContent = spec.label + ' — ' + built.closed.length + '/' + built.total + ' measured';
+          outer.appendChild(title);
+          if (built.focus) {
+            outer.addEventListener('click', function () { openFieldNote(built.focus, outer); });
+            outer.addEventListener('keydown', function (e) {
+              if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
+                e.preventDefault(); openFieldNote(built.focus, outer);
+              }
+            });
+          }
+          host.appendChild(outer);
+          placed.push(spec.track);
+        });
+      });
+      return placed;
     }
 
     // ── Growth theater ──────────────────────────────────────────────────────
@@ -3978,6 +4163,9 @@
       var heroTrack = pageTrack(milestones);
       var heroMarks = potMarksFor(heroTrack, milestones, state.reports, state);
       paintPot($('pot-vessel'), heroTrack, heroMarks, { mouth:70, depth:126 }, 400, 344);
+      // ...and the rest of the shelf beside it — every other track's pot and
+      // plant, visible on load, no tap required.
+      var shelf = drawSillGarden(milestones, state.reports, state, heroTrack);
       drawStalk(milestones, total, season,
         !state.empty && Array.isArray(state.milestones) && state.milestones.length > 0);
       applyMoisture(moisture);
@@ -4076,6 +4264,11 @@
         runs: state.runs == null ? null : state.runs,
         selected_field_note: _selectedMilestone,
         garden: garden,
+        sill: {
+          centre: heroTrack,
+          shelf: shelf,
+          pots_visible: shelf.length + 1
+        },
         pot: {
           track: heroTrack,
           glaze: Number(heroMarks.glaze.toFixed(3)),
