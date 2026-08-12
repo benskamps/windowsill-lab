@@ -37,14 +37,31 @@ NO_RUNNER_ID = "M99"
 assert NO_RUNNER_ID not in curriculum.RUNNERS, (
     f"{NO_RUNNER_ID} gained a runner — pick another unregistered id here")
 
+#: The turn stamp fixtures wear by default — any four digits; the value is
+#: arbitrary, the SHAPE is the point (see ``_rotation_receipts``).
+DEFAULT_TURN = "2336"
 
-def _rotation_receipts(tmp_path, *entries):
-    """Write a fixture receipts dir: entries are (filename_date, slug, stamp|None)."""
+
+def _rotation_receipts(tmp_path, *entries, turn=DEFAULT_TURN):
+    """Write a fixture receipts dir in the shape production actually emits.
+
+    Entries are ``(filename_date, slug, stamp|None)``; a 4-tuple appends a
+    per-entry turn stamp that overrides ``turn``. Since PR #79 (2026-08-02)
+    ``render._commit_report`` writes ``run-<date>-<hhmm>-<slug>.json``, so the
+    turn-stamped name is the DEFAULT here — fixtures in the legacy bare shape
+    are why nine days of rotation livelock stayed green in CI. Pass
+    ``turn=None`` (or a 4-tuple ending in ``None``) for the legacy
+    ``run-<date>-<slug>.json`` name, which still sits on disk for every receipt
+    written before 8/02 and must keep parsing forever.
+    """
     receipts = tmp_path / "receipts"
     receipts.mkdir(exist_ok=True)
-    for date, slug, stamp in entries:
+    for entry in entries:
+        date, slug, stamp = entry[:3]
+        entry_turn = entry[3] if len(entry) > 3 else turn
+        stem = f"{date}-{entry_turn}-{slug}" if entry_turn else f"{date}-{slug}"
         body = json.dumps({"generated_at": stamp}) if stamp else "{corrupt"
-        (receipts / f"run-{date}-{slug}.json").write_text(body, encoding="utf-8")
+        (receipts / f"run-{stem}.json").write_text(body, encoding="utf-8")
     return receipts
 
 
@@ -444,6 +461,66 @@ def test_receipt_records_stamp_beats_newer_filename_date(tmp_path, monkeypatch):
     records = cli._receipt_records()
     assert ("2026-07-30", "M01") in records
     assert curriculum.rotation_pointer(records) == "M13"
+
+
+def test_receipt_records_reads_the_turn_stamped_name_production_emits(
+        tmp_path, monkeypatch):
+    """THE LIVELOCK REGRESSION (8/02–8/11, 43 consecutive M02 passes).
+
+    ``render._commit_report`` has written ``run-<date>-<hhmm>-<slug>.json``
+    since PR #79. The reader sliced ``stem[15:]`` for the slug, so it read
+    ``2336-M02`` — a milestone id that is in no ROTATION, so every stamped
+    receipt was invisible to the pointer and the walk restarted from the last
+    LEGACY-named receipt forever. The slug must come from the repo's own
+    ``publish._split_receipt_stem``, so the reader and the writer can never
+    disagree about a filename again."""
+    from lab import publish as publish_mod
+    receipts = _rotation_receipts(
+        tmp_path,
+        ("2026-08-11", "m02", "2026-08-11T23:36:00+00:00", "2336"),
+    )
+    monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", receipts)
+    records = cli._receipt_records()
+    assert records == [("2026-08-11T23:36:00+00:00", "M02")]
+    assert curriculum.rotation_pointer(records) == "M02"
+
+
+def test_receipt_records_reads_legacy_and_stamped_names_together(
+        tmp_path, monkeypatch):
+    """Every receipt written before 8/02 keeps its bare name on disk forever
+    (``publish.ensure_public_receipts`` never renames), so both shapes have to
+    parse in one ledger — and the NEWER stamped one has to win the pointer."""
+    from lab import publish as publish_mod
+    receipts = _rotation_receipts(
+        tmp_path,
+        ("2026-08-01", "m01", "2026-08-01T09:00:00+00:00", None),   # legacy bare
+        ("2026-08-11", "m02", "2026-08-11T23:36:00+00:00"),         # turn-stamped
+    )
+    monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", receipts)
+    records = cli._receipt_records()
+    assert sorted(records) == [
+        ("2026-08-01T09:00:00+00:00", "M01"),
+        ("2026-08-11T23:36:00+00:00", "M02"),
+    ]
+    assert curriculum.rotation_pointer(records) == "M02"
+
+
+def test_next_dry_run_advances_past_a_turn_stamped_pointer(
+        monkeypatch, capsys, tmp_path):
+    """End-to-end shape of the livelock: with the newest receipt turn-stamped at
+    M02, `lab next` must pick M03. Under the bug it re-picked M02 every pass."""
+    from lab import publish as publish_mod
+    monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
+        {"id": NO_RUNNER_ID, "status": "open"},
+    ])
+    receipts = _rotation_receipts(
+        tmp_path, ("2026-08-11", "m02", "2026-08-11T23:36:00+00:00", "2336"),
+    )
+    monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", receipts)
+    rc = cli.main(["next", "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "would run `lab m03`" in out
 
 
 def test_next_dry_run_with_no_receipts_starts_rotation_at_the_pulse(

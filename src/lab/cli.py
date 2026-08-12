@@ -180,6 +180,14 @@ def _receipt_records() -> list[tuple[str, str]]:
     the receipt's ``generated_at``; an unreadable or unstamped receipt degrades
     to its filename date (the ``publish.run_cadence`` discipline) — committed
     content either way, so every clone derives the identical pointer.
+
+    The filename is split by ``publish._split_receipt_stem``, the same parser
+    the WRITER uses, so the two can never disagree about a name again. They did
+    for nine days: PR #79 (2026-08-02) turn-stamped receipts to
+    ``run-<date>-<hhmm>-<slug>.json`` and this reader still hardcoded the legacy
+    offsets, so it read the slug as ``2336-M02`` — in no rotation, therefore
+    skipped — and the pointer fell back to the last legacy-named receipt
+    forever. ``lab next`` picked the same slot 43 passes running.
     """
     from . import publish as publish_mod
     records: list[tuple[str, str]] = []
@@ -188,8 +196,8 @@ def _receipt_records() -> list[tuple[str, str]]:
         return records
     date_glob = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
     for path in sorted(receipts_dir.glob(f"run-{date_glob}-*.json")):
-        date = path.stem[4:14]
-        slug = path.stem[15:]
+        date, _turn, slug = publish_mod._split_receipt_stem(
+            path.stem[len("run-"):])
         if not slug:
             continue
         try:
