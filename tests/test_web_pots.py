@@ -38,6 +38,37 @@ def _inlined_block() -> str:
     return inner[open_tag:close_tag].strip()
 
 
+def _reduced_motion_block(html: str) -> str:
+    """The body of ``@media (prefers-reduced-motion: reduce)``, brace-matched.
+
+    Splitting on the first ``}`` stops after one rule, which silently turns any
+    assertion over "the block" into an assertion over ``body { transition: none; }``.
+    """
+    at = html.index("@media (prefers-reduced-motion: reduce)")
+    start = html.index("{", at)
+    depth = 0
+    for i in range(start, len(html)):
+        if html[i] == "{":
+            depth += 1
+        elif html[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return html[start + 1:i]
+    raise AssertionError("unbalanced braces in the reduced-motion media query")
+
+
+def _rules(css: str):
+    """``[(selector, declarations)]`` for one flat level of CSS."""
+    return re.findall(r"([^{}]+)\{([^{}]*)\}", css)
+
+
+def _garden_specs(html: str):
+    """``GARDEN_SPECS`` as ``[(track, expected)]``, read from the page."""
+    block = html.split("var GARDEN_SPECS = [", 1)[1].split("];", 1)[0]
+    return [(m.group(1), int(m.group(2))) for m in
+            re.finditer(r"track:'([a-z]+)'.*?expected:\s*(\d+)", block, re.S)]
+
+
 def test_module_file_exists_and_is_nonempty():
     assert MODULE.exists(), "web/pots.js (the source of truth) is missing"
     assert MODULE.read_text(encoding="utf-8").strip(), "pots.js is empty"
@@ -342,9 +373,67 @@ def test_the_whole_shelf_rides_one_wind():
     shelf = html.split("function drawSillGarden(", 1)[1].split("\n    }", 1)[0]
     for timer in ("setInterval", "setTimeout", "requestAnimationFrame"):
         assert timer not in shelf, f"the shelf started its own {timer} clock"
-    # ...and reduced motion stops the whole shelf with everything else
-    reduce_block = html.split("@media (prefers-reduced-motion: reduce)", 1)[1].split("}\n", 1)[0]
-    assert ".sill-wind" in html.split("@media (prefers-reduced-motion: reduce)", 1)[1][:2000]
+    # ...and reduced motion stops the whole shelf with everything else.
+    # Brace-matched, because the media query holds many rules and splitting on
+    # the first "}\n" captures only the first one — which is how this assertion
+    # was previously passing without checking anything.
+    reduce_block = _reduced_motion_block(html)
+    killed = [rule for rule in _rules(reduce_block) if ".sill-wind" in rule[0]]
+    assert killed, "the shelf's wind lane is not named in the reduced-motion block"
+    for selector, body in killed:
+        assert re.search(r"animation\s*:\s*none", body), (
+            f"reduced motion leaves the shelf swaying: {selector.strip()} {{{body.strip()}}}"
+        )
+
+
+def test_the_shelf_holds_one_pot_per_track_and_the_heading_says_so():
+    """The durable all-pots proof, in the committed suite.
+
+    ``pots_visible`` is ``shelf.length + 1`` — every track but the hero's, plus
+    the hero — so the number of pots the page can put out is fixed by
+    ``GARDEN_SPECS``, and that is checkable without a DOM. The heading promises
+    "Six instruments" and the metas promise six tracks; before 2026-08-11 the
+    specs held five and coherence had no pot at all.
+    """
+    from lab import publish
+
+    html = _page()
+    tracks = [track for track, _ in _garden_specs(html)]
+    assert tracks, "GARDEN_SPECS did not parse"
+    assert sorted(tracks) == sorted(publish.TRACKS.values()), (
+        f"the shelf and the track taxonomy disagree: {sorted(tracks)} vs "
+        f"{sorted(publish.TRACKS.values())}"
+    )
+    assert len(tracks) == len(set(tracks)), "a track has two pots"
+    # centre + flanks == one pot per track, which is what the harness reports.
+    assert "pots_visible: shelf.length + 1" in html
+    # ...and the copy that promises the count agrees with the count.
+    assert f"{_NUMBER_WORD[len(tracks)]} instruments. One standard of proof." in html
+
+
+_NUMBER_WORD = {5: "Five", 6: "Six", 7: "Seven"}
+
+
+def test_the_fallback_counts_match_the_feed():
+    """``expected`` is the per-track total used when the feed is unreachable, so
+    an offline visitor sees the same shelf shape as an online one. Nothing
+    pinned it to reality: a milestone added to MILESTONES.md would move the live
+    total and leave the fallback quietly wrong."""
+    import json
+
+    html = _page()
+    feed = json.loads((ROOT / "pot.json").read_text(encoding="utf-8"))
+    totals = {}
+    for milestone in feed.get("milestones", []):
+        totals[milestone["track"]] = totals.get(milestone["track"], 0) + 1
+
+    drift = [(track, expected, totals.get(track))
+             for track, expected in _garden_specs(html)
+             if totals.get(track) is not None and totals[track] != expected]
+    assert not drift, (
+        "GARDEN_SPECS fallback counts have drifted from the feed "
+        f"(track, fallback, feed): {drift}"
+    )
 
 
 def test_the_harness_can_count_the_pots_that_are_out():
