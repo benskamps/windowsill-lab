@@ -61,7 +61,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Different-shaped grids",
         "question_plain": "If you rearrange the same tiny magnets onto a differently shaped grid, does the tipping point move to a new temperature but still follow the same deep rules?",
         "why_it_matters": "Showing that the shape of the grid changes the exact tipping temperature yet not the underlying behavior is a clean demonstration of one of physics' most beautiful ideas: that wildly different systems can obey the very same deep rules.",
-        "result_plain": "Yes — on a triangular grid the lab found the tipping point at about 3.675, close to its own exact answer of 3.641 and clearly different from the square grid's, while the deeper behavior stayed the same.",
+        "result_plain": "Yes — twice over. On a triangular grid, where each magnet touches six others, the lab found the tipping point at about 3.675, close to its own exact answer of 3.641. On a honeycomb grid, where each magnet touches only three, it found about 1.532 against an exact 1.519. Both are far from the square grid's 2.269, and they line up in exactly the order you'd guess: the fewer neighbors holding a magnet in line, the less heat it takes to break the order. Three shapes, three different tipping points, same deep behavior underneath.",
     },
     # ── Phase 2 — map known territory ────────────────────────────────────────
     "M06": {

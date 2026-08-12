@@ -222,6 +222,7 @@ Usage:
   lab m03             run M03: critical-exponent β via magnetization data-collapse
   lab m04             run M04: 2D Ising specific heat — the thermal cross-check of T_c
   lab m05             run M05: triangular-lattice 2D Ising — verify T_c = 4/ln3 ≈ 3.641
+  lab m05-hex         run M05: honeycomb-lattice 2D Ising — verify T_c = 2/ln(2+√3) ≈ 1.519
   lab m06             run M06: 3D simple-cubic Ising — verify T_c ≈ 4.5115 (Phase 2)
   lab m07             run M07: q-state Potts (q=3..6) — continuous→first-order transition
   lab m08             run M08: 2D XY model — BKT transition via the helicity-modulus jump
@@ -385,6 +386,27 @@ def _parse_m05(args):
                    help="L=48, short sweep for a fast sanity pass")
     p.add_argument("--t-min", type=float, default=3.3)
     p.add_argument("--t-max", type=float, default=4.0)
+    p.add_argument("--n-temps", type=int, default=25)
+    p.add_argument("--sweeps", type=int, default=40000)
+    p.add_argument("--burnin", type=int, default=8000)
+    p.add_argument("--device", default="cuda")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
+
+
+def _parse_m05_hex(args):
+    p = argparse.ArgumentParser(add_help=False)
+    # L must be EVEN for the honeycomb brick-wall (odd L breaks the parity rule's
+    # reciprocity at the row seam — see ising_hex.require_even_L). Unlike the
+    # triangular 3|L constraint this lets us use the square engine's own 128.
+    p.add_argument("--L", type=int, default=128,
+                   help="lattice side, must be even (default 128)")
+    p.add_argument("--quick", action="store_true",
+                   help="L=48, short sweep for a fast sanity pass")
+    # The window is the triangular run's, rescaled by T_c: it spanned 0.906–1.099
+    # of its own exact value, so this resolves the peak equally well (ΔT=0.0146).
+    p.add_argument("--t-min", type=float, default=1.35)
+    p.add_argument("--t-max", type=float, default=1.70)
     p.add_argument("--n-temps", type=int, default=25)
     p.add_argument("--sweeps", type=int, default=40000)
     p.add_argument("--burnin", type=int, default=8000)
@@ -1205,6 +1227,38 @@ def main(argv=None):
         )
         report = m05.to_report(result)
         print(f"  → χ-peak T_c = {result.tc_chi_refined:.3f}  (exact 4/ln3 = "
+              f"{result.tc_benchmark:.4f}, rel. err {result.rel_error*100:.1f}%)"
+              f"  ·  C cross-check {result.tc_cv_refined:.3f}  ·  {result.wall_seconds:.0f}s")
+        path = render_mod.render_m05(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            snap = publish_mod.publish(quiet=True)
+            print(f"  ✓ snapshot: {snap}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "m05-hex":
+        ns = _parse_m05_hex(args[1:])
+        from . import m05
+        from . import render as render_mod
+        L = 48 if ns.quick else ns.L
+        sweeps = 4000 if ns.quick else ns.sweeps
+        burnin = 1500 if ns.quick else ns.burnin
+        print(f"M05 honeycomb-lattice 2D Ising · L={L} · {ns.n_temps} temps in "
+              f"[{ns.t_min}, {ns.t_max}] · {sweeps:,} sweeps on {ns.device}")
+
+        def _progress_m05_hex(result):
+            print(f"  ✓ swept {len(result.T)} temps  ({result.wall_seconds:.1f}s)")
+
+        result = m05.run_m05_hex(
+            L=L, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
+            n_sweeps=sweeps, n_burnin=burnin, seed=ns.seed, device=ns.device,
+            progress=_progress_m05_hex,
+        )
+        report = m05.to_report_hex(result)
+        print(f"  → χ-peak T_c = {result.tc_chi_refined:.3f}  (exact 2/ln(2+√3) = "
               f"{result.tc_benchmark:.4f}, rel. err {result.rel_error*100:.1f}%)"
               f"  ·  C cross-check {result.tc_cv_refined:.3f}  ·  {result.wall_seconds:.0f}s")
         path = render_mod.render_m05(report)

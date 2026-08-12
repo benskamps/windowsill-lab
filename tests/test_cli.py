@@ -271,3 +271,40 @@ def test_setup_dry_run_never_claims_the_scheduler_was_installed(monkeypatch, cap
     out = capsys.readouterr().out
     assert "dry run complete — nothing was written or scheduled" in out
     assert "will now grow on its own" not in out
+
+
+# ── lab m05-hex — the honeycomb command ───────────────────────────────────────
+
+def test_parse_m05_hex_defaults_bracket_the_exact_honeycomb_tc():
+    """The default window must actually straddle T_c = 2/ln(2+√3) ≈ 1.5187, with
+    the peak comfortably interior — a parabola-refined peak on an endpoint would
+    silently degrade to the coarse argmax."""
+    import math
+
+    from lab.cli import _parse_m05_hex
+
+    ns = _parse_m05_hex([])
+    tc = 2.0 / math.log(2.0 + math.sqrt(3.0))
+    assert ns.t_min < tc < ns.t_max
+    # Interior by at least two grid steps on each side.
+    step = (ns.t_max - ns.t_min) / (ns.n_temps - 1)
+    assert tc - ns.t_min > 2 * step and ns.t_max - tc > 2 * step
+    assert ns.seed == 42                    # house determinism convention
+    assert ns.L == 128 and ns.L % 2 == 0    # even L, the honeycomb's only constraint
+
+
+def test_parse_m05_hex_window_is_not_the_triangular_one():
+    """The triangular default window [3.3, 4.0] contains no honeycomb physics at
+    all — a copy-paste of it would sweep 2.2× above T_c and find no peak."""
+    from lab.cli import _parse_m05, _parse_m05_hex
+
+    tri, hexa = _parse_m05([]), _parse_m05_hex([])
+    assert hexa.t_max < tri.t_min
+    assert hexa.L != tri.L      # 128 (even) vs 129 (multiple of 3)
+
+
+def test_m05_hex_is_advertised_in_the_help_text():
+    from lab.cli import HELP
+
+    assert "lab m05-hex" in HELP
+    assert "2/ln(2+" in HELP

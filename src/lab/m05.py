@@ -1,4 +1,4 @@
-"""M05 — triangular-lattice 2D Ising: verify the exact T_c = 4 / ln 3.
+"""M05 — non-square lattice geometries: verify the exact triangular AND honeycomb T_c.
 
 M01–M04 calibrated the lab on the **square** lattice (Onsager's exact
 T_c ≈ 2.2692). M05 changes the *geometry*, not the physics: the triangular
@@ -22,6 +22,30 @@ M06's, absorbs that shift).
 
 The analysis reuses m06's NumPy-only peak finders; ``run_m05`` drives the
 triangular sweep ``ising_tri.run``.
+
+### The second half — the honeycomb (added 2026-08-11)
+
+M05's entry always named two geometries and only ran one. ``run_m05_hex`` closes
+that: the **honeycomb** (hexagonal) lattice, the triangular lattice's dual, with
+only three neighbours per site and its own exact critical temperature
+
+    T_c = 2 / ln(2 + √3) ≈ 1.518651     (k_B = J = 1)
+
+Three lattices, three exact numbers, one universality class — ordered by
+coordination number, because fewer neighbours holding a spin in line means
+thermal noise wins sooner:
+
+    z = 3  honeycomb    T_c = 1.5187
+    z = 4  square       T_c = 2.2692   (M01/M04)
+    z = 6  triangular   T_c = 3.6410
+
+The honeycomb is **bipartite** (girth 6, no odd cycles), so unlike the triangular
+case it needs no 3-colouring — ``ising.py``'s plain red/black checkerboard is
+already exact. See ``ising_hex`` for the brick-wall embedding and its parity rule.
+
+**Grade honestly:** this is rung-0 verification — the instrument checking itself
+against an Onsager-class exact result on a lattice it had not touched. It is a
+*completion* of M05's documented open edge, never a discovery.
 """
 from __future__ import annotations
 from .hw import hw
@@ -33,7 +57,9 @@ from dataclasses import dataclass
 from .m06 import refine_peak, specific_heat_peak, susceptibility_peak
 
 # Exact triangular-lattice 2D Ising critical temperature (k_B = J = 1).
-TC_TRI = 4.0 / math.log(3.0)           # ≈ 3.640957
+TC_TRI = 4.0 / math.log(3.0)                        # ≈ 3.640957
+# Exact honeycomb-lattice 2D Ising critical temperature — the triangular dual.
+TC_HEX = 2.0 / math.log(2.0 + math.sqrt(3.0))       # ≈ 1.518651
 
 
 @dataclass
@@ -107,6 +133,11 @@ def run_m05(
         config={
             "L": L, "T_min": T_min, "T_max": T_max, "n_temps": n_temps,
             "n_sweeps": n_sweeps, "n_burnin": n_burnin, "seed": seed,
+            # ``device`` is load-bearing, not decoration: ``hw()`` labels a run CPU
+            # whenever the config omits it ("absence of evidence never claims the
+            # GPU"), so leaving it out makes a GPU run under-report itself on the
+            # public receipt. It is also part of the run's reproduction parameters.
+            "device": device,
             "lattice": "triangular",
         },
     )
@@ -130,6 +161,113 @@ def to_report(result: M05Result) -> dict:
             f"T_c={result.tc_chi_refined:.3f} vs exact 4/ln3 = {result.tc_benchmark:.4f} "
             f"(rel. err {result.rel_error*100:.1f}%); C-peak cross-check "
             f"{result.tc_cv_refined:.3f} · {result.wall_seconds:.0f}s on {hw(result.config)}"
+        ),
+        "L": result.L,
+        "T": result.T,
+        "chi": result.chi,
+        "abs_mag": result.abs_mag,
+        "abs_mag_err": result.abs_mag_err,
+        "energy": result.energy,
+        "specific_heat": result.specific_heat,
+        "tc_chi": result.tc_chi,
+        "tc_chi_refined": result.tc_chi_refined,
+        "tc_cv_refined": result.tc_cv_refined,
+        "tc_benchmark": result.tc_benchmark,
+        "rel_error": result.rel_error,
+        "wall_seconds": result.wall_seconds,
+        "config": result.config,
+    }
+
+
+# ── the honeycomb half ────────────────────────────────────────────────────────
+
+def run_m05_hex(
+    L: int = 128,
+    T_min: float = 1.35,
+    T_max: float = 1.70,
+    n_temps: int = 25,
+    n_sweeps: int = 40000,
+    n_burnin: int = 8000,
+    seed: int = 42,
+    device: str = "cuda",
+    progress=None,
+) -> M05Result:
+    """Run the honeycomb Ising sweep and locate the χ peak against 2/ln(2+√3).
+
+    Deliberately the *same* shape as ``run_m05`` — same ``M05Result``, same
+    m06 peak finders, same wall-clock timing and ``progress`` callback — with
+    three deliberate differences, all of them physics:
+
+    * ``ising_hex.run`` instead of ``ising_tri.run`` (3 neighbours, not 6);
+    * ``L = 128``, not 129. The triangular 3-colouring needed ``3 | L``; the
+      honeycomb only needs **even** L, so the square engine's own default works
+      with no seam compromise to explain;
+    * the temperature window brackets 1.5187, not 3.6410. ``[1.35, 1.70]`` is the
+      triangular run's window rescaled by T_c (it spanned 0.906–1.099 × its own
+      exact value), so the two runs resolve the peak equally well — 25 temps,
+      ΔT = 0.0146.
+
+    ``tc_benchmark`` carries ``TC_HEX``, so ``rel_error`` and every downstream
+    surface compare against the honeycomb's own exact number and never the
+    triangular one.
+    """
+    from .ising_hex import HexRunConfig, run
+
+    t0 = time.time()
+    cfg = HexRunConfig(
+        L=L, T_min=T_min, T_max=T_max, n_temps=n_temps,
+        n_sweeps=n_sweeps, n_burnin=n_burnin, seed=seed, device=device,
+    )
+    r = run(cfg)
+
+    _, tc_chi = susceptibility_peak(r.T, r.chi_abs)
+    tc_chi_refined = refine_peak(r.T, r.chi_abs)
+    tc_cv_refined = refine_peak(r.T, r.specific_heat)
+    rel_err = abs(tc_chi_refined - TC_HEX) / TC_HEX
+
+    result = M05Result(
+        T=r.T.tolist(),
+        chi=r.chi_abs.tolist(),
+        abs_mag=r.abs_mag.tolist(),
+        abs_mag_err=r.abs_mag_err.tolist(),
+        energy=r.energy.tolist(),
+        specific_heat=r.specific_heat.tolist(),
+        L=L,
+        tc_chi=tc_chi,
+        tc_chi_refined=tc_chi_refined,
+        tc_cv_refined=tc_cv_refined,
+        tc_benchmark=TC_HEX,
+        rel_error=rel_err,
+        wall_seconds=time.time() - t0,
+        config={
+            "L": L, "T_min": T_min, "T_max": T_max, "n_temps": n_temps,
+            "n_sweeps": n_sweeps, "n_burnin": n_burnin, "seed": seed,
+            "device": device,          # see run_m05 — hw() needs it to label GPU
+            "lattice": "honeycomb",
+        },
+    )
+    if progress is not None:
+        progress(result)
+    return result
+
+
+def to_report_hex(result: M05Result) -> dict:
+    """A JSON report shaped for the page + the M05 check, tagged ``M05-hexagonal``.
+
+    A **distinct** experiment tag from ``M05-triangular`` — not cosmetic. Every
+    downstream surface that reads M05 (``checks.check_m05``, ``scoreboard._m05``,
+    ``render.render_m05``) dispatches on this string to pick the right exact T_c;
+    reusing the triangular tag would silently grade a 1.52 peak against 3.64 and
+    report a 58 % error on a run that was actually correct.
+    """
+    return {
+        "experiment": "M05-hexagonal",
+        "headline": (
+            f"Honeycomb-lattice 2D Ising (L={result.L}): χ peaks at "
+            f"T_c={result.tc_chi_refined:.3f} vs exact 2/ln(2+√3) = "
+            f"{result.tc_benchmark:.4f} (rel. err {result.rel_error*100:.1f}%); "
+            f"C-peak cross-check {result.tc_cv_refined:.3f} · "
+            f"{result.wall_seconds:.0f}s on {hw(result.config)}"
         ),
         "L": result.L,
         "T": result.T,
