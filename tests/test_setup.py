@@ -1,5 +1,9 @@
 """`lab setup` — the generated artifacts and pre-flight are pure + testable."""
+import shutil
+import subprocess
 from pathlib import Path
+
+import pytest
 
 from lab import setup
 from lab.publish import REPO_ROOT
@@ -160,3 +164,203 @@ def test_windows_dry_run_writes_nothing(tmp_path, monkeypatch):
     plan = setup._install_windows(dry_run=True)
     assert not (tmp_path / "scripts" / "nightly.ps1").exists()
     assert plan["method"] == "schtasks"
+
+
+# ── conflicted-pull recovery: the nightly must never strand the clone ───────
+# THE OUTAGE (three times in a fortnight; 66h on 2026-08-08..11): the push-retry
+# loop called `git pull --rebase --autostash` with no failure path. The nightly
+# commits DERIVED files both boxes regenerate, so that pull conflicts routinely,
+# and git left the clone detached mid-rebase with unmerged files. Attempts 2-4
+# could then only die on "Pulling is not possible because you have unmerged
+# files" → "ERROR: push failed after 4 attempts" → every LATER nightly hit the
+# 08-05 STRANDED guard and exited 1, forever, until a human repaired the clone.
+#
+# These tests run the recovery helpers against a REAL conflicted rebase rather
+# than grepping the template, because the whole class of bug here is a template
+# that reads correct and behaves wrong.
+
+def _working_bash():
+    """A bash that can actually launch. On Windows ``which bash`` finds the WSL
+    stub in System32, which errors with ``execvpe(/bin/bash) failed`` when no
+    distro is installed — so probe, don't trust the PATH hit."""
+    candidates = [shutil.which("bash"), r"C:\Program Files\Git\bin\bash.exe",
+                  "/bin/bash"]
+    for cand in candidates:
+        if not cand or not Path(cand).exists():
+            continue
+        try:
+            probe = subprocess.run([cand, "-c", "echo ok"],
+                                   capture_output=True, text=True, timeout=20)
+        except OSError:
+            continue
+        if probe.returncode == 0 and "ok" in probe.stdout:
+            return cand
+    return None
+
+
+BASH = _working_bash()
+PWSH = shutil.which("pwsh")
+
+
+def _git(cwd, *args):
+    return subprocess.run(
+        ["git", "-c", "user.email=t@t", "-c", "user.name=t",
+         "-c", "commit.gpgsign=false", *args],
+        cwd=str(cwd), capture_output=True, text=True)
+
+
+def _diverged_clone(tmp_path):
+    """A clone whose local commit conflicts with origin on the same file —
+    the exact shape of two boxes regenerating pot.json in the same window."""
+    origin, win, loam = (tmp_path / n for n in ("origin.git", "win", "loam"))
+    subprocess.run(["git", "init", "--bare", "-b", "main", str(origin)],
+                   capture_output=True, check=True)
+    subprocess.run(["git", "clone", str(origin), str(win)],
+                   capture_output=True, check=True)
+    # Cloning an EMPTY repo leaves the local branch at whatever the client's
+    # init.defaultBranch says (master on plenty of boxes), so name it here
+    # rather than assume — otherwise the push below dies on "src refspec main
+    # does not match any" only on machines configured differently from mine.
+    _git(win, "checkout", "-B", "main")
+    (win / "pot.json").write_text("base\n", encoding="utf-8")
+    _git(win, "add", "-A")
+    _git(win, "commit", "-m", "base")
+    _git(win, "push", "-u", "origin", "main")
+
+    subprocess.run(["git", "clone", str(origin), str(loam)],
+                   capture_output=True, check=True)
+    (loam / "pot.json").write_text("loam turn\n", encoding="utf-8")
+    _git(loam, "add", "-A")
+    _git(loam, "commit", "-m", "loam nightly")
+    _git(loam, "push")
+
+    (win / "pot.json").write_text("win turn\n", encoding="utf-8")   # same file
+    _git(win, "add", "-A")
+    _git(win, "commit", "-m", "win nightly")
+    return win
+
+
+def _assert_clone_is_clean(clone: Path):
+    """The STRANDED guard's own predicate, asserted from the other side: this is
+    what the next nightly will see when it boots."""
+    branch = _git(clone, "rev-parse", "--abbrev-ref", "HEAD").stdout.strip()
+    assert branch == "main", f"clone left on '{branch}' — the next nightly is wedged"
+    assert not (clone / ".git" / "rebase-merge").exists()
+    assert not (clone / ".git" / "rebase-apply").exists()
+    assert _git(clone, "ls-files", "--unmerged").stdout.strip() == ""
+
+
+@pytest.mark.skipif(BASH is None, reason="no working bash on this box")
+def test_unwedge_sh_aborts_a_real_conflicted_rebase(tmp_path):
+    """sync_main returns 2 (conflicted-but-cleaned) and the clone comes out on
+    main with no rebase in flight — so attempt 2 is a real attempt, not a
+    guaranteed 'unmerged files' death."""
+    win = _diverged_clone(tmp_path)
+    script = tmp_path / "drive.sh"
+    script.write_text(
+        setup.UNWEDGE_SH + '\nsync_main; echo "RC=$?"\n', encoding="utf-8")
+    out = subprocess.run([BASH, str(script)], cwd=str(win),
+                         capture_output=True, text=True)
+    assert "RC=2" in out.stdout, out.stdout + out.stderr
+    assert "rebase --abort" in out.stdout          # it says what it did
+    _assert_clone_is_clean(win)
+
+
+@pytest.mark.skipif(BASH is None, reason="no working bash on this box")
+def test_unwedge_sh_reports_a_clean_pull_as_success(tmp_path):
+    """The recovery must not fire on the happy path: an ordinary fast-forward
+    pull still returns 0 and aborts nothing."""
+    win = _diverged_clone(tmp_path)
+    _git(win, "reset", "--hard", "HEAD~1")         # drop the conflicting commit
+    script = tmp_path / "drive.sh"
+    script.write_text(
+        setup.UNWEDGE_SH + '\nsync_main; echo "RC=$?"\n', encoding="utf-8")
+    out = subprocess.run([BASH, str(script)], cwd=str(win),
+                         capture_output=True, text=True)
+    assert "RC=0" in out.stdout, out.stdout + out.stderr
+    assert "abort" not in out.stdout
+    assert (win / "pot.json").read_text(encoding="utf-8") == "loam turn\n"
+
+
+@pytest.mark.skipif(PWSH is None, reason="pwsh unavailable")
+def test_unwedge_ps1_aborts_a_real_conflicted_rebase(tmp_path):
+    """The PowerShell twin — and the one that actually matters, because the box
+    that stranded three times runs the .ps1 under Task Scheduler."""
+    win = _diverged_clone(tmp_path)
+    log = tmp_path / "nightly.log"
+    script = tmp_path / "drive.ps1"
+    # The two log shims the real nightly defines above the helper, verbatim.
+    preamble = (
+        "$log = '" + log.as_posix() + "'\n"
+        'function Log($m) { Add-Content -LiteralPath $log -Value $m -Encoding utf8 }\n'
+        'filter LogCmd { Log "$_" }\n'
+    )
+    script.write_text(
+        preamble + setup.UNWEDGE_PS1
+        + '\n$rc = @(Sync-Main)[-1]\nWrite-Output "RC=$rc"\n',
+        encoding="utf-8")
+    out = subprocess.run(
+        [PWSH, "-NoProfile", "-NonInteractive", "-File", str(script)],
+        cwd=str(win), capture_output=True, text=True)
+    assert "RC=2" in out.stdout, out.stdout + out.stderr
+    assert "rebase --abort" in log.read_text(encoding="utf-8")
+    _assert_clone_is_clean(win)
+
+
+def test_nightly_templates_abort_a_conflicted_pull_before_retrying():
+    """Structural lock (always on, even where no shell is available): both
+    templates route EVERY pull through the aborting helper — a bare
+    `git pull --rebase` anywhere in the script is the bug coming back."""
+    sh, ps = setup.nightly_script(), setup.nightly_ps1()
+    assert setup.UNWEDGE_SH in sh and setup.UNWEDGE_PS1 in ps
+    # The only literal `git pull --rebase` in each script is the one inside the
+    # helper; the retry loop and the pre-work sync both call the helper.
+    assert sh.count("git pull --rebase") == 1
+    assert ps.count("git pull --rebase") == 1
+    assert sh.count("sync_main") >= 3          # helper def + pre-work + retry
+    assert ps.count("Sync-Main") >= 3
+    for script, abort in ((sh, "git rebase --abort"), (ps, "git rebase --abort")):
+        assert abort in script
+
+
+def test_nightly_templates_give_up_loudly_but_clean_on_a_second_conflict():
+    """The 2026-08-05 contract survives: a genuine divergence is an OUTAGE, so
+    the run still ends loud and non-zero. What changed is WHERE it leaves the
+    clone — clean on main, so the next nightly is not born wedged."""
+    for script in (setup.nightly_script(), setup.nightly_ps1()):
+        assert "conflicted twice" in script
+        assert "CLEAN on main" in script
+        assert "push failed after 4 attempts (clone left clean on main)" in script
+    assert "exit 1" in setup.nightly_script()
+    assert "exit 1" in setup.nightly_ps1()
+
+
+# ── the generated scripts must actually PARSE ───────────────────────────────
+# scripts/nightly.* are gitignored generated artifacts: nothing lints them, and
+# a syntax error only surfaces at 00:00 as a silent no-run. Both templates grew
+# real control flow (functions, a retry loop with a conflict counter), so parse
+# them here — cheap, and it catches an escaping slip in the f-string/token
+# templates that every substring assertion above would happily pass.
+
+@pytest.mark.skipif(BASH is None, reason="no working bash on this box")
+def test_generated_nightly_sh_parses(tmp_path):
+    script = tmp_path / "nightly.sh"
+    script.write_text(setup.nightly_script(), encoding="utf-8", newline="\n")
+    out = subprocess.run([BASH, "-n", str(script)], capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+
+
+@pytest.mark.skipif(PWSH is None, reason="pwsh unavailable")
+def test_generated_nightly_ps1_parses(tmp_path):
+    script = tmp_path / "nightly.ps1"
+    script.write_text(setup.nightly_ps1(), encoding="utf-8")
+    checker = tmp_path / "check.ps1"
+    checker.write_text(
+        "$errs = $null\n"
+        "[void][System.Management.Automation.Language.Parser]::ParseFile("
+        f"'{script.as_posix()}', [ref]$null, [ref]$errs)\n"
+        "if ($errs) { $errs | ForEach-Object { Write-Output $_.Message }; exit 1 }\n",
+        encoding="utf-8")
+    out = subprocess.run([PWSH, "-NoProfile", "-NonInteractive", "-File", str(checker)],
+                         capture_output=True, text=True)
+    assert out.returncode == 0, out.stdout + out.stderr
