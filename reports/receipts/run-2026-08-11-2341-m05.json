@@ -166,13 +166,13 @@
     "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
     "omitted": [],
     "schema": "windowsill.measurement-receipt.v1",
-    "source_report_sha256": "65a1606fb5079aea14752d61cfaa18bb8d1dc12524fa42122a7d6654df8213a3"
+    "source_report_sha256": "e9de8cafe347eea4c6b75dfe0899d0e85ffb1b1fb7a39363b9d0e17c47efaae3"
   },
   "rel_error": 0.008968466369544775,
   "report_schema_version": 1,
   "reproduction": {
     "regrade": "python -m lab.cli verify M05",
-    "rerun": "python -m lab.cli m05"
+    "rerun": "python -m lab.cli m05-hex"
   },
   "specific_heat": [
     0.7174360752105713,
