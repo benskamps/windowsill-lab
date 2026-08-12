@@ -1136,17 +1136,17 @@
       <figure class="triptych" id="triptych-fig" aria-label="2D Ising spin lattice at three temperatures">
         <figure class="lattice-fig">
           <canvas class="lattice" id="lat-cold" width="128" height="128" role="img"
-                  aria-label="Ordered spin lattice below the critical temperature — one domain dominates"></canvas>
+                  aria-label="A grid of magnets below the tipping point: one colour floods almost the whole frame, with a few small islands of the other."></canvas>
           <figcaption><span class="lf-t" id="lf-cold-t">T = —</span><span class="lf-say">ordered · one domain wins</span></figcaption>
         </figure>
         <figure class="lattice-fig">
           <canvas class="lattice" id="lat-crit" width="128" height="128" role="img"
-                  aria-label="Spin lattice at the sweep temperature nearest the critical point"></canvas>
+                  aria-label="The same grid at the sweep temperature nearest the tipping point: patches of both colours across many scales at once, from single squares to blotches spanning the frame."></canvas>
           <figcaption><span class="lf-t" id="lf-crit-t">T = —</span><span class="lf-say">near the tipping point</span></figcaption>
         </figure>
         <figure class="lattice-fig">
           <canvas class="lattice" id="lat-hot" width="128" height="128" role="img"
-                  aria-label="Disordered spin lattice above the critical temperature — thermal noise"></canvas>
+                  aria-label="The same grid above the tipping point: the two colours are scattered evenly, with no patch bigger than a few squares — thermal noise."></canvas>
           <figcaption><span class="lf-t" id="lf-hot-t">T = —</span><span class="lf-say">disordered · thermal noise</span></figcaption>
         </figure>
       </figure>
@@ -1154,16 +1154,20 @@
            ip-lattice-src named from snapshots_date when the lattices were
            carried forward from an earlier run's receipt. -->
       <p class="triptych-note" id="triptych-note">Each frame is <b id="ip-lattice-dims">&mdash;</b> magnets, <span id="ip-lattice-src">straight from the run</span>.
-      Cross the tipping point &mdash; Onsager&rsquo;s exact <code>T<sub>c</sub> = 2.269</code> &mdash; and a single ordered
-      domain melts into pure thermal noise. That snap is the whole reason the model matters, in three frames.</p>
+      Left, the sheet is cold and almost everything agrees. Right, it is hot and nothing does. The middle frame sits
+      nearest the exact tipping point Lars Onsager solved by hand in 1944 &mdash; <code>T<sub>c</sub> = 2.269</code>,
+      in the model&rsquo;s own units, not degrees &mdash; and it is the only one that looks like neither: patches of
+      agreement across many scales at once. That is what a tipping point looks like from the inside.</p>
       <p class="triptych-note" id="triptych-missing" hidden>This run&rsquo;s receipt omitted its lattice snapshots, so the three-frame
       lattice view is out until a run records them again &mdash; the curves below still plot this run&rsquo;s measurements.</p>
 
       <div class="plots">
         <figure class="plot-fig" id="plot-chi">
           <div class="plot-mount" id="mount-chi"></div>
-          <figcaption><b>Susceptibility &chi;(T).</b> The equilibrium-qualified peak is
-          <b id="ip-chi-peak">T&nbsp;&asymp;&nbsp;—</b>. <span id="ip-chi-note">Reading the quality guard…</span></figcaption>
+          <figcaption><b>Susceptibility &chi;(T) &mdash; how twitchy the sheet is.</b> The peak is where the smallest
+          nudge in temperature causes the biggest change in behaviour. The equilibrium-qualified peak is
+          <b id="ip-chi-peak">T&nbsp;&asymp;&nbsp;—</b>. Onsager&rsquo;s exact answer is 2.269, and on a sheet this
+          size the peak is expected to land a little above it. <span id="ip-chi-note">Reading the quality guard…</span></figcaption>
         </figure>
         <figure class="plot-fig" id="plot-mag">
           <div class="plot-mount" id="mount-mag"></div>
@@ -1174,8 +1178,9 @@
         </figure>
         <figure class="plot-fig" id="plot-heat">
           <div class="plot-mount" id="mount-heat"></div>
-          <figcaption><b>Specific heat C(T).</b> A second, independent fingerprint of the same
-          transition &mdash; the thermal peak lands on the magnetic one.</figcaption>
+          <figcaption><b>Specific heat C(T) &mdash; how much heat the sheet drinks.</b> A separately measured
+          response that has to peak near the temperature the magnetism found. Two different measurements landing
+          in the same place is the instrument checking itself.</figcaption>
         </figure>
       </div>
 
@@ -3825,7 +3830,7 @@
     // it apart from physics, which is the whole reason the pot layer exists.
     var GARDEN_SPECS = [
       { track:'physics', form:'fern', label:'Physics', domain:'matter · disorder · time', expected:18 },
-      { track:'coherence', form:'fern', label:'Coherence', domain:'coupling · synchrony · phase', expected:3 },
+      { track:'coherence', form:'fern', label:'Coherence', domain:'clocks · agreement · sharpness', expected:3 },
       { track:'compute', form:'vine', label:'Compute', domain:'proofs · exact arithmetic', expected:4 },
       { track:'astronomy', form:'creeper', label:'Astronomy', domain:'public light · long baselines', expected:4 },
       { track:'instrument', form:'succulent', label:'Instruments', domain:'dark noise · patient counts', expected:3 },
