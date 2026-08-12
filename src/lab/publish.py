@@ -194,7 +194,13 @@ def parse_milestones(text: str) -> list[dict]:
     books), ``[?]`` → measured and awaiting human review, ``[>]`` → the
     explicitly-open experiment (any track), ``[ ]`` → pending. If nothing is
     marked ``[>]``, the first pending milestone is promoted to ``open`` — the
-    current question on the bench. Each
+    current question on the bench.
+
+    Verified, review AND null milestones all lift their receipt into ``result``.
+    Nulls were excluded until 2026-08-11, which quietly broke the page's central
+    promise: a grey leaf is a miss the lab kept on purpose *with its numbers*,
+    and M12/A03 were reaching the live page with a title and nothing else. A
+    kept miss earns the same receipt a kept win does. Each
     milestone carries its ``track`` (from the id prefix), its ``growth_form``
     (derived from the track — the feed contract's render-strategy hint), an
     optional ``progress`` (0–1), and any ``venue``/``url``/``doi`` linking a
@@ -226,7 +232,7 @@ def parse_milestones(text: str) -> list[dict]:
               "growth_form": growth_form_for(track),
               "runner_available": mid in RUNNERS}
 
-        if status in ("verified", "review"):
+        if status in ("verified", "review", "null"):
             # Lift the balanced "(done/attempted <date> — <result>)" receipt.
             # Technical prose contains nested parentheses, so regex extraction
             # would truncate e.g. M14 at ``tanh(1/T``.

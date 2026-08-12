@@ -91,9 +91,44 @@ def test_review_result_is_retained_without_becoming_verified():
     assert "G(r,t)" in ms["result"]
 
 
-def test_null_has_no_result_field():
+# A grey leaf is a miss the lab kept on purpose, and a miss without its numbers
+# is indistinguishable from a milestone nobody ran. Until 2026-08-11 the lift ran
+# only for verified/review, so every ``[~]`` line's receipt was dropped on the
+# floor: M12 and A03 reached the live page carrying a title and nothing else,
+# and the field note fell back to the generic "a calibration that missed".
+# These fixtures are shaped like the two real lines that were blank.
+NULL_SAMPLE = """
+- [~] **M12** — 3D EA spin glass. The literature benchmark is T_SG ≈ 1.102 (Hasenbusch–Pelissetto–Vicari 1.1019(29); Katzgraber–Körner–Young 1.120(4)). (code merged 2026-07-01, PR #43 — the quick-CPU calibration ships a null: at L=4,6,8 the multi-L crossing resolves to T_SG≈0.56, so the finite-T crossing does not resolve at CPU scale)
+- [~] **A03** — Reprocess one open LIGO/Virgo event from GWOSC. (attempted 2026-08-07 — a controlled null: the injection is recovered at 1.19782 in H1 (error 4.0e-5), but the event itself returns SNR 6.6 against a 10.6 background)
+"""
+
+
+def test_null_result_lifts_the_miss_with_its_numbers():
+    """A ``[~]`` receipt reaches the feed exactly like a verified one does."""
+    ms = {m["id"]: m for m in parse_milestones(NULL_SAMPLE)}["A03"]
+    assert ms["status"] == "null"
+    assert "SNR 6.6" in ms["result"]
+    assert "1.19782" in ms["result"]
+    # The "attempted <date> —" prefix is stripped, as it is for review.
+    assert not ms["result"].lower().startswith("attempted")
+
+
+def test_null_result_keeps_nested_notation_and_skips_the_citation_group():
+    """M12's shape: the receipt is the LAST balanced group, not the first.
+
+    Its line opens with a citation parenthetical carrying the literature value,
+    and its receipt does not begin with ``attempted``/``measured`` (it begins
+    "code merged …"). Picking the first group, or requiring the prefix, would
+    publish the benchmark the lab missed as though it were the lab's own number.
+    """
+    ms = {m["id"]: m for m in parse_milestones(NULL_SAMPLE)}["M12"]
+    assert "T_SG≈0.56" in ms["result"]
+    assert "Hasenbusch" not in ms["result"]
+
+
+def test_short_null_receipt_lifts_whole():
     ms = {m["id"]: m for m in parse_milestones(SAMPLE)}
-    assert "result" not in ms["M03"]
+    assert ms["M03"]["result"] == "binning unstable — failed calibration"
 
 
 def test_only_first_pending_is_open():

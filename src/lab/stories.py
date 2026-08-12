@@ -11,8 +11,9 @@ Each entry is keyed by milestone id and may carry:
 - ``short_label``    — 2-4 plain words naming the experiment.
 - ``question_plain`` — the experiment's question in everyday, jargon-free language.
 - ``why_it_matters`` — one sentence on why a curious person should care.
-- ``result_plain``   — one plain sentence stating the verified outcome (or ``None``
-                       for open/pending milestones, which have no result yet).
+- ``result_plain``   — a plain statement of the outcome, including a kept miss's
+                       own numbers (or ``None`` for open/pending milestones,
+                       which have no result yet).
 
 Tracks currently carrying entries: M=magnetism, K=coherence, C=computation,
 A=astronomy, I=instrument, B=donated compute.
@@ -104,7 +105,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "3D spin glass",
         "question_plain": "Give that same tangled, conflicting magnet a third dimension to live in — does the extra room finally let it freeze into a glassy, locked-up state at a real temperature?",
         "why_it_matters": "This is the famous case behind real glassy materials, and finding the freezing point would prove the lab can reach the genuinely hard problems, not just the textbook ones.",
-        "result_plain": None,
+        "result_plain": "Not yet, twice over. Two attempts — one on the everyday processor, one on the graphics card — put the freezing point at 0.56 and then 1.24, on either side of the roughly 1.10 the published work reports. An audit then found the second run's temperature-shuffling scheduler had been skipping half its moves, so it never counted as a fair attempt. The fix is merged and the question stays open.",
     },
     "M13": {
         "short_label": "Frustrated triangles",
@@ -207,7 +208,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Reweigh a neutron-star collision",
         "question_plain": "From open gravitational-wave data, can we re-measure the mass of a collision that shook spacetime and match the official answer?",
         "why_it_matters": "It shows a home machine can independently re-derive a landmark physics result from the same public data the discoverers used.",
-        "result_plain": None,
+        "result_plain": "Not yet, and the miss says something. Fed a collision the lab planted into the real detector recordings itself, the pipeline weighed it to four parts in a hundred thousand — twenty-four times sharper than the published figure — so the instrument is not what failed. Fed the real sky, it found the signal too faint to call, with the two detectors disagreeing with each other. What is missing is a better model of what colliding neutron stars actually sound like, not a bigger computer.",
     },
     "A04": {
         "short_label": "Search for a planet",
