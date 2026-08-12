@@ -220,7 +220,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Search for a planet",
         "question_plain": "Can we comb an entire patch of sky for the faint dip of an unseen planet and confirm a real one?",
         "why_it_matters": "It moves from checking known planets to actually finding one in raw survey data and reporting it for follow-up.",
-        "result_plain": None,
+        "result_plain": "Yes — three times, with the labels taken away. The earlier planet-weighing run was told where to look; this one was handed raw starlight with no names, no periods, and no hint which star had anything. The two planets it was being graded on came back first and second in its own ranking. Then it flagged a third star nobody had asked about, put it through the same checks, and only afterwards was it identified as an already-known planet — a real one the search was never pointed at. It also correctly threw out a deep, convincing signal that turned out to be two stars eclipsing each other. The cutoff for what counts as a detection was measured rather than chosen: fake transits were injected at three depths and all three cleared the bar, while twenty-two quiet stars stayed well under it. Five faults were found and fixed on the way, and every one of them was in the part that decides what a signal means, not in the search itself — including a candidate that was nothing but the edge of the search grid. This is a sample of one patch of sky rather than all of it, so it says nothing about how common planets are; the claim is that a search never told what to look for found what was already there. Awaiting a human read before it can turn green.",
     },
     # ── Track I — the machine as instrument ──────────────────────────────────
     "I01": {
