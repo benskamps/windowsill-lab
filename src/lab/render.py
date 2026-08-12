@@ -70,6 +70,24 @@ def _dependency_versions() -> dict[str, str]:
     return versions
 
 
+# One slug, two CLI entrypoints. M05 runs the triangular sweep as ``lab m05``
+# and the honeycomb as ``lab m05-hex``, and both commit under the ``m05`` slug —
+# so a rerun command derived from the slug alone would hand a honeycomb receipt
+# the command that reproduces the *other* lattice. The experiment tag is the
+# discriminator every other M05-aware surface already dispatches on
+# (``checks.check_m05``, ``scoreboard._m05``, ``render.render_m05``); reuse it
+# here so the published reproduction command can never name the wrong geometry.
+# Tags absent from this map rerun under their own slug, which is the common case.
+_RERUN_SUBCOMMAND: dict[str, str] = {
+    "M05-hexagonal": "m05-hex",
+}
+
+
+def _rerun_subcommand(report: dict, slug: str) -> str:
+    """The CLI subcommand that reproduces *report*, which is not always its slug."""
+    return _RERUN_SUBCOMMAND.get(str(report.get("experiment")), slug)
+
+
 def _stamp_report_json(json_dump: str, slug: str) -> str:
     """Add prospective, machine-readable provenance to a persisted report.
 
@@ -77,6 +95,11 @@ def _stamp_report_json(json_dump: str, slug: str) -> str:
     its source commit, cleanliness, full source-tree digest, runtime, dependency
     versions, and the separate commands for saved-data regrading and stochastic
     rerunning. Missing git metadata is represented as null, never guessed.
+
+    The rerun command comes from ``_rerun_subcommand``, not from the slug: one
+    slug can front two CLI entrypoints (see ``_RERUN_SUBCOMMAND``), and a
+    reproduction command that reruns a different experiment than the one the
+    report records is worse than no command at all.
     """
 
     try:
@@ -93,7 +116,7 @@ def _stamp_report_json(json_dump: str, slug: str) -> str:
     if slug == "m01":
         rerun = "python -m lab.cli run"
     elif milestone:
-        rerun = f"python -m lab.cli {slug}"
+        rerun = f"python -m lab.cli {_rerun_subcommand(report, slug)}"
 
     report["report_schema_version"] = 1
     report["generated_at"] = datetime.now(timezone.utc).isoformat()
@@ -1102,18 +1125,33 @@ def render_m04(report: dict, date: str | None = None) -> Path:
 
 # ── M05 — triangular-lattice 2D Ising (a new geometry, exact T_c = 4/ln 3) ────
 
+def _m05_lattice(report: dict) -> tuple[str, str, float, float]:
+    """``(name, exact-T_c closed form, exact value, tolerance)`` for an M05 report.
+
+    M05 verifies two geometries — triangular (``4/ln3`` ≈ 3.6410) and honeycomb
+    (``2/ln(2+√3)`` ≈ 1.5187) — and every label, axis marker and verdict below has
+    to name the right one. Reading it from the report's ``experiment`` tag (with
+    the triangular default that every pre-2026-08-11 report relies on) keeps the
+    page and ``checks.check_m05`` reading the same single fact.
+    """
+    if str(report.get("experiment") or "") == "M05-hexagonal":
+        return ("honeycomb", "2/ln(2+√3)", 2.0 / np.log(2.0 + np.sqrt(3.0)), 0.06)
+    return ("triangular", "4/ln3", 4.0 / np.log(3.0), 0.15)
+
+
 def _plot_m05_chi(report: dict) -> str:
-    """χ(T) with the located T_c vs the exact triangular benchmark — M05's headline."""
+    """χ(T) with the located T_c vs that lattice's exact benchmark — M05's headline."""
     T = report["T"]
     chi = report["chi"]
+    name, form, default_bench, _ = _m05_lattice(report)
     tc_fit = report.get("tc_chi_refined", report.get("tc_chi"))
-    tc_bench = report.get("tc_benchmark", 4.0 / np.log(3.0))
+    tc_bench = report.get("tc_benchmark", default_bench)
     tc_cv = report.get("tc_cv_refined")
     fig, ax = plt.subplots(figsize=(7, 4.2))
     ax.plot(T, chi, "o-", color="#7a4e2f", markersize=4, linewidth=1.5,
             label=f"Measured χ (L={report.get('L')})")
     ax.axvline(tc_bench, linestyle="--", color="#c89878", alpha=0.85,
-               label=f"Exact T_c = 4/ln3 = {tc_bench:.4f}")
+               label=f"Exact T_c = {form} = {tc_bench:.4f}")
     if tc_fit is not None:
         ax.axvline(tc_fit, linestyle=":", color="#3a2e21", alpha=0.8,
                    label=f"χ-peak T_c(L) = {tc_fit:.3f}")
@@ -1122,7 +1160,7 @@ def _plot_m05_chi(report: dict) -> str:
                    label=f"C-peak cross-check = {tc_cv:.3f}")
     ax.set_xlabel("Temperature  T  (J/k_B)")
     ax.set_ylabel("χ  (per spin)")
-    ax.set_title("Triangular-lattice susceptibility — peak locates T_c")
+    ax.set_title(f"{name.capitalize()}-lattice susceptibility — peak locates T_c")
     ax.legend(frameon=False, fontsize=8.5)
     ax.set_facecolor("#fbf6ea")
     fig.patch.set_facecolor("#f6efe1")
@@ -1135,7 +1173,7 @@ def _plot_m05_mag_cv(report: dict) -> str:
     m = report["abs_mag"]
     m_err = report.get("abs_mag_err") or [0.0] * len(T)
     cv = report.get("specific_heat") or [0.0] * len(T)
-    tc_bench = report.get("tc_benchmark", 4.0 / np.log(3.0))
+    tc_bench = report.get("tc_benchmark", _m05_lattice(report)[2])
     tc_cv = report.get("tc_cv_refined")
     fig, ax = plt.subplots(figsize=(7, 4.2))
     ax.errorbar(T, m, yerr=m_err, fmt="o-", color="#3a2e21", markersize=4,
@@ -1165,7 +1203,7 @@ M05_HTML_TEMPLATE = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>windowsill-lab · {date} · triangular Ising</title>
+<title>windowsill-lab · {date} · {lattice} Ising</title>
 <style>
   :root {{ color-scheme: light; }}
   body {{
@@ -1191,16 +1229,16 @@ M05_HTML_TEMPLATE = """<!doctype html>
 <body>
 <div class="wrap">
   <h1>windowsill-lab · phase 1</h1>
-  <div class="date">{date} · M05 — triangular-lattice 2D Ising</div>
+  <div class="date">{date} · M05 — {lattice}-lattice 2D Ising</div>
 
   <div class="lede">{sentence}</div>
   <div class="verdict">{verdict}</div>
 
   <h2>Susceptibility vs Temperature — the peak is T_c</h2>
-  <figure><img src="data:image/png;base64,{chi_png}" alt="triangular Ising susceptibility"></figure>
+  <figure><img src="data:image/png;base64,{chi_png}" alt="{lattice} Ising susceptibility"></figure>
 
   <h2>Order parameter &amp; specific heat</h2>
-  <figure><img src="data:image/png;base64,{mag_png}" alt="triangular Ising magnetization and specific heat"></figure>
+  <figure><img src="data:image/png;base64,{mag_png}" alt="{lattice} Ising magnetization and specific heat"></figure>
 
   <details>
     <summary>Raw measurements (JSON)</summary>
@@ -1219,58 +1257,105 @@ M05_HTML_TEMPLATE = """<!doctype html>
 
 
 def render_m05(report: dict, date: str | None = None) -> Path:
-    """Render an M05 triangular-Ising report (HTML + plots + JSON sidecar).
+    """Render an M05 non-square-Ising report (HTML + plots + JSON sidecar).
+
+    Handles **both** M05 geometries off one code path — ``M05-triangular`` and
+    ``M05-hexagonal`` — with ``_m05_lattice`` supplying the name, the exact-T_c
+    closed form and the tolerance, so no label, axis marker or verdict can name a
+    lattice the numbers didn't come from. Untagged legacy reports default to
+    triangular, which is what every pre-2026-08-11 M05 report is.
 
     Mirrors ``render_m06``: a slug-keyed ``~/.lab`` dated cache + ``latest.html``
     pointer AND a permanent committed pair (``reports/<date>-m05.html`` + ``.json``).
-    The verdict is an honest **pass** only when the χ-peak T_c lands within ±0.15 of
-    the exact triangular T_c = 4/ln 3 ≈ 3.6410 — a finite-L tolerance (the
-    small-lattice peak sits *above* the infinite-volume value); a miss stays a
-    folded grey leaf with its real numbers intact, never relabelled a discovery.
+    Both lattices share the ``m05`` slug because they are one milestone, so two
+    geometries rendered on the *same* day would share the dated report slot — the
+    turn-stamped receipts under ``reports/receipts/`` are the complete ledger and
+    keep both.
+
+    The verdict is an honest **pass** only when the χ-peak T_c lands within that
+    lattice's tolerance of its own exact value (±0.15 of 4/ln 3 ≈ 3.6410
+    triangular, ±0.06 of 2/ln(2+√3) ≈ 1.5187 honeycomb — the same ≈4 % fraction of
+    each) — a finite-L tolerance (the small-lattice peak sits *above* the
+    infinite-volume value); a miss stays a folded grey leaf with its real numbers
+    intact, never relabelled a discovery.
     """
     from .publish import today_local
     date = date or today_local()
     _ensure_home()
 
     L = report.get("L")
+    name, form, default_bench, tol = _m05_lattice(report)
     tc_fit = report.get("tc_chi_refined", report.get("tc_chi"))
     tc_cv = report.get("tc_cv_refined")
-    tc_bench = report.get("tc_benchmark", 4.0 / np.log(3.0))
+    tc_bench = report.get("tc_benchmark", default_bench)
     rel_err = report.get("rel_error")
 
+    if name == "honeycomb":
+        geometry = (
+            f"The honeycomb is the triangular lattice's *dual*: only three "
+            f"neighbours per site, not four and not six, which is why its exact "
+            f"critical temperature T_c = 2/ln(2+√3) ≈ {tc_bench:.4f} is the "
+            f"*lowest* of the three — with the fewest neighbours holding a spin in "
+            f"line, thermal noise breaks the order soonest. Unlike the triangular "
+            f"lattice it is bipartite (girth 6, no odd cycles), so the plain "
+            f"red/black checkerboard update is already exact here; the whole "
+            f"physics delta is a parity-selected third neighbour on a brick-wall "
+            f"grid."
+        )
+    else:
+        geometry = (
+            f"The triangular lattice is the square grid plus one diagonal — six "
+            f"neighbours per site, not four — so it is the same universality class "
+            f"as M01 but a different geometry, with its own *exact* critical "
+            f"temperature T_c = 4/ln 3 ≈ {tc_bench:.4f}. Because the triangular "
+            f"lattice is non-bipartite, this needed a 3-sublattice update, not the "
+            f"square checkerboard."
+        )
     sentence = (
-        f"I ran the 2D Ising model on a *triangular* lattice (L={L}) across a "
+        f"I ran the 2D Ising model on a *{name}* lattice (L={L}) across a "
         f"window straddling the transition and tracked the magnetic susceptibility "
-        f"χ(T). The triangular lattice is the square grid plus one diagonal — six "
-        f"neighbours per site, not four — so it is the same universality class as "
-        f"M01 but a different geometry, with its own *exact* critical temperature "
-        f"T_c = 4/ln 3 ≈ {tc_bench:.4f}. Because the triangular lattice is "
-        f"non-bipartite, this needed a 3-sublattice update, not the square "
-        f"checkerboard. The χ peak sits at T_c(L) = {tc_fit:.3f}. "
+        f"χ(T). {geometry} The χ peak sits at T_c(L) = {tc_fit:.3f}. "
         f"Wall time on the GPU: {report.get('wall_seconds', 0):.0f}s."
     )
-    # Honest verdict: pass only when the χ-peak T_c lands within ±0.15 of 4/ln 3.
-    passed = tc_fit is not None and abs(tc_fit - tc_bench) <= 0.15
+    # Honest verdict: pass only when the χ-peak T_c lands within this lattice's
+    # tolerance of its own exact T_c (±0.15 triangular, ±0.06 honeycomb — the same
+    # ≈4% fraction of each).
+    passed = tc_fit is not None and abs(tc_fit - tc_bench) <= tol
     err_str = f"{rel_err*100:.1f}%" if rel_err is not None else "—"
     cv_str = (f", and the specific-heat peak from the same run independently gives "
               f"T_c(L) = {tc_cv:.3f}") if tc_cv is not None else ""
+    if name == "honeycomb":
+        passed_copy = (
+            "A third geometry reproduces its known answer: the honeycomb's exact "
+            "T_c falls right where the susceptibility peaks. Three lattices, three "
+            "exact numbers, one universality class — z=3 → 1.5187, z=4 → 2.2692, "
+            "z=6 → 3.6410, ordered exactly as coordination number predicts. This is "
+            "rung-0 verification: the instrument checking itself against an "
+            "Onsager-class exact result, a completion of M05's documented open edge "
+            "and explicitly not a discovery. (Small-L finite-size effects push the "
+            "pseudo-critical peak slightly above the infinite-volume T_c; an "
+            "L-extrapolation would sharpen it — see BACKLOG.)"
+        )
+    else:
+        passed_copy = (
+            "A new geometry reproduces its known answer: the triangular lattice's "
+            "exact T_c falls right where the susceptibility peaks, on an engine that "
+            "had to switch from the square checkerboard to a 3-sublattice update "
+            "(the triangular lattice is non-bipartite). Same universality class as "
+            "M01, different number — calibrated. (Small-L finite-size effects push "
+            "the pseudo-critical peak slightly above the infinite-volume T_c; an "
+            "L-extrapolation would sharpen it — see BACKLOG.)"
+        )
     verdict = (
         f"{'✓' if passed else '~'} χ-peak T_c(L) = {tc_fit:.3f} vs exact "
-        f"4/ln3 = {tc_bench:.4f} (rel. err {err_str}){cv_str}. "
-        + ("A new geometry reproduces its known answer: the triangular lattice's "
-           "exact T_c falls right where the susceptibility peaks, on an engine that "
-           "had to switch from the square checkerboard to a 3-sublattice update "
-           "(the triangular lattice is non-bipartite). Same universality class as "
-           "M01, different number — calibrated. (Small-L finite-size effects push "
-           "the pseudo-critical peak slightly above the infinite-volume T_c; an "
-           "L-extrapolation would sharpen it — see BACKLOG.)"
-           if passed else
+        f"{form} = {tc_bench:.4f} (rel. err {err_str}){cv_str}. "
+        + (passed_copy if passed else
            "The transition is off — kept honestly as a null, not a discovery.")
     )
 
     json_dump = json.dumps(report, indent=2)
     html = M05_HTML_TEMPLATE.format(
-        date=date, sentence=sentence, verdict=verdict,
+        date=date, lattice=name, sentence=sentence, verdict=verdict,
         chi_png=_plot_m05_chi(report),
         mag_png=_plot_m05_mag_cv(report),
         json_dump=json_dump,

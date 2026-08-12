@@ -8,7 +8,7 @@ import pytest
 import lab.checks as checks
 from lab.checks import (
     ALLEN_CAHN_EXPONENT, BETA_OVER_NU, GAMMA_OVER_NU, INV_NU, ONSAGER_TC, T_BKT,
-    TC_3D, TC_SG_3D, TC_SG_3D_TOL, TC_TRI, TWO_OVER_PI, WANNIER_S0, WANNIER_S0_TOL,
+    TC_3D, TC_HEX, TC_SG_3D, TC_SG_3D_TOL, TC_TRI, TWO_OVER_PI, WANNIER_S0, WANNIER_S0_TOL,
     _grade, check_controls, check_m01, check_m02, check_m03, check_m04, check_m05,
     check_m06, check_m07, check_m08, check_m09, check_m10, check_m11, check_m12,
     check_m13, check_m14, check_m15, check_m17, verify,
@@ -263,11 +263,25 @@ def test_m01_still_grades_its_own_tagged_report():
 
 
 # ── M05: triangular-lattice Ising check ──────────────────────────────────────
+def _equilibrated_guard(T):
+    """A monotone-decreasing ⟨|m|⟩(T) with tight errors — the shape equilibrium
+    demands, so the non-equilibration guard runs and excludes nothing.
+
+    Every M05 report the pipeline has ever written carries these two arrays, and
+    ``check_m05`` refuses to grade one that does not, so the toy fixtures carry
+    them too.
+    """
+    n = len(T)
+    return [0.95 - 0.9 * i / (n - 1) for i in range(n)], [0.001] * n
+
+
 def _m05_report(peak_at=TC_TRI):
     """A toy triangular-Ising report whose χ peaks at temperature ``peak_at``."""
     T = [round(3.3 + 0.03 * i, 3) for i in range(25)]           # 3.3 … 4.02
     chi = [1.0 / (abs(t - peak_at) + 0.02) for t in T]          # sharp peak at peak_at
-    return {"experiment": "M05-triangular", "T": T, "chi": chi}
+    mag, err = _equilibrated_guard(T)
+    return {"experiment": "M05-triangular", "T": T, "chi": chi,
+            "abs_mag": mag, "abs_mag_err": err}
 
 
 def test_m05_passes_near_tc():
@@ -281,6 +295,66 @@ def test_m05_fails_when_peak_is_wrong():
     # square checkerboard misused on this non-bipartite lattice) must be caught.
     ok, _ = check_m05(_m05_report(3.9))
     assert ok is False
+
+
+# ── M05: the honeycomb half (added 2026-08-11) ───────────────────────────────
+def _m05_hex_report(peak_at=TC_HEX):
+    """A toy honeycomb-Ising report whose χ peaks at temperature ``peak_at``."""
+    T = [round(1.35 + 0.0146 * i, 4) for i in range(25)]        # 1.35 … 1.70
+    chi = [1.0 / (abs(t - peak_at) + 0.01) for t in T]          # sharp peak at peak_at
+    mag, err = _equilibrated_guard(T)
+    return {"experiment": "M05-hexagonal", "T": T, "chi": chi,
+            "abs_mag": mag, "abs_mag_err": err}
+
+
+def test_m05_hex_passes_near_its_own_tc():
+    ok, detail = check_m05(_m05_hex_report(TC_HEX))
+    assert ok, detail
+    assert "1.5187" in detail          # cites the exact honeycomb T_c = 2/ln(2+√3)
+    assert "honeycomb" in detail
+    assert "3.641" not in detail       # and never the triangular one
+
+
+def test_m05_hex_is_not_graded_against_the_triangular_tc():
+    """THE regression this dispatch exists to prevent.
+
+    A *correct* honeycomb run peaks at ≈1.52. Graded against the triangular
+    3.6410 it would miss by 2.12 — a 58 % "error" on a run that was right. The
+    check must read the geometry off the tag, not assume one lattice.
+    """
+    ok, detail = check_m05(_m05_hex_report(TC_HEX))
+    assert ok is True
+    # The measured peak really is nowhere near the triangular constant, so the
+    # pass can only have come from dispatching on the tag.
+    peak = float(detail.split("T=")[1].split(" ")[0])
+    assert abs(peak - TC_HEX) < 0.02
+    assert abs(peak - TC_TRI) > 2.0
+
+
+def test_m05_hex_fails_when_peak_is_wrong():
+    # A honeycomb χ peak off its exact T_c — e.g. a parity rule inverted at the
+    # seam, or a square-lattice neighbour sum leaking in — must be caught. The
+    # honeycomb tolerance is ±0.06, so 1.65 is a clear miss.
+    ok, _ = check_m05(_m05_hex_report(1.65))
+    assert ok is False
+
+
+def test_m05_hex_tolerance_is_tighter_than_the_triangular_one():
+    """±0.06 not ±0.15: the same ≈4 % fraction of a T_c less than half the size.
+    Inheriting the triangular absolute band would make the honeycomb gate 10 %
+    wide and let a visibly wrong run through."""
+    _, hex_detail = check_m05(_m05_hex_report(TC_HEX))
+    _, tri_detail = check_m05(_m05_report(TC_TRI))
+    assert "±0.06" in hex_detail
+    assert "±0.15" in tri_detail
+
+
+def test_m05_triangular_report_is_still_graded_against_four_over_ln_three():
+    """Adding the honeycomb must not disturb the geometry that shipped 2026-06-24."""
+    ok, detail = check_m05(_m05_report(TC_TRI))
+    assert ok is True
+    assert "triangular" in detail and "4/ln3" in detail
+    assert "2/ln(2+" not in detail
 
 
 def test_m05_not_applicable_to_an_m06_report():
@@ -1196,3 +1270,147 @@ def test_grade_surfaces_a_crashing_checker_as_a_named_fail():
     status, detail = _grade(boom, [{"experiment": "X"}])
     assert status == "fail"
     assert "checker crashed" in detail and "kaboom" in detail
+
+
+# ── M05: the 2026-08-11 honeycomb metastability incident ─────────────────────
+#
+# Real arrays from the FIRST canonical honeycomb run (L=128, random start, 8 000
+# burn-in sweeps, seed 42). Twenty-four lattices were textbook; the one at
+# T=1.3792 froze in a system-spanning stripe domain and the bare argmax crowned
+# it, reporting T_c = 1.379 against the exact 1.5187 (9.2 % low). Kept verbatim
+# rather than synthesised — this is the shape the guard has to survive, and it is
+# the same shape as M01's 2026-07-23 campaign pass 6.
+_M05_HEX_STRIPE_INCIDENT = {
+    "experiment": "M05-hexagonal",
+    "T": [1.35, 1.364583, 1.379167, 1.39375, 1.408333, 1.422917, 1.4375,
+          1.452083, 1.466667, 1.48125, 1.495833, 1.510417, 1.525, 1.539583,
+          1.554167, 1.56875, 1.583333, 1.597917, 1.6125, 1.627083, 1.641667,
+          1.65625, 1.670833, 1.685417, 1.7],
+    "chi": [0.691551, 0.79437, 1163.988037, 1.238789, 1.513036, 2.008144,
+            2.985054, 3.908716, 9.218528, 11.712816, 27.002741, 27.223383,
+            224.933701, 296.545349, 159.915024, 94.81749, 54.930019, 47.759609,
+            33.436382, 27.001177, 19.519955, 18.128548, 13.616204, 12.798006,
+            10.938975],
+    "abs_mag": [0.920954, 0.912701, 0.5734, 0.894714, 0.883264, 0.870064,
+                0.854896, 0.83547, 0.811034, 0.780146, 0.732154, 0.687346,
+                0.498216, 0.257013, 0.201939, 0.130985, 0.099966, 0.087842,
+                0.077114, 0.07057, 0.059999, 0.057325, 0.049947, 0.048093,
+                0.043906],
+    "abs_mag_err": [0.000169, 0.000182, 0.007001, 0.00023, 0.000255, 0.000295,
+                    0.000362, 0.000416, 0.000642, 0.000728, 0.001111, 0.00112,
+                    0.003236, 0.003734, 0.002755, 0.002131, 0.00163, 0.001526,
+                    0.001283, 0.001158, 0.000989, 0.000957, 0.000833, 0.000812,
+                    0.000754],
+}
+
+
+def test_m05_excludes_the_real_2026_08_11_stripe_sample_and_finds_the_true_peak():
+    """The guard turns the incident from a wrong answer into a correct, disclosed one.
+
+    Before the guard this exact report graded as T_c = 1.379 (9.2 % low). With
+    the metastable sample excluded, the peak falls where the other 24 lattices
+    plainly put it — ≈1.54, just above the exact 1.5187 as finite-L demands.
+    """
+    ok, detail = check_m05(_M05_HEX_STRIPE_INCIDENT)
+    peak = float(detail.split("T=")[1].split(" ")[0])
+    assert 1.50 < peak < 1.58, detail
+    assert abs(peak - 1.379) > 0.1, "the metastable sample was crowned again"
+    assert ok, detail
+
+
+def test_m05_discloses_the_exclusion_rather_than_applying_it_quietly():
+    _, detail = check_m05(_M05_HEX_STRIPE_INCIDENT)
+    assert "excluded 1 non-equilibrated sample" in detail
+    assert "1.3792" in detail          # names the temperature it dropped
+
+
+def test_m05_ungurded_argmax_would_have_crowned_the_stripe():
+    """Proof the fixture really is pathological — the bare argmax lands on it."""
+    chi = _M05_HEX_STRIPE_INCIDENT["chi"]
+    i = max(range(len(chi)), key=lambda k: chi[k])
+    assert i == 2
+    assert _M05_HEX_STRIPE_INCIDENT["T"][i] == 1.379167
+
+
+def test_m05_refuses_a_run_that_failed_to_equilibrate_broadly():
+    """One or two metastable samples is a disclosed exclusion; a sweep riddled
+    with them is not a measurement at all and must claim no T_c."""
+    bad = dict(_M05_HEX_STRIPE_INCIDENT)
+    n = len(bad["T"])
+    # Saw-tooth |M| with wide error bars: every other sample "rises" many sigma.
+    bad["abs_mag"] = [0.5 if k % 2 else 0.9 for k in range(n)]
+    bad["abs_mag_err"] = [0.001] * n
+    ok, detail = check_m05(bad)
+    assert ok is False
+    assert "no T_c claimed" in detail
+
+
+def test_m05_fails_closed_on_an_unreadable_guard_array():
+    """A present-but-unusable guard field must never grade as a clean sweep."""
+    bad = dict(_M05_HEX_STRIPE_INCIDENT)
+    bad["abs_mag_err"] = "not-an-array"
+    ok, detail = check_m05(bad)
+    assert ok is False
+    assert "unreadable equilibration guard" in detail
+
+
+def test_m05_guard_is_inert_on_a_clean_sweep():
+    """A healthy report grades exactly as before — no exclusion note, same peak."""
+    ok, detail = check_m05(_m05_hex_report(TC_HEX))
+    assert ok is True
+    assert "excluded" not in detail
+
+
+def test_m05_fails_closed_when_the_guard_arrays_are_absent_entirely():
+    """The gap a hand-written M05 report could walk through.
+
+    ``nonequilibrated_indices`` answers ``[]`` — no exclusions — for a report with
+    no magnetization arrays at all, which is the right tolerance for M01-era
+    legacy dumps but is not a scan. Reaching check_m05 with them missing used to
+    return ``(True, "…χ peak at…")``: a clean pass on a guard that never ran.
+    """
+    for report in (_m05_hex_report(TC_HEX), _m05_report(TC_TRI)):
+        bare = {k: v for k, v in report.items()
+                if k not in ("abs_mag", "abs_mag_err")}
+        ok, detail = check_m05(bare)
+        assert ok is False, detail
+        assert "no equilibration guard arrays" in detail
+        assert "no T_c is claimed" in detail
+
+
+def test_m05_absence_disclosure_names_the_missing_fields_and_the_lattice():
+    bare = {k: v for k, v in _m05_hex_report(TC_HEX).items()
+            if k not in ("abs_mag", "abs_mag_err")}
+    _, detail = check_m05(bare)
+    assert "abs_mag" in detail and "abs_mag_err" in detail
+    assert "honeycomb" in detail
+
+
+def test_every_committed_m05_report_carries_the_guard_arrays():
+    """Why absence can be a hard failure here: no M05 report is legacy.
+
+    ``m05.to_report``/``to_report_hex`` have emitted both arrays since the first
+    triangular run of 2026-06-24, so within M05 a missing guard array means a
+    report the pipeline did not write — never an older honest one.
+    """
+    receipts = sorted((checks.REPORTS_DIR / "receipts").glob("run-*-m05.json"))
+    assert receipts, "no committed M05 receipts to check"
+    for path in receipts:
+        report = json.loads(path.read_text(encoding="utf-8"))
+        assert isinstance(report.get("abs_mag"), list), path.name
+        assert isinstance(report.get("abs_mag_err"), list), path.name
+        assert check_m05(report)[0] is True, path.name
+
+
+def test_m01_still_tolerates_legacy_reports_without_magnetization_arrays():
+    """The legacy tolerance belongs to check_m01 and must survive untouched.
+
+    M05's stricter rule is scoped to check_m05; the shared helper keeps answering
+    "no exclusions" for the pre-uncertainty-array dumps check_m01 grades.
+    """
+    legacy = _ising_report(round(ONSAGER_TC, 1))
+    assert "abs_mag" not in legacy and "abs_mag_err" not in legacy
+    ok, detail = check_m01(legacy)
+    assert ok is True, detail
+    from lab.m01_quality import nonequilibrated_indices
+    assert nonequilibrated_indices(legacy) == []

@@ -13,9 +13,11 @@ through monkeypatched tmp dirs.
 """
 import json
 import re
+from pathlib import Path
 from types import SimpleNamespace
 
 from lab import render
+from lab import render as render_mod
 from lab.render import _commit_report, _slug_for
 
 
@@ -74,6 +76,49 @@ def test_committed_report_is_provenance_stamped(tmp_path, monkeypatch):
     assert data["reproduction"]["rerun"] == "python -m lab.cli m14"
     html = (reports / "2026-07-05-m14.html").read_text(encoding="utf-8")
     assert "source_tree_sha256" in html
+
+
+def test_hexagonal_m05_rerun_names_the_honeycomb_entrypoint(tmp_path, monkeypatch):
+    """One slug, two lattices: the honeycomb must not publish the triangular command.
+
+    M05 fronts two CLI entrypoints — ``lab m05`` sweeps the triangular lattice,
+    ``lab m05-hex`` the honeycomb — and both commit under the ``m05`` slug. A
+    rerun derived from the slug alone told every reader of a honeycomb receipt to
+    reproduce it by running the *other* geometry, whose T_c differs by more than
+    a factor of two.
+    """
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    dump = json.dumps({"experiment": "M05-hexagonal", "config": {"lattice": "honeycomb"}})
+    _commit_report("2026-08-11", "m05", "<pre>" + dump + "</pre>", dump)
+
+    data = json.loads((reports / "2026-08-11-m05.json").read_text(encoding="utf-8"))
+    assert data["reproduction"]["rerun"] == "python -m lab.cli m05-hex"
+    # The regrade command stays milestone-scoped: one check grades both lattices.
+    assert data["reproduction"]["regrade"] == "python -m lab.cli verify M05"
+
+
+def test_triangular_m05_rerun_still_names_the_plain_entrypoint(tmp_path, monkeypatch):
+    """The negative control for the fix above — the other lattice is undisturbed."""
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    dump = json.dumps({"experiment": "M05-triangular", "config": {"lattice": "triangular"}})
+    _commit_report("2026-06-24", "m05", "<pre>" + dump + "</pre>", dump)
+
+    data = json.loads((reports / "2026-06-24-m05.json").read_text(encoding="utf-8"))
+    assert data["reproduction"]["rerun"] == "python -m lab.cli m05"
+
+
+def test_every_rerun_override_names_a_real_cli_subcommand():
+    """The override table is only trustworthy if every command in it exists."""
+    from lab import cli
+    source = Path(cli.__file__).read_text(encoding="utf-8")
+    for tag, subcommand in render_mod._RERUN_SUBCOMMAND.items():
+        assert f'cmd == "{subcommand}"' in source, (tag, subcommand)
+
+
+def test_reports_without_an_override_rerun_under_their_own_slug():
+    """The common case stays slug-derived; the table is the exception, not the rule."""
+    assert render_mod._rerun_subcommand({"experiment": "M07-potts"}, "m07") == "m07"
+    assert render_mod._rerun_subcommand({}, "m06") == "m06"
 
 
 def test_second_render_does_not_clobber_first(tmp_path, monkeypatch):
@@ -598,3 +643,108 @@ def test_render_m10_appears_in_discovery_and_ledger(tmp_path, monkeypatch):
 
 def test_slug_for_maps_m10_report():
     assert _slug_for(_m10_fixture_report()) == "m10"
+
+
+# ── M05 renders BOTH geometries off one code path ─────────────────────────────
+
+def _m05_report(experiment, tc_bench, peak):
+    """A minimal M05 report of either geometry, peaked at ``peak``."""
+    T = [round(tc_bench - 0.2 + 0.1 * i, 4) for i in range(5)]
+    chi = [1.0 / (abs(t - peak) + 0.02) for t in T]
+    return {
+        "experiment": experiment,
+        "L": 128,
+        "T": T,
+        "chi": chi,
+        "abs_mag": [0.9, 0.7, 0.5, 0.3, 0.1],
+        "abs_mag_err": [0.01] * 5,
+        "energy": [-1.4, -1.3, -1.2, -1.1, -1.0],
+        "specific_heat": [1.0, 2.0, 5.0, 2.0, 1.0],
+        "tc_chi": peak,
+        "tc_chi_refined": peak,
+        "tc_cv_refined": peak,
+        "tc_benchmark": tc_bench,
+        "rel_error": abs(peak - tc_bench) / tc_bench,
+        "wall_seconds": 95.0,
+        "config": {"L": 128, "seed": 42},
+    }
+
+
+TC_HEX_EXACT = 2.0 / math.log(2.0 + math.sqrt(3.0))     # 1.5187
+TC_TRI_EXACT = 4.0 / math.log(3.0)                      # 3.6410
+
+
+def test_render_m05_hexagonal_writes_the_permanent_pair_and_names_the_honeycomb(
+        tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    report = _m05_report("M05-hexagonal", TC_HEX_EXACT, TC_HEX_EXACT)
+    render.render_m05(report, date="2026-08-11")
+
+    html_file = reports / "2026-08-11-m05.html"
+    assert html_file.exists() and (reports / "2026-08-11-m05.json").exists()
+    html = html_file.read_text(encoding="utf-8")
+    assert html.count("data:image/png;base64,") >= 2
+    # Names the geometry it actually ran, and quotes the honeycomb closed form…
+    assert "honeycomb" in html
+    assert "2/ln(2+" in html
+    # …and never claims the triangular one.
+    assert "triangular-lattice 2D Ising" not in html
+    assert "4/ln 3" not in html
+    # The receipt lands too, tagged as the hexagonal run.
+    receipts = list((reports / "receipts").glob("*.json"))
+    assert receipts
+    assert any(json.loads(p.read_text(encoding="utf-8"))["experiment"]
+               == "M05-hexagonal" for p in receipts)
+
+
+def test_render_m05_hexagonal_verdict_passes_on_its_own_exact_tc(tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m05(_m05_report("M05-hexagonal", TC_HEX_EXACT, TC_HEX_EXACT),
+                      date="2026-08-11")
+    html = (reports / "2026-08-11-m05.html").read_text(encoding="utf-8")
+    assert "✓" in html
+    # Graded honestly as verification, never as a discovery.
+    assert "rung-0 verification" in html
+    assert "not a discovery" in html
+
+
+def test_render_m05_hexagonal_verdict_is_an_honest_null_when_the_peak_is_off(
+        tmp_path, monkeypatch):
+    """A honeycomb peak outside ±0.06 stays a folded grey leaf with real numbers."""
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m05(_m05_report("M05-hexagonal", TC_HEX_EXACT, TC_HEX_EXACT + 0.25),
+                      date="2026-08-11")
+    html = (reports / "2026-08-11-m05.html").read_text(encoding="utf-8")
+    assert "✓" not in html
+    assert "null" in html.lower()
+
+
+def test_render_m05_triangular_is_unchanged_by_the_honeycomb_addition(
+        tmp_path, monkeypatch):
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    render.render_m05(_m05_report("M05-triangular", TC_TRI_EXACT, TC_TRI_EXACT),
+                      date="2026-06-24")
+    html = (reports / "2026-06-24-m05.html").read_text(encoding="utf-8")
+    assert "✓" in html
+    assert "triangular" in html and "4/ln3" in html
+    assert "honeycomb" not in html
+
+
+def test_m05_lattice_dispatch_defaults_to_triangular_and_never_guesses_honeycomb():
+    """The lattice is read off the ``experiment`` tag, and ONLY the explicit
+    hexagonal tag selects the honeycomb. Anything else — including an M05 report
+    that somehow lost its tag — falls back to triangular, which is what every
+    M05 report written before 2026-08-11 actually is. A dispatch that guessed
+    honeycomb on ambiguity would mislabel the whole existing archive."""
+    from lab.render import _m05_lattice
+
+    hexa = _m05_lattice({"experiment": "M05-hexagonal"})
+    assert hexa[0] == "honeycomb" and hexa[3] == 0.06
+    assert abs(hexa[2] - TC_HEX_EXACT) < 1e-12
+
+    for report in ({"experiment": "M05-triangular"}, {}, {"experiment": None},
+                   {"experiment": "M05"}):
+        name, form, exact, tol = _m05_lattice(report)
+        assert name == "triangular", report
+        assert form == "4/ln3" and tol == 0.15
+        assert abs(exact - TC_TRI_EXACT) < 1e-12

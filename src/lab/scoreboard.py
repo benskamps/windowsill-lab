@@ -29,7 +29,7 @@ from dataclasses import dataclass
 from . import checks
 from .checks import (
     ALLEN_CAHN_EXPONENT, ALLEN_CAHN_TOL, BETA_OVER_NU, GAMMA_OVER_NU,
-    MNP_ENERGY_TOL, ONSAGER_TC, TC_3D, TC_TRI, TWO_OVER_PI, T_BKT,
+    MNP_ENERGY_TOL, ONSAGER_TC, TC_3D, TC_HEX, TC_TRI, TWO_OVER_PI, T_BKT,
     WANNIER_S0, WANNIER_S0_TOL,
 )
 from .publish import REPORTS_DIR
@@ -192,7 +192,20 @@ def _m04(reports):
 
 
 def _m05(reports):
-    return _peak_entry(reports, "M05", "chi", "M05", "Triangular Ising T_c", TC_TRI, 0.15)
+    """Two rows, one per geometry — M05 verified two lattices, not one.
+
+    ``_tagged`` matches by prefix, so a bare ``_peak_entry(reports, "M05", ...)``
+    would happily hand a **honeycomb** report (peak ≈1.52) to the *triangular*
+    row and score it against 3.6410 — a 58 % deviation on a run that was in fact
+    correct, or the reverse mislabel if the newest report flipped. Matching the
+    full tag per row keeps each measurement against its own exact number, and
+    keeps both geometries permanently on the board instead of letting whichever
+    ran last shadow the other.
+    """
+    return (_peak_entry(reports, "M05-triangular", "chi", "M05",
+                        "Triangular Ising T_c", TC_TRI, 0.15)
+            + _peak_entry(reports, "M05-hexagonal", "chi", "M05",
+                          "Honeycomb Ising T_c", TC_HEX, 0.06))
 
 
 def _m06(reports):

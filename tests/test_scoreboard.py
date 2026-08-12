@@ -121,3 +121,54 @@ def test_committed_archive_scoreboard_all_within_tolerance():
     assert len(entries) >= 12, f"expected the full curriculum, got {len(entries)}"
     failing = [f"{e.milestone}·{e.observable} (z={e.z:+.2f})" for e in entries if not e.passed]
     assert not failing, f"scoreboard shows out-of-tolerance milestones: {failing}"
+
+
+# ── M05 carries two geometries — each row against its own exact T_c ───────────
+from lab.checks import TC_HEX, TC_TRI  # noqa: E402
+
+
+def _m05_tri_report(peak_at=TC_TRI):
+    return {"experiment": "M05-triangular",
+            "T": [peak_at - 0.1, peak_at, peak_at + 0.1], "chi": [1.0, 9.0, 1.0]}
+
+
+def _m05_hex_report(peak_at=TC_HEX):
+    return {"experiment": "M05-hexagonal",
+            "T": [peak_at - 0.05, peak_at, peak_at + 0.05], "chi": [1.0, 9.0, 1.0]}
+
+
+def test_m05_emits_one_row_per_geometry():
+    entries = sb.collect_entries([_m05_hex_report(), _m05_tri_report()])
+    m05 = [e for e in entries if e.milestone == "M05"]
+    assert len(m05) == 2
+    by_label = {e.observable: e for e in m05}
+    assert set(by_label) == {"Triangular Ising T_c", "Honeycomb Ising T_c"}
+    assert abs(by_label["Triangular Ising T_c"].exact - TC_TRI) < 1e-9
+    assert abs(by_label["Honeycomb Ising T_c"].exact - TC_HEX) < 1e-9
+    assert all(e.passed for e in m05)
+
+
+def test_a_honeycomb_report_is_never_scored_against_the_triangular_exact():
+    """``_tagged`` matches by prefix, so before the full-tag split a honeycomb
+    report could be handed to the triangular row and scored against 3.6410 — a
+    58 % deviation on a correct run. Only the honeycomb row may claim it."""
+    entries = sb.collect_entries([_m05_hex_report()])
+    m05 = [e for e in entries if e.milestone == "M05"]
+    assert len(m05) == 1
+    assert m05[0].observable == "Honeycomb Ising T_c"
+    assert abs(m05[0].exact - TC_HEX) < 1e-9
+    assert m05[0].passed
+
+
+def test_neither_geometry_shadows_the_other_when_only_one_has_a_report():
+    """The triangular row must survive on its own (the pre-2026-08-11 state)."""
+    entries = sb.collect_entries([_m05_tri_report()])
+    m05 = [e for e in entries if e.milestone == "M05"]
+    assert len(m05) == 1 and m05[0].observable == "Triangular Ising T_c"
+
+
+def test_honeycomb_row_uses_the_tighter_tolerance():
+    entries = sb.collect_entries([_m05_hex_report(), _m05_tri_report()])
+    by_label = {e.observable: e for e in entries if e.milestone == "M05"}
+    assert by_label["Honeycomb Ising T_c"].tol == 0.06
+    assert by_label["Triangular Ising T_c"].tol == 0.15

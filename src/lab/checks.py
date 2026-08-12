@@ -54,6 +54,9 @@ TC_SG_3D = 1.102
 TC_SG_3D_TOL = 0.10
 # Exact triangular-lattice 2D Ising critical temperature (M05): T_c = 4/ln 3.
 TC_TRI = 4.0 / math.log(3.0)   # ≈ 3.6410
+# Exact honeycomb-lattice 2D Ising critical temperature (M05's second half):
+# T_c = 2/ln(2+√3). The triangular lattice's dual, z = 3 instead of 6.
+TC_HEX = 2.0 / math.log(2.0 + math.sqrt(3.0))   # ≈ 1.5187
 # 2D XY BKT transition temperature (M08) — the square-lattice MC/RG benchmark
 # (0.89290(5)); no closed form. Located via the helicity-modulus jump crossing.
 T_BKT = 0.8929
@@ -614,35 +617,113 @@ def check_m04(report: dict) -> tuple[bool | None, str]:
     return ok, f"2D C peak at T={peak_T:.3f} vs Onsager exact {ONSAGER_TC:.4f} (tol ±{tol})"
 
 
+# M05's two non-square geometries, each with its own exact T_c and tolerance.
+# experiment tag → (lattice name, exact T_c, its closed form, tolerance).
+#
+# The tolerances are the SAME FRACTION of each lattice's own T_c (≈4%), not the
+# same absolute number: the triangular ±0.15 is 4.1% of 3.6410, so the honeycomb
+# gets ±0.06 (4.0% of 1.5187) rather than inheriting a ±0.15 that would be a
+# 10% band on a much smaller number and would pass almost anything. Owned by the
+# check, never read from the report, so a run cannot widen its own gate.
+_M05_LATTICES = {
+    "M05-triangular": ("triangular", TC_TRI, "4/ln3", 0.15),
+    "M05-hexagonal": ("honeycomb", TC_HEX, "2/ln(2+√3)", 0.06),
+}
+
+
 def check_m05(report: dict) -> tuple[bool | None, str]:
-    """Triangular-lattice 2D Ising: the χ peak locates T_c near the exact 4/ln 3.
+    """Non-square 2D Ising: the χ peak locates T_c near that lattice's exact value.
 
     Returns ``None`` unless this is an M05 report. Otherwise re-derives the
     critical temperature *independently* from the per-T (T, χ) arrays — a coarse
     argmax refined by a 3-point parabola through the peak — and asserts it sits
-    near the exact triangular T_c = 4/ln 3 ≈ 3.6410. The tolerance is deliberately
-    generous (±0.15, like M06): on a finite lattice the χ peak sits at a
+    near the exact T_c **for the geometry the report claims**: 4/ln 3 ≈ 3.6410 on
+    the triangular lattice, 2/ln(2+√3) ≈ 1.5187 on the honeycomb.
+
+    Dispatching on the experiment tag is the whole point. The two lattices differ
+    by more than a factor of two in T_c, so a check that graded both against one
+    constant would either fail a perfectly good run or — worse — pass a run that
+    had silently used the wrong geometry. The tolerances are deliberately generous
+    in the same way M06's is: on a finite lattice the χ peak sits at a
     pseudo-critical T_c(L) shifted *above* the infinite-volume value, so this
-    catches a broken triangular simulation (wrong geometry, wrong neighbour count,
-    or a non-bipartite update done with the square checkerboard), not a
+    catches a broken simulation (wrong neighbour count, a non-bipartite update
+    done with a checkerboard, a parity rule inverted at the seam), not a
     precision-T_c claim. A receipt that re-computes the number, not an echo.
+
+    Only one M05 report grades per run — ``_grade`` takes the newest report the
+    check understands, so whichever geometry ran most recently is the one on the
+    board. Both lattices stay permanently visible on the scoreboard, which keys
+    its rows off the tag rather than off recency (``scoreboard._m05``).
+
+    **Non-equilibration guard (added 2026-08-11).** ``check_m01`` has excluded
+    provably non-equilibrated samples from peak candidacy since the 2026-07-23
+    campaign incident; this check did not, and the honeycomb's first canonical run
+    proved that was a real gap rather than a theoretical one. A single L=128
+    lattice frozen in a stripe domain at T = 1.379 — ⟨|m|⟩ = 0.573 between
+    neighbours of 0.913 and 0.895, a 46σ *rise* with temperature, χ = 1164 against
+    neighbours below 1.3 — was crowned by the bare argmax and dragged the reported
+    T_c 9.2 % low. Equilibrium ⟨|m|⟩(T) is non-increasing, so a rise that large is
+    forbidden rather than merely unlikely; ``nonequilibrated_indices`` is pure
+    relational physics with no lattice-specific constants, so it applies here
+    unchanged. Excluded samples are **named in the returned message**, never
+    quietly dropped.
+
+    **The guard fails closed on both kinds of absent scan.** Guard arrays present
+    but unreadable, *and* guard arrays missing altogether, both return ``False``
+    naming the gap — no T_c is claimed either way. The missing case is the one a
+    hand-written report can reach: ``nonequilibrated_indices`` answers ``[]`` (no
+    exclusions) for a report carrying no magnetization arrays, which is the right
+    tolerance for the M01-era dumps that predate uncertainty arrays but is not a
+    scan. No M05 report is legacy in that sense — ``m05.to_report`` and
+    ``to_report_hex`` have emitted ``abs_mag``/``abs_mag_err`` since the
+    triangular run of 2026-06-24 — so inside this check their absence means the
+    guard could not run, and a check that never ran must not read as a clean
+    pass. The legacy tolerance stays where it belongs, in ``check_m01``.
     """
-    if report.get("experiment") != "M05-triangular":
-        return None, "not an M05 triangular-Ising report"
+    lattice = _M05_LATTICES.get(report.get("experiment"))
+    if lattice is None:
+        return None, "not an M05 non-square-Ising report"
+    name, exact, form, tol = lattice
     T, chi = report.get("T"), report.get("chi")
     if not T or not chi or len(T) != len(chi) or len(T) < 3:
         return None, "M05 report missing (T, χ) arrays"
-    i = max(range(len(chi)), key=lambda k: chi[k])
+
+    if report.get("abs_mag") is None and report.get("abs_mag_err") is None:
+        # No guard arrays at all — the scan had nothing to read, so it did not
+        # run. Disclosed as a failure rather than inheriting check_m01's legacy
+        # tolerance, which would let a hand-written M05 report grade clean on a
+        # guard that never executed.
+        return False, (f"{name} run carries no equilibration guard arrays "
+                       f"(abs_mag / abs_mag_err) — the non-equilibration scan "
+                       f"could not run, so no T_c is claimed")
+
+    excluded = nonequilibrated_indices(report)
+    if excluded is None:
+        # A guard array is present but unusable — fail closed. A scan that never
+        # ran must never be mistaken for a clean one.
+        return False, (f"{name} run carries an unreadable equilibration guard "
+                       f"array (abs_mag / abs_mag_err) — no T_c claimed")
+    if len(excluded) > len(T) // 5:
+        return False, (f"{name} run failed to equilibrate at {len(excluded)} of "
+                       f"{len(T)} temperatures — no T_c claimed")
+
+    candidates = [k for k in range(len(chi)) if k not in set(excluded)]
+    i = max(candidates, key=lambda k: chi[k])
     # 3-point parabola refinement of the peak (stdlib port of m06.refine_peak).
-    if 0 < i < len(T) - 1:
+    # Neighbours are only used when they are themselves usable samples.
+    if 0 < i < len(T) - 1 and (i - 1) not in set(excluded) and (i + 1) not in set(excluded):
         y0, y1, y2 = chi[i - 1], chi[i], chi[i + 1]
         denom = y0 - 2.0 * y1 + y2
         peak_T = T[i] if denom == 0 else T[i] + 0.5 * (y0 - y2) / denom * (T[i] - T[i - 1])
     else:
         peak_T = T[i]
-    tol = 0.15
-    ok = abs(peak_T - TC_TRI) <= tol
-    return ok, f"triangular χ peak at T={peak_T:.3f} vs exact 4/ln3 = {TC_TRI:.4f} (tol ±{tol})"
+    ok = abs(peak_T - exact) <= tol
+    msg = (f"{name} χ peak at T={peak_T:.3f} vs exact {form} = {exact:.4f} "
+           f"(tol ±{tol})")
+    if excluded:
+        msg += (f" · excluded {len(excluded)} non-equilibrated sample(s) at "
+                f"T={', '.join(f'{T[k]:.4f}' for k in excluded)}")
+    return ok, msg
 
 
 def _refine_peak_stdlib(T, y) -> float:
