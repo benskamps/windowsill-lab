@@ -11,8 +11,9 @@ Each entry is keyed by milestone id and may carry:
 - ``short_label``    — 2-4 plain words naming the experiment.
 - ``question_plain`` — the experiment's question in everyday, jargon-free language.
 - ``why_it_matters`` — one sentence on why a curious person should care.
-- ``result_plain``   — one plain sentence stating the verified outcome (or ``None``
-                       for open/pending milestones, which have no result yet).
+- ``result_plain``   — a plain statement of the outcome, including a kept miss's
+                       own numbers (or ``None`` for open/pending milestones,
+                       which have no result yet).
 
 Tracks currently carrying entries: M=magnetism, K=coherence, C=computation,
 A=astronomy, I=instrument, B=donated compute.
@@ -104,7 +105,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "3D spin glass",
         "question_plain": "Give that same tangled, conflicting magnet a third dimension to live in — does the extra room finally let it freeze into a glassy, locked-up state at a real temperature?",
         "why_it_matters": "This is the famous case behind real glassy materials, and finding the freezing point would prove the lab can reach the genuinely hard problems, not just the textbook ones.",
-        "result_plain": None,
+        "result_plain": "Not yet — and both times the reason was found here, in the lab's own setup. The first attempt was too small to see anything. The second looked like a real answer until an audit turned up two faults: the simulation runs copies of the material at a ladder of temperatures and trades neighbours between rungs, and one whole set of those pairs was never tried even once, so the ladder broke into isolated couples instead of one connected chain; and the textbook number it was being graded against had been measured for a different kind of randomness than the one being simulated. Both faults are fixed in the code; the experiment is owed a rerun. Until then this stays grey.",
     },
     "M13": {
         "short_label": "Frustrated triangles",
@@ -207,7 +208,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Reweigh a neutron-star collision",
         "question_plain": "From open gravitational-wave data, can we re-measure the mass of a collision that shook spacetime and match the official answer?",
         "why_it_matters": "It shows a home machine can independently re-derive a landmark physics result from the same public data the discoverers used.",
-        "result_plain": None,
+        "result_plain": "No. And the interesting part is how carefully it failed. The lab first fed its own pipeline a fake collision planted in the real detector data, and the pipeline found it and weighed it about twenty-four times more precisely than the published error bar — so the control passed. Pointed at the real 2017 neutron-star collision, it found nothing strong enough to call a detection, and said so rather than fitting the answer it already knew. On the way past it did find something real it was not looking for: a known instrumental glitch in the Livingston detector at 209 sigma, 1.06 seconds before the collision. Reproducing the published mass needs better wave physics, not more computer time.",
     },
     "A04": {
         "short_label": "Search for a planet",

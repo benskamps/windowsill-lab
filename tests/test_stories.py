@@ -73,6 +73,23 @@ def test_open_milestone_has_question_but_no_result():
         assert "result_plain" not in m
 
 
+def test_every_null_milestone_ships_its_numbers():
+    """The page's thesis is that misses stay visible — with their receipts.
+
+    A grey leaf whose field note carries no result reads as an experiment nobody
+    ran. This is the curriculum-level guard on the 2026-08-11 lift fix: any new
+    ``[~]`` line must carry a receipt parenthetical, or it fails here rather than
+    rendering blank on the live page.
+    """
+    nulls = [m for m in _milestones() if m["status"] == "null"]
+    assert nulls, "expected at least one kept miss in the curriculum"
+    blank = [m["id"] for m in nulls if not (m.get("result") or "").strip()]
+    assert not blank, f"null milestones with no result on the feed: {blank}"
+    # The lay reader gets the miss too, not just the reader who opens the receipt.
+    mute = [m["id"] for m in nulls if not (m.get("result_plain") or "").strip()]
+    assert not mute, f"null milestones with no plain-language outcome: {mute}"
+
+
 def test_no_jargon_in_plain_fields():
     """Plain copy is for total non-experts — technical terms stay in `result`."""
     offenders = []
