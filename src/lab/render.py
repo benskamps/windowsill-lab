@@ -70,6 +70,24 @@ def _dependency_versions() -> dict[str, str]:
     return versions
 
 
+# One slug, two CLI entrypoints. M05 runs the triangular sweep as ``lab m05``
+# and the honeycomb as ``lab m05-hex``, and both commit under the ``m05`` slug —
+# so a rerun command derived from the slug alone would hand a honeycomb receipt
+# the command that reproduces the *other* lattice. The experiment tag is the
+# discriminator every other M05-aware surface already dispatches on
+# (``checks.check_m05``, ``scoreboard._m05``, ``render.render_m05``); reuse it
+# here so the published reproduction command can never name the wrong geometry.
+# Tags absent from this map rerun under their own slug, which is the common case.
+_RERUN_SUBCOMMAND: dict[str, str] = {
+    "M05-hexagonal": "m05-hex",
+}
+
+
+def _rerun_subcommand(report: dict, slug: str) -> str:
+    """The CLI subcommand that reproduces *report*, which is not always its slug."""
+    return _RERUN_SUBCOMMAND.get(str(report.get("experiment")), slug)
+
+
 def _stamp_report_json(json_dump: str, slug: str) -> str:
     """Add prospective, machine-readable provenance to a persisted report.
 
@@ -77,6 +95,11 @@ def _stamp_report_json(json_dump: str, slug: str) -> str:
     its source commit, cleanliness, full source-tree digest, runtime, dependency
     versions, and the separate commands for saved-data regrading and stochastic
     rerunning. Missing git metadata is represented as null, never guessed.
+
+    The rerun command comes from ``_rerun_subcommand``, not from the slug: one
+    slug can front two CLI entrypoints (see ``_RERUN_SUBCOMMAND``), and a
+    reproduction command that reruns a different experiment than the one the
+    report records is worse than no command at all.
     """
 
     try:
@@ -93,7 +116,7 @@ def _stamp_report_json(json_dump: str, slug: str) -> str:
     if slug == "m01":
         rerun = "python -m lab.cli run"
     elif milestone:
-        rerun = f"python -m lab.cli {slug}"
+        rerun = f"python -m lab.cli {_rerun_subcommand(report, slug)}"
 
     report["report_schema_version"] = 1
     report["generated_at"] = datetime.now(timezone.utc).isoformat()

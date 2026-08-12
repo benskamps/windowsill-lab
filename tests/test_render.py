@@ -13,9 +13,11 @@ through monkeypatched tmp dirs.
 """
 import json
 import re
+from pathlib import Path
 from types import SimpleNamespace
 
 from lab import render
+from lab import render as render_mod
 from lab.render import _commit_report, _slug_for
 
 
@@ -74,6 +76,49 @@ def test_committed_report_is_provenance_stamped(tmp_path, monkeypatch):
     assert data["reproduction"]["rerun"] == "python -m lab.cli m14"
     html = (reports / "2026-07-05-m14.html").read_text(encoding="utf-8")
     assert "source_tree_sha256" in html
+
+
+def test_hexagonal_m05_rerun_names_the_honeycomb_entrypoint(tmp_path, monkeypatch):
+    """One slug, two lattices: the honeycomb must not publish the triangular command.
+
+    M05 fronts two CLI entrypoints — ``lab m05`` sweeps the triangular lattice,
+    ``lab m05-hex`` the honeycomb — and both commit under the ``m05`` slug. A
+    rerun derived from the slug alone told every reader of a honeycomb receipt to
+    reproduce it by running the *other* geometry, whose T_c differs by more than
+    a factor of two.
+    """
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    dump = json.dumps({"experiment": "M05-hexagonal", "config": {"lattice": "honeycomb"}})
+    _commit_report("2026-08-11", "m05", "<pre>" + dump + "</pre>", dump)
+
+    data = json.loads((reports / "2026-08-11-m05.json").read_text(encoding="utf-8"))
+    assert data["reproduction"]["rerun"] == "python -m lab.cli m05-hex"
+    # The regrade command stays milestone-scoped: one check grades both lattices.
+    assert data["reproduction"]["regrade"] == "python -m lab.cli verify M05"
+
+
+def test_triangular_m05_rerun_still_names_the_plain_entrypoint(tmp_path, monkeypatch):
+    """The negative control for the fix above — the other lattice is undisturbed."""
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    dump = json.dumps({"experiment": "M05-triangular", "config": {"lattice": "triangular"}})
+    _commit_report("2026-06-24", "m05", "<pre>" + dump + "</pre>", dump)
+
+    data = json.loads((reports / "2026-06-24-m05.json").read_text(encoding="utf-8"))
+    assert data["reproduction"]["rerun"] == "python -m lab.cli m05"
+
+
+def test_every_rerun_override_names_a_real_cli_subcommand():
+    """The override table is only trustworthy if every command in it exists."""
+    from lab import cli
+    source = Path(cli.__file__).read_text(encoding="utf-8")
+    for tag, subcommand in render_mod._RERUN_SUBCOMMAND.items():
+        assert f'cmd == "{subcommand}"' in source, (tag, subcommand)
+
+
+def test_reports_without_an_override_rerun_under_their_own_slug():
+    """The common case stays slug-derived; the table is the exception, not the rule."""
+    assert render_mod._rerun_subcommand({"experiment": "M07-potts"}, "m07") == "m07"
+    assert render_mod._rerun_subcommand({}, "m06") == "m06"
 
 
 def test_second_render_does_not_clobber_first(tmp_path, monkeypatch):
