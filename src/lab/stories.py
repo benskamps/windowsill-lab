@@ -142,7 +142,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Spreading or dying",
         "question_plain": "If an activity can either spread to its neighbours or fizzle out for good, is there a knife's-edge setting where it just barely survives forever?",
         "why_it_matters": "This simplest model of epidemics, forest fires, and chain reactions captures the universal tipping point between extinction and survival, a pattern that shows up far beyond physics.",
-        "result_plain": None,
+        "result_plain": "Yes, and the lab deliberately refused to give a single number. It ran the knife-edge setting from just below and just above, and reported the answer as the range between the two — a range that contains the accepted value and rules out the naive one. Quoting one number would have meant knowing the exact edge more precisely than this machine can resolve, and that would have quietly turned an unknown into a knob tuned to taste. Three controls ran alongside, each able to catch a different way of fooling yourself: a setting far too weak, where the activity had to die off in a visibly different shape rather than a slow fade; a setting far too strong, where it had to level off and stay; and a check that from a completely empty grid, nothing can switch itself back on. Awaiting a human read before it can turn green.",
     },
     # ── Track K — coherence: when do independent rhythms agree? ──────────────
     "K01": {
@@ -161,9 +161,15 @@ STORIES: dict[str, dict[str, str | None]] = {
         "result_plain": "The twitchiest point does sit somewhere in the middle, at every crowd size from 250 clocks up to 4000. But it is not at 40% agreement, and it slides lower as the crowd grows — so this lab's earlier 40% was measuring the size of the room, not a law, and that claim is withdrawn. Measuring the slide directly: agreement falls as the crowd size to the power 0.401, give or take 0.017, against the 0.39 published for this exact setup in 2015. The two agree well within their error bars.",
     },
     "K03": {
-        "short_label": "When to stop talking",
-        "question_plain": "If the clocks can only talk to each other now and then, how long can they go quiet before they drift apart — and is a fixed schedule better than everyone speaking at once?",
-        "why_it_matters": "Every swarm of robots, sensors, or servers has to choose how often to check in, and the honest comparison against the classic free-for-all protocol says whether a schedule is worth the trouble.",
+        # Retargeted 2026-08-02 (MILESTONES.md K03) from the scheduled-coverage
+        # / ALOHA question, which is unscheduled rather than abandoned. This
+        # story rode the retired target until 2026-08-11 — and it is the copy on
+        # the "on the bench" button, the most forward-looking thing a stranger
+        # reads, so a stale entry here advertises an experiment the lab decided
+        # not to run.
+        "short_label": "Two answers, one question",
+        "question_plain": "Right at the edge where a crowd of clocks falls into step, does the crowd react just as sharply coming from below the edge as from above — or is the edge lopsided?",
+        "why_it_matters": "Two sets of physicists have published opposite answers to this about the exact system this lab already runs, and nobody has settled it. It is the first question on the page where the lab is not checking a known answer but trying to break a tie.",
         "result_plain": None,
     },
     # ── Track C — compute & number theory ────────────────────────────────────
@@ -214,7 +220,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Search for a planet",
         "question_plain": "Can we comb an entire patch of sky for the faint dip of an unseen planet and confirm a real one?",
         "why_it_matters": "It moves from checking known planets to actually finding one in raw survey data and reporting it for follow-up.",
-        "result_plain": None,
+        "result_plain": "Yes — three times, with the labels taken away. The earlier planet-weighing run was told where to look; this one was handed raw starlight with no names, no periods, and no hint which star had anything. The two planets it was being graded on came back first and second in its own ranking. Then it flagged a third star nobody had asked about, put it through the same checks, and only afterwards was it identified as an already-known planet — a real one the search was never pointed at. It also correctly threw out a deep, convincing signal that turned out to be two stars eclipsing each other. The cutoff for what counts as a detection was measured rather than chosen: fake transits were injected at three depths and all three cleared the bar, while twenty-two quiet stars stayed well under it. Five faults were found and fixed on the way, and every one of them was in the part that decides what a signal means, not in the search itself — including a candidate that was nothing but the edge of the search grid. This is a sample of one patch of sky rather than all of it, so it says nothing about how common planets are; the claim is that a search never told what to look for found what was already there. Awaiting a human read before it can turn green.",
     },
     # ── Track I — the machine as instrument ──────────────────────────────────
     "I01": {

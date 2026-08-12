@@ -8,7 +8,10 @@ T_C = 2.0 / np.log(1.0 + np.sqrt(2.0))  # ≈ 2.269185...
 def onsager_magnetization(T: np.ndarray, J: float = 1.0) -> np.ndarray:
     """Spontaneous magnetization per spin for an infinite 2D square Ising lattice.
 
-    Onsager 1944, derived more cleanly by Yang 1952:
+    The exact result is Yang 1952 (Phys. Rev. 85, 808); Onsager's 1944 paper
+    solved the free energy and gave T_C, and he announced this curve in 1948
+    without publishing a derivation.
+
         M(T) = (1 - sinh(2J/T)^(-4))^(1/8)   for T < T_c
         M(T) = 0                              for T >= T_c
     """
