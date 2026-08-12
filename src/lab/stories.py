@@ -142,7 +142,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Spreading or dying",
         "question_plain": "If an activity can either spread to its neighbours or fizzle out for good, is there a knife's-edge setting where it just barely survives forever?",
         "why_it_matters": "This simplest model of epidemics, forest fires, and chain reactions captures the universal tipping point between extinction and survival, a pattern that shows up far beyond physics.",
-        "result_plain": None,
+        "result_plain": "Yes, and the lab deliberately refused to give a single number. It ran the knife-edge setting from just below and just above, and reported the answer as the range between the two — a range that contains the accepted value and rules out the naive one. Quoting one number would have meant knowing the exact edge more precisely than this machine can resolve, and that would have quietly turned an unknown into a knob tuned to taste. Three controls ran alongside, each able to catch a different way of fooling yourself: a setting far too weak, where the activity had to die off in a visibly different shape rather than a slow fade; a setting far too strong, where it had to level off and stay; and a check that from a completely empty grid, nothing can switch itself back on. Awaiting a human read before it can turn green.",
     },
     # ── Track K — coherence: when do independent rhythms agree? ──────────────
     "K01": {
