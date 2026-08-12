@@ -58,7 +58,8 @@ built:
 - **Layout.** Read left to right, the shelf is in curriculum order, with
   whichever experiment is OPEN standing full-size at the centre. That centre
   specimen is the existing `#plant` group, so it keeps the whole organ grammar,
-  the growth theater, the bud, and every per-leaf field note. The others are
+  the growth theater, the bud, and every per-leaf field note — but it grows
+  **only the bench track's own ladder** (see §2b). The others are
   placed either side at one shared scale — a sill whose left-hand pots are
   bigger than its right-hand ones reads as perspective, which is a claim about
   distance nobody made.
@@ -82,6 +83,53 @@ built:
   time.
 - **Locked by test:** `test_the_sill_shows_every_track_at_once` and
   `test_the_shelf_rides_one_wind_and_the_clay_never_sways`.
+
+### 2b. The centre grows only what is on the bench (amended 2026-08-12)
+
+The shelf shipped with the centre still built from the WHOLE lab's milestone
+ledger — the legacy hero plant — while standing in the bench track's pot. Ben,
+the next morning, comparing the sill against the six conservatory cards below it:
+
+> "it still seems to be 'all of the leafs in one' and it doesn't match the 6
+> images."
+
+He was right, and it was the one thing on the sill that could not be re-derived
+from the vessel it stood in: 25 leaves from six sciences over a 34-rung ladder,
+in a coherence pot whose own card is a sparse young fern with two. A pot wears
+one track's labour; the plant in it has to be that same track's work or the
+whole layer is decoration.
+
+So the centre is now parameterized exactly the way a flank and a card are —
+`benchLadder(milestones, heroTrack)`: the track's own milestones over the
+track's own ladder length, its own growth-form archetype, its own open bud.
+Bigger and richer, never different. It keeps everything the flanks don't have
+(the stem ribbon, the per-leaf field notes, dew, phototropism, the breathing bud
+husks, the growth theater); only the data set narrows. When the rotation moves
+the bench to another science, the centre becomes that science's plant, form and
+all — coherence's fern becomes compute's vine.
+
+Three consequences worth naming:
+
+- **Unreached rungs come to the centre.** One track's ladder is short, so compute
+  at 1 of 4 would read as a snapped twig at centre stage — the exact defect the
+  cards fixed. Same technique, same gotcha: dashed from the REAL tip up the
+  shared height envelope (`GF._nodeY`), never a second build at full height,
+  which re-parameterizes vine's coil and creeper's sweep into a diverging plant.
+- **The theater's memory stays lab-wide.** `rememberClosedIds` is given the whole
+  ledger's closed set, not the bench track's. What a visitor has already seen
+  belongs to the visitor; storing one track's ids would make every other track's
+  leaves read as brand-new news the next time the rotation came round.
+- **The readout stopped lying.** `render_game_to_text()`'s `plant` block now
+  reports `track`, `ladder`, `leaves` and `unreached` for the plant that is
+  actually drawn, and the lab-wide counts moved to their own `ledger` key
+  instead of being labelled leaves. The explainer's "the counts under the plant"
+  became "the milestone counts under the sill are the whole lab's," which is
+  what they were all along.
+
+Copy needed no hedge: "Every leaf is one real experiment" was true of a whole-lab
+plant and is true of a per-track one. Locked by `web/centre-plant.test.mjs`
+(behavioural, run against the committed feed, negative control on the 2-vs-25
+gap) and two guards in `tests/test_web_growth_forms.py`.
 
 Still not in this pass: the og PNG re-render (the social card still shows one
 plant in one pot — true of the page until this lands), retiring the conservatory
@@ -242,8 +290,10 @@ discipline where the claims are made — that ordering is the point.
 
 ## 9. Guards
 
-- `node --test web/pots.test.mjs` — geometry, purity, distinctness, mark maths.
-- `node --test web/growth-forms.test.mjs` — unchanged, must stay green.
+- `node --test web/*.test.mjs` — pots (geometry, purity, distinctness, mark
+  maths), growth forms (unchanged, must stay green), and the centre plant's data
+  set. The glob, not a named file: `web/pots.test.mjs` shipped 2026-08-11 and CI
+  never once ran it, because the workflow named `growth-forms.test.mjs` by hand.
 - `python -m pytest tests/test_web_pots.py tests/test_web_growth_forms.py tests/test_turns.py tests/test_labhome.py -q`
 - Full `python -m pytest` before landing.
 - Manual: all six tracks forced on the hero; dawn/day/dusk/night walked with

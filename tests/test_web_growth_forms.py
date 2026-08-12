@@ -233,6 +233,68 @@ def test_meta_descriptions_enumerate_every_track():
     assert "Six instruments. One standard of proof." in html
 
 
+def test_the_centre_plant_grows_only_the_bench_track():
+    """The full-size plant at the centre of the sill is ONE track's plant.
+
+    Until 2026-08-12 it was built from the whole lab's milestone ledger — every
+    science's leaves on a single stem — while standing in the bench track's pot.
+    Ben, comparing the sill against the six conservatory cards: it "still seems
+    to be 'all of the leafs in one' and it doesn't match the 6 images."
+
+    So the centre is parameterized like a flank and like a card: the track's own
+    milestones over the track's own ladder length. The behavioural proof (run
+    against the committed feed) is ``web/centre-plant.test.mjs``; this is the
+    fast-lane guard on the wiring, so the regression cannot land on a day node
+    does not run.
+    """
+    html = PAGE.read_text(encoding="utf-8")
+
+    # the derivation exists, and is the same filter the cards and flanks use
+    assert "function benchLadder(milestones, track, fallbackTotal)" in html
+    assert "var own = list.filter(function (m) { return m && m.track === track; });" in html
+    # ...falling back to the whole ledger only when nothing carries a track
+    assert "if (!own.length) return { milestones: list, total: fallbackTotal, whole: true };" in html
+
+    # render() feeds the centre the bench ladder, never the page-wide one
+    render_block = html.split("function render(state)", 1)[1].split("function wetFromRun", 1)[0]
+    assert "var bench = benchLadder(milestones, heroTrack, total);" in render_block
+    assert "drawStalk(bench.milestones, bench.total, season," in render_block
+    assert "drawStalk(milestones," not in render_block, (
+        "the centre plant is being built from the whole ledger again"
+    )
+
+    # the whole lab's closed set still reaches drawStalk, but only as the growth
+    # theater's memory — what a visitor has already seen belongs to the visitor,
+    # not to whichever track is on the bench. It is never foliage.
+    assert "milestones.filter(isClosed));" in render_block
+    assert (
+        "rememberClosedIds(Array.isArray(ledgerClosed) ? ledgerClosed : closed);"
+    ) in html
+
+    # and the harness readout reports the plant as one track's ladder, with the
+    # lab-wide counts moved to their own key rather than mislabelled as leaves
+    assert "growth_form: GF.pageGrowthForm(bench.milestones)," in html
+    assert "leaves: benchClosed.length," in html
+    assert "ledger: {" in html
+
+
+def test_the_centre_plant_draws_the_rungs_it_has_not_reached():
+    """A centre plant showing one track has to show that track's whole climb, or
+    compute at 1 of 4 reads as a snapped twig at centre stage — the same defect
+    the conservatory cards fixed. Drawn from the REAL tip up the shared height
+    envelope, never a second build at full height (that re-parameterizes vine's
+    coil and creeper's sweep into a different, diverging plant)."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert '<g id="unreached" aria-hidden="true"></g>' in html
+    assert "var reached = closed.length + (open ? 1 : 0);   // the open one IS the tip" in html
+    assert "var ceiling = GF._nodeY(env, total - 1);" in html
+    # the ghost continues from geo.tip — the progress geometry — not from a rebuild
+    assert "ghostStem.setAttribute('d', 'M ' + geo.tip.x.toFixed(1) + ' ' + geo.tip.y.toFixed(1) +" in html
+    assert html.count("GF.build(formName") == 1, "the centre built its form twice"
+    for rule in (".plant-rung.unreached", ".plant-leaf.unreached"):
+        assert rule in html, f"missing style for the centre's unreached rungs: {rule}"
+
+
 def test_a_garden_card_draws_its_whole_ladder_not_only_the_measured_rungs():
     """A young track must read as young, not as broken.
 

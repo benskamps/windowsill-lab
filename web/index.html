@@ -350,6 +350,11 @@
     .sill-leaf.unreached { fill:none; stroke:#6b7566; stroke-width:2; stroke-dasharray:4 5; opacity:0.4; }
     .sill-stem.unreached { stroke:#6b7566; stroke-width:3; stroke-dasharray:5 7; opacity:0.32; }
     .sill-tip { fill:#8fbe77; }
+    /* The centre plant's own unreached rungs — the same faint dashed future the
+       flanks and the conservatory cards draw, at centre-stage weight. Quieter
+       than a real organ on purpose: it is the length of the climb, not a result. */
+    .plant-rung.unreached { fill:none; stroke:#6b7566; stroke-width:2; stroke-dasharray:5 7; opacity:0.3; }
+    .plant-leaf.unreached { fill:none; stroke:#6b7566; stroke-width:1.6; stroke-dasharray:4 5; opacity:0.36; }
     /* ── The pots ─────────────────────────────────────────────────────────────
        A pot is clay on a board: it never sways, never breathes, and adds no
        animation lane. What it does is catch the light the scene already has.
@@ -1074,6 +1079,13 @@
                 stroke="#3a5c2f" stroke-width="1.7" stroke-linecap="round" opacity="0.55"/>
           <path id="stem-edge-l" class="stem-edge" fill="none" stroke="#a5d18d" stroke-width="1" stroke-linecap="round"/>
           <path id="stem-edge-r" class="stem-edge" fill="none" stroke="#a5d18d" stroke-width="1" stroke-linecap="round"/>
+          <!-- the rungs this track has NOT reached yet, sketched from the real
+               tip up the shared height envelope. The centre shows one track's
+               ladder, so a short track (compute at 1 of 4) has to read as young
+               rather than as a snapped twig — the same honesty the conservatory
+               cards got, at centre-stage scale. Behind the leaves: the future
+               never occludes the record. -->
+          <g id="unreached" aria-hidden="true"></g>
           <g id="leaves"></g>
           <g id="leaf-hits"></g>
           <circle id="bud-halo" cx="400" cy="270" r="11" fill="#7fae6b" filter="url(#soft)"/>
@@ -1275,7 +1287,8 @@
       demo. An agent cannot decide that a result is true. A deterministic check has to pass first —
       that earns an amber leaf — and then a human reads the evidence and promotes it, which is the
       only way a leaf turns green. When a run misses, the miss is kept on the plant as a grey folded
-      leaf rather than quietly deleted. The counts under the plant include the nulls on purpose.</p>
+      leaf rather than quietly deleted. The milestone counts under the sill are the whole lab's, across
+      every science, and they include the nulls on purpose.</p>
       <p>The lower leaves are calibration: phase transitions and magnetic models whose answers are
       known well enough to expose a bad instrument. Higher leaves move into disorder and dynamics,
       where the claims must get narrower as the questions get harder. Tap any leaf—or use the
@@ -2470,6 +2483,28 @@
       return PT.DEFAULT_TRACK;
     }
 
+    // The centre plant is the BENCH TRACK'S OWN plant — not the whole lab's
+    // foliage stacked on one stem. Ben, 2026-08-12, looking at the live shelf:
+    // the hero "still seems to be 'all of the leafs in one' and it doesn't match
+    // the 6 images." It sat on the coherence pot wearing 25 leaves from six
+    // sciences while coherence's own card showed a sparse young fern with two.
+    // A pot and the plant in it must be the same measurement.
+    //
+    // So the centre is parameterized exactly the way a flank (`sillPlant`) and a
+    // conservatory card (`drawGarden`) are: the track's own milestones over the
+    // track's own ladder length. Bigger and richer, never different — the centre
+    // keeps the organ grammar the flanks don't have (the stem ribbon, per-leaf
+    // field notes, dew, phototropism, the breathing bud husks, the theater).
+    //
+    // A feed whose milestones carry no track at all keeps the whole-ledger
+    // plant, because then there is only one ladder to draw.
+    function benchLadder(milestones, track, fallbackTotal) {
+      var list = Array.isArray(milestones) ? milestones : [];
+      var own = list.filter(function (m) { return m && m.track === track; });
+      if (!own.length) return { milestones: list, total: fallbackTotal, whole: true };
+      return { milestones: own, total: own.length, whole: false };
+    }
+
     // ── The shelf: every track's pot and plant, out at once ──────────────────
     // Ben, 2026-08-11: "I want to see all of the pots out at once. Not one at a
     // time." So the sill is a garden, not a single specimen. Every track in the
@@ -2669,7 +2704,13 @@
       });
     }
 
-    function drawStalk(milestones, total, season, liveFeed) {
+    // `milestones` here is the BENCH TRACK's ladder, not the lab's (see
+    // benchLadder). `ledgerClosed` is the whole lab's closed set and exists only
+    // for the theater's memory: what a visitor has already seen is a property of
+    // the visitor, not of whichever track happens to be on the bench. Storing
+    // only the bench track's ids would make every other track's leaves read as
+    // brand-new news the next time the rotation brought them back.
+    function drawStalk(milestones, total, season, liveFeed, ledgerClosed) {
       var leafColor = SEASON_LEAF[season] || SEASON_LEAF.spring;
       var closed = milestones.filter(isClosed);
       var open = milestones.find(function (m) { return m && m.status === 'open'; });
@@ -2729,12 +2770,48 @@
       // the depth sort behind them.
       hits.forEach(function (h) { hitRail.appendChild(h); });
 
+      // The rungs still ahead of this track, dashed from the REAL tip up the
+      // shared height envelope — never a second build at full height, which
+      // re-parameterizes the form (vine's coil, creeper's sweep) and paints a
+      // different, diverging plant beside the true one. Every form tips at the
+      // same x by the homogeneity contract, so a vertical from the tip is a
+      // continuation of any of them.
+      var ghosts = $('unreached');
+      ghosts.textContent = '';
+      var reached = closed.length + (open ? 1 : 0);   // the open one IS the tip
+      if (GF._nodeY && total > reached) {
+        var env = { base: BASE, rise: RISE, total: total,
+                    count: closed.length, openProg: openProg };
+        var ceiling = GF._nodeY(env, total - 1);
+        var ghostStem = document.createElementNS(SVGNS, 'path');
+        ghostStem.setAttribute('class', 'plant-rung unreached');
+        ghostStem.setAttribute('d', 'M ' + geo.tip.x.toFixed(1) + ' ' + geo.tip.y.toFixed(1) +
+          ' L ' + geo.tip.x.toFixed(1) + ' ' + ceiling.toFixed(1));
+        ghosts.appendChild(ghostStem);
+        for (var g = reached; g < total; g++) {
+          var gy = GF._nodeY(env, g), gdir = (g % 2) ? 1 : -1;
+          var glx = geo.tip.x + gdir * 18, gly = gy - 7;
+          var gbranch = document.createElementNS(SVGNS, 'path');
+          gbranch.setAttribute('class', 'plant-rung unreached');
+          gbranch.setAttribute('d', 'M ' + geo.tip.x.toFixed(1) + ' ' + gy.toFixed(1) +
+            ' L ' + glx.toFixed(1) + ' ' + gly.toFixed(1));
+          ghosts.appendChild(gbranch);
+          var gleaf = document.createElementNS(SVGNS, 'ellipse');
+          gleaf.setAttribute('class', 'plant-leaf unreached');
+          gleaf.setAttribute('cx', glx.toFixed(1)); gleaf.setAttribute('cy', gly.toFixed(1));
+          gleaf.setAttribute('rx', '13'); gleaf.setAttribute('ry', '5.5');
+          gleaf.setAttribute('transform', 'rotate(' + (gdir < 0 ? -24 : 24) + ' ' +
+            glx.toFixed(1) + ' ' + gly.toFixed(1) + ')');
+          ghosts.appendChild(gleaf);
+        }
+      }
+
       // News since last visit unfurls; then remember what this visitor saw.
       // Only real loaded feeds count — the boot placeholder must not poison
       // the history with an empty set.
       if (liveFeed) {
         if (!reduce) unfurlNewOrgans(closed);
-        rememberClosedIds(closed);
+        rememberClosedIds(Array.isArray(ledgerClosed) ? ledgerClosed : closed);
       }
 
       // The open experiment is the tender bud at the very tip. "Open" means
@@ -4173,8 +4250,14 @@
       // ...and the rest of the shelf beside it — every other track's pot and
       // plant, visible on load, no tap required.
       var shelf = drawSillGarden(milestones, state.reports, state, heroTrack);
-      drawStalk(milestones, total, season,
-        !state.empty && Array.isArray(state.milestones) && state.milestones.length > 0);
+      // The centre plant grows only what is on the bench: the hero track's own
+      // milestones over its own ladder, the same data its conservatory card
+      // draws. The whole lab's closed set travels separately, for the theater's
+      // memory only — it is never foliage.
+      var bench = benchLadder(milestones, heroTrack, total);
+      drawStalk(bench.milestones, bench.total, season,
+        !state.empty && Array.isArray(state.milestones) && state.milestones.length > 0,
+        milestones.filter(isClosed));
       applyMoisture(moisture);
       drawMilestoneRail(milestones);
       paintCurriculum(milestones);
@@ -4185,6 +4268,10 @@
       var reviewList = milestones.filter(function (m) { return m && m.status === 'review'; });
       var nullList = milestones.filter(function (m) { return m && m.status === 'null'; });
       var open = milestones.find(function (m) { return m && m.status === 'open'; });
+      // The centre plant's own set — the leaves actually on the stem, as
+      // distinct from the lab-wide ledger the legend counts below the scene.
+      var benchClosed = bench.milestones.filter(isClosed);
+      var benchOpen = bench.milestones.find(function (m) { return m && m.status === 'open'; });
       var growth = [];
       if (verifiedList.length) growth.push(verifiedList.length + ' promoted');
       if (reviewList.length) growth.push(reviewList.length + ' in review');
@@ -4271,6 +4358,16 @@
         runs: state.runs == null ? null : state.runs,
         selected_field_note: _selectedMilestone,
         garden: garden,
+        // The WHOLE lab's ledger, which is what the legend under the scene
+        // counts. It is deliberately not the plant: no single plant on this sill
+        // has ever been every science at once, and one that looked like it was
+        // the defect this readout now makes visible.
+        ledger: {
+          milestones: milestones.length,
+          promoted: verifiedList.length,
+          in_review: reviewList.length,
+          null_kept: nullList.length
+        },
         sill: {
           centre: heroTrack,
           shelf: shelf,
@@ -4285,15 +4382,26 @@
           unfired_band: heroMarks.matte === true,
           bare: heroMarks.virgin === true
         },
+        // The centre plant, reported as what it actually renders: ONE track's
+        // ladder. `leaves` + `unreached` == `ladder`, always — that identity is
+        // what a harness can assert to prove the whole-lab mega-plant is gone
+        // (it used to report 25 leaves on a 3-rung coherence pot).
         plant: {
-          growth_form: GF.pageGrowthForm(milestones),
-          promoted_leaves: verifiedList.length,
-          amber_review_leaves: reviewList.length,
-          folded_null_leaves: nullList.length,
-          open_bud: open ? {
-            id: open.id || null,
-            runner_available: open.runner_available === true,
-            state: open.runner_available ? 'runner-ready' : 'on-bench'
+          growth_form: GF.pageGrowthForm(bench.milestones),
+          track: bench.whole ? null : heroTrack,
+          ladder: bench.total,
+          leaves: benchClosed.length,
+          unreached: Math.max(0, bench.total - benchClosed.length - (benchOpen ? 1 : 0)),
+          promoted_leaves: benchClosed.filter(function (m) { return m.status === 'verified'; }).length,
+          amber_review_leaves: benchClosed.filter(function (m) { return m.status === 'review'; }).length,
+          folded_null_leaves: benchClosed.filter(function (m) { return m.status === 'null'; }).length,
+          // the bud the plant actually carries. Identical to the page-wide open
+          // milestone whenever there is one (the bench IS the open track), but
+          // derived from what is drawn rather than from what happens to agree.
+          open_bud: benchOpen ? {
+            id: benchOpen.id || null,
+            runner_available: benchOpen.runner_available === true,
+            state: benchOpen.runner_available ? 'runner-ready' : 'on-bench'
           } : null
         }
       };
