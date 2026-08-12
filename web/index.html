@@ -1167,8 +1167,10 @@
         </figure>
         <figure class="plot-fig" id="plot-mag">
           <div class="plot-mount" id="mount-mag"></div>
-          <figcaption><b>Magnetization |m|(T).</b> The measured points (dots) fall on Onsager&rsquo;s exact
-          1944 curve (line). Their agreement is the calibration; uncertainty remains in the receipt.</figcaption>
+          <figcaption><b>Magnetization |m|(T) &mdash; how much the sheet agrees with itself.</b> The measured
+          points (dots) fall on the exact curve (line), computed from the formula rather than fitted to these
+          dots. The exact result is C.&nbsp;N.&nbsp;Yang&rsquo;s, published in 1952, building on Onsager&rsquo;s
+          1944 solution of the lattice. Their agreement is the calibration; uncertainty remains in the receipt.</figcaption>
         </figure>
         <figure class="plot-fig" id="plot-heat">
           <div class="plot-mount" id="mount-heat"></div>
@@ -4516,7 +4518,10 @@
       ctx.putImageData(img, 0, 0);
     }
 
-    // ── Onsager's exact spontaneous magnetization (1944) ───────────────────
+    // ── The exact spontaneous magnetization of the 2D Ising model ──────────
+    // Onsager (1944) solved the free energy and gave T_c; the magnetization
+    // curve below is C. N. Yang, Phys. Rev. 85, 808 (1952). Onsager announced
+    // the result in 1948 but never published a derivation.
     function onsagerM(T, tc) {
       if (T >= tc) return 0;
       var base = 1 - Math.pow(Math.sinh(2 / T), -4);
@@ -4732,7 +4737,7 @@
         var curve = [];
         for (var i = 0; i <= 140; i++) { var t = xr[0] + (xr[1] - xr[0]) * i / 140; curve.push([t, onsagerM(t, tc)]); }
         mount('mount-mag', plot({
-          aria: 'Magnetization versus temperature, measured points on Onsager exact curve',
+          aria: 'Magnetization versus temperature: this run\'s measured points sitting on the exact curve, which falls from full agreement at low temperature to zero at the tipping point',
           xrange: xr, yrange: [0, 1.02],
           xticks: niceTicks(xr[0], xr[1], 4), yticks: [0, 0.5, 1],
           tc: tc,

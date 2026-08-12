@@ -161,9 +161,15 @@ STORIES: dict[str, dict[str, str | None]] = {
         "result_plain": "The twitchiest point does sit somewhere in the middle, at every crowd size from 250 clocks up to 4000. But it is not at 40% agreement, and it slides lower as the crowd grows — so this lab's earlier 40% was measuring the size of the room, not a law, and that claim is withdrawn. Measuring the slide directly: agreement falls as the crowd size to the power 0.401, give or take 0.017, against the 0.39 published for this exact setup in 2015. The two agree well within their error bars.",
     },
     "K03": {
-        "short_label": "When to stop talking",
-        "question_plain": "If the clocks can only talk to each other now and then, how long can they go quiet before they drift apart — and is a fixed schedule better than everyone speaking at once?",
-        "why_it_matters": "Every swarm of robots, sensors, or servers has to choose how often to check in, and the honest comparison against the classic free-for-all protocol says whether a schedule is worth the trouble.",
+        # Retargeted 2026-08-02 (MILESTONES.md K03) from the scheduled-coverage
+        # / ALOHA question, which is unscheduled rather than abandoned. This
+        # story rode the retired target until 2026-08-11 — and it is the copy on
+        # the "on the bench" button, the most forward-looking thing a stranger
+        # reads, so a stale entry here advertises an experiment the lab decided
+        # not to run.
+        "short_label": "Two answers, one question",
+        "question_plain": "Right at the edge where a crowd of clocks falls into step, does the crowd react just as sharply coming from below the edge as from above — or is the edge lopsided?",
+        "why_it_matters": "Two sets of physicists have published opposite answers to this about the exact system this lab already runs, and nobody has settled it. It is the first question on the page where the lab is not checking a known answer but trying to break a tie.",
         "result_plain": None,
     },
     # ── Track C — compute & number theory ────────────────────────────────────
