@@ -438,28 +438,28 @@
     }
   ],
   "total": 34,
-  "last_run": "2026-08-12T11:29:55.716523+00:00",
+  "last_run": "2026-08-12T13:13:02.953297+00:00",
   "runs": 52,
-  "temp_c": 52.0,
+  "temp_c": 44.0,
   "latest_report": {
     "date": "2026-08-12",
-    "milestone": "M02",
+    "milestone": "M03",
     "verdict": "verified",
-    "headline": "finite-size scaling: \u03c7_max \u221d L^1.742 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16193s on GPU",
+    "headline": "data collapse: M\u00b7L^(\u03b2/\u03bd) onto one master curve at \u03b2/\u03bd=0.128 (2D Ising \u03b2=1/8 \u2192 \u03b2/\u03bd=0.125, loss=1.8e-02) \u00b7 781s",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-0729-m02.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-0913-m03.json",
     "machine": "linux-rocm",
-    "at": "2026-08-12T11:29:55.716523+00:00",
-    "group_count": 3,
+    "at": "2026-08-12T13:13:02.953297+00:00",
+    "group_count": 2,
     "group_first_date": "2026-08-12",
     "group_machines": [
       "linux-rocm"
     ]
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-12T11:29:56.073897+00:00",
+  "updated": "2026-08-12T13:13:03.293877+00:00",
   "provenance": {
-    "code_sha": "b92d096",
+    "code_sha": "61ed521",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -470,6 +470,41 @@
   "reports": [
     {
       "date": "2026-08-12",
+      "milestone": "M03",
+      "verdict": "verified",
+      "headline": "data collapse: M\u00b7L^(\u03b2/\u03bd) onto one master curve at \u03b2/\u03bd=0.128 (2D Ising \u03b2=1/8 \u2192 \u03b2/\u03bd=0.125, loss=1.8e-02) \u00b7 781s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-12-0913-m03",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-0913-m03.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-12T13:13:02.953297+00:00",
+      "group_count": 2,
+      "group_first_date": "2026-08-12",
+      "group_machines": [
+        "linux-rocm"
+      ]
+    },
+    {
+      "date": "2026-08-12",
+      "milestone": "M02",
+      "verdict": "verified",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.745 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16252s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-12-0130-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-0130-m02.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-12T05:30:54.812691+00:00"
+    },
+    {
+      "date": "2026-08-11",
+      "milestone": "M05",
+      "verdict": "verified",
+      "headline": "Honeycomb-lattice 2D Ising (L=128): \u03c7 peaks at T_c=1.532 vs exact 2/ln(2+\u221a3) = 1.5187 (rel. err 0.9%); C-peak cross-check 1.526 \u00b7 32s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-11-2341-m05",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-11-2341-m05.json",
+      "machine": "windows-cuda",
+      "at": "2026-08-12T03:41:33.871952+00:00"
+    },
+    {
+      "date": "2026-08-12",
       "milestone": "M02",
       "verdict": "verified",
       "headline": "finite-size scaling: \u03c7_max \u221d L^1.742 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16193s on GPU",
@@ -477,7 +512,7 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-0729-m02.json",
       "machine": "linux-rocm",
       "at": "2026-08-12T11:29:55.716523+00:00",
-      "group_count": 3,
+      "group_count": 2,
       "group_first_date": "2026-08-12",
       "group_machines": [
         "linux-rocm"
@@ -1101,11 +1136,11 @@
     }
   ],
   "turns": {
-    "count": 115,
-    "today": 2,
+    "count": 117,
+    "today": 3,
     "last_by_machine": {
-      "windows-cuda": "2026-08-09T03:36:59.261243+00:00",
-      "linux-rocm": "2026-08-12T11:29:55.716523+00:00"
+      "windows-cuda": "2026-08-12T03:41:33.871952+00:00",
+      "linux-rocm": "2026-08-12T13:13:02.953297+00:00"
     },
     "expected_interval_h": 3
   }
