@@ -1,0 +1,82 @@
+{
+  "L_values": [
+    16,
+    32,
+    64
+  ],
+  "T": 0.7,
+  "abs_mag": [
+    0.473262220621109,
+    0.29017817974090576,
+    0.1419774442911148
+  ],
+  "abs_mag_err": [
+    0.0032742617186158895,
+    0.0028701452538371086,
+    0.0018042933661490679
+  ],
+  "acceptance": [
+    0.5556108951568604,
+    0.5581257939338684,
+    0.5586604475975037
+  ],
+  "chi": [
+    3.9168221950531006,
+    12.038585662841797,
+    19.03013038635254
+  ],
+  "config": {
+    "L_values": [
+      16,
+      32,
+      64
+    ],
+    "T": 0.7,
+    "model": "heisenberg",
+    "n_burnin": 8000,
+    "n_sweeps": 20000,
+    "over_relax": 3,
+    "seed": 2026081310,
+    "updater": "metropolis"
+  },
+  "energy": [
+    -1.1617016792297363,
+    -1.1497435569763184,
+    -1.1479138135910034
+  ],
+  "experiment": "M09-heisenberg",
+  "generated_at": "2026-08-13T10:04:49.330356+00:00",
+  "headline": "2D Heisenberg (T=0.7): ⟨|m|⟩ drifts 0.473, 0.290, 0.142 across L=16, 32, 64 (ratios 0.613 → 0.489) — Mermin–Wagner confirmed: no finite-T order · 285s on CPU",
+  "monotone_decreasing": true,
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.0",
+      "numpy": "2.4.6",
+      "torch": "2.6.0+cu124"
+    },
+    "platform": "windows-amd64",
+    "python": "3.13.14",
+    "source_clean": true,
+    "source_commit": "3c444004ef902fe889b82d227da6b77fb319a661",
+    "source_diff_sha256": null,
+    "source_tree_sha256": "0ded7fcf5199b93963f852d9b507019df88b6e9d6642deea0657c39493ea7739"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "586ba65e5598dba80cb493af8668a5e0207f7e4ba1fbc93f23a94df63118e647"
+  },
+  "ratios": [
+    0.6131446101065835,
+    0.4892767761445178
+  ],
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify M09",
+    "rerun": "python -m lab.cli m09"
+  },
+  "slope_vs_inv_L": 6.8947343826293945,
+  "updater": "metropolis",
+  "wall_seconds": 284.5182719230652
+}
