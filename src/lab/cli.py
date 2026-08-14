@@ -233,8 +233,9 @@ HELP = """lab — a windowsill physics lab.
 Usage:
   lab                 open the latest report (alias of `lab open`)
   lab run             run only — don't open the browser (the M01 heartbeat)
-  lab next            run the open milestone's experiment; otherwise advance the
-                      committed portfolio rotation (M01 heartbeat only if empty)
+  lab next            run the open milestone's experiment; otherwise the planner
+                      scores the portfolio by value/cost from the receipts
+                      ledger and runs the pick (M01 heartbeat only if empty)
   lab next --dry-run  print the pick + every skip reason — run nothing
   lab m02             run M02: finite-size scaling across lattice sizes
   lab m03             run M03: critical-exponent β via magnetization data-collapse
@@ -876,11 +877,15 @@ def _run_next(args, dry, lock_path=None):
 
       1. FRONTIER — the open milestone, when it has a runner and passes its
          hardware gate (preserves the 2026-06-26 decision).
-      2. PORTFOLIO ROTATION — otherwise, advance the committed rotation
-         (curriculum.ROTATION) past the receipts-ledger pointer; gated or
+      2. VALUE-FUNCTION PLANNER — otherwise, `curriculum.plan_turn` scores
+         every eligible ROTATION member by value/cost derived from the
+         receipts ledger (class > staleness > repeat decay > cost) and the
+         decision rides inside the receipt the run writes. Gated or
          runnerless slots are skipped with a disclosed one-line reason (a log
-         line — never a receipt, never a science row).
-      3. M01 HEARTBEAT — only when the rotation yields nothing (fail closed,
+         line — never a receipt, never a science row). Any planner exception
+         falls back to the round-robin `select_rotation` walk, logged by name
+         — the scheduler must never die of its own planner.
+      3. M01 HEARTBEAT — only when nothing is eligible (fail closed,
          named reason).
 
     Selection is read-only — it never edits MILESTONES.md; a milestone is only
