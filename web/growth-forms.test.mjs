@@ -214,3 +214,68 @@ test("moss emits a closed colony mat; nobody else does", () => {
     assert.equal(GF.build(form, CTX).mat, undefined, `${form}: no mat`);
   }
 });
+
+// ── The painterly skin + data-lit lumen (2026-08-14 repaint, phase 1) ────────
+// The den's art bible (docs/design/plant-bible/) turned into data: a per-form
+// colour registry the page's gradient defs are built from, and the pure
+// recency→glow mapping the page lights verified leaves with.
+
+test("every contract form carries a complete painterly skin (core/mid/rim hex)", () => {
+  assert.deepEqual(Object.keys(GF.SKINS).sort(), [...ALL_FORMS].sort(),
+    "SKINS must cover exactly the six contract forms");
+  for (const form of ALL_FORMS) {
+    for (const key of ["core", "mid", "rim"]) {
+      assert.match(GF.SKINS[form][key], /^#[0-9a-f]{6}$/i,
+        `${form}.${key} must be a 6-digit hex colour`);
+    }
+    // luminous core → deeper rim: the core must actually be lighter
+    const lum = (hex) => {
+      const n = parseInt(hex.slice(1), 16);
+      return (n >> 16) + ((n >> 8) & 255) + (n & 255);
+    };
+    assert.ok(lum(GF.SKINS[form].core) > lum(GF.SKINS[form].rim),
+      `${form}: core must be lighter than rim (light from within)`);
+  }
+});
+
+test("lumenOpacity maps recency through the planner's log2(1+days/7) shape, clamped", () => {
+  // the same staleness law as src/lab/curriculum.py CANARY_HALF_LIFE_DAYS
+  assert.equal(GF.lumenOpacity(0), GF.LUMEN_CEIL, "a receipt from today burns at full glow");
+  const day1 = 1 - 0.5 * Math.log2(1 + 1 / 7);
+  assert.ok(Math.abs(GF.lumenOpacity(1) - day1) < 1e-9, "day 1 follows the log2 shape");
+  assert.equal(GF.lumenOpacity(7), 0.5, "the half-life day glows at half strength");
+  assert.equal(GF.lumenOpacity(365), GF.LUMEN_FLOOR, "long-stale clamps to the floor");
+  // no receipt on record is indistinguishable from long-stale: the floor
+  for (const bad of [NaN, undefined, null, -3, Infinity, "7"]) {
+    assert.equal(GF.lumenOpacity(bad), GF.LUMEN_FLOOR, `lumenOpacity(${bad}) sits at the floor`);
+  }
+  // monotone non-increasing: fresher never glows dimmer
+  const days = [0, 0.5, 1, 2, 4, 7, 10, 14, 21, 60];
+  for (let i = 1; i < days.length; i++) {
+    assert.ok(GF.lumenOpacity(days[i]) <= GF.lumenOpacity(days[i - 1]),
+      `glow must not brighten with age (day ${days[i]})`);
+  }
+});
+
+test("daysSinceNewestReceipt reads only the milestone's newest DATED row", () => {
+  const now = Date.parse("2026-08-14T12:00:00Z");
+  const reports = [
+    { milestone: "M14", date: "2026-08-10" },          // the newest M14 receipt
+    { milestone: "M14", date: "2026-08-01" },          // an older run of the same rung
+    { milestone: "M15", date: "2026-08-13" },          // another rung — must not count
+    { milestone: "M14" },                              // undated row — skipped
+    null,                                              // defensive: a hole in the ledger
+  ];
+  assert.equal(GF.daysSinceNewestReceipt(reports, "M14", now), 4);
+  assert.equal(GF.daysSinceNewestReceipt(reports, "M15", now), 1);
+  // no matching dated row → NaN (the caller's "no receipt on record")
+  assert.ok(Number.isNaN(GF.daysSinceNewestReceipt(reports, "K03", now)));
+  assert.ok(Number.isNaN(GF.daysSinceNewestReceipt([{ milestone: "K03" }], "K03", now)));
+  assert.ok(Number.isNaN(GF.daysSinceNewestReceipt(null, "M14", now)));
+  assert.ok(Number.isNaN(GF.daysSinceNewestReceipt(reports, null, now)));
+  // a future-dated receipt clamps to 0 instead of going negative
+  assert.equal(GF.daysSinceNewestReceipt([{ milestone: "X", date: "2026-09-01" }], "X", now), 0);
+  // end to end: the newest receipt's age lands in [0.25, 1.0] via the shape
+  const glow = GF.lumenOpacity(GF.daysSinceNewestReceipt(reports, "M14", now));
+  assert.ok(glow >= GF.LUMEN_FLOOR && glow <= GF.LUMEN_CEIL);
+});
