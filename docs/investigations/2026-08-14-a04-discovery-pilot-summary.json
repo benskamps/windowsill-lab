@@ -1,0 +1,188 @@
+{
+  "experiment": "a04-discovery-pilot",
+  "date": "2026-08-14",
+  "sector": 2,
+  "slice_rule": "next targets in A04's consistent-hash ranking, graded-run targets and designated recovery targets excluded",
+  "targets_attempted": 158,
+  "targets_searched": 158,
+  "above_threshold": 5,
+  "floor_max_sde": 7.651324254380396,
+  "floor_n": 153,
+  "injections": [
+    {
+      "host_tic": "259847258",
+      "injected_depth": 0.01,
+      "injected_period_days": 3.7,
+      "recovered_period_days": 3.7007297863618467,
+      "sde": 9.991200364654864,
+      "recovered": true
+    },
+    {
+      "host_tic": "259847258",
+      "injected_depth": 0.004,
+      "injected_period_days": 2.3,
+      "recovered_period_days": 2.3001826483081005,
+      "sde": 8.284998578242833,
+      "recovered": true
+    },
+    {
+      "host_tic": "259847258",
+      "injected_depth": 0.002,
+      "injected_period_days": 5.1,
+      "recovered_period_days": 5.106437054149822,
+      "sde": 4.856747054226692,
+      "recovered": false
+    }
+  ],
+  "control_passed": false,
+  "hits": [
+    {
+      "tic": "358460464",
+      "period_days": 0.6043358705772555,
+      "depth": 0.00018941723254584097,
+      "phase": 0.7475,
+      "sde": 9.227104915897112,
+      "vetting": {
+        "verdict": "eclipsing-binary-secondary",
+        "n_events": 42,
+        "depth_sigma": 9.342954991324742,
+        "depth_odd": 0.00022855395510790188,
+        "depth_even": 0.0002102082297816832,
+        "odd_even_sigma": 0.815397599723297,
+        "secondary_depth": 0.0001846585596668726,
+        "secondary_sigma": 11.365302645549383
+      },
+      "catalog": {
+        "tic": "358460464",
+        "known_toi": null,
+        "known_planet": null,
+        "published_period_days": null,
+        "disposition": null
+      }
+    },
+    {
+      "tic": "89543393",
+      "period_days": 0.9416327501657916,
+      "depth": 0.1562413810345642,
+      "phase": 0.695,
+      "sde": 8.288161315516824,
+      "vetting": {
+        "verdict": "eclipsing-binary-secondary",
+        "n_events": 28,
+        "depth_sigma": 71.9032444449313,
+        "depth_odd": 0.20171381944379863,
+        "depth_even": 0.1999454978039058,
+        "odd_even_sigma": 0.6359136090934859,
+        "secondary_depth": 0.19929434442651917,
+        "secondary_sigma": 100.38146083197233
+      },
+      "catalog": {
+        "tic": "89543393",
+        "known_toi": null,
+        "known_planet": null,
+        "published_period_days": null,
+        "disposition": null
+      }
+    },
+    {
+      "tic": "140940493",
+      "period_days": 0.6221735497129439,
+      "depth": 0.0008983507011431913,
+      "phase": 0.4775,
+      "sde": 8.686204412225745,
+      "vetting": {
+        "verdict": "planet-candidate",
+        "n_events": 42,
+        "depth_sigma": 13.268317073839594,
+        "depth_odd": 0.000792391579816476,
+        "depth_even": 0.0007022482353928883,
+        "odd_even_sigma": 1.7031733447351924,
+        "secondary_depth": -0.0004738776580146542,
+        "secondary_sigma": -12.944580947381203
+      },
+      "catalog": {
+        "tic": "140940493",
+        "known_toi": null,
+        "known_planet": null,
+        "published_period_days": null,
+        "disposition": null
+      }
+    },
+    {
+      "tic": "160085375",
+      "period_days": 1.4030194413350117,
+      "depth": 0.23333773669836833,
+      "phase": 0.3325,
+      "sde": 8.034225430970878,
+      "vetting": {
+        "verdict": "eclipsing-binary-secondary",
+        "n_events": 19,
+        "depth_sigma": 203.58253348888903,
+        "depth_odd": 0.2803757235259787,
+        "depth_even": 0.28010418955267236,
+        "odd_even_sigma": 0.19735361439004886,
+        "secondary_depth": 0.05236231772604527,
+        "secondary_sigma": 53.32439638419775
+      },
+      "catalog": {
+        "tic": "160085375",
+        "known_toi": null,
+        "known_planet": null,
+        "published_period_days": null,
+        "disposition": null
+      }
+    },
+    {
+      "tic": "306470921",
+      "period_days": 0.5285911171646476,
+      "depth": 0.0009168829987220573,
+      "phase": 0.23,
+      "sde": 8.051151503842625,
+      "vetting": {
+        "verdict": "eclipsing-binary-secondary",
+        "n_events": 48,
+        "depth_sigma": 7.886922164792892,
+        "depth_odd": 0.00035410691497950175,
+        "depth_even": 0.00045950512758674567,
+        "odd_even_sigma": 2.3475042818346132,
+        "secondary_depth": 0.00038564089242698607,
+        "secondary_sigma": 11.998011986140714
+      },
+      "catalog": {
+        "tic": "306470921",
+        "known_toi": null,
+        "known_planet": null,
+        "published_period_days": null,
+        "disposition": null
+      }
+    }
+  ],
+  "uncatalogued_planet_candidates": [
+    {
+      "tic": "140940493",
+      "period_days": 0.6221735497129439,
+      "depth": 0.0008983507011431913,
+      "phase": 0.4775,
+      "sde": 8.686204412225745,
+      "vetting": {
+        "verdict": "planet-candidate",
+        "n_events": 42,
+        "depth_sigma": 13.268317073839594,
+        "depth_odd": 0.000792391579816476,
+        "depth_even": 0.0007022482353928883,
+        "odd_even_sigma": 1.7031733447351924,
+        "secondary_depth": -0.0004738776580146542,
+        "secondary_sigma": -12.944580947381203
+      },
+      "catalog": {
+        "tic": "140940493",
+        "known_toi": null,
+        "known_planet": null,
+        "published_period_days": null,
+        "disposition": null
+      }
+    }
+  ],
+  "wall_seconds": 1085.283230304718,
+  "claim_boundary": "A pilot over a deterministic slice of one sector's 2-minute SPOC targets \u2014 territory the official pipeline has already searched. An uncatalogued planet-candidate here is a lead for human review and independent follow-up, not a discovery; nothing is submitted anywhere on the strength of this script."
+}

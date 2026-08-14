@@ -219,17 +219,33 @@ def vet_candidate(t: np.ndarray, f: np.ndarray, det: Detection,
     # Both parities must show a real, positive dip before anything is a candidate.
     depth_sigma = min(d_odd, d_even) / sigma if sigma > 0 else 0.0
     n_events = int(np.unique(epoch[in_transit]).size)
+    alias = _subharmonic_alias(t, f, period)
     if n_events < MIN_TRANSITS:
         verdict = "insufficient-coverage"
+    elif alias is not None:
+        # The 2026-08-14 discovery pilot's one uncatalogued "planet-candidate",
+        # TIC 140940493 (SDE 8.7, P=0.6222 d, 900 ppm), was really a δ Scuti-type
+        # pulsator at 8.04 cycles/day — P/5 of the detection. A periodic signal
+        # BELOW the grid floor aliases onto a grid period and passes odd-even
+        # (every cycle is identical), so the fold has to be interrogated: a true
+        # transit at P loses its dip when folded at P/n (only every n-th fold
+        # carries it), while a signal genuinely periodic at P/n keeps full depth.
+        verdict = "harmonic-alias"
     elif diff_sigma >= ODD_EVEN_SIGMA:
         verdict = "eclipsing-binary-odd-even"
     elif sec_sigma >= ODD_EVEN_SIGMA:
         verdict = "eclipsing-binary-secondary"
+    elif sec_sigma <= -ODD_EVEN_SIGMA:
+        # Same target, second tell: the "secondary" was a 13-sigma BRIGHTENING.
+        # A planet's occultation can only dim; significant phase-locked
+        # brightening at 0.5 is ellipsoidal variation or pulsation. The gate
+        # used to test only `sec_sigma >= +5` and let the sign slip through.
+        verdict = "phased-brightening"
     elif depth_sigma < ODD_EVEN_SIGMA:
         verdict = "low-significance"
     else:
         verdict = "planet-candidate"
-    return {
+    out_row = {
         "verdict": verdict,
         "n_events": n_events,
         "depth_sigma": float(depth_sigma),
@@ -237,6 +253,45 @@ def vet_candidate(t: np.ndarray, f: np.ndarray, det: Detection,
         "odd_even_sigma": float(diff_sigma),
         "secondary_depth": float(d_sec), "secondary_sigma": float(sec_sigma),
     }
+    if alias is not None:
+        out_row["alias_n"] = alias[0]
+        out_row["alias_depth"] = alias[1]
+    return out_row
+
+
+#: A box fit at period/n must retain at least this fraction of the period-fit
+#: depth to call the detection an alias of a shorter true period. The mean-based
+#: BLS depth makes the discrimination exact in the clean limit: a true transit
+#: at P contributes to only every n-th fold at P/n, so its box MEAN dilutes to
+#: depth/n <= 0.5x, while a signal genuinely periodic at P/n keeps full depth.
+ALIAS_DEPTH_FRAC = 0.7
+ALIAS_MIN_SIGMA = 5.0
+
+
+def _subharmonic_alias(t: np.ndarray, f: np.ndarray,
+                       period: float) -> tuple[int, float] | None:
+    """Is the detection at ``period`` really a signal at ``period/n``?
+
+    Runs the same ``bls_power`` box fit at period/n for n in 2..6 and compares
+    depths. Returns (n, depth_at_period_over_n) for the first n that keeps
+    >= ALIAS_DEPTH_FRAC of the period-fit depth above a noise floor, else None.
+    """
+    _, depth_1, _ = bls_power(t, f, period)
+    if depth_1 <= 0:
+        return None
+    cadence = float(np.median(np.diff(np.sort(t)))) if len(t) > 1 else 0.0
+    # Smallest box the fit can select is 3/BINS of the fold; a depth must beat
+    # ALIAS_MIN_SIGMA on that support to count as anything but noise.
+    floor = ALIAS_MIN_SIGMA * float(np.std(f)) / max(
+        np.sqrt(len(f) * 3.0 / BINS), 1.0)
+    for n in (2, 3, 4, 5, 6):
+        p = period / n
+        if p <= 8 * cadence:            # fold too fine for the binned box fit
+            continue
+        _, depth_n, _ = bls_power(t, f, p)
+        if depth_n >= ALIAS_DEPTH_FRAC * depth_1 and depth_n >= floor:
+            return n, float(depth_n)
+    return None
 
 
 @dataclass

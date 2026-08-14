@@ -126,6 +126,47 @@ def test_railing_is_checked_at_the_baseline_capped_upper_edge_too():
     assert a04.vet_candidate(t, f, det)["verdict"] == "period-railed"
 
 
+def test_a_pulsator_aliased_onto_the_grid_is_not_a_candidate():
+    """TIC 140940493: the 2026-08-14 discovery pilot's only uncatalogued
+    'planet-candidate' (SDE 8.7, P=0.6222 d, ~900 ppm) was a δ Scuti-type
+    pulsator at 8.04 c/d — exactly P/5. Its 3-hour oscillation sits BELOW the
+    0.5 d grid floor, aliased onto the 5th harmonic, passed odd-even (every
+    pulse identical) and showed a 13-sigma secondary BRIGHTENING the old gate
+    never looked at. A fold at P/n keeping the full dip is the tell."""
+    t, f = _flat(noise=1e-4)
+    p_true = 0.6222 / 5.0
+    f = f * (1.0 - 0.0009 * (1.0 + np.cos(2 * np.pi * t / p_true)) / 2.0)
+    det = a04.blind_search(t, f, n_periods=600)
+    row = a04.vet_candidate(t, f, det)
+    assert row["verdict"] == "harmonic-alias"
+    assert row["alias_n"] >= 2
+
+
+def test_secondary_brightening_is_not_a_candidate():
+    """Second tell from the same target: phase-locked BRIGHTENING at 0.5.
+    A planet's occultation can only dim; the old gate tested only the
+    dimming sign and let -13 sigma sail through."""
+    t, f = _flat(noise=1e-4)
+    period = 3.0
+    ph = np.mod(t, period) / period
+    f = f.copy()
+    f[np.abs(ph - 0.2) < 0.02] *= 1 - 0.010            # the "transit"
+    f[np.abs(ph - 0.7) < 0.02] *= 1 + 0.008            # phased brightening at 0.5 later
+    det = a04.Detection(period_days=period, depth=0.01, phase=0.2, sde=9.0)
+    assert a04.vet_candidate(t, f, det)["verdict"] == "phased-brightening"
+
+
+def test_a_real_transit_survives_the_alias_and_brightening_gates():
+    """Regression guard: the new gates must not eat genuine candidates — a
+    clean box transit folded at P/n loses its dip to the median."""
+    t, f = _flat(noise=1e-4)
+    fi = a04.inject_box(t, f, period=3.0, depth=0.01, duration_days=2.5 / 24)
+    det = a04.blind_search(t, fi, n_periods=600)
+    row = a04.vet_candidate(t, fi, det)
+    assert row["verdict"] == "planet-candidate"
+    assert "alias_n" not in row
+
+
 # ------------------------------------------------------------------- check ---
 
 def _report(**kw):
