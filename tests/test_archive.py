@@ -13,6 +13,8 @@ Stdlib-only, all fixtures in ``tmp_path`` with ``archive.REPORTS_DIR`` /
 import json
 import os
 
+import pytest
+
 from lab import archive, publish
 from lab.archive import (
     classify_run, scan_runs, run_ledger, render_index, write_index,
@@ -640,3 +642,125 @@ def test_corrupt_receipt_is_an_honest_gap_row(tmp_path, monkeypatch):
     assert len(rows) == 1
     assert rows[0]["verdict"] == "unreadable"
     assert rows[0]["date"] == "2026-06-15"
+
+
+# ── era bands: the treadmill condensed, honestly ─────────────────────────────
+# 84 of 136 receipts were M01 ×40 / M02 ×44 — two scheduler bugs (a stuck
+# open-pointer falling back to M01 nightly; a stem-slice parse bug livelocking
+# the rotation on M02 for 9 days) re-ran verified rungs on loop while CI
+# stayed green. The index bundles those streaks into era bands WITHOUT
+# deleting a byte: same rows, same anchors, same links, expanded in place.
+
+def _synthetic_run(date, milestone="M01", verdict="verified", turn=None):
+    """One explicit archive row (render_index is pure when given runs)."""
+    slug = milestone.lower()
+    return {
+        "date": date, "milestone": milestone, "verdict": verdict,
+        "kind": "ising", "headline": f"run {date}-{slug}",
+        "detail": "", "numbers": "χ peak at T≈2.269",
+        "slug": slug, "turn": turn, "has_dated_html": False,
+        "local_only": False,
+        "report_href": f"https://example/archive#run-{date}-{slug}",
+        "receipt_href": f"https://example/receipts/run-{date}-{slug}.json",
+    }
+
+
+def test_six_run_streak_bands_and_keeps_every_row_and_link():
+    """(a) A 6-run same-slug streak bands at threshold 4 — zero deletion."""
+    dates = [f"2026-06-0{d}" for d in range(6, 0, -1)]      # newest first
+    runs = [_synthetic_run(d) for d in dates]
+    out = render_index(runs=runs)
+    assert out.count('<details class="era"') == 1
+    assert "M01 × 6" in out
+    assert "2026-06-01 → 2026-06-06" in out
+    assert "6 verified" in out
+    # Every inner row survives inside the details body: anchor + receipt link.
+    body = out.split('<details class="era"', 1)[1].split("</details>", 1)[0]
+    for d in dates:
+        assert f'id="run-{d}-m01"' in body
+        assert f"https://example/receipts/run-{d}-m01.json" in body
+
+
+def test_three_run_streak_does_not_band():
+    """(b) Below ERA_MIN_STREAK, repetition is cadence, not a treadmill."""
+    runs = [_synthetic_run(f"2026-06-0{d}") for d in (3, 2, 1)]
+    out = render_index(runs=runs)
+    assert '<details class="era"' not in out
+    assert archive.ERA_MIN_STREAK == 4      # the threshold the test leans on
+
+
+def test_interleaved_slugs_never_band_across_an_interruption():
+    """(c) A single other-slug run breaks the streak — the seam is kept.
+
+    3×M01, 1×M02, 3×M01 is six M01 runs total but NO fragment reaches the
+    threshold: nothing bands, even though the fragments render adjacent
+    inside the M01 group.
+    """
+    runs = (
+        [_synthetic_run(f"2026-06-0{d}") for d in (7, 6, 5)]
+        + [_synthetic_run("2026-06-04", milestone="M02")]
+        + [_synthetic_run(f"2026-06-0{d}") for d in (3, 2, 1)]
+    )
+    out = render_index(runs=runs)
+    assert '<details class="era"' not in out
+    # All seven rows still render.
+    assert out.count('id="run-') == 7
+
+
+def test_annotations_label_the_real_stuck_pointer_and_livelock_eras():
+    """(d) The two curated era labels render on the real committed receipts.
+
+    This is the honest-history test: the M01 nightly-fallback bands carry the
+    stuck-pointer diagnosis (PR #77) and the Aug M02 bands carry the livelock
+    diagnosis (PR #97), derived from the actual receipts on disk.
+    """
+    if not archive.RECEIPTS_DIR.exists() or \
+            len(list(archive.RECEIPTS_DIR.glob("run-*.json"))) < 50:
+        pytest.skip("committed receipts not present")
+    out = render_index()
+    assert "the stuck-pointer era" in out and "PR #77" in out
+    assert "the livelock era" in out and "PR #97" in out
+    # The labels sit on bands, not loose in the page.
+    assert out.count('<details class="era"') >= 2
+
+
+def test_era_note_appears_iff_a_band_exists():
+    """(e) The bundling disclosure rides exactly when a band does."""
+    banded = [_synthetic_run(f"2026-06-0{d}") for d in (4, 3, 2, 1)]
+    flat = banded[:3]
+    note = "Repeated-run eras are bundled"
+    assert note in render_index(runs=banded)
+    assert note not in render_index(runs=flat)
+
+
+def test_banded_render_keeps_the_unbundled_row_count():
+    """(f) The no-deletion proof: banded rows + plain rows == unbundled rows.
+
+    Run on the real committed data when present (the strongest form), else on
+    a synthetic mix of streaks and singletons.
+    """
+    if archive.RECEIPTS_DIR.exists() and \
+            len(list(archive.RECEIPTS_DIR.glob("run-*.json"))) >= 50:
+        runs = archive.public_runs()
+    else:
+        runs = (
+            [_synthetic_run(f"2026-06-1{d}") for d in (5, 4, 3, 2)]
+            + [_synthetic_run("2026-06-11", milestone="M03")]
+            + [_synthetic_run(f"2026-06-0{d}", milestone="M02", verdict="null")
+               for d in (9, 8, 7, 6, 5)]
+        )
+    banded = render_index(runs=runs, era_min_streak=archive.ERA_MIN_STREAK)
+    unbundled = render_index(runs=runs, era_min_streak=None)
+    assert banded.count('id="run-') == unbundled.count('id="run-') == len(runs)
+    assert '<details class="era"' not in unbundled
+
+
+def test_none_milestone_rows_never_band():
+    """Unfiled/unreadable rows share an UNKNOWN identity, not a common one."""
+    runs = [
+        {**_synthetic_run(f"2026-06-0{d}"), "milestone": None}
+        for d in (5, 4, 3, 2, 1)
+    ]
+    out = render_index(runs=runs)
+    assert '<details class="era"' not in out
+    assert out.count('id="run-') == 5
