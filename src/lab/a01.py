@@ -307,9 +307,26 @@ _WIDTH = {"L": 1, "X": 0, "B": 1, "I": 2, "J": 4, "K": 8,
 _DTYPE = {"L": "S1", "B": "u1", "I": ">i2", "J": ">i4", "K": ">i8",
           "A": "S1", "E": ">f4", "D": ">f8", "C": ">c8", "M": ">c16"}
 
+#: Ancillary BINTABLE columns for A05's blend gates: flux-weighted (moment)
+#: centroids and the SPOC pointing-model corrections. All four already sit in
+#: every SPOC light-curve file the lab caches — no new download is needed to ask
+#: where the light actually moved during a transit.
+ANCILLARY_COLUMNS = ("MOM_CENTR1", "MOM_CENTR2", "POS_CORR1", "POS_CORR2")
 
-def read_tess_light_curve(blob: bytes) -> dict[str, np.ndarray]:
-    """Read TIME/PDCSAP_FLUX/ERR/QUALITY from a TESS LC FITS byte string."""
+#: Extension-1 header keywords carrying SPOC's aperture crowding metrics:
+#: CROWDSAP is the fraction of flux in the aperture belonging to the target,
+#: FLFRCSAP the fraction of the target's flux captured by the aperture.
+ANCILLARY_KEYWORDS = ("CROWDSAP", "FLFRCSAP")
+
+
+def read_tess_light_curve(blob: bytes, *, ancillary: bool = False) -> dict[str, np.ndarray]:
+    """Read TIME/PDCSAP_FLUX/ERR/QUALITY from a TESS LC FITS byte string.
+
+    With ``ancillary=True`` the same walk also returns the ANCILLARY_COLUMNS
+    arrays and ANCILLARY_KEYWORDS header values; anything absent from the file
+    degrades to ``None`` rather than raising, because a missing blend diagnostic
+    must disable a gate, never sink a target.
+    """
     primary, cursor = _header(blob, 0)
     n_axis = int(primary.get("NAXIS", 0))
     size = 0
@@ -352,8 +369,18 @@ def read_tess_light_curve(blob: bytes) -> dict[str, np.ndarray]:
     missing = [name for name in needed if name not in rows.dtype.names]
     if missing:
         raise ValueError(f"TESS light curve missing columns: {', '.join(missing)}")
-    return {name: np.asarray(rows[name]).astype(float if name != "QUALITY" else int)
-            for name in needed}
+    out = {name: np.asarray(rows[name]).astype(float if name != "QUALITY" else int)
+           for name in needed}
+    if ancillary:
+        for name in ANCILLARY_COLUMNS:
+            out[name] = (np.asarray(rows[name]).astype(float)
+                         if name in rows.dtype.names else None)
+        for key in ANCILLARY_KEYWORDS:
+            value = table.get(key)
+            out[key] = (float(value)
+                        if isinstance(value, (int, float)) and not isinstance(value, bool)
+                        else None)
+    return out
 
 
 def _download_product(
