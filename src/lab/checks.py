@@ -25,6 +25,19 @@ from .m01_quality import (
     assess_m01_quality,
     nonequilibrated_indices,
 )
+from .curriculum import (
+    CANARY_HALF_LIFE_DAYS,
+    HUNT_CANDIDATE,
+    NEVER_RUN_VALUE,
+    NULL_RETRY_VALUE,
+    OPEN_FRONTIER_VALUE,
+    PLANNER_VERSION,
+    REPEAT_HARD_CAP,
+    STALENESS_CAP,
+    VERIFIED_CANARY_VALUE,
+    _head_run,
+    _parse_stamp,
+)
 from .m16 import aging_gate as _m16_aging_gate
 from .m16 import aging_metrics as _m16_aging_metrics
 from .publish import LAB_HOME, MILESTONES_MD, REPORTS_DIR, parse_milestones
@@ -3333,6 +3346,348 @@ def check_controls(report: dict) -> tuple[bool | None, str]:
     return all_ok, detail
 
 
+# ── the planner decision check: does a scheduled receipt's `planned` block
+# reconcile with the ledger it claims to have been derived from? ─────────────
+# Cross-cutting, not per-milestone: ANY scheduled receipt may carry a compact
+# `planned` block (receipt.planned_block — chosen + reason + top-3 scoreboard),
+# whatever experiment it ran. So this is a standalone gate over receipts plus
+# one aggregate verify() row, NOT a CHECKS entry — the CHECKS registry grades
+# "did milestone X's number reproduce", keyed by milestone id, and forcing the
+# planner audit through it would grade the wrong axis (and would force every
+# historical receipt to carry planned blocks, which manual and pre-planner
+# receipts never will).
+#
+# Score-reconciliation slack, owned by the check. The planner rounds value and
+# score to 4 decimals (curriculum.plan_turn), so two honest derivations agree
+# to ~5e-5; 1e-3 absorbs that and float noise, while a fabricated score misses
+# its class ceiling by whole units, not thousandths.
+PLANNED_SCORE_TOL = 1e-3
+# The v1 class VOCABULARY → base value. The values are imported from
+# curriculum (one source of truth — they cannot drift), but the vocabulary
+# KEYS are restated here on purpose: a planner that grew a new class would
+# grade False ("outside the v1 vocabulary") instead of silently teaching its
+# own audit new law, and test_planner_check pins this map against what
+# plan_turn actually emits. "hunt" maps to its CEILING: the remaining-target
+# scaling that shrinks a real hunt value lives in reports/hunts state this
+# check does not reconstruct. "verified-canary" is absent on purpose — its
+# value is staleness-derived per entry, not a constant.
+_PLANNED_BASE_VALUE = {
+    "open-frontier": OPEN_FRONTIER_VALUE,
+    "never-run": NEVER_RUN_VALUE,
+    "null-retry": NULL_RETRY_VALUE,
+    "hunt": OPEN_FRONTIER_VALUE,
+}
+_REPEAT_CAP_SUFFIX = " (repeat-capped)"
+
+
+def check_planned_decision(receipt: dict, records) -> tuple[bool | None, str]:
+    """Audit a scheduled receipt's ``planned`` block against the receipts ledger.
+
+    ``records`` are the ``(stamp, mid)`` ledger tuples the scheduler itself
+    plans from (``cli._planner_ledger`` shape). The check reconstructs the
+    ledger AS THE PLANNER SAW IT — records whose parsed stamp is **strictly
+    older** than this receipt's ``generated_at`` — and grades the block's
+    claims against it.
+
+    **The boundary, precisely.** Strictly-older is correct because the plan
+    precedes the run that stamps the receipt: the receipt's own ledger record
+    carries ``stamp == generated_at`` and was not on disk at plan time, and any
+    other record stamped at-or-after ``generated_at`` was written concurrently
+    or later, so it cannot have informed the decision either. Records whose
+    stamps do not parse cannot be placed on either side and are excluded
+    (named limitation: the planner would have kept them under a lexicographic
+    order; an unparseable committed stamp is already its own defect).
+
+    **What this check CAN prove** (all re-derivable from the block + ledger):
+
+    * the chosen mid is the argmax of its own claimed scoreboard, and the
+      board is sorted by descending score (a hand-edited ``chosen`` fails);
+    * ledger-refutable class claims: ``never-run`` for a mid the older ledger
+      already holds a receipt for is a fabrication; ``verified-canary`` /
+      ``null-retry`` for a mid with NO older receipt is one too (both classes
+      require a prior receipt under v1 law);
+    * value/cost arithmetic as a CEILING: cost divides by ≥ 1.0 and never
+      boosts, so every claimed score must sit at or under its class base value
+      × the staleness multiplier (re-derived from the mid's newest older
+      receipt) × the repeat decay 2^-repeats (repeats re-derived from the
+      ledger head, hunt exempt). A score above its ceiling is arithmetic that
+      cannot reconcile;
+    * the repeat law: a ``(repeat-capped)`` entry must score 0.0 and must
+      actually sit at ≥ REPEAT_HARD_CAP re-derived repeats; an entry AT the
+      cap with a nonzero score while another entry still scores is the cap
+      erased.
+
+    **What it CANNOT prove**, stated so a pass is never over-read:
+
+    * the status classification itself — open/verified/null come from the
+      MILESTONES.md of that moment, which history does not preserve, so the
+      claimed classes are taken as given wherever the ledger cannot refute
+      them (an ``open-frontier`` claim is ungraded by construction);
+    * the exact cost divisor (per-mid wall-clock medians are not in the
+      ``(stamp, mid)`` ledger) and the hunt's remaining-target scaling — both
+      graded only via the ceiling;
+    * staleness to the second: the planner's ``now`` is plan time, slightly
+      BEFORE ``generated_at``, so the re-derived multiplier is computed at the
+      later instant and is ≥ the planner's — the ceiling stays valid and errs
+      in the receipt's favor, never against an honest block;
+    * single-writer assumption: a receipt committed by another box inside this
+      receipt's own run window would land strictly-older here yet was unseen
+      at plan time, which can shift the reconstructed head/repeats. The lab's
+      run lock makes turns serial per box; a cross-box collision would surface
+      as a named repeat mismatch a human then reads against this caveat.
+
+    **Verdict discipline (None is never False):** a receipt WITHOUT a planned
+    block passes vacuously (manual runs, historical receipts — carrying no
+    claim is not a violation). A block written under a DIFFERENT planner
+    version also passes vacuously by design: PLANNER_VERSION exists so an old
+    receipt is never re-derived against new law (the version escape is a
+    visible hand-edit in a committed file, not a silent one). A block that is
+    structurally unreadable — not an object, missing chosen/scoreboard/planner,
+    a non-numeric score, a receipt with no parseable ``generated_at`` to
+    anchor the boundary — returns ``None``: unreadable evidence, not proof of
+    fabrication. ``False`` is reserved for readable arithmetic that does not
+    reconcile — the fabrication verdict.
+    """
+    pr = receipt.get("public_receipt")
+    if not isinstance(pr, dict) or "planned" not in pr:
+        return True, ("no planned block — a manual or pre-planner receipt; "
+                      "passes vacuously")
+    block = pr.get("planned")
+    if not isinstance(block, dict):
+        return None, "planned block is not an object — unreadable, not graded"
+    version = block.get("planner")
+    if not isinstance(version, str) or not version:
+        return None, ("planned block carries no planner version — unreadable, "
+                      "not graded")
+    if version != PLANNER_VERSION:
+        return True, (
+            f"planned block written under planner {version!r}, not the current "
+            f"{PLANNER_VERSION} law — old decisions are never re-derived "
+            f"against new law (PLANNER_VERSION boundary); passes vacuously"
+        )
+    stamp_raw = receipt.get("generated_at")
+    stamp_dt = _parse_stamp(stamp_raw) if isinstance(stamp_raw, str) else None
+    if stamp_dt is None:
+        return None, ("receipt carries a planned block but no parseable "
+                      "generated_at — the strictly-older ledger boundary "
+                      "cannot be anchored; unreadable, not graded")
+
+    chosen = block.get("chosen")
+    board = block.get("scoreboard")
+    if not isinstance(chosen, str) or not chosen \
+            or not isinstance(board, list) or not board:
+        return None, ("planned block missing its chosen mid or a non-empty "
+                      "scoreboard — unreadable, not graded")
+    entries: list[tuple[str, str, float]] = []
+    for e in board:
+        if not isinstance(e, dict):
+            return None, "scoreboard entry is not an object — unreadable"
+        mid, cls, score = e.get("mid"), e.get("cls"), e.get("score")
+        if not isinstance(mid, str) or not mid \
+                or not isinstance(cls, str) or not cls:
+            return None, ("scoreboard entry missing mid or cls — unreadable, "
+                          "not graded")
+        if isinstance(score, bool) or not isinstance(score, (int, float)) \
+                or not math.isfinite(score):
+            return None, (f"scoreboard entry {mid!r} carries a non-numeric "
+                          f"score — unreadable, not graded")
+        entries.append((mid, cls, float(score)))
+
+    # The ledger as the planner saw it: strictly older, planner's own sort.
+    older = []
+    for stamp, mid in records or []:
+        if not stamp or not mid:
+            continue
+        dt = _parse_stamp(str(stamp))
+        if dt is not None and dt < stamp_dt:
+            older.append((str(stamp), str(mid)))
+    ordered = sorted(older)
+    head_mid, head_run = _head_run(ordered)
+    last_stamp: dict[str, str] = {}
+    for s, m in ordered:
+        last_stamp[m] = s          # ordered ascending — the last write wins
+
+    problems: list[str] = []
+    scores = [s for _mid, _cls, s in entries]
+    if scores != sorted(scores, reverse=True):
+        problems.append("scoreboard is not sorted by descending score")
+    seen_mids = [m for m, _c, _s in entries]
+    if len(set(seen_mids)) != len(seen_mids):
+        problems.append("scoreboard repeats a mid")
+    chosen_scores = [s for m, _c, s in entries if m == chosen]
+    if not chosen_scores:
+        problems.append(f"chosen {chosen} is absent from its own scoreboard")
+    elif chosen_scores[0] + PLANNED_SCORE_TOL < max(scores):
+        top_mid = entries[scores.index(max(scores))][0]
+        problems.append(
+            f"chosen {chosen} (score {chosen_scores[0]:.4f}) is not the argmax "
+            f"of its own scoreboard (max {max(scores):.4f} at {top_mid})"
+        )
+
+    for mid, cls, score in entries:
+        capped = cls.endswith(_REPEAT_CAP_SUFFIX)
+        base_cls = cls[:-len(_REPEAT_CAP_SUFFIX)] if capped else cls
+        if score < -PLANNED_SCORE_TOL:
+            problems.append(f"{mid}: negative score {score:.4f}")
+            continue
+        if (base_cls == "hunt") != (mid == HUNT_CANDIDATE):
+            problems.append(
+                f"{mid}: v1 law assigns class 'hunt' to {HUNT_CANDIDATE} and "
+                f"nothing else (claimed {cls!r})"
+            )
+            continue
+        # Ledger-refutable class claims.
+        if base_cls == "never-run" and mid in last_stamp:
+            problems.append(
+                f"{mid}: claims never-run but the older ledger holds a "
+                f"receipt stamped {last_stamp[mid]}"
+            )
+            continue
+        if base_cls in ("verified-canary", "null-retry") \
+                and mid not in last_stamp:
+            problems.append(
+                f"{mid}: claims {base_cls} but the older ledger holds no "
+                f"receipt for it (v1 would class it never-run)"
+            )
+            continue
+        # The re-derivable ceiling: base value × staleness × repeat decay.
+        if base_cls == "verified-canary":
+            stamped = _parse_stamp(last_stamp[mid])
+            if stamped is None:
+                multiplier = 1.0   # the planner's own unreadable-stamp rule
+            else:
+                days = max(
+                    0.0, (stamp_dt - stamped).total_seconds() / 86400.0)
+                multiplier = min(
+                    STALENESS_CAP,
+                    math.log2(1.0 + days / CANARY_HALF_LIFE_DAYS),
+                )
+            ceiling = VERIFIED_CANARY_VALUE * multiplier
+        elif base_cls in _PLANNED_BASE_VALUE:
+            ceiling = _PLANNED_BASE_VALUE[base_cls]
+        else:
+            problems.append(
+                f"{mid}: class {base_cls!r} is outside the v1 vocabulary")
+            continue
+        repeats = head_run if (mid == head_mid and mid != HUNT_CANDIDATE) \
+            else 0
+        if mid != HUNT_CANDIDATE:
+            ceiling *= 2.0 ** -repeats
+        if capped:
+            if score > PLANNED_SCORE_TOL:
+                problems.append(
+                    f"{mid}: claims the repeat cap yet scores {score:.4f} "
+                    f"(a capped entry scores exactly 0)"
+                )
+            if repeats < REPEAT_HARD_CAP:
+                problems.append(
+                    f"{mid}: claims the repeat cap at {repeats} re-derived "
+                    f"consecutive repeats (cap fires at {REPEAT_HARD_CAP})"
+                )
+            continue
+        if repeats >= REPEAT_HARD_CAP and score > PLANNED_SCORE_TOL and any(
+                s > PLANNED_SCORE_TOL for m, _c, s in entries if m != mid):
+            problems.append(
+                f"{mid}: {repeats} re-derived consecutive repeats meet the "
+                f"hard cap, another candidate still scores, yet the entry "
+                f"scores {score:.4f} — the repeat law erased"
+            )
+            continue
+        if score > ceiling + PLANNED_SCORE_TOL:
+            problems.append(
+                f"{mid}: score {score:.4f} exceeds its re-derived ceiling "
+                f"{ceiling:.4f} ({base_cls} at {repeats} repeat(s); cost "
+                f"only divides, it never boosts)"
+            )
+
+    if problems:
+        return False, ("planned block does not reconcile with the ledger it "
+                       "claims — " + "; ".join(problems))
+    return True, (
+        f"planned {PLANNER_VERSION} block reconciles: chosen {chosen} is the "
+        f"argmax of its own top-{len(entries)} scoreboard, and every claimed "
+        f"class/staleness/repeat score sits at or under its ceiling against "
+        f"{len(ordered)} strictly-older ledger record(s)"
+    )
+
+
+def _planned_ledger_records() -> list[tuple[str, str]]:
+    """``(stamp, mid)`` tuples from the committed receipts ledger.
+
+    The checker's own thin reader of the SAME ledger the scheduler plans from
+    (``cli._planner_ledger``), using the same stem parser as the writer
+    (``publish._split_receipt_stem``) so the two can never disagree about a
+    name, and reading through this module's ``REPORTS_DIR`` so the verify
+    tests' path isolation covers it. Durations are deliberately not read —
+    the audit grades cost only as a ceiling (see ``check_planned_decision``).
+    """
+    from .publish import _split_receipt_stem
+    records: list[tuple[str, str]] = []
+    receipts = REPORTS_DIR / "receipts"
+    if not receipts.exists():
+        return records
+    date_glob = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
+    for path in sorted(receipts.glob(f"run-{date_glob}-*.json")):
+        date, _turn, slug = _split_receipt_stem(path.stem[len("run-"):])
+        if not slug:
+            continue
+        stamp = None
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict):
+                stamp = data.get("generated_at")
+        except (OSError, ValueError):
+            pass
+        if not (isinstance(stamp, str) and stamp):
+            stamp = date
+        records.append((stamp, slug.upper()))
+    return records
+
+
+def audit_planned_decisions(reports: list[dict], records=None) -> dict | None:
+    """The cross-cutting verify() row over every receipt carrying a planned block.
+
+    Returns ``None`` when NO report carries one — vacuous by absence, no row:
+    manual and pre-planner receipts owe nothing, and a permanent all-clear row
+    for a check with nothing to check would be surface spam. Otherwise one
+    aggregate row: ``fail`` when any block's arithmetic does not reconcile
+    (the fabrication verdict), else ``unreadable`` when any block could not be
+    graded (unreadable evidence blocks the gate without being called
+    fabricated — the None-is-never-False discipline carried to the surface),
+    else ``pass`` with the count. Vacuous per-receipt passes (no block,
+    version boundary) are not counted as audited.
+    """
+    if records is None:
+        records = _planned_ledger_records()
+    graded: list[tuple[str, bool | None, str]] = []
+    for rep in reports:
+        pr = rep.get("public_receipt")
+        if not (isinstance(pr, dict) and "planned" in pr):
+            continue
+        ok, detail = check_planned_decision(rep, records)
+        if ok is True and "PLANNER_VERSION boundary" in detail:
+            continue               # version-boundary blocks are not audits
+        name = str(rep.get("generated_at") or rep.get("experiment") or "?")
+        graded.append((name, ok, detail))
+    if not graded:
+        return None
+    failed = [(n, d) for n, ok, d in graded if ok is False]
+    unreadable = [(n, d) for n, ok, d in graded if ok is None]
+    if failed:
+        named = "; ".join(f"{n}: {d}" for n, d in failed[:3])
+        return {"id": "PLANNED", "status": "fail",
+                "detail": (f"{len(failed)}/{len(graded)} planned block(s) do "
+                           f"not reconcile — {named}")}
+    if unreadable:
+        named = "; ".join(f"{n}: {d}" for n, d in unreadable[:3])
+        return {"id": "PLANNED", "status": "unreadable",
+                "detail": (f"{len(unreadable)}/{len(graded)} planned block(s) "
+                           f"unreadable — {named}")}
+    return {"id": "PLANNED", "status": "pass",
+            "detail": (f"{len(graded)} planned block(s) re-derive against "
+                       f"the strictly-older receipts ledger")}
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
@@ -3371,6 +3726,12 @@ def verify(ids: list[str] | None = None) -> list[dict]:
     is emitted as its own named ``unreadable`` row (which fails the CLI gate)
     while every readable report still grades: one bad file degrades to a named
     failure instead of killing the whole gate.
+
+    A full run (no ``ids`` filter) also grades the cross-cutting planner audit:
+    every readable report carrying a ``planned`` block is checked against the
+    receipts ledger (``audit_planned_decisions``) and the result lands as one
+    aggregate ``PLANNED`` row — absent entirely when no report carries a block,
+    so historical and manual receipts are never forced to carry one.
     """
     ms = parse_milestones(MILESTONES_MD.read_text(encoding="utf-8") if MILESTONES_MD.exists() else "")
     reports: list[dict] = []
@@ -3396,4 +3757,8 @@ def verify(ids: list[str] | None = None) -> list[dict]:
         else:
             status, detail = _grade(fn, reports)
             results.append({"id": m["id"], "status": status, "detail": detail})
+    if ids is None:
+        planned_row = audit_planned_decisions(reports)
+        if planned_row is not None:
+            results.append(planned_row)
     return results
