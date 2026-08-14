@@ -73,22 +73,30 @@ def test_correlation_reach_grows_and_bounds_headroom():
 # --------------------------------------------------------------- the check ---
 
 def _report(*, d_low_p=0.5450, d_high_p=0.4114, c_low=1.209, c_high=-0.153,
-            headroom=4.5, controls_pass=True) -> dict:
-    ctrl = {"passed": controls_pass}
+            controls_pass=True, r2=0.995) -> dict:
     return {
         "experiment": "M18-directed-percolation-2plus1d",
         "bracket": [d_high_p, d_low_p],
+        "delta_at_p_low": d_low_p, "delta_at_p_high": d_high_p,
+        "r2_at_p_low": r2, "r2_at_p_high": r2,
         "curvature_at_p_low": c_low,
         "curvature_at_p_high": c_high,
         "benchmark_delta": dp.DELTA_DP_2P1,
         "mean_field_delta": dp.DELTA_MEAN_FIELD,
         "max_bracket_width": m18.MAX_BRACKET_WIDTH,
-        "finite_size_headroom": headroom,
         "min_headroom": m18.MIN_HEADROOM,
         "p_c_estimate": 0.22415, "p_c_uncertainty": 5e-5,
         "p_low": 0.22410, "p_high": 0.22420,
-        "controls": {"deep_subcritical": dict(ctrl), "deep_supercritical": dict(ctrl),
-                     "absorbing_state": dict(ctrl)},
+        "lattice": {"L": 2048, "t_max": 50_000},
+        "controls": {
+            "deep_subcritical": {"passed": True, "absorbed_at": 40,
+                                 "exponential_r2": 0.995 if controls_pass else 0.90,
+                                 "power_law_r2": 0.938},
+            "deep_supercritical": {"passed": True,
+                                   "plateau_density": 0.736 if controls_pass else 0.0,
+                                   "delta_eff": 0.001},
+            "absorbing_state": {"passed": True, "stayed_empty": controls_pass},
+        },
     }
 
 
@@ -126,7 +134,9 @@ def test_a_wide_bracket_fails_even_below_mean_field():
 
 
 def test_correlation_length_reaching_the_box_fails():
-    ok, detail = checks.check_m18(_report(headroom=1.2))
+    rep = _report()
+    rep["lattice"]["L"] = 512
+    ok, detail = checks.check_m18(rep)
     assert ok is False
     assert "headroom" in detail
 
@@ -137,12 +147,38 @@ def test_failed_control_fails_the_whole_run():
     assert "control(s) failed" in detail
 
 
+def test_control_pass_booleans_cannot_hide_failed_metrics():
+    rep = _report()
+    rep["controls"]["deep_supercritical"]["plateau_density"] = 0.0
+    assert rep["controls"]["deep_supercritical"]["passed"] is True
+    ok, detail = checks.check_m18(rep)
+    assert ok is False
+    assert "deep_supercritical" in detail
+
+
+def test_echoed_bracket_and_benchmarks_cannot_grade_the_receipt():
+    rep = _report(d_low_p=0.30, d_high_p=0.20)
+    rep["bracket"] = [0.40, 0.50]
+    rep["benchmark_delta"] = 0.25
+    rep["mean_field_delta"] = 99.0
+    rep["max_bracket_width"] = 99.0
+    ok, detail = checks.check_m18(rep)
+    assert ok is False
+    assert "misses DP" in detail
+
+
+def test_poor_power_law_fit_is_refused():
+    ok, detail = checks.check_m18(_report(r2=0.8))
+    assert ok is False
+    assert "power-law fit" in detail
+
+
 def test_missing_controls_are_unreadable_not_false():
     rep = _report()
     rep["controls"] = {"only_one": {"passed": True}}
     ok, detail = checks.check_m18(rep)
     assert ok is None
-    assert "fewer than three controls" in detail
+    assert "fewer than three named controls" in detail
 
 
 def test_check_ignores_other_experiments():

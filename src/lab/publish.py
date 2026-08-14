@@ -243,8 +243,15 @@ def parse_milestones(text: str) -> list[dict]:
             )
             chosen = receipt if receipt is not None else (parens[-1] if parens else None)
             if chosen:
+                # Promotion notes use both ``measured YYYY-MM-DD — result`` and
+                # ``measured YYYY-MM-DD; reviewed …``. The old ``\S+`` pattern
+                # backtracked into the ISO date and treated its final hyphen as
+                # the separator, shipping every promoted result as ``07; ...``.
+                # Match the date as a date, then one explicit separator.
                 result = re.sub(
-                    r"^(?:done|attempted|measured)\s+\S+\s*[—\-]\s*", "", chosen
+                    r"^(?:done|attempted|measured)"
+                    r"(?:\s+\d{4}-\d{2}-\d{2})?\s*(?:[;,—-]\s*)?",
+                    "", chosen,
                 ).strip()
                 if result:
                     ms["result"] = result

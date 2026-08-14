@@ -132,13 +132,22 @@ def _report(**kw):
     base = {
         "experiment": "A04-blind-transit-search", "sector": 2,
         "targets_searched": 26, "sde_threshold": 8.0, "period_tolerance_frac": 0.01,
-        "injections": [{"injected_period_days": 3.7, "injected_depth": 0.01,
-                        "recovered_period_days": 3.6985, "sde": 9.0}],
-        "recoveries": [{"known_planet": "WASP-18 b", "period_days": 0.94164,
-                        "published_period_days": 0.94145223, "sde": 10.2}],
+        "injections": [
+            {"injected_period_days": p, "injected_depth": d,
+             "recovered_period_days": p, "sde": 9.0}
+            for d, p in a04.INJECTIONS
+        ],
+        "recoveries": [
+            {"known_planet": "WASP-18 b", "period_days": 0.94164,
+             "published_period_days": 0.94145223, "sde": 10.2},
+            {"known_planet": "HIP 65 A b", "period_days": 0.98124,
+             "published_period_days": 0.9809734, "sde": 14.2},
+        ],
         "candidates": [{"tic": "211438925", "sde": 9.1,
+                        "period_days": 4.9014,
+                        "catalog": {"known_planet": "WASP-20 b"},
                         "vetting": {"verdict": "planet-candidate"}}],
-        "false_alarm_sde": [4.2, 5.1, 7.7, 3.9],
+        "false_alarm_sde": [4.2, 5.1, 7.7, 3.9] * 5,
     }
     base.update(kw)
     return base
@@ -159,25 +168,53 @@ def test_unvetted_candidate_is_unreadable_not_negative():
 
 
 def test_failed_injection_is_unreadable_not_negative():
-    ok, detail = checks.check_a04(_report(
-        injections=[{"injected_period_days": 3.7, "injected_depth": 0.01,
-                     "recovered_period_days": 1.9, "sde": 4.0}]))
+    rep = _report()
+    rep["injections"][0]["recovered_period_days"] = 1.9
+    rep["injections"][0]["sde"] = 4.0
+    ok, detail = checks.check_a04(rep)
     assert ok is None
     assert "CONTROL FAILED" in detail
 
 
 def test_floor_reaching_the_threshold_fails():
-    ok, detail = checks.check_a04(_report(false_alarm_sde=[4.2, 5.1, 8.9, 3.9]))
+    ok, detail = checks.check_a04(_report(false_alarm_sde=[4.2] * 19 + [8.9]))
     assert ok is False
     assert "no measured gap" in detail
 
 
 def test_missed_recovery_fails():
-    ok, detail = checks.check_a04(_report(
-        recoveries=[{"known_planet": "WASP-18 b", "period_days": 2.5,
-                     "published_period_days": 0.94145223, "sde": 10.2}]))
+    rep = _report()
+    rep["recoveries"][0]["period_days"] = 2.5
+    ok, detail = checks.check_a04(rep)
     assert ok is False
     assert "not recovered" in detail
+
+
+def test_report_owned_threshold_and_tolerance_cannot_make_a_miss_pass():
+    rep = _report()
+    rep["recoveries"][0]["period_days"] = 2.5
+    rep["sde_threshold"] = 0.0
+    rep["period_tolerance_frac"] = 99.0
+    ok, detail = checks.check_a04(rep)
+    assert ok is False
+    assert "not recovered" in detail
+
+
+def test_all_declared_injections_and_recoveries_are_required():
+    rep = _report()
+    rep["injections"] = rep["injections"][:1]
+    assert checks.check_a04(rep)[0] is None
+    rep = _report()
+    rep["recoveries"] = rep["recoveries"][:1]
+    assert checks.check_a04(rep)[0] is None
+
+
+def test_third_recovery_must_be_catalogued_after_vetting():
+    rep = _report()
+    rep["candidates"][0]["catalog"] = {"known_planet": None}
+    ok, detail = checks.check_a04(rep)
+    assert ok is None
+    assert "WASP-20 b" in detail
 
 
 def test_a04_is_registered():

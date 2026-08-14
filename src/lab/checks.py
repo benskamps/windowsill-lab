@@ -66,6 +66,34 @@ TWO_OVER_PI = 2.0 / math.pi
 # antiferromagnet (M13): S0/N = 0.3383 k_B, the macroscopic degeneracy the frustrated
 # ground state leaves at T=0. Measured by integrating C(T)/T down from S(∞)=ln2.
 WANNIER_S0 = 0.3383
+
+# M18 directed-percolation gate. These are owned by the verifier, not trusted
+# from the report: a receipt must not be able to move its benchmark or widen its
+# own tolerance. The fit-quality floor is intentionally loose enough for finite
+# time corrections while still requiring the quoted power-law window to be one.
+M18_DP_DELTA = 0.4505
+M18_MEAN_FIELD_DELTA = 1.0
+M18_MAX_BRACKET_WIDTH = 0.30
+M18_MIN_HEADROOM = 2.0
+M18_DYNAMIC_EXPONENT_Z = 1.766
+M18_MIN_R2 = 0.98
+
+# A04 blind-search gate. The recovery roster, catalog periods, injection ladder,
+# and detection rule are part of the calibration design. Reading any of them
+# back from the receipt would let the run grade itself.
+A04_SDE_THRESHOLD = 8.0
+A04_PERIOD_TOL_FRAC = 0.01
+A04_MIN_FALSE_ALARM_SAMPLES = 20
+A04_EXPECTED_RECOVERIES = {
+    "WASP-18 b": 0.94145223,
+    "HIP 65 A b": 0.98097340,
+}
+A04_EXPECTED_INJECTIONS = (
+    (0.010, 3.7),
+    (0.004, 2.3),
+    (0.002, 5.1),
+)
+A04_SERENDIPITOUS_RECOVERY = ("WASP-20 b", 4.8996461)
 # Residual-entropy tolerance for M13. A physically-justified band, NOT a fudge: the
 # integrated residual carries a few-percent systematic from the finite temperature
 # window and the trapezoidal integration of a Monte-Carlo C(T). Empirically it lands
@@ -346,7 +374,7 @@ def _window_param(report: dict, key: str, default: float, bounds: tuple) -> floa
 
 
 def _reports_newest_first() -> list[Path]:
-    """Report and public-receipt JSONs newest-first.
+    """Report and public-receipt JSONs newest-first by run timestamp.
 
     Full reports remain the preferred local evidence.  A clean git checkout may
     intentionally contain only compact ``reports/receipts/run-<date>-<slug>.json``
@@ -361,11 +389,26 @@ def _reports_newest_first() -> list[Path]:
     if receipts.exists():
         paths += receipts.glob("run-[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]-*.json")
 
-    def sort_key(path: Path) -> tuple[str, bool]:
+    def sort_key(path: Path) -> tuple[str, bool, str]:
         is_receipt = path.parent == receipts
         date = path.stem[4:14] if is_receipt else path.stem[:10]
-        # For the same run date, try the full report before its compact receipt.
-        return date, not is_receipt
+        # Several runs of one milestone can land on the same date. Sorting only
+        # by YYYY-MM-DD made filesystem enumeration order choose the evidence —
+        # on M18 that put the 10:08 quick null ahead of the 10:12 full pass. The
+        # report's own UTC stamp is the canonical run order already used by the
+        # publisher and rotation ledger. Unreadable files retain a deterministic
+        # date/name fallback and are still surfaced later by verify().
+        generated_at = ""
+        try:
+            parsed = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(parsed, dict) and isinstance(parsed.get("generated_at"), str):
+                generated_at = parsed["generated_at"]
+        except (OSError, ValueError):
+            pass
+        stamp = generated_at or date
+        # For twins with the same generated_at, try the full report before its
+        # compact receipt; path name makes all remaining ties deterministic.
+        return stamp, not is_receipt, path.name
 
     return sorted(paths, key=sort_key, reverse=True)
 
@@ -2181,32 +2224,49 @@ def check_m18(report: dict) -> tuple[bool | None, str]:
          that something decreases, not which universality class it belongs to;
       4. it is narrow enough to mean something; [0, 2] would "contain" 0.4505.
 
-    Plus the controls, because a pipeline that calls any falling curve a critical
-    power law would pass 1-4 on noise alone.
+    Plus the controls and fit quality, because a pipeline that calls any falling
+    curve a critical power law would pass 1-4 on noise alone. Summary booleans,
+    echoed brackets, report-owned benchmarks, and report-owned tolerances are
+    deliberately ignored.
     """
     if report.get("experiment") != "M18-directed-percolation-2plus1d":
         return None, "not an M18 directed-percolation run"
     try:
-        bracket = report["bracket"]
-        lo, hi = float(bracket[0]), float(bracket[1])
+        # Rebuild the bracket from the two measured fits. p_high is the slower
+        # decay (lower exponent); p_low is the faster decay (upper exponent).
+        lo = float(report["delta_at_p_high"])
+        hi = float(report["delta_at_p_low"])
+        r2_lo = float(report["r2_at_p_low"])
+        r2_hi = float(report["r2_at_p_high"])
         c_lo = float(report["curvature_at_p_low"])
         c_hi = float(report["curvature_at_p_high"])
-        benchmark = float(report["benchmark_delta"])
-        mean_field = float(report["mean_field_delta"])
-        max_width = float(report.get("max_bracket_width", 0.30))
-        headroom = float(report["finite_size_headroom"])
-        min_headroom = float(report.get("min_headroom", 2.0))
-        p_c = float(report["p_c_estimate"])
-        p_c_unc = float(report["p_c_uncertainty"])
+        p_low = float(report["p_low"])
+        p_high = float(report["p_high"])
+        lattice = report["lattice"]
+        L = int(lattice["L"])
+        t_max = int(lattice["t_max"])
         controls = report["controls"]
-    except (KeyError, TypeError, ValueError, IndexError) as exc:
+    except (KeyError, TypeError, ValueError, IndexError, OverflowError) as exc:
         return None, f"M18 report is missing bracket/control fields: {exc}"
 
-    if not isinstance(controls, dict) or len(controls) < 3:
-        return None, "M18 report carries fewer than three controls"
-
-    failed = [name for name, c in controls.items()
-              if not (isinstance(c, dict) and c.get("passed"))]
+    required_controls = {"deep_subcritical", "deep_supercritical", "absorbing_state"}
+    if not isinstance(controls, dict) or not required_controls <= set(controls):
+        return None, "M18 report carries fewer than three named controls"
+    try:
+        sub = controls["deep_subcritical"]
+        sup = controls["deep_supercritical"]
+        absorbing = controls["absorbing_state"]
+        failed = []
+        if (sub.get("absorbed_at") is None
+                or float(sub["exponential_r2"]) <= float(sub["power_law_r2"])):
+            failed.append("deep_subcritical")
+        if (float(sup["plateau_density"]) <= 0.05
+                or abs(float(sup["delta_eff"])) >= 0.05):
+            failed.append("deep_supercritical")
+        if absorbing.get("stayed_empty") is not True:
+            failed.append("absorbing_state")
+    except (KeyError, TypeError, ValueError, OverflowError) as exc:
+        return None, f"M18 control metrics are unreadable: {exc}"
     if failed:
         return False, (
             f"M18 control(s) failed: {', '.join(sorted(failed))} — the exponent "
@@ -2214,12 +2274,26 @@ def check_m18(report: dict) -> tuple[bool | None, str]:
             "from a power law"
         )
 
+    benchmark = M18_DP_DELTA
+    mean_field = M18_MEAN_FIELD_DELTA
+    max_width = M18_MAX_BRACKET_WIDTH
+    min_headroom = M18_MIN_HEADROOM
+    headroom = L / (float(t_max) ** (1.0 / M18_DYNAMIC_EXPONENT_Z))
+    p_c = 0.5 * (p_low + p_high)
+    p_c_unc = 0.5 * (p_high - p_low)
+    finite = all(math.isfinite(x) for x in (
+        lo, hi, r2_lo, r2_hi, c_lo, c_hi, p_low, p_high, headroom,
+    ))
     straddles = c_lo > 0.0 > c_hi
     width = hi - lo
     contains = lo <= benchmark <= hi
     excludes_mf = hi < mean_field
 
     problems = []
+    if not finite:
+        problems.append("one or more graded measurements are not finite")
+    if not p_low < p_high:
+        problems.append(f"p bracket is not ordered ({p_low}/{p_high})")
     if not straddles:
         problems.append(
             f"the runs do not straddle p_c (curvature {c_lo:+.3f} at p_low, "
@@ -2230,13 +2304,17 @@ def check_m18(report: dict) -> tuple[bool | None, str]:
         problems.append(f"bracket does not exclude mean-field {mean_field}")
     if not (0.0 < width <= max_width):
         problems.append(f"bracket width {width:.4f} outside (0, {max_width}]")
+    if min(r2_lo, r2_hi) < M18_MIN_R2:
+        problems.append(
+            f"power-law fit R² {r2_lo:.4f}/{r2_hi:.4f} below {M18_MIN_R2}"
+        )
     if headroom < min_headroom:
         problems.append(f"finite-size headroom {headroom:.1f} < {min_headroom} "
                         "— the correlation length reached the box")
 
     detail = (
         f"2+1d DP: delta bracketed to [{lo:.4f}, {hi:.4f}] (width {width:.4f}) by a "
-        f"straddling pair at p={report.get('p_low')}/{report.get('p_high')}, "
+        f"straddling pair at p={p_low}/{p_high}, "
         f"curvature {c_lo:+.3f}/{c_hi:+.3f}; p_c = {p_c:.5f}±{p_c_unc:.5f} measured, "
         f"not assumed; L/xi = {headroom:.1f}; controls: exponential-not-power-law "
         f"below, saturation above, absorbing state holds"
@@ -2245,7 +2323,7 @@ def check_m18(report: dict) -> tuple[bool | None, str]:
         return False, detail + " — " + "; ".join(problems)
     return True, (
         detail + f" — contains the DP value {benchmark} and excludes mean-field "
-        f"{mean_field}: the absorbing-state transition is in the DP class"
+        f"{mean_field}: the measured decay is consistent with the DP class"
     )
 
 
@@ -2273,11 +2351,23 @@ def check_a04(report: dict) -> tuple[bool | None, str]:
         return None, "A04 report carries no known-planet recovery targets"
     if not isinstance(floor, list) or len(floor) < 3:
         return None, "A04 report carries too few false-alarm samples to set a floor"
-    try:
-        threshold = float(report["sde_threshold"])
-        tol = float(report["period_tolerance_frac"])
-    except (KeyError, TypeError, ValueError) as exc:
-        return None, f"A04 grading constants are unusable: {exc}"
+    threshold = A04_SDE_THRESHOLD
+    tol = A04_PERIOD_TOL_FRAC
+
+    # Require the whole predeclared sensitivity ladder, not any convenient one
+    # injection that happened to pass.
+    missing_injections = []
+    for expected_depth, expected_period in A04_EXPECTED_INJECTIONS:
+        if not any(
+            math.isclose(float(i.get("injected_depth", -1)), expected_depth,
+                         rel_tol=0.0, abs_tol=1e-12)
+            and math.isclose(float(i.get("injected_period_days", -1)), expected_period,
+                             rel_tol=0.0, abs_tol=1e-12)
+            for i in injections
+        ):
+            missing_injections.append((expected_depth, expected_period))
+    if missing_injections:
+        return None, f"A04 report is missing required injection(s): {missing_injections}"
 
     bad_inj = [i for i in injections
                if not (abs(float(i["recovered_period_days"]) / float(i["injected_period_days"]) - 1.0) <= tol
@@ -2294,6 +2384,11 @@ def check_a04(report: dict) -> tuple[bool | None, str]:
         )
 
     fa = [float(x) for x in floor]
+    if len(fa) < A04_MIN_FALSE_ALARM_SAMPLES:
+        return None, (
+            f"A04 false-alarm floor has n={len(fa)}; need at least "
+            f"{A04_MIN_FALSE_ALARM_SAMPLES} pre-threshold targets"
+        )
     floor_max = max(fa)
     floor_ok = floor_max < threshold
 
@@ -2312,12 +2407,34 @@ def check_a04(report: dict) -> tuple[bool | None, str]:
         f"TIC {c.get('tic')} SDE {float(c['sde']):.1f} → {(c.get('vetting') or {}).get('verdict')}"
         for c in candidates) or "none above threshold"
 
+    by_name = {r.get("known_planet"): r for r in recoveries}
+    missing_recoveries = sorted(set(A04_EXPECTED_RECOVERIES) - set(by_name))
+    if missing_recoveries:
+        return None, f"A04 report is missing recovery target(s): {', '.join(missing_recoveries)}"
     found, missed = [], []
-    for r in recoveries:
-        err = abs(float(r["period_days"]) / float(r["published_period_days"]) - 1.0)
+    for name, published_period in A04_EXPECTED_RECOVERIES.items():
+        r = by_name[name]
+        err = abs(float(r["period_days"]) / published_period - 1.0)
         (found if (err <= tol and float(r["sde"]) >= threshold) else missed).append(
-            (r.get("known_planet", r.get("tic")), float(r["period_days"]),
-             float(r["published_period_days"]), err, float(r["sde"])))
+            (name, float(r["period_days"]), published_period, err, float(r["sde"])))
+
+    # The public result says three known planets were recovered. The third is a
+    # serendipitous candidate, catalogued only after the blind search, so grade
+    # that post-search cross-check explicitly too.
+    ser_name, ser_period = A04_SERENDIPITOUS_RECOVERY
+    serendipitous = [c for c in candidates
+                     if (c.get("catalog") or {}).get("known_planet") == ser_name]
+    if not serendipitous:
+        return None, f"A04 report carries no post-search catalog recovery of {ser_name}"
+    ser = serendipitous[0]
+    ser_err = abs(float(ser["period_days"]) / ser_period - 1.0)
+    if (ser_err > tol or float(ser["sde"]) < threshold
+            or (ser.get("vetting") or {}).get("verdict") != "planet-candidate"):
+        missed.append((ser_name, float(ser["period_days"]), ser_period,
+                       ser_err, float(ser["sde"])))
+    else:
+        found.append((ser_name, float(ser["period_days"]), ser_period,
+                      ser_err, float(ser["sde"])))
 
     inj_txt = ", ".join(
         f"{100*float(i['injected_depth']):.1f}%@{i['injected_period_days']}d"

@@ -75,6 +75,17 @@ def test_verified_result_lifts_parenthetical():
     assert "done" not in ms["M01"]["result"]   # the "done <date> —" prefix is stripped
 
 
+@pytest.mark.parametrize("separator", [";", ",", "—", "-"])
+def test_promoted_result_strips_the_whole_iso_date(separator):
+    line = (
+        f"- [x] **M18** — Directed percolation. "
+        f"(measured 2026-08-07{separator} machine check passed; reviewed)\n"
+    )
+    result = parse_milestones(line)[0]["result"]
+    assert result == "machine check passed; reviewed"
+    assert not result.startswith("07")
+
+
 def test_balanced_result_keeps_nested_physics_notation():
     text = (
         "- [x] **M14** — Nishimori identity. "

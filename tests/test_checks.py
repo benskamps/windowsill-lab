@@ -108,6 +108,29 @@ def test_verify_uses_public_receipts_in_a_clean_checkout(tmp_path, monkeypatch):
     }]
 
 
+def test_report_order_uses_generated_at_within_one_day(tmp_path, monkeypatch):
+    """A same-day quick null must not shadow a later full calibration pass."""
+    reports = tmp_path / "reports"
+    receipts = reports / "receipts"
+    lab_home = tmp_path / "lab-home"
+    receipts.mkdir(parents=True)
+    lab_home.mkdir()
+    early = receipts / "run-2026-08-07-1008-m18.json"
+    late = receipts / "run-2026-08-07-1012-m18.json"
+    early.write_text(json.dumps({
+        "generated_at": "2026-08-07T14:08:58+00:00", "marker": "early-null",
+    }), encoding="utf-8")
+    late.write_text(json.dumps({
+        "generated_at": "2026-08-07T14:12:57+00:00", "marker": "later-pass",
+    }), encoding="utf-8")
+
+    monkeypatch.setattr(checks, "REPORTS_DIR", reports)
+    monkeypatch.setattr(checks, "LAB_HOME", lab_home)
+
+    ordered = checks._reports_newest_first()
+    assert ordered[:2] == [late, early]
+
+
 # ── M02: finite-size scaling check ───────────────────────────────────────────
 def test_m02_passes_on_correct_scaling():
     ok, detail = check_m02(_fss_report(slope=GAMMA_OVER_NU))
