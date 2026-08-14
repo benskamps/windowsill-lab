@@ -145,6 +145,32 @@ def test_gumbel_refuses_tiny_or_degenerate_samples():
     assert a05_stats.gumbel_fit(np.full(256, 3.3)) is None
 
 
+def test_gumbel_tail_fap_clamps_instead_of_overflowing():
+    """An observed statistic far BELOW the fitted location drives
+    exp(-z) toward exp(700+); the clamp returns the honest limit 1.0
+    instead of raising OverflowError mid-receipt."""
+    p = a05_stats.gumbel_tail_fap(-400.0, mu=8.0, beta=0.5)   # z = -816
+    assert p == 1.0
+    # And the ordinary tail regime is untouched by the clamp.
+    assert 0.0 < a05_stats.gumbel_tail_fap(12.0, mu=8.0, beta=0.5) < 1e-3
+
+
+# -------------------------------------------------------- uniformity gate ----
+
+def test_uniformity_critical_distance_is_stephens_not_asymptotic():
+    """At n=5 a D=0.58 ensemble passes the bare asymptotic 1.358/sqrt(n)
+    (0.607) but fails Stephens' finite-n form (0.565) — the finite-n
+    denominator is the contract, in both the engine and the check."""
+    ps = np.array([0.005, 0.01, 0.02, 0.99, 0.995])
+    stat, ok = a05_stats.uniformity_stat(ps)
+    assert stat == pytest.approx(0.58)
+    crit_asym = a05_stats.KS_CRITICAL_COEFF / np.sqrt(5)
+    crit_stephens = a05_stats.KS_CRITICAL_COEFF / (
+        np.sqrt(5) + 0.12 + 0.11 / np.sqrt(5))
+    assert crit_stephens < stat < crit_asym    # the case the two forms split
+    assert ok is False
+
+
 # ------------------------------------------------------------------ triage ---
 
 def test_triage_level_is_monotone_and_pinned_to_the_floor_points():

@@ -121,9 +121,12 @@ A05_TRIAGE_SAFETY_MARGIN = 1.0
 A05_FLOOR_PRIOR = (("run-2026-08-08-2338-a04", 22, 6.6),
                    ("hunt-2026-08-14-s2-pilot-158", 153, 7.65),
                    ("hunt-2026-08-14-s2-pilot-570", 551, 7.875))
-# Asymptotic one-sample KS 5% coefficient for the uniformity re-run, and the
-# smallest control ensemble worth grading (below 5 the KS test has no power
-# and the calibration claim would be decorative).
+# One-sample KS 5% NUMERATOR for the uniformity re-run — Stephens' (1970)
+# finite-n form: critical distance = CRIT / (sqrt(n) + 0.12 + 0.11/sqrt(n)).
+# Lockstep with a05_stats.uniformity_stat (the two cross-check each other:
+# gate 10 recomputes the engine's pass flag, so a one-sided change reads as
+# contradiction). Below it, the smallest control ensemble worth grading
+# (under 5 the KS test has no power and the calibration would be decorative).
 A05_UNIFORMITY_CRIT = 1.358
 A05_UNIFORMITY_MIN_N = 5
 # Empirical FAPs are exact rationals (1+k)/(B+1); recomputation must agree to
@@ -139,13 +142,19 @@ A05_GUMBEL_RTOL = 0.05
 A05_INJECTION_DEPTHS = (0.002, 0.004, 0.010)
 A05_INJECTION_PERIODS = (2.3, 3.7, 5.1)
 A05_INJECTION_EPOCHS = 2
-A05_INJECTION_RULES = ("sde-threshold", "fap-graded")
+A05_INJECTION_RULES = ("sde-threshold", "fap-injection-iid")
 # Spot reproduction: recomputed null maxima from the SHA-256-pinned FITS must
 # match the stored ones within this relative tolerance. Seed-pinned replay is
 # bitwise on one platform; the band absorbs cross-platform libm/BLAS last-bit
 # drift and nothing else — a wrong seed or tampered maxima miss by orders of
-# magnitude.
+# magnitude. Caveat: the prewhiten stage takes DISCRETE branches (argmax peak
+# picking, the component-count cutoff) that can flip on cross-platform last-
+# bit differences, and a flipped branch produces a GROSS deviation even with
+# a matching sha256. That still reads False — the receipt does not reproduce
+# HERE — but _a05_spot names the ambiguity above A05_SPOT_GROSS so the reader
+# knows to distinguish tampering from a platform branch flip.
 A05_SPOT_RTOL = 1e-5
+A05_SPOT_GROSS = 1e-2
 # Budget bookkeeping: the reported survey share must re-derive from the rows'
 # own wall clocks within this relative band, and no row may exceed its
 # declared per-target share of the soft budget by more than the same slack.
@@ -2634,6 +2643,13 @@ def _a05_spot(report: dict, cache_dir) -> tuple[bool | None, str]:
         return False, f"spot row TIC {pick['tic']}: stored {len(stored)} maxima, recomputed {len(got)}"
     worst = max(abs(a - b) / max(abs(b), 1e-8) for a, b in zip(stored, got))
     if worst > A05_SPOT_RTOL:
+        if worst > A05_SPOT_GROSS:
+            return False, (
+                f"spot reproduction FAILED on TIC {pick['tic']}: max relative "
+                f"deviation {worst:.2e} is GROSS despite a matching cache "
+                "sha256 — tampered maxima/seed, or a discrete prewhiten "
+                "branch flipped on this platform; either way the receipt "
+                "does not reproduce here")
         return False, (f"spot reproduction FAILED on TIC {pick['tic']}: "
                        f"max relative deviation {worst:.2e} > {A05_SPOT_RTOL:g}")
     return True, (f"spot: TIC {pick['tic']} null re-derived from pinned FITS, "
@@ -2783,6 +2799,14 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
         if not math.isclose(block_days, A05_BLOCK_DAYS, rel_tol=1e-9):
             return None, (f"A05 TIC {r.get('tic')} declares block_days="
                           f"{block_days}, contract is {A05_BLOCK_DAYS}")
+    # Every stage-2 row must pin its input bytes: without cache_sha256 +
+    # cache_file the row can never enter the spot-reproduction pool, and a
+    # run that strips its pins shrinks the pool to the rows it prefers.
+    for r in stage2:
+        if not r.get("cache_sha256") or not r.get("cache_file"):
+            return None, (f"A05 stage-2 row TIC {r.get('tic')} carries no "
+                          "pinned cache (sha256 + file) — it can never be "
+                          "spot-reproduced, so the receipt is unauditable")
 
     # -- 4. every above-threshold row is dispositioned, in vocabulary --------
     for r in above:
@@ -2931,7 +2955,9 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
         return False, ("A05 uniformity p-values are not the control rows' own "
                        "iid FAPs — the ensemble was edited")
     ks = _a05_ks_uniform([float(p) for p in p_values])
-    ks_pass = ks < A05_UNIFORMITY_CRIT / math.sqrt(len(p_values))
+    n_ks = len(p_values)
+    ks_pass = ks < A05_UNIFORMITY_CRIT / (
+        math.sqrt(n_ks) + 0.12 + 0.11 / math.sqrt(n_ks))   # Stephens (1970)
     if uniformity.get("pass") is not bool(ks_pass) or not math.isclose(
             float(uniformity.get("ks_stat", -1)), ks, rel_tol=1e-6, abs_tol=1e-9):
         return False, (f"A05 uniformity block (D={uniformity.get('ks_stat')}, "

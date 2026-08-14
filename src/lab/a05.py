@@ -61,9 +61,11 @@ threshold (its lane-1 TODO). Swapping every injection onto the batched FAP
 engine multiplies each host's ladder cost by ~B and is not affordable inside a
 survey budget, so this module DECLARES the rule instead of hiding it: every
 host's injection block carries ``injections_recovery_rule: "sde-threshold"``
-(or ``"fap-graded"`` when a run opts into ``injection_fap_B``), and the check
-refuses a receipt that omits the declaration. An honest label on the cheaper
-rule beats a silent upgrade nobody can audit.
+(or ``"fap-injection-iid"`` when a run opts into ``injection_fap_B >= 100`` —
+the per-injection number is a single-scheme reduced-B FAP, named so it can
+never be confused with the row-level graded contract), and the check refuses
+a receipt that omits the declaration. An honest label on the cheaper rule
+beats a silent upgrade nobody can audit.
 
 Numpy + stdlib only. Network touches (MAST, Exoplanet Archive) are injectable
 callables so the whole pipeline runs on synthetic curves in tests.
@@ -329,8 +331,12 @@ def process_target(item: dict) -> dict:
         inj_B = int(item.get("injection_fap_B") or 0)
         if inj_B > 0:
             # Opt-in honesty upgrade: grade each injection's recovery on its
-            # own (cheaper, reduced-B) permutation FAP instead of the SDE bar.
-            rule = "fap-graded"
+            # own (cheaper, reduced-B, IID-ONLY) permutation FAP instead of
+            # the SDE bar. The field is named fap_injection_iid on purpose:
+            # it is a single-scheme reduced-B number and must never be
+            # mistaken for the row-level GRADED contract (conservative max of
+            # two schemes at full B).
+            rule = "fap-injection-iid"
             for r in inj:
                 fi = a04.inject_box(t, fw, r["period_days"], r["depth"],
                                     t0=float(t[0]) + a05_sensitivity.EPOCH_FRACTIONS[
@@ -339,10 +345,10 @@ def process_target(item: dict) -> dict:
                     t, fi, B=inj_B, scheme="iid",
                     seed=int(item["seed"]) + 1 + r["epoch"],
                     n_periods=n_periods)
-                r["fap_graded"] = a05_stats.fap_empirical(r["sde"], maxima)
+                r["fap_injection_iid"] = a05_stats.fap_empirical(r["sde"], maxima)
                 r["recovered"] = bool(
                     r["period_error_frac"] <= a04.PERIOD_TOL_FRAC
-                    and r["fap_graded"] <= a05_sensitivity.FAP_ALPHA)
+                    and r["fap_injection_iid"] <= a05_sensitivity.FAP_ALPHA)
         row["injections"] = inj
         row["injections_recovery_rule"] = rule
         sens = a05_sensitivity.host_sensitivity(inj)
@@ -364,7 +370,8 @@ def process_target(item: dict) -> dict:
                 row["disposition"] = "centroid-shift"
             else:
                 row["pending_catalog"] = True
-    row["wall_seconds"] = time.time() - t0
+    row["wall_seconds"] = (time.time() - t0
+                           + float(item.get("load_seconds") or 0.0))
     return row
 
 
@@ -542,6 +549,12 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
     identical rows for identical inputs.
     """
     t_start = time.time()
+    if injection_fap_B and injection_fap_B < 100:
+        raise A05Error(
+            f"injection_fap_B={injection_fap_B} cannot resolve the "
+            f"FAP_ALPHA={a05_sensitivity.FAP_ALPHA:g} recovery rule: the "
+            "empirical bound floors at 1/(B+1), so B < 100 can never grade "
+            "an injection recovered — use 0 (sde-threshold rule) or B >= 100")
     catalog = catalog or a04.catalog_crosscheck
     # The detected period disambiguates multi-planet catalog rows (the
     # TOI-125 b-vs-c lesson); injected test doubles may keep the 1-arg shape.
@@ -634,6 +647,11 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
                 "n_periods": n_periods,
                 "prewhiten_kwargs": prewhiten_kwargs,
                 "injection_fap_B": injection_fap_B,
+                # Loader wall (download/parse in the main process) rides into
+                # the row's wall_seconds so the budget gate sees the target's
+                # WHOLE cost, not just its compute — error/skip rows already
+                # bill their load time, and success rows must not bill less.
+                "load_seconds": time.time() - t_load,
             })
         for row in mapper(process_target, items):
             rows_by_tic[row["tic"]] = row
@@ -718,11 +736,16 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
     for tic in placebo_tics:
         curve = _curve(tic)
         if curve is not None:
-            fw, _ = a05_vetting.prewhiten(curve["t"], curve["f"],
-                                          **(prewhiten_kwargs or {}))
-            placebo_curves.append((tic, curve["t"], fw))
-    result.placebo = a05_sensitivity.scramble_placebo(placebo_curves,
-                                                      n_periods=n_periods)
+            fw, comps = a05_vetting.prewhiten(curve["t"], curve["f"],
+                                              **(prewhiten_kwargs or {}))
+            placebo_curves.append((tic, curve["t"], fw, comps))
+    # The placebo exercises the SAME vetting chain as the hunt (extended
+    # ladder, with each host's own measured components), not A04's shorter
+    # one — a control that runs a laxer chain would grade a different pipeline.
+    result.placebo = a05_sensitivity.scramble_placebo(
+        placebo_curves, n_periods=n_periods,
+        vet=lambda ts, fs, det, components=(): a05_vetting.extended_vet(
+            ts, fs, det, components=components))
 
     result.wall_seconds = time.time() - t_start
     used = sum(float(r.get("wall_seconds") or 0.0) for r in result.rows)

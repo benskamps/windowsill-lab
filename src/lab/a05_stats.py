@@ -144,9 +144,13 @@ TRIAGE_MU = TRIAGE_FLOOR_POINTS[0][1] - TRIAGE_BETA * math.log(
 #: for a bootstrap it didn't need", never "a marginal candidate skipped its FAP".
 TRIAGE_SAFETY_MARGIN = 1.0
 
-#: Asymptotic one-sample Kolmogorov–Smirnov 5% coefficient: the critical
-#: distance is KS_CRITICAL_COEFF / sqrt(n). Asymptotic form, sized for the
-#: n ≈ 50 uniformity control ensemble the receipt schema names.
+#: One-sample Kolmogorov–Smirnov 5% coefficient — the NUMERATOR of Stephens'
+#: (1970) finite-n form: the critical distance is
+#: KS_CRITICAL_COEFF / (sqrt(n) + 0.12 + 0.11/sqrt(n)). The bare asymptotic
+#: 1.358/sqrt(n) is anti-conservative at the n ≈ 50 control ensemble the
+#: receipt schema names (it overstates the critical distance by ~2 %, letting
+#: a miscalibrated ensemble squeak past); checks.py applies the SAME
+#: denominator — the two grade each other, change them in lockstep.
 KS_CRITICAL_COEFF = 1.358
 
 
@@ -414,8 +418,13 @@ def gumbel_tail_fap(observed_sde: float, mu: float, beta: float) -> float:
     ``1 - exp(-exp(-(x - mu)/beta))``. Carries every caveat of
     :func:`gumbel_fit`; it may appear in the receipt's ``gumbel.fap_tail``
     field and NOWHERE graded.
+
+    ``z`` is clamped at -700: ``math.exp(700)`` is the last finite double, and
+    an observed statistic far BELOW the fitted location (a pathological call,
+    not a tail question) must return the honest limit 1.0, not raise
+    OverflowError mid-receipt.
     """
-    z = (observed_sde - mu) / beta
+    z = max((observed_sde - mu) / beta, -700.0)
     return float(-math.expm1(-math.exp(-z)))
 
 
@@ -442,6 +451,16 @@ def triage_level(n: int) -> float:
     margin is subtracted rather than added: the failure mode is "spent compute
     on a noise target", never "a marginal candidate skipped its FAP".
     Monotone increasing in n by construction (TRIAGE_BETA > 0).
+
+    First real test datum, 2026-08-14: the wide slice measured a THIRD floor
+    point, (n=551, max SDE 7.875) — receipt
+    ``hunt-2026-08-14-s2-pilot-570`` — and the two-point line OVERPREDICTS it
+    by ~0.47 SDE. The miss is in the conservative direction (the line sits
+    high, so with the subtracted margin the bar stays safe and the error mode
+    stays "extra compute"), and one datum is not a fit: the heuristic stays a
+    two-point line, unpromoted, until more floors accumulate in
+    ``floor_history``. Note the stage-2 decision additionally caps this line
+    at ``a04.SDE_THRESHOLD`` — see :func:`lab.a05.process_target`.
     """
     if n < 1:
         raise A05StatsError("triage_level needs n >= 1 targets")
@@ -453,15 +472,18 @@ def triage_level(n: int) -> float:
 def uniformity_stat(p_values: np.ndarray) -> tuple[float, bool]:
     """KS-style distance of the control p-values from Uniform(0,1).
 
-    If the permutation machinery is honest, the FAPs of targets drawn from the
-    null (the sub-triage control subsample) are uniform — that is the
-    calibration of the calibrator, and it fails loudly when the null is wrong
-    for the data (e.g. an iid-only null grading red-noise targets piles the
-    p-values near zero). The statistic is the one-sample Kolmogorov–Smirnov
-    distance ``max |ecdf - uniform|`` computed on both sides of each step;
-    pass/fail compares against the asymptotic 5% critical distance
-    :data:`KS_CRITICAL_COEFF```/sqrt(n)``, sized for the n ≈ 50 control
-    ensemble the receipt schema names.
+    If the permutation machinery is honest, the FAPs of the PREDECLARED
+    control subsample — membership chosen by consistent hash of the TIC
+    before any data, with NO SDE filter of any kind — are uniform: that is
+    the calibration of the calibrator, and it fails loudly when the null is
+    wrong for the data (e.g. an iid-only null grading red-noise targets piles
+    the p-values near zero). The statistic is the one-sample
+    Kolmogorov–Smirnov distance ``max |ecdf - uniform|`` computed on both
+    sides of each step; pass/fail compares against Stephens' (1970) 5%
+    critical distance ``KS_CRITICAL_COEFF / (sqrt(n) + 0.12 + 0.11/sqrt(n))``
+    — the finite-n form, sized for the n ≈ 50 control ensemble the receipt
+    schema names (the bare asymptotic ``1.358/sqrt(n)`` is anti-conservative
+    there). ``checks.check_a05`` re-runs the SAME formula.
 
     The empirical FAPs live on the grid k/(B+1), which biases the distance
     upward by at most 1/(B+1) — negligible against the ~0.19 critical distance
@@ -475,4 +497,5 @@ def uniformity_stat(p_values: np.ndarray) -> tuple[float, bool]:
         raise A05StatsError("p-values must lie in [0, 1]")
     i = np.arange(1, n + 1)
     stat = float(max(np.max(i / n - ps), np.max(ps - (i - 1) / n)))
-    return stat, bool(stat < KS_CRITICAL_COEFF / math.sqrt(n))
+    crit = KS_CRITICAL_COEFF / (math.sqrt(n) + 0.12 + 0.11 / math.sqrt(n))
+    return stat, bool(stat < crit)

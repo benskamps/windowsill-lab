@@ -402,6 +402,38 @@ def test_stage2_bar_never_exceeds_the_detection_threshold():
     assert row["fap"] is not None
 
 
+# ------------------------------------------------ (3e) misc contract gates ---
+
+
+def test_unresolvable_injection_fap_B_is_refused():
+    """B < 100 floors the empirical bound above FAP_ALPHA=0.01 — no injection
+    could ever grade recovered, so the run must refuse at the door."""
+    with pytest.raises(a05.A05Error, match="injection_fap_B"):
+        a05.run_a05(sector=2, targets=[], curve_loader=lambda tic: None,
+                    catalog=_catalog, injection_fap_B=50)
+
+
+def test_stage2_row_without_pinned_cache_is_refused(hunt):
+    """An unpinned stage-2 row can never enter the spot-reproduction pool —
+    stripping pins shrinks the pool to the rows the run prefers."""
+    bad = _mut(hunt["report"])
+    _stage2_rows(bad)[3]["cache_sha256"] = None
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "pinned cache" in detail
+
+
+def test_loader_wall_is_billed_into_the_row(tmp_path):
+    t, f = _synth(903)
+    curve = a05.curve_from_blob(fits_bytes(t, f))
+    row = a05.process_target({
+        "tic": "903", "t": curve["t"], "f": curve["f"],
+        "cx": None, "cy": None, "crowdsap": None,
+        "triage_level": 99.0, "control_member": False, "B": 32, "seed": 7,
+        "n_periods": 100, "prewhiten_kwargs": {"f_hi": 45.0},
+        "load_seconds": 7.5})
+    assert row["wall_seconds"] >= 7.5
+
+
 # --------------------------------------------------- (4b) the budget gate ----
 
 
