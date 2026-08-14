@@ -469,6 +469,9 @@ def test_page_impostor_card_tells_the_forty_minutes_story():
     # disclosure, and the source receipt is named.
     assert "TIC 140940493" in html
     assert "hunt-2026-08-14-s2-pilot-158.json" in html
+    # The 42-event count and the 1.7σ odd/even figure live in the pilot
+    # investigation summary, not in the receipt — both sources are named.
+    assert "docs/investigations/2026-08-14-a04-discovery-pilot-summary.json" in html
     assert "harmonic-alias" in html
 
 
