@@ -1437,3 +1437,50 @@ def test_m01_still_tolerates_legacy_reports_without_magnetization_arrays():
     assert ok is True, detail
     from lab.m01_quality import nonequilibrated_indices
     assert nonequilibrated_indices(legacy) == []
+
+
+# ---------------------------------------------------------------------- A05 --
+
+def test_a05_is_registered_and_skips_foreign_reports():
+    """The A05 gate is in the registry, and — like every check — answers None
+    for reports it cannot read instead of grading them."""
+    fn = checks.CHECKS.get("A05")
+    assert fn is checks.check_a05
+    ok, detail = checks.check_a05({"experiment": "A04-blind-transit-search"})
+    assert ok is None and "not an A05" in detail
+    ok, _ = checks.check_a05({"experiment": "a05-survey-hunt"})
+    assert ok is None                       # no rows: unreadable, not negative
+
+
+def test_a05_own_gumbel_fitter_agrees_with_the_engine():
+    """The check refits reported Gumbel blocks with its OWN pure-python MLE;
+    on a true Gumbel sample it must land where the engine's fitter lands,
+    or the refit gate would flag honest receipts."""
+    import numpy as np
+    from lab import a05_stats
+    x = np.random.default_rng(7).gumbel(5.0, 0.6, 256)
+    engine = a05_stats.gumbel_fit(x)
+    assert engine is not None
+    refit = checks._a05_gumbel_mle([float(v) for v in x])
+    assert refit is not None
+    mu, beta = refit
+    assert math.isclose(mu, engine["mu"], rel_tol=1e-6)
+    assert math.isclose(beta, engine["beta"], rel_tol=1e-6)
+
+
+def test_a05_own_ks_matches_the_engine_statistic():
+    import numpy as np
+    from lab import a05_stats
+    ps = list(np.random.default_rng(3).uniform(size=40))
+    stat, _ = a05_stats.uniformity_stat(np.asarray(ps))
+    assert math.isclose(checks._a05_ks_uniform(ps), stat, rel_tol=1e-12)
+
+
+def test_a05_triage_constants_mirror_the_engine():
+    """The check re-derives the triage line from its own floor points; those
+    points must stay pinned to the engine's, or a drifted engine would grade
+    against a different line than the one it used."""
+    from lab import a05_stats
+    assert checks.A05_TRIAGE_FLOOR_POINTS == a05_stats.TRIAGE_FLOOR_POINTS
+    assert checks.A05_TRIAGE_SAFETY_MARGIN == a05_stats.TRIAGE_SAFETY_MARGIN
+    assert checks.A05_BLOCK_DAYS == a05_stats.BLOCK_DAYS
