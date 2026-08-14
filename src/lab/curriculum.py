@@ -7,8 +7,11 @@ them. The portfolio ROTATION and its hardware gates live here for the same
 reason: selection facts shared by every box must have exactly one committed
 home (docs/investigations/2026-08-01-portfolio-rotation.md).
 """
+import math
 import os
-from collections.abc import Callable, Iterable
+import statistics
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from datetime import datetime, timezone
 from pathlib import Path
 
 RUNNERS = {
@@ -233,6 +236,280 @@ def newest_receipt_milestone(records: Iterable[tuple[str, str]]) -> str | None:
     of claiming an empty ledger.
     """
     return _newest_milestone(records, only_rotation=False)
+
+
+# ── the value-function planner (v1) ─────────────────────────────────────────
+# WHY THIS EXISTS: 84 of the first 136 committed receipts were M01 (x40) and
+# M02 (x44). Two scheduler bugs — a stuck open-pointer falling back to M01
+# nightly, and a stem-slice parse bug livelocking M01→M02-every-pass for nine
+# days — made the lab re-run verified calibration rungs on loop while CI
+# stayed green. The round-robin walk (`select_rotation`) fixed the pointer but
+# still treats a never-measured rung and a canary that ran yesterday as equal
+# citizens. The planner replaces "whose turn is it" with "what is a turn worth":
+# every decision is a value/cost score derived from the receipts ledger itself,
+# the decision ships inside the receipt it produces, and repeats decay by law
+# so no defect in any OTHER part of the scheduler can ever again buy 40
+# consecutive receipts of one slug.
+
+#: Planner identity stamped into every decision record — bump on any scoring
+#: change so an old receipt's planned block is never re-derived against new law.
+PLANNER_VERSION = "v1"
+
+#: Class base values, strictly ordered: an OPEN frontier milestone is the whole
+#: point of the lab; a rung that has NEVER produced a receipt is a missing
+#: measurement; a NULL is a kept miss worth an occasional retry; a VERIFIED
+#: rung is a canary — near-worthless the day after it ran, due again in a week.
+OPEN_FRONTIER_VALUE = 8.0
+NEVER_RUN_VALUE = 5.0
+NULL_RETRY_VALUE = 3.0
+VERIFIED_CANARY_VALUE = 1.0
+
+#: A verified canary comes due over about a week: its staleness multiplier is
+#: log2(1 + days/CANARY_HALF_LIFE_DAYS) — ~0.19 the day after it ran, 1.0 at
+#: seven days, then slow growth.
+CANARY_HALF_LIFE_DAYS = 7.0
+
+#: Staleness cap. Deliberately BELOW NEVER_RUN_VALUE / VERIFIED_CANARY_VALUE
+#: (4 < 5): no matter how stale, a verified canary can never outrank a rung
+#: that has never been measured at all. Class order is an invariant, not a
+#: tendency (tests/test_planner.py pins it).
+STALENESS_CAP = 4.0
+
+#: The repeat law's hard cap: with at least two eligible candidates of nonzero
+#: base value, the planner cannot choose the same mid more than this many
+#: consecutive times. The exponential decay (value × 2^-repeats) makes a
+#: fourth repeat unlikely; the cap makes it impossible — decay alone cannot
+#: bound a frontier rung whose base value dwarfs every alternative.
+REPEAT_HARD_CAP = 3
+
+#: The synthetic survey-hunt candidate (scripts/a05_hunt.py). Not a ROTATION
+#: member and not in RUNNERS — callers that cannot dispatch it pass
+#: ``hunt_status=None`` and it never appears.
+HUNT_CANDIDATE = "A05-HUNT"
+
+#: remaining_targets at (or above) which the hunt scores full OPEN_FRONTIER
+#: value; below it the hunt's value scales down linearly with what is left.
+HUNT_FULL_VALUE_TARGETS = 500
+
+
+def _parse_stamp(stamp: str) -> datetime | None:
+    """A receipt stamp (ISO datetime or bare ``YYYY-MM-DD``) as aware UTC.
+
+    Unparseable stamps return ``None`` — the caller degrades, never raises,
+    because a malformed committed receipt must not kill the scheduler.
+    """
+    try:
+        parsed = datetime.fromisoformat(str(stamp).replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
+
+
+def _head_run(ordered: list[tuple[str, str]]) -> tuple[str | None, int]:
+    """The mid at the head (newest stamp) of the ledger and its consecutive run.
+
+    Counted over ALL receipts, rotation members or not: a manual ``lab m12``
+    genuinely breaks an M01 streak, so it genuinely resets the decay.
+    """
+    if not ordered:
+        return None, 0
+    head = ordered[-1][1]
+    run = 0
+    for _stamp, mid in reversed(ordered):
+        if mid != head:
+            break
+        run += 1
+    return head, run
+
+
+def plan_turn(
+    records: Iterable[tuple[str, str]],
+    milestones: Mapping[str, str] | None = None,
+    now: datetime | None = None,
+    hunt_status: Mapping[str, object] | None = None,
+    durations: Mapping[str, Sequence[float]] | None = None,
+) -> tuple[str | None, dict]:
+    """Score every eligible candidate and pick the most valuable turn.
+
+    Pure in the scheduler's sense: reads committed state (``records`` — the
+    ``(stamp, mid)`` receipt-ledger tuples ``cli._receipt_records`` produces —
+    plus a ``{mid: status}`` mapping the caller derives from
+    ``parse_milestones``), runs nothing, writes nothing. Every input the score
+    depends on is a parameter, so a checker holding the same ledger re-derives
+    the same decision (``now`` defaults to the wall clock; pass it explicitly
+    to re-derive). The hardware gates it consults read configuration only, the
+    same promise ``select_rotation`` makes.
+
+    Candidates: ROTATION members with a runner and a passing hardware gate;
+    plus any OPEN milestone with a runner and passing gate (the frontier —
+    inside or outside the rotation, its class outscores everything, which is
+    the 2026-06-26 frontier-first decision expressed as value instead of
+    branch order); plus the synthetic ``A05-HUNT`` when ``hunt_status`` says
+    targets remain.
+
+    Score(mid) = value(mid) / cost(mid):
+
+    * class base value (constants above), staleness-scaled for verified rungs;
+    * repeat decay — value × 2^-(consecutive repeats at the ledger head), and
+      at ``REPEAT_HARD_CAP`` repeats the value drops to zero outright whenever
+      any other candidate still scores above zero. The hunt is EXEMPT: each
+      hunt turn searches a fresh slice of the sector (cumulative by
+      construction), so a repeated hunt is new coverage, not a re-measurement;
+    * cost — ``max(1.0, median_wall_seconds / median_of_medians)`` when the
+      caller supplies durations, else 1.0. A penalty only, never a discount:
+      clamping at 1.0 keeps a cheap canary from buying its way past the class
+      ordering, so the invariant above survives the cost seam.
+
+    Ties break by the rotation walk order starting after the ledger pointer —
+    the planner degrades EXACTLY to ``select_rotation`` when the scores cannot
+    distinguish candidates, which keeps two boxes reading the same committed
+    ledger picking different slots, not the same one.
+
+    Returns ``(mid, decision)`` — ``mid`` is ``None`` only when nothing is
+    eligible. ``decision`` is the receipt-ready record: chosen, one-line
+    reason, top-5 scoreboard, planner version, and the named skips the caller
+    must disclose.
+    """
+    statuses = dict(milestones or {})
+    if now is None:
+        now = datetime.now(timezone.utc)
+    ordered = sorted(
+        (str(stamp), str(mid)) for stamp, mid in records if stamp and mid
+    )
+    head_mid, head_run = _head_run(ordered)
+    last_stamp: dict[str, str] = {}
+    for stamp, mid in ordered:
+        last_stamp[mid] = stamp  # ordered ascending — the last write wins
+
+    skips: list[tuple[str, str]] = []
+    open_ids = [m for m, s in statuses.items() if s == "open"]
+
+    # Ordered candidate list; rank is the tie-break (see docstring).
+    pointer = _newest_milestone(ordered, only_rotation=True)
+    start = (ROTATION.index(pointer) + 1) % len(ROTATION) \
+        if pointer in ROTATION else 0
+    candidates: list[tuple[str, int]] = []   # (mid, walk_rank)
+    for mid in open_ids:
+        if mid in ROTATION:
+            continue  # ranked below with its rotation slot; class still wins
+        if mid not in RUNNERS:
+            continue  # branch-1 territory: cli names "no runner" itself
+        reason = hardware_gate_reason(mid)
+        if reason is not None:
+            skips.append((mid, reason))
+            continue
+        candidates.append((mid, -2))         # exact ties: the bench wins
+    if hunt_status is not None and int(hunt_status.get("remaining_targets", 0) or 0) > 0:
+        candidates.append((HUNT_CANDIDATE, -1))
+    for offset in range(len(ROTATION)):
+        mid = ROTATION[(start + offset) % len(ROTATION)]
+        if mid not in RUNNERS:
+            skips.append((mid, "no runner registered"))
+            continue
+        reason = hardware_gate_reason(mid)
+        if reason is not None:
+            skips.append((mid, reason))
+            continue
+        candidates.append((mid, offset))
+
+    med_by_mid: dict[str, float] = {}
+    if durations:
+        for mid, walls in durations.items():
+            walls = [w for w in walls if isinstance(w, (int, float)) and w > 0]
+            if walls:
+                med_by_mid[mid] = statistics.median(walls)
+    norm = statistics.median(med_by_mid.values()) if med_by_mid else 1.0
+
+    scoreboard: list[dict] = []
+    for mid, rank in candidates:
+        if mid == HUNT_CANDIDATE:
+            cls = "hunt"
+            remaining = int(hunt_status.get("remaining_targets", 0) or 0)
+            value = OPEN_FRONTIER_VALUE * min(
+                1.0, remaining / HUNT_FULL_VALUE_TARGETS)
+        elif statuses.get(mid) == "open":
+            cls, value = "open-frontier", OPEN_FRONTIER_VALUE
+        elif mid not in last_stamp:
+            cls, value = "never-run", NEVER_RUN_VALUE
+        elif statuses.get(mid) == "null":
+            cls, value = "null-retry", NULL_RETRY_VALUE
+        else:
+            cls = "verified-canary"
+            stamped = _parse_stamp(last_stamp[mid])
+            if stamped is None:
+                multiplier = 1.0  # unreadable stamp: neither free nor urgent
+            else:
+                days = max(0.0, (now - stamped).total_seconds() / 86400.0)
+                multiplier = min(
+                    STALENESS_CAP,
+                    math.log2(1.0 + days / CANARY_HALF_LIFE_DAYS),
+                )
+            value = VERIFIED_CANARY_VALUE * multiplier
+        repeats = head_run if (mid == head_mid and mid != HUNT_CANDIDATE) else 0
+        value *= 2.0 ** -repeats
+        cost = max(1.0, med_by_mid[mid] / norm) if mid in med_by_mid and norm > 0 \
+            else 1.0
+        scoreboard.append({
+            "mid": mid, "cls": cls, "value": round(value, 4),
+            "cost": round(cost, 4), "score": round(value / cost, 4),
+            "repeats": repeats, "_rank": rank,
+        })
+
+    # The repeat law's hard cap: decay alone cannot bound a class gap.
+    capped = next(
+        (e for e in scoreboard if e["repeats"] >= REPEAT_HARD_CAP), None)
+    if capped is not None and any(
+            e["score"] > 0 for e in scoreboard if e is not capped):
+        capped["value"] = 0.0
+        capped["score"] = 0.0
+        capped["cls"] += " (repeat-capped)"
+
+    scoreboard.sort(key=lambda e: (-e["score"], e["_rank"], e["mid"]))
+    decision: dict = {"planner": PLANNER_VERSION, "skips": skips}
+    if not scoreboard:
+        decision.update({
+            "chosen": None, "scoreboard": [],
+            "reason": "planner v1: no eligible candidates",
+        })
+        return None, decision
+
+    top, runner_up = scoreboard[0], (scoreboard[1] if len(scoreboard) > 1 else None)
+    chosen = top["mid"]
+    if runner_up is not None and runner_up["score"] == top["score"]:
+        # A tie is the round-robin case — say so in the rotation's own words.
+        if not ordered:
+            context = "no receipts — rotation opens at its first slot"
+        elif pointer is None:
+            newest = _newest_milestone(ordered, only_rotation=False)
+            context = (
+                f"no rotation receipt yet (newest is {newest}, outside the "
+                "rotation) — rotation opens at its first slot"
+            )
+        else:
+            context = (
+                f"rotation continues after {pointer} "
+                f"(tie at {top['score']:.2f})"
+            )
+        reason = f"planner v1: {chosen} {top['cls']} — {context}"
+    elif runner_up is None:
+        reason = (
+            f"planner v1: {chosen} {top['cls']} "
+            f"(score {top['score']:.2f}) is the only eligible candidate"
+        )
+    else:
+        reason = (
+            f"planner v1: {chosen} {top['cls']} (score {top['score']:.2f}) "
+            f"beats {runner_up['mid']} {runner_up['cls']} "
+            f"({runner_up['score']:.2f})"
+        )
+    for entry in scoreboard:
+        entry.pop("_rank", None)
+    decision.update({
+        "chosen": chosen, "reason": reason, "scoreboard": scoreboard[:5],
+    })
+    return chosen, decision
 
 
 def filter_scheduler_options(
