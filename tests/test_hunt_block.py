@@ -377,13 +377,14 @@ def test_a_refused_superseder_cannot_erase_the_receipt_it_names(tmp_path):
 
 
 def test_serendipitous_known_planets_count_as_recoveries_not_leads():
-    """TOI 111.01 (HATS-34 b, KP) and TOI 125.01 (TOI-125 c, CP) surfaced in
+    """TOI 111.01 (HATS-34 b, KP) and TOI 125.01 (TOI-125 b, CP) surfaced in
     the wide slice and were identified at grading time — ``known-planet``
-    dispositions that feed known_recovered and never the lead counter."""
+    dispositions that feed known_recovered and never the lead counter.
+    (TOI 125.01 at P≈4.652 d is TOI-125 b; TOI-125 c is the 9.15 d planet.)"""
     wide = json.loads((HUNTS / "hunt-2026-08-14-s2-pilot-570.json")
                       .read_text(encoding="utf-8"))
     known = [r for r in wide["targets"] if r["disposition"] == "known-planet"]
-    assert {r["known_planet"] for r in known} == {"HATS-34 b", "TOI-125 c"}
+    assert {r["known_planet"] for r in known} == {"HATS-34 b", "TOI-125 b"}
     for row in known:
         assert row["disposition_evidence"]["catalog_disposition"] in ("KP", "CP")
 
