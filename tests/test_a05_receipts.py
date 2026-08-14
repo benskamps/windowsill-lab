@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from lab import a04, a05, checks
+from lab import a04, a05, a05_stats, a05_vetting, checks
 
 # Small-but-honest scale: 27 d baseline (real sector length) at 7.2-minute
 # cadence, 300-period grid, B=64 permutations — the coarsest configuration
@@ -169,9 +169,12 @@ def test_e2e_receipt_shape(hunt):
                   "secondary", "self_injection", "amplitude_spectrum"):
         assert panel in lead["dossier"], panel
     assert hunt["result"].dossiers["901"].startswith("<!doctype html>")
-    # floor history: both prior points survive, this run appended its own.
+    # floor history: every prior point survives, this run appended its own,
+    # and the prior sources are the COMMITTED receipt basenames.
     sources = [h["source"] for h in report["floor_history"]]
-    assert sources[:2] == ["run-2026-08-08-2338-a04", "hunt-2026-08-14-s2"]
+    assert sources[:3] == ["run-2026-08-08-2338-a04",
+                           "hunt-2026-08-14-s2-pilot-158",
+                           "hunt-2026-08-14-s2-pilot-570"]
     assert sources[-1] == "hunt-test-s2"
     # graded FAP is the conservative max, per row.
     for r in _stage2_rows(report):
@@ -291,6 +294,75 @@ def test_out_of_vocabulary_disposition_is_false(hunt):
     assert ok is False and "vocabulary" in detail
 
 
+# -------------------------------- (3b) the stage-2 flag is derived, not trusted
+
+
+def test_stage2_flag_laundering_is_refused(hunt):
+    """A row at or above the verified stage-2 line whose stage2 flag says
+    False skipped a FAP it owed — the flag cannot be trusted over the sde."""
+    bad = _mut(hunt["report"])
+    row = next(r for r in bad["targets"] if r["tic"] == "901")
+    row["stage2"] = False
+    bad["counts"]["stage2"] -= 1
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "stage2" in detail
+
+
+def test_string_sde_on_searched_row_is_refused(hunt):
+    """A string SDE would fall out of every numeric comparison — the
+    laundering hole through which a hit dodges its gates. Unreadable."""
+    bad = _mut(hunt["report"])
+    quiet = next(r for r in bad["targets"]
+                 if r.get("outcome") == "searched" and r["tic"] not in PLANTED)
+    quiet["sde"] = f"{quiet['sde']}"
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "non-numeric" in detail
+
+
+def test_carried_fap_without_maxima_on_non_stage2_row_is_refused(hunt):
+    """A non-stage-2 control row carrying a bare fap_empirical (no raw
+    maxima) must not slide into the uniformity ensemble unaudited."""
+    bad = _mut(hunt["report"])
+    quiet = min((r for r in bad["targets"]
+                 if r.get("outcome") == "searched" and r["tic"] not in PLANTED),
+                key=lambda r: r["sde"])
+    quiet["sde"] = min(float(quiet["sde"]), 3.0)   # safely below the line
+    quiet["stage2"] = False
+    bad["counts"]["stage2"] -= 1
+    fap = quiet["fap"]
+    for name in ("iid", "block"):
+        fap["schemes"][name].pop("raw_maxima", None)
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "maxima" in detail
+
+
+# ------------------------- (3c) control membership re-derives from the seed --
+
+
+def test_receipt_declares_seed_and_control_fraction(hunt):
+    report = hunt["report"]
+    assert report["seed"] == 2026
+    assert report["control_fraction"] == 1.0
+
+
+def test_forged_control_membership_is_false(hunt):
+    """Membership is a pure function of (seed, fraction, tic) — a flag that
+    contradicts the derivation means the calibration ensemble was edited."""
+    bad = _mut(hunt["report"])
+    quiet = next(r for r in bad["targets"]
+                 if r.get("outcome") == "searched" and r["tic"] not in PLANTED)
+    quiet["control_subsample"] = False
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is False and "control" in detail
+
+
+def test_missing_seed_on_schema1_is_none(hunt):
+    bad = _mut(hunt["report"])
+    del bad["seed"]
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "seed" in detail
+
+
 # --------------------------------------------- (4) spot reproduction ---------
 
 def test_spot_reproduction_fails_wrong_seed(hunt):
@@ -306,6 +378,83 @@ def test_spot_reproduction_fails_wrong_seed(hunt):
 def test_spot_reproduction_none_when_cache_absent(hunt, tmp_path):
     ok, detail = checks.check_a05(hunt["report"], cache_dir=tmp_path)
     assert ok is None and "missing" in detail
+
+
+# ----------------------------- (3d) the triage line never outgrows the bar ---
+
+
+def test_stage2_bar_never_exceeds_the_detection_threshold():
+    """At large n the extrapolated triage line rises above SDE 8 — and an
+    above-threshold candidate must still pay for its FAP at any n."""
+    assert a05_stats.triage_level(3000) > a04.SDE_THRESHOLD   # the regime
+    t, f = _synth(901, depth=PLANT_DEPTH)
+    curve = a05.curve_from_blob(fits_bytes(t, f))
+    fw, _ = a05_vetting.prewhiten(curve["t"], curve["f"], f_hi=45.0)
+    det = a04.blind_search(curve["t"], fw, n_periods=N_PERIODS)
+    assert det.sde >= a04.SDE_THRESHOLD
+    row = a05.process_target({
+        "tic": "901", "t": curve["t"], "f": curve["f"],
+        "cx": None, "cy": None, "crowdsap": None,
+        "triage_level": det.sde + 2.0,      # mocked huge-n line, above the SDE
+        "control_member": False, "B": 32, "seed": 7,
+        "n_periods": N_PERIODS, "prewhiten_kwargs": {"f_hi": 45.0}})
+    assert row["stage2"] is True
+    assert row["fap"] is not None
+
+
+# ------------------------------------------------ (3e) misc contract gates ---
+
+
+def test_unresolvable_injection_fap_B_is_refused():
+    """B < 100 floors the empirical bound above FAP_ALPHA=0.01 — no injection
+    could ever grade recovered, so the run must refuse at the door."""
+    with pytest.raises(a05.A05Error, match="injection_fap_B"):
+        a05.run_a05(sector=2, targets=[], curve_loader=lambda tic: None,
+                    catalog=_catalog, injection_fap_B=50)
+
+
+def test_stage2_row_without_pinned_cache_is_refused(hunt):
+    """An unpinned stage-2 row can never enter the spot-reproduction pool —
+    stripping pins shrinks the pool to the rows the run prefers."""
+    bad = _mut(hunt["report"])
+    _stage2_rows(bad)[3]["cache_sha256"] = None
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "pinned cache" in detail
+
+
+def test_loader_wall_is_billed_into_the_row(tmp_path):
+    t, f = _synth(903)
+    curve = a05.curve_from_blob(fits_bytes(t, f))
+    row = a05.process_target({
+        "tic": "903", "t": curve["t"], "f": curve["f"],
+        "cx": None, "cy": None, "crowdsap": None,
+        "triage_level": 99.0, "control_member": False, "B": 32, "seed": 7,
+        "n_periods": 100, "prewhiten_kwargs": {"f_hi": 45.0},
+        "load_seconds": 7.5})
+    assert row["wall_seconds"] >= 7.5
+
+
+# --------------------------------------------------- (4b) the budget gate ----
+
+
+def test_budget_constants_are_lockstep():
+    assert checks.A05_PER_TARGET_SHARE == a05.PER_TARGET_SHARE == 0.10
+
+
+def test_honest_stage2_wall_passes_at_default_budget(hunt):
+    """A measured ~180 s stage-2 worker wall must pass at the DEFAULTS
+    (soft 3000 s, share 0.10): the old 0.02 share refused honest rows."""
+    mod = _mut(hunt["report"])
+    walls = [float(r.get("wall_seconds") or 0.0) for r in mod["targets"]]
+    heavy = max(range(len(walls)), key=lambda i: walls[i])
+    mod["targets"][heavy]["wall_seconds"] = 185.0
+    walls[heavy] = 185.0
+    soft = 3000.0
+    mod["budget"] = {"soft_budget_seconds": soft,
+                     "per_target_share": a05.PER_TARGET_SHARE,
+                     "survey_sum_reported": sum(walls) / soft}
+    ok, detail = checks.check_a05(mod, cache_dir=hunt["cache"])
+    assert ok is True, detail
 
 
 # ------------------------------------------- (5) count reconciliation --------
@@ -339,6 +488,162 @@ def test_toi189_fp_is_not_a_recovery(hunt):
     bad["recoveries"].append(bad_row)
     ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
     assert ok is False and "toi-known-fp" in detail
+
+
+# ----------------------------------------------- (5b) floor-history sources --
+
+
+def test_floor_prior_constants_are_lockstep_and_name_committed_receipts():
+    from pathlib import Path
+    engine = [(p["source"], p["n"], p["floor_max"])
+              for p in a05.PRIOR_FLOOR_HISTORY]
+    assert engine == list(checks.A05_FLOOR_PRIOR)
+    hunts = Path(__file__).resolve().parents[1] / "reports" / "hunts"
+    for source, _, _ in checks.A05_FLOOR_PRIOR:
+        if source.startswith("hunt-"):
+            assert (hunts / f"{source}.json").exists(), source
+
+
+def test_misreported_own_floor_point_is_false(hunt):
+    """Gate 13's counterpart: the run's own appended floor point must
+    re-derive from the receipt's own rows."""
+    bad = _mut(hunt["report"])
+    bad["floor_history"][-1]["floor_max"] += 0.5
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is False and "floor" in detail
+
+
+def test_hunt_id_colliding_with_a_floor_source_is_refused(hunt):
+    result = hunt["result"]
+    original = result.hunt_id
+    try:
+        result.hunt_id = "hunt-2026-08-14-s2-pilot-570"
+        with pytest.raises(a05.A05Error, match="collides"):
+            a05.to_report(result)
+    finally:
+        result.hunt_id = original
+
+
+# ------------------------------------ (6a) an outage cannot mint a lead ------
+
+def test_catalog_outage_mints_no_lead(tmp_path):
+    """A TAP outage on an uncatalogued hit leaves the row undispositioned and
+    the run incomplete — to_report refuses; no lead from a failed lookup."""
+    cache = tmp_path / "cache"
+    _write_cache(cache, ["901"])
+
+    def broken_catalog(tic):
+        raise OSError("TAP down")
+
+    result = a05.run_a05(
+        sector=2, targets=["901"], curve_loader=_loader(cache),
+        catalog=broken_catalog, B=32, n_periods=N_PERIODS,
+        control_fraction=1.0, n_placebo=1, prewhiten_kwargs={"f_hi": 45.0},
+        soft_budget_seconds=600.0, per_target_share=0.5,
+        hunt_id="hunt-outage-s2")
+    row = result.rows[0]
+    assert row["disposition"] is None
+    assert row.get("pending_catalog") is True
+    assert row["disposition_evidence"]["catalog"].get("lookup_error")
+    assert not result.complete
+    with pytest.raises(a05.A05Error):
+        a05.to_report(result)
+
+
+def test_check_refuses_a_lead_with_a_lookup_error(hunt):
+    bad = _mut(hunt["report"])
+    lead = next(r for r in bad["targets"]
+                if r.get("disposition") == "lead-awaiting-human-review")
+    lead["disposition_evidence"]["catalog"]["lookup_error"] = "OSError"
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "lookup error" in detail
+
+
+# ---------------------------------------- (6b) the WASP-18 boundary ----------
+
+def _eb_secondary_row(tic: str = "100100827") -> dict:
+    return {"tic": tic, "outcome": "searched", "sde": 12.0,
+            "period_days": 0.9414, "depth": 0.009, "phase": 0.1,
+            "disposition": "eclipsing-binary-secondary",
+            "disposition_evidence": {
+                "vet": {"verdict": "eclipsing-binary-secondary"}},
+            "known_planet": None, "published_period_days": None}
+
+
+def _empty_catalog(tic: str) -> dict:
+    return {"tic": tic, "known_toi": None, "known_planet": None,
+            "published_period_days": None, "disposition": None}
+
+
+def test_confirmed_planet_bare_secondary_is_regraded_known_planet():
+    """A hot Jupiter's occultation is expected physics, not an EB tell:
+    catalog identity outranks a BARE secondary verdict for confirmed planets,
+    preserving the physics verdict as evidence (the 140940493 pattern)."""
+    row = _eb_secondary_row()
+    a05.resolve_catalog(row, _empty_catalog(row["tic"]),
+                        a04.RECOVERY_TARGETS["100100827"])
+    assert row["disposition"] == "known-planet"
+    assert (row["disposition_evidence"]["initial_verdict"]
+            == "eclipsing-binary-secondary")
+    assert row["recovered"] is True
+    assert row["disposition"] in a05.MACHINE_DISPOSITIONS
+    # A ps-match (no designation) is also a confirmed planet.
+    row_ps = _eb_secondary_row("42")
+    cat = dict(_empty_catalog("42"), known_planet="WASP-18 b",
+               published_period_days=0.94145223)
+    a05.resolve_catalog(row_ps, cat, None)
+    assert row_ps["disposition"] == "known-planet"
+
+
+def test_secondary_verdict_stands_without_a_confirmed_planet():
+    row = _eb_secondary_row("43")
+    a05.resolve_catalog(row, _empty_catalog("43"), None)
+    assert row["disposition"] == "eclipsing-binary-secondary"
+    assert "initial_verdict" not in row["disposition_evidence"]
+
+
+def test_other_physics_verdicts_are_never_outranked():
+    """ONLY the bare secondary is expected planet physics — an odd-even tell
+    on a 'confirmed planet' still stands."""
+    row = _eb_secondary_row()
+    row["disposition"] = "eclipsing-binary-odd-even"
+    a05.resolve_catalog(row, _empty_catalog(row["tic"]),
+                        a04.RECOVERY_TARGETS["100100827"])
+    assert row["disposition"] == "eclipsing-binary-odd-even"
+
+
+_WASP18_CACHE = None
+
+
+def _wasp18_path():
+    from lab import a01
+    return a01.CACHE_DIR / _fname("100100827")
+
+
+@pytest.mark.skipif(not _wasp18_path().exists(),
+                    reason="publisher-local cache")
+def test_cached_wasp18_recovery_walks_the_known_planet_carveout():
+    """The real curve: the extended ladder dispositions WASP-18 b's recovery
+    eclipsing-binary-secondary off its genuine ~400 ppm occultation, and the
+    catalog rung must hand it back its identity."""
+    curve = a05.curve_from_blob(_wasp18_path().read_bytes())
+    fw, components = a05_vetting.prewhiten(curve["t"], curve["f"])
+    det = a04.blind_search(curve["t"], fw)
+    assert det.sde >= a04.SDE_THRESHOLD
+    vet = a05_vetting.extended_vet(curve["t"], fw, det, components=components)
+    assert vet["verdict"] == "eclipsing-binary-secondary"
+    row = {"tic": "100100827", "outcome": "searched", "sde": float(det.sde),
+           "period_days": float(det.period_days), "depth": float(det.depth),
+           "phase": float(det.phase),
+           "disposition": vet["verdict"],
+           "disposition_evidence": {"vet": vet},
+           "known_planet": None, "published_period_days": None}
+    a05.resolve_catalog(row, _empty_catalog("100100827"),
+                        a04.RECOVERY_TARGETS["100100827"])
+    assert row["disposition"] == "known-planet"
+    assert (row["disposition_evidence"]["initial_verdict"]
+            == "eclipsing-binary-secondary")
+    assert row["recovered"] is True
 
 
 # ------------------------------------------------- (7) runner resumability ---

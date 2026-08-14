@@ -30,7 +30,11 @@ names it:
    A community-refuted false positive is NOT a recovery (nothing real was
    re-found) and NOT a lead (humans already killed it); it gets its own word,
    ``toi-known-fp``, and serves as a free validation target for the blend
-   gates. Treated the same: TFOPWG ``FA`` (false alarm).
+   gates. Treated the same: TFOPWG ``FA`` (false alarm). The inverse boundary
+   (WASP-18): a CONFIRMED planet whose only physics verdict is the bare
+   ``eclipsing-binary-secondary`` — its own occultation, expected physics,
+   not an EB tell — is regraded ``known-planet`` with the verdict preserved
+   as evidence; see :func:`resolve_catalog`.
 4. **the terminal machine state**: an uncatalogued survivor is
    ``lead-awaiting-human-review`` with a full evidence dossier. The machine's
    vocabulary has no word for "planet" — contract rule 3.
@@ -57,9 +61,11 @@ threshold (its lane-1 TODO). Swapping every injection onto the batched FAP
 engine multiplies each host's ladder cost by ~B and is not affordable inside a
 survey budget, so this module DECLARES the rule instead of hiding it: every
 host's injection block carries ``injections_recovery_rule: "sde-threshold"``
-(or ``"fap-graded"`` when a run opts into ``injection_fap_B``), and the check
-refuses a receipt that omits the declaration. An honest label on the cheaper
-rule beats a silent upgrade nobody can audit.
+(or ``"fap-injection-iid"`` when a run opts into ``injection_fap_B >= 100`` —
+the per-injection number is a single-scheme reduced-B FAP, named so it can
+never be confused with the row-level graded contract), and the check refuses
+a receipt that omits the declaration. An honest label on the cheaper rule
+beats a silent upgrade nobody can audit.
 
 Numpy + stdlib only. Network touches (MAST, Exoplanet Archive) are injectable
 callables so the whole pipeline runs on synthetic curves in tests.
@@ -67,6 +73,7 @@ callables so the whole pipeline runs on synthetic curves in tests.
 from __future__ import annotations
 
 import hashlib
+import inspect
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -105,24 +112,35 @@ MACHINE_DISPOSITIONS = (
     "stellar-pulsation", "harmonic-alias", "eclipsing-binary-odd-even",
     "eclipsing-binary-secondary", "phased-brightening", "low-significance",
     "insufficient-coverage", "period-railed", "centroid-shift",
-    "recovery-or-known", "toi-known-fp", "lead-awaiting-human-review",
+    "recovery-or-known", "known-planet", "toi-known-fp",
+    "lead-awaiting-human-review",
 )
 
 #: Prior false-alarm-floor measurements, appended to every receipt so the
-#: triage extrapolation stays testable (schema `floor_history`). The two
-#: points here are the schema doc's: the A04 graded run and the 2026-08-14
-#: discovery pilot. The runner folds in any later hunt summaries it finds on
-#: disk (e.g. the 500-target wide hunt) before writing the receipt.
+#: triage extrapolation stays testable (schema `floor_history`). Sources are
+#: the COMMITTED receipt basenames under ``reports/hunts/`` (so every point is
+#: one click from its evidence): the A04 graded run, the 2026-08-14 discovery
+#: pilot's first checkpoint (n=153), and the same day's wide slice (n=551 —
+#: the first real test datum for the two-point triage line, which overpredicts
+#: it by ~0.47; see :func:`lab.a05_stats.triage_level`). The runner folds in
+#: any later hunt summaries it finds on disk before writing the receipt.
 PRIOR_FLOOR_HISTORY = (
     {"n": 22, "floor_max": 6.6, "source": "run-2026-08-08-2338-a04"},
-    {"n": 153, "floor_max": 7.65, "source": "hunt-2026-08-14-s2"},
+    {"n": 153, "floor_max": 7.65, "source": "hunt-2026-08-14-s2-pilot-158"},
+    {"n": 551, "floor_max": 7.875, "source": "hunt-2026-08-14-s2-pilot-570"},
 )
 
 #: Default declared cap on any single target's share of the soft wall-clock
-#: budget. 2 % means a 50-minute survey refuses to let one pathological target
-#: hold the line for more than a minute — the receipt reports the cap and the
-#: check re-derives every row's share against it.
-PER_TARGET_SHARE = 0.02
+#: budget. Clock semantics: a row's ``wall_seconds`` is the PER-WORKER wall
+#: measured inside :func:`process_target` (plus loader time), while the soft
+#: budget is the survey's serial wall — with 12 workers the sum of row clocks
+#: legitimately exceeds the survey wall severalfold. A measured stage-2 target
+#: costs ~180 s of worker wall (B=256 double-scheme null + injection ladder),
+#: so 2 % of the 3000 s soft default (= 60 s) refused every HONEST stage-2
+#: row; 10 % (= 300 s) clears the measured cost with margin while still
+#: refusing a pathological target that ate a triple share. Mirrored by
+#: ``checks.A05_PER_TARGET_SHARE`` — change both or the lockstep test fails.
+PER_TARGET_SHARE = 0.10
 
 
 class A05Error(RuntimeError):
@@ -286,7 +304,12 @@ def process_target(item: dict) -> dict:
     fw, components = a05_vetting.prewhiten(t, f, **prewhiten_kwargs)
     det = a04.blind_search(t, fw, n_periods=n_periods)
     control = bool(item["control_member"])
-    stage2 = bool(det.sde >= float(item["triage_level"]) or control)
+    # The triage line is a compute-SAVER, never a compute-excuse: at large n
+    # the extrapolated line can rise above the detection threshold itself, and
+    # a threshold-clearing candidate must NEVER skip its FAP just because the
+    # noise ceiling grew — so the stage-2 bar is the LOWER of the two.
+    stage2_line = min(float(item["triage_level"]), a04.SDE_THRESHOLD)
+    stage2 = bool(det.sde >= stage2_line or control)
     row: dict = {
         "tic": tic, "outcome": "searched",
         "cache_sha256": item.get("cache_sha256"),
@@ -308,8 +331,12 @@ def process_target(item: dict) -> dict:
         inj_B = int(item.get("injection_fap_B") or 0)
         if inj_B > 0:
             # Opt-in honesty upgrade: grade each injection's recovery on its
-            # own (cheaper, reduced-B) permutation FAP instead of the SDE bar.
-            rule = "fap-graded"
+            # own (cheaper, reduced-B, IID-ONLY) permutation FAP instead of
+            # the SDE bar. The field is named fap_injection_iid on purpose:
+            # it is a single-scheme reduced-B number and must never be
+            # mistaken for the row-level GRADED contract (conservative max of
+            # two schemes at full B).
+            rule = "fap-injection-iid"
             for r in inj:
                 fi = a04.inject_box(t, fw, r["period_days"], r["depth"],
                                     t0=float(t[0]) + a05_sensitivity.EPOCH_FRACTIONS[
@@ -318,10 +345,10 @@ def process_target(item: dict) -> dict:
                     t, fi, B=inj_B, scheme="iid",
                     seed=int(item["seed"]) + 1 + r["epoch"],
                     n_periods=n_periods)
-                r["fap_graded"] = a05_stats.fap_empirical(r["sde"], maxima)
+                r["fap_injection_iid"] = a05_stats.fap_empirical(r["sde"], maxima)
                 r["recovered"] = bool(
                     r["period_error_frac"] <= a04.PERIOD_TOL_FRAC
-                    and r["fap_graded"] <= a05_sensitivity.FAP_ALPHA)
+                    and r["fap_injection_iid"] <= a05_sensitivity.FAP_ALPHA)
         row["injections"] = inj
         row["injections_recovery_rule"] = rule
         sens = a05_sensitivity.host_sensitivity(inj)
@@ -343,7 +370,8 @@ def process_target(item: dict) -> dict:
                 row["disposition"] = "centroid-shift"
             else:
                 row["pending_catalog"] = True
-    row["wall_seconds"] = time.time() - t0
+    row["wall_seconds"] = (time.time() - t0
+                           + float(item.get("load_seconds") or 0.0))
     return row
 
 
@@ -361,6 +389,19 @@ def resolve_catalog(row: dict, catalog_row: dict,
       nor a lead — it is a validation target for the blend gates);
     * uncatalogued -> ``lead-awaiting-human-review`` (dossier attached by the
       caller, which still holds the curve).
+
+    A physics verdict normally outranks catalog identity — with ONE carve-out,
+    the WASP-18 boundary: a hot Jupiter's occultation is EXPECTED physics, not
+    an EB tell (WASP-18 b's real 399 ppm secondary dispositioned its own
+    recovery ``eclipsing-binary-secondary`` with no way back). When the
+    catalog identifies a CONFIRMED planet — a designated recovery target, a
+    ps-table match, or TOI disposition KP/CP — a BARE
+    ``eclipsing-binary-secondary`` verdict is outranked and the row becomes
+    ``known-planet``, with the physics verdict preserved verbatim as
+    ``disposition_evidence.initial_verdict`` (the TIC 140940493 pattern:
+    never erase what the flux first said). Catalog identity outranks ONLY
+    that verdict, and ONLY for confirmed planets; every other physics rung
+    (odd-even, pulsation, centroid…) still stands.
     """
     row["disposition_evidence"]["catalog"] = catalog_row
     row.pop("pending_catalog", None)
@@ -378,12 +419,25 @@ def resolve_catalog(row: dict, catalog_row: dict,
                                 and row["sde"] >= a04.SDE_THRESHOLD)
     if row.get("disposition") is not None:
         # A physics verdict (pulsation, EB, centroid…) outranks catalog
-        # identity: the ladder never renames what the flux already named.
+        # identity: the ladder never renames what the flux already named —
+        # except the WASP-18 boundary (see docstring): a confirmed planet's
+        # bare secondary verdict is its own occultation, not an EB tell.
+        confirmed = bool(designated or catalog_row.get("known_planet")
+                         or disp in ("KP", "CP"))
+        if confirmed and row["disposition"] == "eclipsing-binary-secondary":
+            row["disposition_evidence"]["initial_verdict"] = row["disposition"]
+            row["disposition"] = "known-planet"
         return
     if known_toi is not None and disp in TOI_REFUTED_DISPOSITIONS:
         row["disposition"] = "toi-known-fp"
     elif known_planet or known_toi is not None or designated:
         row["disposition"] = "recovery-or-known"
+    elif catalog_row.get("lookup_error"):
+        # An outage answered NOTHING: "uncatalogued" cannot be concluded from
+        # a failed lookup, so no lead is minted. The row stays
+        # pending_catalog, which keeps the run incomplete — ``to_report``
+        # refuses it and the runner resumes when the catalog answers.
+        row["pending_catalog"] = True
     else:
         row["disposition"] = "lead-awaiting-human-review"
 
@@ -440,6 +494,7 @@ class A05Result:
     slice_rule: str
     n_enumerated: int
     triage_n: int
+    control_fraction: float = CONTROL_FRACTION
     rows: list[dict] = field(default_factory=list)
     recoveries: list[dict] = field(default_factory=list)
     uniformity: dict | None = None
@@ -494,7 +549,20 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
     identical rows for identical inputs.
     """
     t_start = time.time()
+    if injection_fap_B and injection_fap_B < 100:
+        raise A05Error(
+            f"injection_fap_B={injection_fap_B} cannot resolve the "
+            f"FAP_ALPHA={a05_sensitivity.FAP_ALPHA:g} recovery rule: the "
+            "empirical bound floors at 1/(B+1), so B < 100 can never grade "
+            "an injection recovered — use 0 (sde-threshold rule) or B >= 100")
     catalog = catalog or a04.catalog_crosscheck
+    # The detected period disambiguates multi-planet catalog rows (the
+    # TOI-125 b-vs-c lesson); injected test doubles may keep the 1-arg shape.
+    try:
+        catalog_takes_period = "detected_period_days" in inspect.signature(
+            catalog).parameters
+    except (TypeError, ValueError):
+        catalog_takes_period = False
     loader = curve_loader or (lambda tic: load_curve(tic, sector))
     already = already or set()
     if targets is None:
@@ -510,6 +578,7 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
     result = A05Result(
         sector=sector, seed=seed, slice_rule=slice_rule,
         n_enumerated=n_enumerated, triage_n=triage_n, hunt_id=hunt_id,
+        control_fraction=float(control_fraction),
         search_grid={"p_lo_days": a04.P_LO, "p_hi_days": a04.P_HI,
                      "n_periods": int(n_periods),
                      "detrend_window_days": a04.DETREND_WINDOW_DAYS,
@@ -578,6 +647,11 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
                 "n_periods": n_periods,
                 "prewhiten_kwargs": prewhiten_kwargs,
                 "injection_fap_B": injection_fap_B,
+                # Loader wall (download/parse in the main process) rides into
+                # the row's wall_seconds so the budget gate sees the target's
+                # WHOLE cost, not just its compute — error/skip rows already
+                # bill their load time, and success rows must not bill less.
+                "load_seconds": time.time() - t_load,
             })
         for row in mapper(process_target, items):
             rows_by_tic[row["tic"]] = row
@@ -610,7 +684,11 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
         designated = a04.RECOVERY_TARGETS.get(row["tic"])
         if row.get("pending_catalog") or designated:
             try:
-                cat = catalog(row["tic"])
+                if catalog_takes_period:
+                    cat = catalog(row["tic"],
+                                  detected_period_days=row.get("period_days"))
+                else:
+                    cat = catalog(row["tic"])
             except Exception as exc:  # noqa: BLE001 — outage must not sink the wrap
                 cat = {"lookup_error": type(exc).__name__, "known_toi": None,
                        "known_planet": None, "published_period_days": None,
@@ -625,6 +703,14 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
                                                  prewhiten_kwargs)
                     row["dossier"] = panels
                     result.dossiers[row["tic"]] = html
+
+    # A catalog outage that left rows unresolved makes the run INCOMPLETE:
+    # the slice was searched but the ladder did not finish, and an unfinished
+    # ladder must never become a receipt (to_report refuses).
+    if any(r.get("pending_catalog") for r in result.rows):
+        result.complete = False
+        result.wall_seconds = time.time() - t_start
+        return result
 
     # ---- calibration of the calibrator -------------------------------------
     controls = [r for r in result.rows
@@ -650,11 +736,16 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
     for tic in placebo_tics:
         curve = _curve(tic)
         if curve is not None:
-            fw, _ = a05_vetting.prewhiten(curve["t"], curve["f"],
-                                          **(prewhiten_kwargs or {}))
-            placebo_curves.append((tic, curve["t"], fw))
-    result.placebo = a05_sensitivity.scramble_placebo(placebo_curves,
-                                                      n_periods=n_periods)
+            fw, comps = a05_vetting.prewhiten(curve["t"], curve["f"],
+                                              **(prewhiten_kwargs or {}))
+            placebo_curves.append((tic, curve["t"], fw, comps))
+    # The placebo exercises the SAME vetting chain as the hunt (extended
+    # ladder, with each host's own measured components), not A04's shorter
+    # one — a control that runs a laxer chain would grade a different pipeline.
+    result.placebo = a05_sensitivity.scramble_placebo(
+        placebo_curves, n_periods=n_periods,
+        vet=lambda ts, fs, det, components=(): a05_vetting.extended_vet(
+            ts, fs, det, components=components))
 
     result.wall_seconds = time.time() - t_start
     used = sum(float(r.get("wall_seconds") or 0.0) for r in result.rows)
@@ -695,11 +786,22 @@ def to_report(result: A05Result,
         "floor_max": max(noise) if noise else None,
         "source": result.hunt_id or "this-run",
     }
+    if floor_point["source"] in {p.get("source") for p in prior_floor_history}:
+        raise A05Error(
+            f"hunt_id {floor_point['source']!r} collides with an existing "
+            "floor-history source — two floor points under one name would be "
+            "indistinguishable; pick a distinct hunt id (suffix it)")
     return {
         "experiment": EXPERIMENT,
         "schema": SCHEMA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "sector": result.sector,
+        # The control-membership derivation inputs, as STRUCTURED fields: with
+        # (seed, control_fraction) in the receipt, ``check_a05`` re-derives
+        # every row's ``control_subsample`` flag from the TIC alone and refuses
+        # a receipt whose calibration ensemble was edited after the fact.
+        "seed": int(result.seed),
+        "control_fraction": float(result.control_fraction),
         "slice_rule": result.slice_rule,
         "n_enumerated": result.n_enumerated,
         "search_grid": result.search_grid,

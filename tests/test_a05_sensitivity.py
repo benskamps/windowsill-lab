@@ -118,6 +118,37 @@ def test_scrambled_eb_yields_zero_planet_candidates():
     assert out["pass"] is True
 
 
+def test_scramble_placebo_routes_hits_through_the_injected_vet(monkeypatch):
+    """The vet seam: run_a05 passes the extended ladder through it, so the
+    placebo grades the hunt's own chain — and per-curve components ride
+    along. Threshold forced to 0 so every scrambled curve 'hits'."""
+    monkeypatch.setattr(a04, "SDE_THRESHOLD", 0.0)
+    t, f = _flat(days=2.0, seed=6)
+    calls: list[tuple] = []
+
+    def spy_vet(ts, fs, det, components=()):
+        calls.append(components)
+        return {"verdict": "planet-candidate"}
+
+    out = a05s.scramble_placebo([("1", t, f, ((12.3, 8e-4),))], vet=spy_vet)
+    assert calls == [((12.3, 8e-4),)]
+    assert out["planet_candidates"] == 1 and out["pass"] is False
+    # Default vet (A04's) still works on plain 3-tuples.
+    out_default = a05s.scramble_placebo([("1", t, f)])
+    assert out_default["rows"][0]["vetting"]["verdict"] is not None
+
+
+def test_injection_rows_name_their_fap_field_unambiguously():
+    """The per-injection FAP is a single-scheme reduced-B number; its field
+    is fap_injection_iid so it can never be read as the row-level graded
+    contract (fap_graded)."""
+    t, f = _flat(days=6.0, seed=7)
+    rows = a05s.injection_grid(t, f, ladder=((0.01, 2.3),), epochs=1,
+                               n_periods=120)
+    assert all("fap_injection_iid" in r for r in rows)
+    assert all("fap_graded" not in r for r in rows)
+
+
 # ------------------------------------------------------------- dossier ---
 
 def test_dossier_carries_every_panel_and_stays_machine_terminal():

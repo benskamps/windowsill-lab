@@ -116,11 +116,17 @@ A05_TRIAGE_FLOOR_POINTS = ((22, 6.6), (153, 7.65))
 A05_TRIAGE_SAFETY_MARGIN = 1.0
 # Prior floor-history points every receipt must carry forward (source, n,
 # max SDE): dropping history is how an extrapolation stops being testable.
+# Sources are the committed receipt basenames in reports/hunts/ — mirrors
+# a05.PRIOR_FLOOR_HISTORY (lockstep test pins the pair).
 A05_FLOOR_PRIOR = (("run-2026-08-08-2338-a04", 22, 6.6),
-                   ("hunt-2026-08-14-s2", 153, 7.65))
-# Asymptotic one-sample KS 5% coefficient for the uniformity re-run, and the
-# smallest control ensemble worth grading (below 5 the KS test has no power
-# and the calibration claim would be decorative).
+                   ("hunt-2026-08-14-s2-pilot-158", 153, 7.65),
+                   ("hunt-2026-08-14-s2-pilot-570", 551, 7.875))
+# One-sample KS 5% NUMERATOR for the uniformity re-run — Stephens' (1970)
+# finite-n form: critical distance = CRIT / (sqrt(n) + 0.12 + 0.11/sqrt(n)).
+# Lockstep with a05_stats.uniformity_stat (the two cross-check each other:
+# gate 10 recomputes the engine's pass flag, so a one-sided change reads as
+# contradiction). Below it, the smallest control ensemble worth grading
+# (under 5 the KS test has no power and the calibration would be decorative).
 A05_UNIFORMITY_CRIT = 1.358
 A05_UNIFORMITY_MIN_N = 5
 # Empirical FAPs are exact rationals (1+k)/(B+1); recomputation must agree to
@@ -136,17 +142,29 @@ A05_GUMBEL_RTOL = 0.05
 A05_INJECTION_DEPTHS = (0.002, 0.004, 0.010)
 A05_INJECTION_PERIODS = (2.3, 3.7, 5.1)
 A05_INJECTION_EPOCHS = 2
-A05_INJECTION_RULES = ("sde-threshold", "fap-graded")
+A05_INJECTION_RULES = ("sde-threshold", "fap-injection-iid")
 # Spot reproduction: recomputed null maxima from the SHA-256-pinned FITS must
 # match the stored ones within this relative tolerance. Seed-pinned replay is
 # bitwise on one platform; the band absorbs cross-platform libm/BLAS last-bit
 # drift and nothing else — a wrong seed or tampered maxima miss by orders of
-# magnitude.
+# magnitude. Caveat: the prewhiten stage takes DISCRETE branches (argmax peak
+# picking, the component-count cutoff) that can flip on cross-platform last-
+# bit differences, and a flipped branch produces a GROSS deviation even with
+# a matching sha256. That still reads False — the receipt does not reproduce
+# HERE — but _a05_spot names the ambiguity above A05_SPOT_GROSS so the reader
+# knows to distinguish tampering from a platform branch flip.
 A05_SPOT_RTOL = 1e-5
+A05_SPOT_GROSS = 1e-2
 # Budget bookkeeping: the reported survey share must re-derive from the rows'
 # own wall clocks within this relative band, and no row may exceed its
 # declared per-target share of the soft budget by more than the same slack.
 A05_BUDGET_RTOL = 0.05
+# Mirror of the engine's default per-target share (a05.PER_TARGET_SHARE) so a
+# drifted default is caught by the lockstep test, not discovered when an
+# honest ~180 s stage-2 row is refused against a 60 s cap. Row clocks are
+# per-worker wall inside process_target; the soft budget is serial survey
+# wall — the two are compared per ROW, never summed against each other.
+A05_PER_TARGET_SHARE = 0.10
 # The machine's ENTIRE disposition vocabulary, restated. "planet" is absent
 # by design and its appearance anywhere is an affirmative contract violation,
 # not a formatting problem.
@@ -154,7 +172,8 @@ A05_MACHINE_VOCABULARY = frozenset({
     "stellar-pulsation", "harmonic-alias", "eclipsing-binary-odd-even",
     "eclipsing-binary-secondary", "phased-brightening", "low-significance",
     "insufficient-coverage", "period-railed", "centroid-shift",
-    "recovery-or-known", "toi-known-fp", "lead-awaiting-human-review",
+    "recovery-or-known", "known-planet", "toi-known-fp",
+    "lead-awaiting-human-review",
 })
 # TFOPWG dispositions meaning "community already refuted this signal" — such
 # a row must be machine-dispositioned toi-known-fp and can be neither a
@@ -2624,6 +2643,13 @@ def _a05_spot(report: dict, cache_dir) -> tuple[bool | None, str]:
         return False, f"spot row TIC {pick['tic']}: stored {len(stored)} maxima, recomputed {len(got)}"
     worst = max(abs(a - b) / max(abs(b), 1e-8) for a, b in zip(stored, got))
     if worst > A05_SPOT_RTOL:
+        if worst > A05_SPOT_GROSS:
+            return False, (
+                f"spot reproduction FAILED on TIC {pick['tic']}: max relative "
+                f"deviation {worst:.2e} is GROSS despite a matching cache "
+                "sha256 — tampered maxima/seed, or a discrete prewhiten "
+                "branch flipped on this platform; either way the receipt "
+                "does not reproduce here")
         return False, (f"spot reproduction FAILED on TIC {pick['tic']}: "
                        f"max relative deviation {worst:.2e} > {A05_SPOT_RTOL:g}")
     return True, (f"spot: TIC {pick['tic']} null re-derived from pinned FITS, "
@@ -2653,10 +2679,18 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
     errors = [r for r in rows if str(r.get("outcome", "")).startswith("error:")]
     if len(searched) + len(skipped) + len(errors) != len(rows):
         return None, "A05 rows carry outcomes outside the searched/skipped/error vocabulary"
+    # A searched row's SDE must be a NUMBER. A string "9.3" (or a missing
+    # field) would silently fall out of every >= comparison below — the
+    # laundering hole through which an above-threshold hit dodges its
+    # disposition gates — so it is refused as unreadable, never skipped.
+    for r in searched:
+        if isinstance(r.get("sde"), bool) or not isinstance(
+                r.get("sde"), (int, float)):
+            return None, (f"A05 searched row TIC {r.get('tic')} carries a "
+                          f"non-numeric sde {r.get('sde')!r} — unreadable, "
+                          "and unreadable rows do not get to skip their gates")
     stage2 = [r for r in searched if r.get("stage2")]
-    above = [r for r in searched
-             if isinstance(r.get("sde"), (int, float))
-             and float(r["sde"]) >= A05_SDE_THRESHOLD]
+    above = [r for r in searched if float(r["sde"]) >= A05_SDE_THRESHOLD]
     leads = [r for r in searched
              if r.get("disposition") == "lead-awaiting-human-review"]
     derived = {"attempted": len(rows), "searched": len(searched),
@@ -2691,12 +2725,61 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
         return None, ("A05 triage block disagrees with the check's own line "
                       "through the measured floor points — the run moved its "
                       "own triage line")
+    if t_n != len(rows):
+        return None, (f"A05 triage n={t_n} disagrees with the receipt's own "
+                      f"{len(rows)} rows — inflating n raises the triage line, "
+                      "so n must re-derive from the slice itself")
 
-    # -- 3. stage-2 structure: both schemes' raw maxima, B, block length -----
+    # -- 2b. the stage-2 flag is DERIVED, never trusted ----------------------
+    # The engine promises stage2 for every row at or above the triage line
+    # (and for every predeclared control member). A row whose sde clears the
+    # verified line but whose flag says otherwise skipped a FAP it owed —
+    # the receipt is unreadable, whatever its counts say.
+    stage2_line = min(own_level, A05_SDE_THRESHOLD)
+    for r in searched:
+        if float(r["sde"]) >= stage2_line and r.get("stage2") is not True:
+            return None, (f"A05 TIC {r.get('tic')} sits at SDE "
+                          f"{float(r['sde']):.2f}, at or above the verified "
+                          f"stage-2 line {stage2_line:.2f}, with stage2="
+                          f"{r.get('stage2')!r} — the flag cannot excuse a "
+                          "row from the FAP it owes")
+
+    # -- 2c. control membership re-derives from the declared seed ------------
+    # The uniformity ensemble calibrates the calibrator, so its membership
+    # must be a pure function of (seed, control_fraction, tic) — decided
+    # before any photon. A schema>=1 receipt without the derivation inputs is
+    # unreadable; a membership flag that contradicts the derivation is forged.
+    if isinstance(report.get("schema"), (int, float)) and report["schema"] >= 1:
+        try:
+            ctrl_seed = int(report["seed"])
+            ctrl_frac = float(report["control_fraction"])
+        except (KeyError, TypeError, ValueError):
+            return None, ("A05 schema>=1 receipt does not declare seed + "
+                          "control_fraction — control membership cannot be "
+                          "re-derived, so the calibration is unreadable")
+        for r in searched:
+            digest = hashlib.sha256(
+                f"{ctrl_seed}|a05-control|{r.get('tic')}".encode()).digest()
+            expected = int.from_bytes(digest[:8], "big") / float(2**64) < ctrl_frac
+            if bool(r.get("control_subsample")) != expected:
+                return False, (f"A05 TIC {r.get('tic')} control_subsample="
+                               f"{r.get('control_subsample')!r} does not "
+                               "re-derive from the declared seed — the "
+                               "calibration ensemble was edited")
+
+    # -- 3. FAP structure: both schemes' raw maxima, B, block length ---------
+    # Applied to EVERY row that carries a fap block, not only stage-2 rows:
+    # a carried fap_empirical with no maxima behind it would otherwise slide
+    # straight into the uniformity ensemble (gate 10) unaudited.
+    fap_rows = [r for r in searched if r.get("fap") is not None]
     for r in stage2:
         fap = r.get("fap")
         if not isinstance(fap, dict):
             return None, f"A05 stage-2 row TIC {r.get('tic')} carries no fap block"
+    for r in fap_rows:
+        fap = r.get("fap")
+        if not isinstance(fap, dict):
+            return None, f"A05 row TIC {r.get('tic')} carries a non-dict fap block"
         try:
             b_val = int(fap["B"])
             int(fap["seed"])
@@ -2705,8 +2788,8 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
             block = schemes["block"]["raw_maxima"]
             block_days = float(schemes["block"]["block_days"])
         except (KeyError, TypeError, ValueError):
-            return None, (f"A05 stage-2 row TIC {r.get('tic')} is missing "
-                          "scheme maxima, seed, or block length")
+            return None, (f"A05 row TIC {r.get('tic')} carries a fap block "
+                          "missing scheme maxima, seed, or block length")
         if b_val < A05_MIN_B:
             return None, (f"A05 TIC {r.get('tic')} graded on B={b_val} < "
                           f"{A05_MIN_B} permutations")
@@ -2716,6 +2799,14 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
         if not math.isclose(block_days, A05_BLOCK_DAYS, rel_tol=1e-9):
             return None, (f"A05 TIC {r.get('tic')} declares block_days="
                           f"{block_days}, contract is {A05_BLOCK_DAYS}")
+    # Every stage-2 row must pin its input bytes: without cache_sha256 +
+    # cache_file the row can never enter the spot-reproduction pool, and a
+    # run that strips its pins shrinks the pool to the rows it prefers.
+    for r in stage2:
+        if not r.get("cache_sha256") or not r.get("cache_file"):
+            return None, (f"A05 stage-2 row TIC {r.get('tic')} carries no "
+                          "pinned cache (sha256 + file) — it can never be "
+                          "spot-reproduced, so the receipt is unauditable")
 
     # -- 4. every above-threshold row is dispositioned, in vocabulary --------
     for r in above:
@@ -2752,6 +2843,14 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
             return False, (f"A05 TIC {r.get('tic')} is toi-known-fp AND "
                            "listed as a recovery — a refuted signal re-found "
                            "is not a recovery")
+
+    # -- 5b. an outage cannot certify "uncatalogued" -------------------------
+    for r in leads:
+        cat = (r.get("disposition_evidence") or {}).get("catalog") or {}
+        if cat.get("lookup_error"):
+            return None, (f"A05 TIC {r.get('tic')} is a lead whose catalog "
+                          "evidence records a lookup error — an outage cannot "
+                          "certify 'uncatalogued', so the lead is unreadable")
 
     # -- 6. every lead carries a full dossier --------------------------------
     for r in leads:
@@ -2792,7 +2891,9 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
                           "folded d_min")
 
     # -- 8. recompute every empirical FAP from the stored maxima -------------
-    for r in stage2:
+    # Over every row carrying a fap block (control rows included), so no
+    # carried number reaches gate 10's ensemble without recomputation.
+    for r in fap_rows:
         fap = r["fap"]
         b_val = int(fap["B"])
         sde = float(r["sde"])
@@ -2814,7 +2915,7 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
                            f"max of its schemes ({graded:.6f})")
 
     # -- 9. refit every reported gumbel with the check's own fitter ----------
-    for r in stage2:
+    for r in fap_rows:
         fap = r["fap"]
         gumbel = fap.get("gumbel")
         if gumbel is None:
@@ -2854,7 +2955,9 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
         return False, ("A05 uniformity p-values are not the control rows' own "
                        "iid FAPs — the ensemble was edited")
     ks = _a05_ks_uniform([float(p) for p in p_values])
-    ks_pass = ks < A05_UNIFORMITY_CRIT / math.sqrt(len(p_values))
+    n_ks = len(p_values)
+    ks_pass = ks < A05_UNIFORMITY_CRIT / (
+        math.sqrt(n_ks) + 0.12 + 0.11 / math.sqrt(n_ks))   # Stephens (1970)
     if uniformity.get("pass") is not bool(ks_pass) or not math.isclose(
             float(uniformity.get("ks_stat", -1)), ks, rel_tol=1e-6, abs_tol=1e-9):
         return False, (f"A05 uniformity block (D={uniformity.get('ks_stat')}, "
@@ -2918,6 +3021,25 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
     if len(history) <= len(A05_FLOOR_PRIOR):
         return None, ("A05 floor_history carries no point from this run — "
                       "every hunt must append its own measured floor")
+    # The run's own point (appended LAST by to_report) must re-derive from
+    # the receipt's rows: n = the sub-threshold searched rows, floor_max =
+    # their max SDE. A floor that cannot be recomputed from its own rows is
+    # a fabricated calibration datum for every future triage line.
+    own = history[-1]
+    noise = [float(r["sde"]) for r in searched
+             if float(r["sde"]) < A05_SDE_THRESHOLD]
+    own_floor = max(noise) if noise else None
+    if not isinstance(own, dict):
+        return None, "A05 floor_history's own point is malformed"
+    stated_floor = own.get("floor_max")
+    floor_agrees = (stated_floor is None and own_floor is None) or (
+        isinstance(stated_floor, (int, float)) and own_floor is not None
+        and math.isclose(float(stated_floor), own_floor, rel_tol=1e-9))
+    if own.get("n") != len(noise) or not floor_agrees:
+        return False, (f"A05 floor_history's own point (n={own.get('n')}, "
+                       f"floor_max={stated_floor}) does not re-derive from "
+                       f"the rows (n={len(noise)}, floor_max={own_floor}) — "
+                       "the run misreported its measured floor")
 
     # -- 14. spot reproduction from the SHA-256-pinned cache -----------------
     from . import a01 as _a01           # noqa: PLC0415 — path constant only

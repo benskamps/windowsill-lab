@@ -70,9 +70,10 @@ N_EPOCHS = 2
 #: so the host is excluded from every aggregate sensitivity claim.
 INSENSITIVE_DEPTH = max(DEPTHS)
 
-#: FAP threshold quoted in null statements.
-#: TODO(lane-1): replace with the graded alpha once the FAP engine lands;
-#: recovery below likewise swaps SDE_THRESHOLD for fap_graded <= alpha.
+#: FAP threshold quoted in null statements, and the recovery bar when a run
+#: opts into ``injection_fap_B`` (recovery then grades on
+#: ``fap_injection_iid <= FAP_ALPHA``; B must be >= 100 or the empirical
+#: bound's 1/(B+1) floor sits above this alpha and nothing could ever pass).
 FAP_ALPHA = 0.01
 
 #: Base seed for the epoch-scramble placebo. Fixed so the scrambled sky is
@@ -109,10 +110,10 @@ def injection_grid(t: np.ndarray, f: np.ndarray,
 
     Each (depth, period) cell is injected at ``epochs`` distinct off-grid
     epochs via :func:`lab.a04.inject_box` and searched blind with
-    :func:`lab.a04.blind_search`.
-    TODO(lane-1): swap the per-injection ``blind_search`` calls for the batched
-    search engine, and grade recovery on ``fap_graded <= FAP_ALPHA`` instead of
-    the SDE threshold once the FAP machinery lands.
+    :func:`lab.a04.blind_search`. Runs opting into ``injection_fap_B`` (see
+    :func:`lab.a05.process_target`) fill ``fap_injection_iid`` — a
+    single-scheme reduced-B permutation FAP, named so it cannot be mistaken
+    for the row-level graded contract — and regrade recovery on it.
 
     A row is ``recovered`` iff the blind period lands within
     ``a04.PERIOD_TOL_FRAC`` of the injected one AND the detection clears
@@ -121,8 +122,8 @@ def injection_grid(t: np.ndarray, f: np.ndarray,
     than the hunt's would be a lie about the hunt.
 
     Row shape matches the receipt schema's ``injections`` entries verbatim:
-    ``{depth, period_days, epoch, sde, fap_graded, recovered}`` plus the
-    recovered period and its fractional error for audit.
+    ``{depth, period_days, epoch, sde, fap_injection_iid, recovered}`` plus
+    the recovered period and its fractional error for audit.
 
     ``t0_anchor`` shifts where the epoch fractions are measured from
     (default: the first cadence). The dossier's self-injection anchors to the
@@ -148,7 +149,7 @@ def injection_grid(t: np.ndarray, f: np.ndarray,
                 "period_days": period,
                 "epoch": k,
                 "sde": det.sde,
-                "fap_graded": None,   # TODO(lane-1): populated by the FAP engine
+                "fap_injection_iid": None,   # filled when injection_fap_B opts in
                 "recovered": bool(err <= a04.PERIOD_TOL_FRAC
                                   and det.sde >= a04.SDE_THRESHOLD),
                 "recovered_period_days": det.period_days,
@@ -258,29 +259,38 @@ def epoch_scramble(t: np.ndarray, f: np.ndarray,
 
 def scramble_placebo(curves: list[tuple], seed: int = SCRAMBLE_SEED,
                      n_periods: int = a04.N_PERIODS,
-                     progress=None) -> dict:
-    """Run the FULL ladder — search *and* vetting — over scrambled curves.
+                     progress=None, vet=None) -> dict:
+    """Search + vet an epoch-scrambled sky and demand zero planet-candidates.
 
-    ``curves`` is a list of ``(tic, t, f)`` with f already detrended, exactly
-    what the hunt searches. Each curve is scrambled with its own derived seed
-    (reproducible, distinct), blind-searched, and any above-threshold hit is
-    passed through :func:`lab.a04.vet_candidate` like a real detection would
-    be. The pass criterion is absolute: ZERO planet-candidates. An EB verdict
-    or a railed period on scrambled data is the vetting chain doing its job;
-    a "planet-candidate" is the pipeline hallucinating, and one sinks the
-    control.
+    ``curves`` is a list of ``(tic, t, f)`` — optionally ``(tic, t, f,
+    components)`` with the host's measured pulsation components — with ``f``
+    already detrended, exactly what the hunt searches. Each curve is
+    scrambled with its own derived seed (reproducible, distinct) and
+    blind-searched; any above-threshold hit is vetted by ``vet(ts, fs, det,
+    components=...)``, defaulting to A04's :func:`lab.a04.vet_candidate`.
+    The default is NOT the extended ladder — no pulsation-spectrum gate, no
+    blend gates — so callers wanting the placebo to exercise the same chain
+    as the hunt (the honest configuration; :func:`lab.a05.run_a05` does this)
+    must pass the extended vet explicitly. The pass criterion is absolute:
+    ZERO planet-candidates. An EB verdict or a railed period on scrambled
+    data is the vetting chain doing its job; a "planet-candidate" is the
+    pipeline hallucinating, and one sinks the control.
 
     Returns the receipt's ``placebo`` block plus per-curve rows for audit.
     """
+    vetter = vet or (
+        lambda ts, fs, det, components=(): a04.vet_candidate(ts, fs, det))
     rows: list[dict] = []
     planet_candidates = 0
-    for i, (tic, t, f) in enumerate(curves):
+    for i, entry in enumerate(curves):
+        tic, t, f = entry[0], entry[1], entry[2]
+        components = entry[3] if len(entry) > 3 else ()
         ts, fs = epoch_scramble(t, f, seed=np.random.SeedSequence(
             [seed, i]).generate_state(1)[0])
         det = a04.blind_search(ts, fs, n_periods=n_periods)
         row = {"tic": tic, "sde": det.sde, "period_days": det.period_days}
         if det.sde >= a04.SDE_THRESHOLD:
-            row["vetting"] = a04.vet_candidate(ts, fs, det)
+            row["vetting"] = vetter(ts, fs, det, components=components)
             if row["vetting"].get("verdict") == "planet-candidate":
                 planet_candidates += 1
         rows.append(row)

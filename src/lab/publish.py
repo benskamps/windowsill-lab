@@ -1051,18 +1051,21 @@ def _hunt_receipt_counters(receipt: dict) -> dict:
     for row in above:
         d = row["disposition"]
         dispositions[d] = dispositions.get(d, 0) + 1
-    known = [r for r in above
-             if r.get("known_planet") and r.get("disposition") != HUNT_KNOWN_FP]
-    for row in receipt.get("recoveries") or []:
-        if isinstance(row, dict) and row.get("known_planet") \
-                and row.get("disposition") != HUNT_KNOWN_FP:
-            known.append(row)
+    # Deduped by TIC: a designated recovery appears BOTH as a target row and
+    # in the receipt's ``recoveries`` list (same star, two mentions), and a
+    # counter that added the mentions would report one recovery as two.
+    known_tics: set[str] = set()
+    candidates = list(above) + [r for r in (receipt.get("recoveries") or [])
+                                if isinstance(r, dict)]
+    for row in candidates:
+        if row.get("known_planet") and row.get("disposition") != HUNT_KNOWN_FP:
+            known_tics.add(str(row.get("tic")))
     leads = sum(dispositions.get(state, 0) for state in HUNT_LEAD_STATES)
     return {
         "targets_searched": n_searched,
         "above_threshold": len(above),
         "dispositions": dispositions,
-        "known_recovered": len(known),
+        "known_recovered": len(known_tics),
         "leads_awaiting_human_review": leads,
     }
 

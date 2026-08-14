@@ -376,6 +376,22 @@ def test_a_refused_superseder_cannot_erase_the_receipt_it_names(tmp_path):
     assert len(block["refused"]) == 1
 
 
+def test_known_recovered_dedupes_target_and_recovery_mentions(tmp_path):
+    """A designated recovery appears BOTH as a target row and in the
+    receipt's recoveries list — one star, two mentions, ONE recovery."""
+    row = {"tic": "100100827", "outcome": "searched", "sde": 12.0,
+           "disposition": "known-planet", "known_planet": "WASP-18 b",
+           "injections": [{"depth": 0.002, "period_days": 2.3,
+                           "sde": 4.9, "recovered": False}]}
+    receipt = _schema1_receipt(
+        targets=[row, {"tic": "222", "outcome": "searched", "sde": 5.0}],
+        recoveries=[dict(row)],
+        counts={"attempted": 2, "searched": 2, "above_threshold": 1})
+    _write(tmp_path, "hunt-2026-08-21-s2.json", receipt)
+    block = hunt_block(tmp_path)
+    assert block["known_recovered"] == 1
+
+
 def test_serendipitous_known_planets_count_as_recoveries_not_leads():
     """TOI 111.01 (HATS-34 b, KP) and TOI 125.01 (TOI-125 c, CP) surfaced in
     the wide slice and were identified at grading time — ``known-planet``

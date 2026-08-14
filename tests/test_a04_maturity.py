@@ -258,6 +258,41 @@ def test_third_recovery_must_be_catalogued_after_vetting():
     assert "WASP-20 b" in detail
 
 
+# ------------------------------------------------------ catalog crosscheck ---
+
+def test_catalog_crosscheck_picks_the_row_nearest_the_detected_period(monkeypatch):
+    """Multi-planet TAP queries return unordered rows; rows[0] misnamed
+    TOI-125 b as c. The detected period selects the row actually re-found."""
+    toi_rows = [
+        {"toi": "125.02", "pl_orbper": 9.15059, "tfopwg_disp": "CP"},
+        {"toi": "125.01", "pl_orbper": 4.65382, "tfopwg_disp": "CP"},
+        {"toi": "125.03", "pl_orbper": 19.98, "tfopwg_disp": "PC"},
+    ]
+    ps_rows = [
+        {"pl_name": "TOI-125 c", "pl_orbper": 9.15059},
+        {"pl_name": "TOI-125 b", "pl_orbper": 4.65382},
+        {"pl_name": "TOI-125 d", "pl_orbper": 19.98},
+    ]
+    monkeypatch.setattr(
+        a04, "_tap",
+        lambda q, deadline=None: toi_rows if "from toi" in q else ps_rows)
+    out = a04.catalog_crosscheck("52368076", detected_period_days=4.652)
+    assert out["known_toi"] == "125.01"
+    assert out["known_planet"] == "TOI-125 b"
+    assert out["published_period_days"] == pytest.approx(4.65382)
+    # Without a detected period the old rows[0] fallback still stands.
+    out0 = a04.catalog_crosscheck("52368076")
+    assert out0["known_planet"] == "TOI-125 c"
+    # Rows without usable periods also fall back to rows[0].
+    monkeypatch.setattr(
+        a04, "_tap",
+        lambda q, deadline=None: [{"toi": "9.01", "pl_orbper": None,
+                                   "tfopwg_disp": "PC"}] if "from toi" in q
+        else [])
+    out_null = a04.catalog_crosscheck("1", detected_period_days=3.0)
+    assert out_null["known_toi"] == "9.01"
+
+
 def test_a04_is_registered():
     from lab import curriculum
     assert checks.CHECKS["A04"] is checks.check_a04
