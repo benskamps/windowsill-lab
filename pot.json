@@ -462,31 +462,41 @@
     }
   ],
   "total": 36,
-  "last_run": "2026-08-14T16:13:21.351855+00:00",
+  "last_run": "2026-08-14T19:00:27.555071+00:00",
   "runs": 54,
-  "temp_c": null,
+  "temp_c": 40.0,
   "latest_report": {
     "date": "2026-08-14",
-    "milestone": "A03",
-    "verdict": "null",
-    "headline": "GW170817-v3: pipeline recovers an injected chirp mass to 4.0e-05 Msun in 2 detectors; the event itself is NOT recovered",
+    "milestone": "M01",
+    "verdict": "verified",
+    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 11s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-14-1213-a03.json",
-    "machine": "windows-cuda",
-    "at": "2026-08-14T16:13:21.351855+00:00"
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-14-1500-m01.json",
+    "machine": "linux-rocm",
+    "at": "2026-08-14T19:00:27.555071+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-14T16:13:26.281957+00:00",
+  "updated": "2026-08-14T19:00:27.990479+00:00",
   "provenance": {
-    "code_sha": "10b4c88",
-    "env": "python 3.13.14 \u00b7 windows",
+    "code_sha": "0fa2bcf",
+    "env": "python 3.14.4 \u00b7 linux",
     "deps": {
-      "torch": "2.6.0+cu124",
-      "numpy": "2.4.6",
-      "matplotlib": "3.11.0"
+      "torch": "2.10.0.dev20251031+rocm6.4",
+      "numpy": "2.5.1",
+      "matplotlib": "3.11.1"
     }
   },
   "reports": [
+    {
+      "date": "2026-08-14",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 11s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-14-1500-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-14-1500-m01.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-14T19:00:27.555071+00:00"
+    },
     {
       "date": "2026-08-14",
       "milestone": "A03",
@@ -655,29 +665,37 @@
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-12-1237-m03",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-1237-m03.json",
       "machine": "windows-cuda",
-      "at": "2026-08-12T16:37:51.562354+00:00",
-      "group_count": 2,
-      "group_first_date": "2026-08-12",
-      "group_machines": [
-        "linux-rocm",
-        "windows-cuda"
-      ]
+      "at": "2026-08-12T16:37:51.562354+00:00"
     },
     {
       "date": "2026-08-12",
       "milestone": "M02",
       "verdict": "verified",
-      "headline": "finite-size scaling: \u03c7_max \u221d L^1.742 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16193s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-12-0729-m02",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-0729-m02.json",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.761 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 35018s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-12-0943-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-0943-m02.json",
+      "machine": "windows-cuda",
+      "at": "2026-08-12T13:43:44.487229+00:00"
+    },
+    {
+      "date": "2026-08-12",
+      "milestone": "M03",
+      "verdict": "verified",
+      "headline": "data collapse: M\u00b7L^(\u03b2/\u03bd) onto one master curve at \u03b2/\u03bd=0.128 (2D Ising \u03b2=1/8 \u2192 \u03b2/\u03bd=0.125, loss=1.8e-02) \u00b7 781s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-12-0913-m03",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-0913-m03.json",
       "machine": "linux-rocm",
-      "at": "2026-08-12T11:29:55.716523+00:00",
-      "group_count": 3,
-      "group_first_date": "2026-08-12",
-      "group_machines": [
-        "linux-rocm",
-        "windows-cuda"
-      ]
+      "at": "2026-08-12T13:13:02.953297+00:00"
+    },
+    {
+      "date": "2026-08-12",
+      "milestone": "M02",
+      "verdict": "verified",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.745 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16252s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-12-0130-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-0130-m02.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-12T05:30:54.812691+00:00"
     },
     {
       "date": "2026-08-11",
@@ -688,6 +706,26 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-11-2341-m05.json",
       "machine": "windows-cuda",
       "at": "2026-08-12T03:41:33.871952+00:00"
+    },
+    {
+      "date": "2026-08-12",
+      "milestone": "M02",
+      "verdict": "verified",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.742 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16193s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-12-0729-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-12-0729-m02.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-12T11:29:55.716523+00:00"
+    },
+    {
+      "date": "2026-08-08",
+      "milestone": "M02",
+      "verdict": "verified",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.730 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 41799s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-08-2336-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-08-2336-m02.json",
+      "machine": "windows-cuda",
+      "at": "2026-08-09T03:36:59.261243+00:00"
     },
     {
       "date": "2026-08-11",
@@ -708,16 +746,11 @@
       "date": "2026-08-08",
       "milestone": "A04",
       "verdict": "verified",
-      "headline": "blind search of 26 sector-2 targets: 2/2 known planets recovered without being told where; 3/3 injections recovered; 2 candidate(s) vetted; noise floor max SDE 6.6 vs threshold 8.0",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-08-2338-a04",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-08-2338-a04.json",
+      "headline": "blind search of 26 sector-2 targets: 2/2 known planets recovered without being told where; 3/3 injections recovered; 2 candidate(s) vetted; noise floor max SDE 7.7 vs threshold 8.0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-08-2335-a04",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-08-2335-a04.json",
       "machine": "linux-rocm",
-      "at": "2026-08-09T03:38:36.867562+00:00",
-      "group_count": 2,
-      "group_first_date": "2026-08-08",
-      "group_machines": [
-        "linux-rocm"
-      ]
+      "at": "2026-08-09T03:35:31.241326+00:00"
     },
     {
       "date": "2026-08-08",
@@ -733,6 +766,16 @@
       "group_machines": [
         "linux-rocm"
       ]
+    },
+    {
+      "date": "2026-08-08",
+      "milestone": "A04",
+      "verdict": "verified",
+      "headline": "blind search of 26 sector-2 targets: 2/2 known planets recovered without being told where; 3/3 injections recovered; 2 candidate(s) vetted; noise floor max SDE 6.6 vs threshold 8.0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-08-2338-a04",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-08-2338-a04.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-09T03:38:36.867562+00:00"
     },
     {
       "date": "2026-08-08",
@@ -753,16 +796,6 @@
     {
       "date": "2026-08-07",
       "milestone": "M18",
-      "verdict": "verified",
-      "headline": "2+1d DP: delta bracketed to [0.4114, 0.5450] around p_c = 0.22415\u00b10.00005; contains the DP value 0.4505 and excludes mean-field 1.0",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-07-1012-m18",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-1012-m18.json",
-      "machine": "linux-rocm",
-      "at": "2026-08-07T14:12:57.025980+00:00"
-    },
-    {
-      "date": "2026-08-07",
-      "milestone": "M18",
       "verdict": "null",
       "headline": "2+1d DP: delta bracketed to [0.1691, 0.3552] around p_c = 0.22415\u00b10.00005; does NOT bracket the DP value",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-07-1008-m18",
@@ -772,13 +805,28 @@
     },
     {
       "date": "2026-08-07",
+      "milestone": "M18",
+      "verdict": "verified",
+      "headline": "2+1d DP: delta bracketed to [0.4114, 0.5450] around p_c = 0.22415\u00b10.00005; contains the DP value 0.4505 and excludes mean-field 1.0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-07-1012-m18",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-1012-m18.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-07T14:12:57.025980+00:00"
+    },
+    {
+      "date": "2026-08-07",
       "milestone": "A03",
       "verdict": "null",
       "headline": "GW170817-v3: pipeline recovers an injected chirp mass to 4.0e-05 Msun in 2 detectors; the event itself is NOT recovered",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-07-0807-a03",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-0807-a03.json",
       "machine": "linux-rocm",
-      "at": "2026-08-07T12:07:32.759249+00:00"
+      "at": "2026-08-07T12:07:32.759249+00:00",
+      "group_count": 2,
+      "group_first_date": "2026-08-07",
+      "group_machines": [
+        "linux-rocm"
+      ]
     },
     {
       "date": "2026-08-07",
@@ -789,11 +837,35 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-0736-m02.json",
       "machine": "linux-rocm",
       "at": "2026-08-07T11:36:49.476934+00:00",
-      "group_count": 20,
-      "group_first_date": "2026-08-02",
+      "group_count": 6,
+      "group_first_date": "2026-08-06",
       "group_machines": [
-        "linux-rocm",
-        "windows-cuda"
+        "linux-rocm"
+      ]
+    },
+    {
+      "date": "2026-08-04",
+      "milestone": "M02",
+      "verdict": "verified",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.726 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 34499s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-04-0935-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-04-0935-m02.json",
+      "machine": "windows-cuda",
+      "at": "2026-08-04T13:35:11.760144+00:00"
+    },
+    {
+      "date": "2026-08-05",
+      "milestone": "M02",
+      "verdict": "verified",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.751 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16149s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-05-1929-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-05-1929-m02.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-05T23:29:11.403055+00:00",
+      "group_count": 11,
+      "group_first_date": "2026-08-03",
+      "group_machines": [
+        "linux-rocm"
       ]
     },
     {
@@ -805,6 +877,16 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-02-1713-k02.json",
       "machine": "windows-cuda",
       "at": "2026-08-02T21:13:53.735904+00:00"
+    },
+    {
+      "date": "2026-08-02",
+      "milestone": "M02",
+      "verdict": "verified",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.744 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16507s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-02-1820-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-02-1820-m02.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-02T22:20:19.405560+00:00"
     },
     {
       "date": "2026-08-02",
@@ -865,11 +947,31 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-28-m01.json",
       "machine": "linux-rocm",
       "at": "2026-07-29T02:28:58.707966+00:00",
-      "group_count": 7,
-      "group_first_date": "2026-07-22",
+      "group_count": 6,
+      "group_first_date": "2026-07-23",
       "group_machines": [
         "linux-rocm"
       ]
+    },
+    {
+      "date": "2026-07-22",
+      "milestone": "M17",
+      "verdict": "verified",
+      "headline": "1+1d single-step growth on a ring (L=4096, 64 rings, 8,000 sweeps): \u03b2=0.3127 against the exact KPZ 1/3, with \u03b1=0.4840 from saturation (exact 1/2) giving z=\u03b1/\u03b2=1.548 (exact 3/2) and 1/z=0.646 (exact 2/3). Same pipeline on the controls: Edwards\u2013Wilkinson \u03b2=0.2354 (exact 1/4) and random deposition \u03b2=0.5003 (exact 1/2, and its w\u00b2(t) tracks the closed form p(1\u2212p)t to 0.6%) \u2014 three separated classes, so the 1/3 is a measurement and not an artifact of the fit. Height fluctuations are skewed -0.1651 (droplet) and -0.2732 (flat) against the \u03bb<0-mirrored Tracy\u2013Widom predictions -0.2241 (GUE) and -0.2935 (GOE): each geometry lands nearer its own law (2.2\u00d7 and 2.4\u00d7). \u00b7 337s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-22-m17",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-22-m17.json",
+      "machine": "windows-cuda",
+      "at": "2026-07-23T02:31:44.217427+00:00"
+    },
+    {
+      "date": "2026-07-22",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 12s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-22-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-22-m01.json",
+      "machine": "linux-rocm",
+      "at": "2026-07-23T02:11:39.758798+00:00"
     },
     {
       "date": "2026-07-22",
@@ -897,156 +999,12 @@
       ]
     },
     {
-      "date": "2026-07-22",
-      "milestone": "M17",
-      "verdict": "verified",
-      "headline": "1+1d single-step growth on a ring (L=4096, 64 rings, 8,000 sweeps): \u03b2=0.3127 against the exact KPZ 1/3, with \u03b1=0.4840 from saturation (exact 1/2) giving z=\u03b1/\u03b2=1.548 (exact 3/2) and 1/z=0.646 (exact 2/3). Same pipeline on the controls: Edwards\u2013Wilkinson \u03b2=0.2354 (exact 1/4) and random deposition \u03b2=0.5003 (exact 1/2, and its w\u00b2(t) tracks the closed form p(1\u2212p)t to 0.6%) \u2014 three separated classes, so the 1/3 is a measurement and not an artifact of the fit. Height fluctuations are skewed -0.1651 (droplet) and -0.2732 (flat) against the \u03bb<0-mirrored Tracy\u2013Widom predictions -0.2241 (GUE) and -0.2935 (GOE): each geometry lands nearer its own law (2.2\u00d7 and 2.4\u00d7). \u00b7 337s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-22-m17",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-22-m17.json",
-      "machine": "windows-cuda",
-      "at": "2026-07-23T02:31:44.217427+00:00"
-    },
-    {
-      "date": "2026-07-19",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 10s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-19-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-19-m01.json",
-      "machine": "linux-rocm",
-      "at": "2026-07-19T07:00:53.507694+00:00",
-      "group_count": 3,
-      "group_first_date": "2026-07-17",
-      "group_machines": [
-        "linux-rocm",
-        "windows-cuda"
-      ]
-    },
-    {
-      "date": "2026-07-14",
-      "milestone": "I01",
-      "verdict": "null",
-      "headline": "CMOS calibration not run: no real dark-frame stack available",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-i01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-i01.json",
-      "machine": "windows-cuda",
-      "at": "2026-07-15T02:56:54.435044+00:00"
-    },
-    {
-      "date": "2026-07-14",
-      "milestone": "A01",
-      "verdict": "verified",
-      "headline": "TESS recovered WASP-18 b: P=0.94145236 d, depth=1.022% from 177 timed transits",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-a01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-a01.json",
-      "machine": "windows-cuda",
-      "at": "2026-07-15T02:56:43.063908+00:00"
-    },
-    {
-      "date": "2026-07-14",
-      "milestone": "C01",
-      "verdict": "verified",
-      "headline": "OEIS A000045: 40 terms matched byte-for-byte; Lucas\u2013Lehmer residue for 2^31\u22121 is 0",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-c01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-c01.json",
-      "machine": "windows-cuda",
-      "at": "2026-07-15T02:56:22.704559+00:00"
-    },
-    {
-      "date": "2026-07-14",
-      "milestone": "M16",
-      "verdict": "verified",
-      "headline": "3D glass aging: t/t_w collapse residual is 0.24\u00d7 the fixed-lag residual; \u0394C=+0.104 at \u0394t=64",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-m16",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-m16.json",
-      "machine": "windows-cuda",
-      "at": "2026-07-15T02:56:11.213862+00:00"
-    },
-    {
-      "date": "2026-07-14",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-m01.json",
-      "machine": "windows-cuda",
-      "at": "2026-07-14T07:00:35.021267+00:00"
-    },
-    {
-      "date": "2026-07-12",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 33s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-12-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-12-m01.json",
-      "machine": "windows-cuda",
-      "at": "2026-07-12T07:00:42.757924+00:00"
-    },
-    {
-      "date": "2026-07-07",
-      "milestone": "M15",
-      "verdict": "verified",
-      "headline": "2D Ising quenched from T=\u221e to T=1.498 (0.66\u00b7T_c), L=512, 48 seeds: domain length grows as a clean power law L(t)\u223ct^n with n=0.486\u00b10.001 (stat, R\u00b2=0.9999) from the correlation length; energy-length cross-check n=0.469, drifting to n\u22480.496 on the late window. The effective exponent sits a few percent below the asymptotic Allen\u2013Cahn \u00bd \u2014 the documented preasymptotic correction \u2014 so the honest systematic band is \u2248\u00b10.02. Glauber coarsening exponent consistent with Allen\u2013Cahn t^(1/2) \u00b7 34s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-07-m15",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-07-m15.json"
-    },
-    {
-      "date": "2026-07-06",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-06-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-06-m01.json"
-    },
-    {
-      "date": "2026-07-05",
-      "milestone": "M14",
-      "verdict": "verified",
-      "headline": "2D random-bond Ising (\u00b1J, 64 disorder realizations) on the Nishimori line: measured disorder-averaged energy matches the exact \u22122\u00b7tanh(1/T) across p\u2208[0.04,0.16] to within \u0394=0.015 (L=24) \u2014 exact Nishimori-line energy reproduced. Ferro order collapses near p\u22480.126, bracketing the multicritical Nishimori point p_c\u22480.1094, T_c\u22480.9528 (precise pinning deferred \u2014 a hero run) \u00b7 204s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-05-m14",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-05-m14.json"
-    },
-    {
-      "date": "2026-07-05",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-05-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-05-m01.json"
-    },
-    {
-      "date": "2026-07-05",
-      "milestone": "M02",
-      "verdict": "unscored",
-      "headline": "finite-size scaling: \u03c7_max \u221d L^2.209 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 0s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-05-m02",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-05-m02.json"
-    },
-    {
-      "date": "2026-07-04",
+      "date": "2026-07-01",
       "milestone": "M12",
       "verdict": "null",
-      "headline": "3D Edwards\u2013Anderson spin glass (L=[4, 6, 8], 8 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 0.558 (benchmark 0.95 \u00b1 0.15) \u2014 no clean crossing near 0.95 \u2014 calibration null \u00b7 7s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-04-m12",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-04-m12.json"
-    },
-    {
-      "date": "2026-07-04",
-      "milestone": "M13",
-      "verdict": "verified",
-      "headline": "Frustrated triangular Ising antiferromagnet (L=24): no ordering transition, a macroscopically degenerate ground state. Integrating C(T)/T from S(\u221e)=ln2 down gives a residual entropy S0/N = 0.3338 k_B vs Wannier's exact 0.3383 (\u0394=0.0045); ground-state energy -1.0000 per spin (exact \u22121) \u2014 residual S0/N \u2248 0.3338 k_B \u2014 Wannier reproduced \u00b7 5s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-04-m13",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-04-m13.json"
-    },
-    {
-      "date": "2026-07-04",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 35s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-04-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-04-m01.json",
-      "group_count": 3,
-      "group_first_date": "2026-07-02"
+      "headline": "3D Edwards\u2013Anderson spin glass (L=[4, 6, 8], 8 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 0.558 (benchmark 0.95 \u00b1 0.15) \u2014 no clean crossing near 0.95 \u2014 calibration null \u00b7 8s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-01-m12",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-01-m12.json"
     },
     {
       "date": "2026-07-01",
@@ -1057,105 +1015,13 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-01-m13.json"
     },
     {
-      "date": "2026-07-01",
-      "milestone": "M12",
-      "verdict": "null",
-      "headline": "3D Edwards\u2013Anderson spin glass (L=[4, 6, 8], 8 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 0.558 (benchmark 0.95 \u00b1 0.15) \u2014 no clean crossing near 0.95 \u2014 calibration null \u00b7 8s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-01-m12",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-01-m12.json"
-    },
-    {
-      "date": "2026-07-01",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 32s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-01-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-01-m01.json",
-      "group_count": 4,
-      "group_first_date": "2026-06-28"
-    },
-    {
-      "date": "2026-06-26",
+      "date": "2026-06-18",
       "milestone": "M01",
       "verdict": "verified",
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-26-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-26-m01.json",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-18-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-18-m01.json",
       "group_count": 2,
-      "group_first_date": "2026-06-25"
-    },
-    {
-      "date": "2026-06-25",
-      "milestone": "M11",
-      "verdict": "verified",
-      "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.306 as T falls 2.00 \u2192 0.60 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase) \u00b7 67s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m11",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m11.json"
-    },
-    {
-      "date": "2026-06-25",
-      "milestone": "M10",
-      "verdict": "verified",
-      "headline": "Antiferromagnetic Ising (L=128): staggered \u03c7_s peaks at T_N=2.282 vs Onsager exact 2.2692 (rel. err 0.5%); C-peak cross-check 2.276; uniform \u27e8|m|\u27e9 stays \u22640.003 \u00b7 30s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m10",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m10.json"
-    },
-    {
-      "date": "2026-06-25",
-      "milestone": "M09",
-      "verdict": "verified",
-      "headline": "2D Heisenberg (T=0.7): \u27e8|m|\u27e9 drifts 0.478, 0.282, 0.142 across L=16, 32, 64 (ratios 0.590 \u2192 0.502) \u2014 Mermin\u2013Wagner confirmed: no finite-T order \u00b7 250s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m09",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m09.json"
-    },
-    {
-      "date": "2026-06-25",
-      "milestone": "M08",
-      "verdict": "verified",
-      "headline": "2D XY BKT (L=64): helicity \u03a5(T) crosses the (2/\u03c0)T jump line at T_BKT=0.9128 vs benchmark 0.8929 (rel. err 2.2%) \u00b7 94s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m08",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m08.json"
-    },
-    {
-      "date": "2026-06-25",
-      "milestone": "M07",
-      "verdict": "verified",
-      "headline": "2D q-state Potts (L=64): q=3 T_c=1.002(exact 0.995), q=4 T_c=0.907(exact 0.910), q=5 T_c=0.822(exact 0.852), q=6 T_c=0.749(exact 0.808) \u00b7 worst rel. err 7.2% (q=6) \u00b7 471s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m07",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m07.json"
-    },
-    {
-      "date": "2026-06-24",
-      "milestone": "M07",
-      "verdict": "null",
-      "headline": "2D q-state Potts (L=128): q=3 T_c=0.965(exact 0.995), q=4 T_c=0.790(exact 0.910), q=5 T_c=0.781(exact 0.852), q=6 T_c=0.780(exact 0.808) \u00b7 worst rel. err 13.2% (q=4) \u00b7 315s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m07",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m07.json"
-    },
-    {
-      "date": "2026-06-24",
-      "milestone": "M05",
-      "verdict": "verified",
-      "headline": "Triangular-lattice 2D Ising (L=129): \u03c7 peaks at T_c=3.675 vs exact 4/ln3 = 3.6410 (rel. err 0.9%); C-peak cross-check 3.650 \u00b7 63s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m05",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m05.json"
-    },
-    {
-      "date": "2026-06-24",
-      "milestone": "M04",
-      "verdict": "verified",
-      "headline": "2D Ising specific heat (L=128): C(T) peaks at T_c=2.275 vs Onsager exact 2.2692 (rel. err 0.2%); \u03c7-peak cross-check 2.280 \u00b7 33s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m04",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m04.json"
-    },
-    {
-      "date": "2026-06-24",
-      "milestone": "M01",
-      "verdict": "verified",
-      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m01.json",
-      "group_count": 8,
       "group_first_date": "2026-06-17"
     },
     {
@@ -1197,14 +1063,248 @@
       "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 37s on GPU",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-14-m01",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-14-m01.json"
+    },
+    {
+      "date": "2026-07-19",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 10s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-19-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-19-m01.json",
+      "machine": "linux-rocm",
+      "at": "2026-07-19T07:00:53.507694+00:00",
+      "group_count": 3,
+      "group_first_date": "2026-07-17",
+      "group_machines": [
+        "linux-rocm",
+        "windows-cuda"
+      ]
+    },
+    {
+      "date": "2026-07-14",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-m01.json",
+      "machine": "windows-cuda",
+      "at": "2026-07-14T07:00:35.021267+00:00"
+    },
+    {
+      "date": "2026-07-14",
+      "milestone": "M16",
+      "verdict": "verified",
+      "headline": "3D glass aging: t/t_w collapse residual is 0.24\u00d7 the fixed-lag residual; \u0394C=+0.104 at \u0394t=64",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-m16",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-m16.json",
+      "machine": "windows-cuda",
+      "at": "2026-07-15T02:56:11.213862+00:00"
+    },
+    {
+      "date": "2026-07-14",
+      "milestone": "I01",
+      "verdict": "null",
+      "headline": "CMOS calibration not run: no real dark-frame stack available",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-i01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-i01.json",
+      "machine": "windows-cuda",
+      "at": "2026-07-15T02:56:54.435044+00:00"
+    },
+    {
+      "date": "2026-07-14",
+      "milestone": "C01",
+      "verdict": "verified",
+      "headline": "OEIS A000045: 40 terms matched byte-for-byte; Lucas\u2013Lehmer residue for 2^31\u22121 is 0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-c01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-c01.json",
+      "machine": "windows-cuda",
+      "at": "2026-07-15T02:56:22.704559+00:00"
+    },
+    {
+      "date": "2026-07-14",
+      "milestone": "A01",
+      "verdict": "verified",
+      "headline": "TESS recovered WASP-18 b: P=0.94145236 d, depth=1.022% from 177 timed transits",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-14-a01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-14-a01.json",
+      "machine": "windows-cuda",
+      "at": "2026-07-15T02:56:43.063908+00:00"
+    },
+    {
+      "date": "2026-07-12",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 33s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-12-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-12-m01.json",
+      "machine": "windows-cuda",
+      "at": "2026-07-12T07:00:42.757924+00:00"
+    },
+    {
+      "date": "2026-07-06",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-06-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-06-m01.json",
+      "group_count": 2,
+      "group_first_date": "2026-07-05"
+    },
+    {
+      "date": "2026-07-05",
+      "milestone": "M02",
+      "verdict": "unscored",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^2.209 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 0s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-05-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-05-m02.json"
+    },
+    {
+      "date": "2026-07-04",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 35s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-04-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-04-m01.json",
+      "group_count": 7,
+      "group_first_date": "2026-06-28"
+    },
+    {
+      "date": "2026-06-26",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-26-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-26-m01.json"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M08",
+      "verdict": "verified",
+      "headline": "2D XY BKT (L=64): helicity \u03a5(T) crosses the (2/\u03c0)T jump line at T_BKT=0.9128 vs benchmark 0.8929 (rel. err 2.2%) \u00b7 94s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m08",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m08.json"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M10",
+      "verdict": "verified",
+      "headline": "Antiferromagnetic Ising (L=128): staggered \u03c7_s peaks at T_N=2.282 vs Onsager exact 2.2692 (rel. err 0.5%); C-peak cross-check 2.276; uniform \u27e8|m|\u27e9 stays \u22640.003 \u00b7 30s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m10",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m10.json"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 29s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m01.json"
+    },
+    {
+      "date": "2026-06-24",
+      "milestone": "M04",
+      "verdict": "verified",
+      "headline": "2D Ising specific heat (L=128): C(T) peaks at T_c=2.275 vs Onsager exact 2.2692 (rel. err 0.2%); \u03c7-peak cross-check 2.280 \u00b7 33s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m04",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m04.json"
+    },
+    {
+      "date": "2026-06-24",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 31s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m01.json"
+    },
+    {
+      "date": "2026-06-24",
+      "milestone": "M07",
+      "verdict": "null",
+      "headline": "2D q-state Potts (L=128): q=3 T_c=0.965(exact 0.995), q=4 T_c=0.790(exact 0.910), q=5 T_c=0.781(exact 0.852), q=6 T_c=0.780(exact 0.808) \u00b7 worst rel. err 13.2% (q=4) \u00b7 315s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m07",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m07.json"
+    },
+    {
+      "date": "2026-06-23",
+      "milestone": "M01",
+      "verdict": "verified",
+      "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 30s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-23-m01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-23-m01.json",
+      "group_count": 5,
+      "group_first_date": "2026-06-19"
+    },
+    {
+      "date": "2026-07-07",
+      "milestone": "M15",
+      "verdict": "verified",
+      "headline": "2D Ising quenched from T=\u221e to T=1.498 (0.66\u00b7T_c), L=512, 48 seeds: domain length grows as a clean power law L(t)\u223ct^n with n=0.486\u00b10.001 (stat, R\u00b2=0.9999) from the correlation length; energy-length cross-check n=0.469, drifting to n\u22480.496 on the late window. The effective exponent sits a few percent below the asymptotic Allen\u2013Cahn \u00bd \u2014 the documented preasymptotic correction \u2014 so the honest systematic band is \u2248\u00b10.02. Glauber coarsening exponent consistent with Allen\u2013Cahn t^(1/2) \u00b7 34s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-07-m15",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-07-m15.json"
+    },
+    {
+      "date": "2026-07-05",
+      "milestone": "M14",
+      "verdict": "verified",
+      "headline": "2D random-bond Ising (\u00b1J, 64 disorder realizations) on the Nishimori line: measured disorder-averaged energy matches the exact \u22122\u00b7tanh(1/T) across p\u2208[0.04,0.16] to within \u0394=0.015 (L=24) \u2014 exact Nishimori-line energy reproduced. Ferro order collapses near p\u22480.126, bracketing the multicritical Nishimori point p_c\u22480.1094, T_c\u22480.9528 (precise pinning deferred \u2014 a hero run) \u00b7 204s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-05-m14",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-05-m14.json"
+    },
+    {
+      "date": "2026-07-04",
+      "milestone": "M13",
+      "verdict": "verified",
+      "headline": "Frustrated triangular Ising antiferromagnet (L=24): no ordering transition, a macroscopically degenerate ground state. Integrating C(T)/T from S(\u221e)=ln2 down gives a residual entropy S0/N = 0.3338 k_B vs Wannier's exact 0.3383 (\u0394=0.0045); ground-state energy -1.0000 per spin (exact \u22121) \u2014 residual S0/N \u2248 0.3338 k_B \u2014 Wannier reproduced \u00b7 5s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-04-m13",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-04-m13.json"
+    },
+    {
+      "date": "2026-07-04",
+      "milestone": "M12",
+      "verdict": "null",
+      "headline": "3D Edwards\u2013Anderson spin glass (L=[4, 6, 8], 8 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 0.558 (benchmark 0.95 \u00b1 0.15) \u2014 no clean crossing near 0.95 \u2014 calibration null \u00b7 7s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-07-04-m12",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-07-04-m12.json"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M11",
+      "verdict": "verified",
+      "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.306 as T falls 2.00 \u2192 0.60 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase) \u00b7 67s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m11",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m11.json"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M09",
+      "verdict": "verified",
+      "headline": "2D Heisenberg (T=0.7): \u27e8|m|\u27e9 drifts 0.478, 0.282, 0.142 across L=16, 32, 64 (ratios 0.590 \u2192 0.502) \u2014 Mermin\u2013Wagner confirmed: no finite-T order \u00b7 250s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m09",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m09.json"
+    },
+    {
+      "date": "2026-06-25",
+      "milestone": "M07",
+      "verdict": "verified",
+      "headline": "2D q-state Potts (L=64): q=3 T_c=1.002(exact 0.995), q=4 T_c=0.907(exact 0.910), q=5 T_c=0.822(exact 0.852), q=6 T_c=0.749(exact 0.808) \u00b7 worst rel. err 7.2% (q=6) \u00b7 471s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-25-m07",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-25-m07.json"
+    },
+    {
+      "date": "2026-06-24",
+      "milestone": "M05",
+      "verdict": "verified",
+      "headline": "Triangular-lattice 2D Ising (L=129): \u03c7 peaks at T_c=3.675 vs exact 4/ln3 = 3.6410 (rel. err 0.9%); C-peak cross-check 3.650 \u00b7 63s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-06-24-m05",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-06-24-m05.json"
     }
   ],
   "turns": {
-    "count": 135,
-    "today": 5,
+    "count": 136,
+    "today": 6,
     "last_by_machine": {
       "windows-cuda": "2026-08-14T16:13:21.351855+00:00",
-      "linux-rocm": "2026-08-14T13:00:17.099962+00:00"
+      "linux-rocm": "2026-08-14T19:00:27.555071+00:00"
     },
     "expected_interval_h": 3
   },
