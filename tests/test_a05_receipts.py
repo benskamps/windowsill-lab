@@ -291,6 +291,75 @@ def test_out_of_vocabulary_disposition_is_false(hunt):
     assert ok is False and "vocabulary" in detail
 
 
+# -------------------------------- (3b) the stage-2 flag is derived, not trusted
+
+
+def test_stage2_flag_laundering_is_refused(hunt):
+    """A row at or above the verified stage-2 line whose stage2 flag says
+    False skipped a FAP it owed — the flag cannot be trusted over the sde."""
+    bad = _mut(hunt["report"])
+    row = next(r for r in bad["targets"] if r["tic"] == "901")
+    row["stage2"] = False
+    bad["counts"]["stage2"] -= 1
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "stage2" in detail
+
+
+def test_string_sde_on_searched_row_is_refused(hunt):
+    """A string SDE would fall out of every numeric comparison — the
+    laundering hole through which a hit dodges its gates. Unreadable."""
+    bad = _mut(hunt["report"])
+    quiet = next(r for r in bad["targets"]
+                 if r.get("outcome") == "searched" and r["tic"] not in PLANTED)
+    quiet["sde"] = f"{quiet['sde']}"
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "non-numeric" in detail
+
+
+def test_carried_fap_without_maxima_on_non_stage2_row_is_refused(hunt):
+    """A non-stage-2 control row carrying a bare fap_empirical (no raw
+    maxima) must not slide into the uniformity ensemble unaudited."""
+    bad = _mut(hunt["report"])
+    quiet = min((r for r in bad["targets"]
+                 if r.get("outcome") == "searched" and r["tic"] not in PLANTED),
+                key=lambda r: r["sde"])
+    quiet["sde"] = min(float(quiet["sde"]), 3.0)   # safely below the line
+    quiet["stage2"] = False
+    bad["counts"]["stage2"] -= 1
+    fap = quiet["fap"]
+    for name in ("iid", "block"):
+        fap["schemes"][name].pop("raw_maxima", None)
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "maxima" in detail
+
+
+# ------------------------- (3c) control membership re-derives from the seed --
+
+
+def test_receipt_declares_seed_and_control_fraction(hunt):
+    report = hunt["report"]
+    assert report["seed"] == 2026
+    assert report["control_fraction"] == 1.0
+
+
+def test_forged_control_membership_is_false(hunt):
+    """Membership is a pure function of (seed, fraction, tic) — a flag that
+    contradicts the derivation means the calibration ensemble was edited."""
+    bad = _mut(hunt["report"])
+    quiet = next(r for r in bad["targets"]
+                 if r.get("outcome") == "searched" and r["tic"] not in PLANTED)
+    quiet["control_subsample"] = False
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is False and "control" in detail
+
+
+def test_missing_seed_on_schema1_is_none(hunt):
+    bad = _mut(hunt["report"])
+    del bad["seed"]
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "seed" in detail
+
+
 # --------------------------------------------- (4) spot reproduction ---------
 
 def test_spot_reproduction_fails_wrong_seed(hunt):

@@ -440,6 +440,7 @@ class A05Result:
     slice_rule: str
     n_enumerated: int
     triage_n: int
+    control_fraction: float = CONTROL_FRACTION
     rows: list[dict] = field(default_factory=list)
     recoveries: list[dict] = field(default_factory=list)
     uniformity: dict | None = None
@@ -510,6 +511,7 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
     result = A05Result(
         sector=sector, seed=seed, slice_rule=slice_rule,
         n_enumerated=n_enumerated, triage_n=triage_n, hunt_id=hunt_id,
+        control_fraction=float(control_fraction),
         search_grid={"p_lo_days": a04.P_LO, "p_hi_days": a04.P_HI,
                      "n_periods": int(n_periods),
                      "detrend_window_days": a04.DETREND_WINDOW_DAYS,
@@ -700,6 +702,12 @@ def to_report(result: A05Result,
         "schema": SCHEMA_VERSION,
         "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "sector": result.sector,
+        # The control-membership derivation inputs, as STRUCTURED fields: with
+        # (seed, control_fraction) in the receipt, ``check_a05`` re-derives
+        # every row's ``control_subsample`` flag from the TIC alone and refuses
+        # a receipt whose calibration ensemble was edited after the fact.
+        "seed": int(result.seed),
+        "control_fraction": float(result.control_fraction),
         "slice_rule": result.slice_rule,
         "n_enumerated": result.n_enumerated,
         "search_grid": result.search_grid,

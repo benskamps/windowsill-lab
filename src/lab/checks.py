@@ -2653,10 +2653,18 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
     errors = [r for r in rows if str(r.get("outcome", "")).startswith("error:")]
     if len(searched) + len(skipped) + len(errors) != len(rows):
         return None, "A05 rows carry outcomes outside the searched/skipped/error vocabulary"
+    # A searched row's SDE must be a NUMBER. A string "9.3" (or a missing
+    # field) would silently fall out of every >= comparison below — the
+    # laundering hole through which an above-threshold hit dodges its
+    # disposition gates — so it is refused as unreadable, never skipped.
+    for r in searched:
+        if isinstance(r.get("sde"), bool) or not isinstance(
+                r.get("sde"), (int, float)):
+            return None, (f"A05 searched row TIC {r.get('tic')} carries a "
+                          f"non-numeric sde {r.get('sde')!r} — unreadable, "
+                          "and unreadable rows do not get to skip their gates")
     stage2 = [r for r in searched if r.get("stage2")]
-    above = [r for r in searched
-             if isinstance(r.get("sde"), (int, float))
-             and float(r["sde"]) >= A05_SDE_THRESHOLD]
+    above = [r for r in searched if float(r["sde"]) >= A05_SDE_THRESHOLD]
     leads = [r for r in searched
              if r.get("disposition") == "lead-awaiting-human-review"]
     derived = {"attempted": len(rows), "searched": len(searched),
@@ -2691,12 +2699,61 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
         return None, ("A05 triage block disagrees with the check's own line "
                       "through the measured floor points — the run moved its "
                       "own triage line")
+    if t_n != len(rows):
+        return None, (f"A05 triage n={t_n} disagrees with the receipt's own "
+                      f"{len(rows)} rows — inflating n raises the triage line, "
+                      "so n must re-derive from the slice itself")
 
-    # -- 3. stage-2 structure: both schemes' raw maxima, B, block length -----
+    # -- 2b. the stage-2 flag is DERIVED, never trusted ----------------------
+    # The engine promises stage2 for every row at or above the triage line
+    # (and for every predeclared control member). A row whose sde clears the
+    # verified line but whose flag says otherwise skipped a FAP it owed —
+    # the receipt is unreadable, whatever its counts say.
+    stage2_line = min(own_level, A05_SDE_THRESHOLD)
+    for r in searched:
+        if float(r["sde"]) >= stage2_line and r.get("stage2") is not True:
+            return None, (f"A05 TIC {r.get('tic')} sits at SDE "
+                          f"{float(r['sde']):.2f}, at or above the verified "
+                          f"stage-2 line {stage2_line:.2f}, with stage2="
+                          f"{r.get('stage2')!r} — the flag cannot excuse a "
+                          "row from the FAP it owes")
+
+    # -- 2c. control membership re-derives from the declared seed ------------
+    # The uniformity ensemble calibrates the calibrator, so its membership
+    # must be a pure function of (seed, control_fraction, tic) — decided
+    # before any photon. A schema>=1 receipt without the derivation inputs is
+    # unreadable; a membership flag that contradicts the derivation is forged.
+    if isinstance(report.get("schema"), (int, float)) and report["schema"] >= 1:
+        try:
+            ctrl_seed = int(report["seed"])
+            ctrl_frac = float(report["control_fraction"])
+        except (KeyError, TypeError, ValueError):
+            return None, ("A05 schema>=1 receipt does not declare seed + "
+                          "control_fraction — control membership cannot be "
+                          "re-derived, so the calibration is unreadable")
+        for r in searched:
+            digest = hashlib.sha256(
+                f"{ctrl_seed}|a05-control|{r.get('tic')}".encode()).digest()
+            expected = int.from_bytes(digest[:8], "big") / float(2**64) < ctrl_frac
+            if bool(r.get("control_subsample")) != expected:
+                return False, (f"A05 TIC {r.get('tic')} control_subsample="
+                               f"{r.get('control_subsample')!r} does not "
+                               "re-derive from the declared seed — the "
+                               "calibration ensemble was edited")
+
+    # -- 3. FAP structure: both schemes' raw maxima, B, block length ---------
+    # Applied to EVERY row that carries a fap block, not only stage-2 rows:
+    # a carried fap_empirical with no maxima behind it would otherwise slide
+    # straight into the uniformity ensemble (gate 10) unaudited.
+    fap_rows = [r for r in searched if r.get("fap") is not None]
     for r in stage2:
         fap = r.get("fap")
         if not isinstance(fap, dict):
             return None, f"A05 stage-2 row TIC {r.get('tic')} carries no fap block"
+    for r in fap_rows:
+        fap = r.get("fap")
+        if not isinstance(fap, dict):
+            return None, f"A05 row TIC {r.get('tic')} carries a non-dict fap block"
         try:
             b_val = int(fap["B"])
             int(fap["seed"])
@@ -2705,8 +2762,8 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
             block = schemes["block"]["raw_maxima"]
             block_days = float(schemes["block"]["block_days"])
         except (KeyError, TypeError, ValueError):
-            return None, (f"A05 stage-2 row TIC {r.get('tic')} is missing "
-                          "scheme maxima, seed, or block length")
+            return None, (f"A05 row TIC {r.get('tic')} carries a fap block "
+                          "missing scheme maxima, seed, or block length")
         if b_val < A05_MIN_B:
             return None, (f"A05 TIC {r.get('tic')} graded on B={b_val} < "
                           f"{A05_MIN_B} permutations")
@@ -2792,7 +2849,9 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
                           "folded d_min")
 
     # -- 8. recompute every empirical FAP from the stored maxima -------------
-    for r in stage2:
+    # Over every row carrying a fap block (control rows included), so no
+    # carried number reaches gate 10's ensemble without recomputation.
+    for r in fap_rows:
         fap = r["fap"]
         b_val = int(fap["B"])
         sde = float(r["sde"])
@@ -2814,7 +2873,7 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
                            f"max of its schemes ({graded:.6f})")
 
     # -- 9. refit every reported gumbel with the check's own fitter ----------
-    for r in stage2:
+    for r in fap_rows:
         fap = r["fap"]
         gumbel = fap.get("gumbel")
         if gumbel is None:
