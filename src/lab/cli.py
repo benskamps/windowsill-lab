@@ -174,7 +174,12 @@ def _select_next(milestones):
 
 
 def _receipt_records() -> list[tuple[str, str]]:
-    """``(stamp, milestone)`` tuples from the committed receipts ledger.
+    """``(stamp, milestone)`` tuples from the committed receipts ledger."""
+    return _planner_ledger()[0]
+
+
+def _planner_ledger() -> tuple[list[tuple[str, str]], dict[str, list[float]]]:
+    """``(records, durations)`` from the committed receipts ledger in ONE read.
 
     The thin disk reader that feeds ``curriculum.rotation_pointer``. Stamp is
     the receipt's ``generated_at``; an unreadable or unstamped receipt degrades
@@ -188,26 +193,39 @@ def _receipt_records() -> list[tuple[str, str]]:
     offsets, so it read the slug as ``2336-M02`` — in no rotation, therefore
     skipped — and the pointer fell back to the last legacy-named receipt
     forever. ``lab next`` picked the same slot 43 passes running.
+
+    ``durations`` maps milestone → the ``wall_seconds`` its receipts carry
+    (missing/absent entries simply don't appear): the planner's cost seam,
+    read from the same JSON decode the stamp already pays for, so cost data
+    is free exactly when it exists and honestly absent when it doesn't.
     """
     from . import publish as publish_mod
     records: list[tuple[str, str]] = []
+    durations: dict[str, list[float]] = {}
     receipts_dir = publish_mod.RECEIPTS_DIR
     if not receipts_dir.exists():
-        return records
+        return records, durations
     date_glob = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
     for path in sorted(receipts_dir.glob(f"run-{date_glob}-*.json")):
         date, _turn, slug = publish_mod._split_receipt_stem(
             path.stem[len("run-"):])
         if not slug:
             continue
+        stamp = None
+        wall = None
         try:
-            stamp = json.loads(path.read_text(encoding="utf-8")).get("generated_at")
+            data = json.loads(path.read_text(encoding="utf-8"))
+            stamp = data.get("generated_at")
+            wall = data.get("wall_seconds")
         except (OSError, ValueError):
-            stamp = None
+            pass
         if not (isinstance(stamp, str) and stamp):
             stamp = date
-        records.append((stamp, slug.upper()))
-    return records
+        mid = slug.upper()
+        records.append((stamp, mid))
+        if isinstance(wall, (int, float)) and wall > 0:
+            durations.setdefault(mid, []).append(float(wall))
+    return records, durations
 
 
 HELP = """lab — a windowsill physics lab.
@@ -883,6 +901,7 @@ def _run_next(args, dry, lock_path=None):
     mid: str | None = None
     subcmd: str | None = None
     reason = ""
+    planned_decision: dict | None = None
     if open_mid is not None and has_runner:
         gate_reason = curriculum.hardware_gate_reason(open_mid)
         if gate_reason is None:
@@ -898,31 +917,62 @@ def _run_next(args, dry, lock_path=None):
         else:
             why = f"open milestone {open_mid} is hardware-gated"
         try:
-            records = _receipt_records()
-            pointer = curriculum.rotation_pointer(records)
-            pick, rot_skips = curriculum.select_rotation(milestones, pointer)
-            skips.extend(rot_skips)
-            if pick is not None:
-                mid, subcmd = pick, RUNNERS[pick]
-                if pointer is not None:
-                    after = f"rotation continues after {pointer}"
+            records, durations = _planner_ledger()
+            status_map = {
+                str(m.get("id")): str(m.get("status"))
+                for m in milestones if m.get("id")
+            }
+            pick: str | None
+            try:
+                # TODO(hunt seam): plan_turn scores a synthetic A05-HUNT
+                # candidate, but the committed hunt receipts
+                # (reports/hunts/*.json) carry targets_searched without the
+                # sector's enumeration total, so remaining_targets cannot be
+                # derived cheaply from committed state. Wired OFF
+                # (hunt_status=None) until a hunt receipt carries its
+                # enumeration — honest over wishful.
+                pick, decision = curriculum.plan_turn(
+                    records, status_map, durations=durations, hunt_status=None,
+                )
+                skips.extend(decision.get("skips", []))
+                if pick is not None and pick in RUNNERS:
+                    mid, subcmd = pick, RUNNERS[pick]
+                    reason = f"{why} — {decision['reason']}"
+                    planned_decision = decision
                 else:
-                    # No receipt the rotation owns. The claim must match the
-                    # selection — say WHY the walk opens at slot 0, and name
-                    # the out-of-rotation receipt (manual M12/M16, a
-                    # just-verified frontier run) that is deliberately NOT
-                    # the pointer, rather than implying an empty ledger.
-                    newest = curriculum.newest_receipt_milestone(records)
-                    after = (
-                        "no receipts — rotation starts at its first slot"
-                        if newest is None else
-                        f"no rotation receipt yet (newest is {newest}, "
-                        "outside the rotation) — starting at its first slot"
-                    )
-                reason = f"{why} — {after}"
-            else:
-                subcmd = "run"
-                reason = f"{why} — rotation found nothing eligible — M01 heartbeat"
+                    subcmd = "run"
+                    reason = (f"{why} — planner found nothing eligible "
+                              "— M01 heartbeat")
+            except Exception as exc:  # noqa: BLE001 — the scheduler must never
+                # die of its own planner: fall back to the round-robin walk.
+                print(f"lab next · planner failed ({exc}) — "
+                      "falling back to the rotation walk")
+                pointer = curriculum.rotation_pointer(records)
+                pick, rot_skips = curriculum.select_rotation(milestones, pointer)
+                skips.extend(rot_skips)
+                if pick is not None:
+                    mid, subcmd = pick, RUNNERS[pick]
+                    if pointer is not None:
+                        after = f"rotation continues after {pointer}"
+                    else:
+                        # No receipt the rotation owns. The claim must match
+                        # the selection — say WHY the walk opens at slot 0,
+                        # and name the out-of-rotation receipt (manual
+                        # M12/M16, a just-verified frontier run) that is
+                        # deliberately NOT the pointer, rather than implying
+                        # an empty ledger.
+                        newest = curriculum.newest_receipt_milestone(records)
+                        after = (
+                            "no receipts — rotation starts at its first slot"
+                            if newest is None else
+                            f"no rotation receipt yet (newest is {newest}, "
+                            "outside the rotation) — starting at its first slot"
+                        )
+                    reason = f"{why} — {after}"
+                else:
+                    subcmd = "run"
+                    reason = (f"{why} — rotation found nothing eligible "
+                              "— M01 heartbeat")
         except Exception as exc:  # noqa: BLE001 — scheduler fails CLOSED, named
             subcmd = "run"
             reason = f"{why} — rotation unavailable ({exc}) — M01 heartbeat"
@@ -949,7 +999,17 @@ def _run_next(args, dry, lock_path=None):
         f"lab next → {label}: running `lab {subcmd}` "
         f"({reason}){option_note}"
     )
-    return main([subcmd, *passthrough])
+    if planned_decision is None:
+        return main([subcmd, *passthrough])
+    # A scheduled receipt carries its own selection rationale (the compact
+    # `planned` block); the seam is armed around exactly this one dispatch and
+    # cleared in the finally so a manual run can never inherit it.
+    from . import receipt as receipt_mod
+    receipt_mod.set_planned_decision(planned_decision)
+    try:
+        return main([subcmd, *passthrough])
+    finally:
+        receipt_mod.clear_planned_decision()
 
 
 def main(argv=None):
