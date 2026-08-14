@@ -160,7 +160,8 @@ A05_MACHINE_VOCABULARY = frozenset({
     "stellar-pulsation", "harmonic-alias", "eclipsing-binary-odd-even",
     "eclipsing-binary-secondary", "phased-brightening", "low-significance",
     "insufficient-coverage", "period-railed", "centroid-shift",
-    "recovery-or-known", "toi-known-fp", "lead-awaiting-human-review",
+    "recovery-or-known", "known-planet", "toi-known-fp",
+    "lead-awaiting-human-review",
 })
 # TFOPWG dispositions meaning "community already refuted this signal" — such
 # a row must be machine-dispositioned toi-known-fp and can be neither a

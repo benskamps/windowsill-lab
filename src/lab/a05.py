@@ -30,7 +30,11 @@ names it:
    A community-refuted false positive is NOT a recovery (nothing real was
    re-found) and NOT a lead (humans already killed it); it gets its own word,
    ``toi-known-fp``, and serves as a free validation target for the blend
-   gates. Treated the same: TFOPWG ``FA`` (false alarm).
+   gates. Treated the same: TFOPWG ``FA`` (false alarm). The inverse boundary
+   (WASP-18): a CONFIRMED planet whose only physics verdict is the bare
+   ``eclipsing-binary-secondary`` — its own occultation, expected physics,
+   not an EB tell — is regraded ``known-planet`` with the verdict preserved
+   as evidence; see :func:`resolve_catalog`.
 4. **the terminal machine state**: an uncatalogued survivor is
    ``lead-awaiting-human-review`` with a full evidence dossier. The machine's
    vocabulary has no word for "planet" — contract rule 3.
@@ -106,7 +110,8 @@ MACHINE_DISPOSITIONS = (
     "stellar-pulsation", "harmonic-alias", "eclipsing-binary-odd-even",
     "eclipsing-binary-secondary", "phased-brightening", "low-significance",
     "insufficient-coverage", "period-railed", "centroid-shift",
-    "recovery-or-known", "toi-known-fp", "lead-awaiting-human-review",
+    "recovery-or-known", "known-planet", "toi-known-fp",
+    "lead-awaiting-human-review",
 )
 
 #: Prior false-alarm-floor measurements, appended to every receipt so the
@@ -373,6 +378,19 @@ def resolve_catalog(row: dict, catalog_row: dict,
       nor a lead — it is a validation target for the blend gates);
     * uncatalogued -> ``lead-awaiting-human-review`` (dossier attached by the
       caller, which still holds the curve).
+
+    A physics verdict normally outranks catalog identity — with ONE carve-out,
+    the WASP-18 boundary: a hot Jupiter's occultation is EXPECTED physics, not
+    an EB tell (WASP-18 b's real 399 ppm secondary dispositioned its own
+    recovery ``eclipsing-binary-secondary`` with no way back). When the
+    catalog identifies a CONFIRMED planet — a designated recovery target, a
+    ps-table match, or TOI disposition KP/CP — a BARE
+    ``eclipsing-binary-secondary`` verdict is outranked and the row becomes
+    ``known-planet``, with the physics verdict preserved verbatim as
+    ``disposition_evidence.initial_verdict`` (the TIC 140940493 pattern:
+    never erase what the flux first said). Catalog identity outranks ONLY
+    that verdict, and ONLY for confirmed planets; every other physics rung
+    (odd-even, pulsation, centroid…) still stands.
     """
     row["disposition_evidence"]["catalog"] = catalog_row
     row.pop("pending_catalog", None)
@@ -390,7 +408,14 @@ def resolve_catalog(row: dict, catalog_row: dict,
                                 and row["sde"] >= a04.SDE_THRESHOLD)
     if row.get("disposition") is not None:
         # A physics verdict (pulsation, EB, centroid…) outranks catalog
-        # identity: the ladder never renames what the flux already named.
+        # identity: the ladder never renames what the flux already named —
+        # except the WASP-18 boundary (see docstring): a confirmed planet's
+        # bare secondary verdict is its own occultation, not an EB tell.
+        confirmed = bool(designated or catalog_row.get("known_planet")
+                         or disp in ("KP", "CP"))
+        if confirmed and row["disposition"] == "eclipsing-binary-secondary":
+            row["disposition_evidence"]["initial_verdict"] = row["disposition"]
+            row["disposition"] = "known-planet"
         return
     if known_toi is not None and disp in TOI_REFUTED_DISPOSITIONS:
         row["disposition"] = "toi-known-fp"

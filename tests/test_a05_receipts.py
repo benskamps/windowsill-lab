@@ -455,6 +455,93 @@ def test_toi189_fp_is_not_a_recovery(hunt):
     assert ok is False and "toi-known-fp" in detail
 
 
+# ---------------------------------------- (6b) the WASP-18 boundary ----------
+
+def _eb_secondary_row(tic: str = "100100827") -> dict:
+    return {"tic": tic, "outcome": "searched", "sde": 12.0,
+            "period_days": 0.9414, "depth": 0.009, "phase": 0.1,
+            "disposition": "eclipsing-binary-secondary",
+            "disposition_evidence": {
+                "vet": {"verdict": "eclipsing-binary-secondary"}},
+            "known_planet": None, "published_period_days": None}
+
+
+def _empty_catalog(tic: str) -> dict:
+    return {"tic": tic, "known_toi": None, "known_planet": None,
+            "published_period_days": None, "disposition": None}
+
+
+def test_confirmed_planet_bare_secondary_is_regraded_known_planet():
+    """A hot Jupiter's occultation is expected physics, not an EB tell:
+    catalog identity outranks a BARE secondary verdict for confirmed planets,
+    preserving the physics verdict as evidence (the 140940493 pattern)."""
+    row = _eb_secondary_row()
+    a05.resolve_catalog(row, _empty_catalog(row["tic"]),
+                        a04.RECOVERY_TARGETS["100100827"])
+    assert row["disposition"] == "known-planet"
+    assert (row["disposition_evidence"]["initial_verdict"]
+            == "eclipsing-binary-secondary")
+    assert row["recovered"] is True
+    assert row["disposition"] in a05.MACHINE_DISPOSITIONS
+    # A ps-match (no designation) is also a confirmed planet.
+    row_ps = _eb_secondary_row("42")
+    cat = dict(_empty_catalog("42"), known_planet="WASP-18 b",
+               published_period_days=0.94145223)
+    a05.resolve_catalog(row_ps, cat, None)
+    assert row_ps["disposition"] == "known-planet"
+
+
+def test_secondary_verdict_stands_without_a_confirmed_planet():
+    row = _eb_secondary_row("43")
+    a05.resolve_catalog(row, _empty_catalog("43"), None)
+    assert row["disposition"] == "eclipsing-binary-secondary"
+    assert "initial_verdict" not in row["disposition_evidence"]
+
+
+def test_other_physics_verdicts_are_never_outranked():
+    """ONLY the bare secondary is expected planet physics — an odd-even tell
+    on a 'confirmed planet' still stands."""
+    row = _eb_secondary_row()
+    row["disposition"] = "eclipsing-binary-odd-even"
+    a05.resolve_catalog(row, _empty_catalog(row["tic"]),
+                        a04.RECOVERY_TARGETS["100100827"])
+    assert row["disposition"] == "eclipsing-binary-odd-even"
+
+
+_WASP18_CACHE = None
+
+
+def _wasp18_path():
+    from lab import a01
+    return a01.CACHE_DIR / _fname("100100827")
+
+
+@pytest.mark.skipif(not _wasp18_path().exists(),
+                    reason="publisher-local cache")
+def test_cached_wasp18_recovery_walks_the_known_planet_carveout():
+    """The real curve: the extended ladder dispositions WASP-18 b's recovery
+    eclipsing-binary-secondary off its genuine ~400 ppm occultation, and the
+    catalog rung must hand it back its identity."""
+    curve = a05.curve_from_blob(_wasp18_path().read_bytes())
+    fw, components = a05_vetting.prewhiten(curve["t"], curve["f"])
+    det = a04.blind_search(curve["t"], fw)
+    assert det.sde >= a04.SDE_THRESHOLD
+    vet = a05_vetting.extended_vet(curve["t"], fw, det, components=components)
+    assert vet["verdict"] == "eclipsing-binary-secondary"
+    row = {"tic": "100100827", "outcome": "searched", "sde": float(det.sde),
+           "period_days": float(det.period_days), "depth": float(det.depth),
+           "phase": float(det.phase),
+           "disposition": vet["verdict"],
+           "disposition_evidence": {"vet": vet},
+           "known_planet": None, "published_period_days": None}
+    a05.resolve_catalog(row, _empty_catalog("100100827"),
+                        a04.RECOVERY_TARGETS["100100827"])
+    assert row["disposition"] == "known-planet"
+    assert (row["disposition_evidence"]["initial_verdict"]
+            == "eclipsing-binary-secondary")
+    assert row["recovered"] is True
+
+
 # ------------------------------------------------- (7) runner resumability ---
 
 RESUME_TICS = ["911", "912", "913"]
