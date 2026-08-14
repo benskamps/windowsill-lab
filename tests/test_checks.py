@@ -1456,7 +1456,7 @@ def test_a05_own_gumbel_fitter_agrees_with_the_engine():
     """The check refits reported Gumbel blocks with its OWN pure-python MLE;
     on a true Gumbel sample it must land where the engine's fitter lands,
     or the refit gate would flag honest receipts."""
-    import numpy as np
+    np = pytest.importorskip("numpy")
     from lab import a05_stats
     x = np.random.default_rng(7).gumbel(5.0, 0.6, 256)
     engine = a05_stats.gumbel_fit(x)
@@ -1469,7 +1469,7 @@ def test_a05_own_gumbel_fitter_agrees_with_the_engine():
 
 
 def test_a05_own_ks_matches_the_engine_statistic():
-    import numpy as np
+    np = pytest.importorskip("numpy")
     from lab import a05_stats
     ps = list(np.random.default_rng(3).uniform(size=40))
     stat, _ = a05_stats.uniformity_stat(np.asarray(ps))
@@ -1480,6 +1480,7 @@ def test_a05_triage_constants_mirror_the_engine():
     """The check re-derives the triage line from its own floor points; those
     points must stay pinned to the engine's, or a drifted engine would grade
     against a different line than the one it used."""
+    pytest.importorskip("numpy")
     from lab import a05_stats
     assert checks.A05_TRIAGE_FLOOR_POINTS == a05_stats.TRIAGE_FLOOR_POINTS
     assert checks.A05_TRIAGE_SAFETY_MARGIN == a05_stats.TRIAGE_SAFETY_MARGIN
