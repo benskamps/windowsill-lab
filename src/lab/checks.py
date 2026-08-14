@@ -94,6 +94,75 @@ A04_EXPECTED_INJECTIONS = (
     (0.002, 5.1),
 )
 A04_SERENDIPITOUS_RECOVERY = ("WASP-20 b", 4.8996461)
+
+# --- A05 survey-hunt gate. Every tolerance is OWNED HERE, never read from the
+# receipt: a run that could carry its own thresholds could grade itself.
+# Detection threshold and permutation-null contract (mirrors the engine's
+# design constants; the check restates them so a drifted engine FAILS rather
+# than silently re-defining the gate).
+A05_SDE_THRESHOLD = 8.0
+# Fewest permutations a graded FAP may rest on. 64 resolves the 0.05 band the
+# uniformity test grades (grid 1/65) and doubles the Gumbel fitter's minimum
+# sample; production runs at B=256 — the check floors the resolution, it does
+# not pin the production choice.
+A05_MIN_B = 64
+# The block scheme's declared block length; a receipt claiming a different
+# blocking is calibrated against a different null than the one audited.
+A05_BLOCK_DAYS = 0.75
+# The two measured floor points the triage line is drawn through, and the
+# safety margin subtracted — the check re-derives the line and refuses a
+# receipt whose triage block disagrees (a run must not move its own line).
+A05_TRIAGE_FLOOR_POINTS = ((22, 6.6), (153, 7.65))
+A05_TRIAGE_SAFETY_MARGIN = 1.0
+# Prior floor-history points every receipt must carry forward (source, n,
+# max SDE): dropping history is how an extrapolation stops being testable.
+A05_FLOOR_PRIOR = (("run-2026-08-08-2338-a04", 22, 6.6),
+                   ("hunt-2026-08-14-s2", 153, 7.65))
+# Asymptotic one-sample KS 5% coefficient for the uniformity re-run, and the
+# smallest control ensemble worth grading (below 5 the KS test has no power
+# and the calibration claim would be decorative).
+A05_UNIFORMITY_CRIT = 1.358
+A05_UNIFORMITY_MIN_N = 5
+# Empirical FAPs are exact rationals (1+k)/(B+1); recomputation must agree to
+# float round-off, nothing looser.
+A05_FAP_ABS_TOL = 1e-9
+# Gumbel refit agreement: the check's own MLE on the stored maxima must land
+# within this relative band of the receipt's (mu, beta). Same data, same
+# model — 5 % is generous for two correct fitters and far too tight for a
+# fabricated block.
+A05_GUMBEL_RTOL = 0.05
+# The predeclared injection ladder every Stage-2 and recovery host must carry
+# in full — echoed, not imported, so a lane that shrank its ladder fails.
+A05_INJECTION_DEPTHS = (0.002, 0.004, 0.010)
+A05_INJECTION_PERIODS = (2.3, 3.7, 5.1)
+A05_INJECTION_EPOCHS = 2
+A05_INJECTION_RULES = ("sde-threshold", "fap-graded")
+# Spot reproduction: recomputed null maxima from the SHA-256-pinned FITS must
+# match the stored ones within this relative tolerance. Seed-pinned replay is
+# bitwise on one platform; the band absorbs cross-platform libm/BLAS last-bit
+# drift and nothing else — a wrong seed or tampered maxima miss by orders of
+# magnitude.
+A05_SPOT_RTOL = 1e-5
+# Budget bookkeeping: the reported survey share must re-derive from the rows'
+# own wall clocks within this relative band, and no row may exceed its
+# declared per-target share of the soft budget by more than the same slack.
+A05_BUDGET_RTOL = 0.05
+# The machine's ENTIRE disposition vocabulary, restated. "planet" is absent
+# by design and its appearance anywhere is an affirmative contract violation,
+# not a formatting problem.
+A05_MACHINE_VOCABULARY = frozenset({
+    "stellar-pulsation", "harmonic-alias", "eclipsing-binary-odd-even",
+    "eclipsing-binary-secondary", "phased-brightening", "low-significance",
+    "insufficient-coverage", "period-railed", "centroid-shift",
+    "recovery-or-known", "toi-known-fp", "lead-awaiting-human-review",
+})
+# TFOPWG dispositions meaning "community already refuted this signal" — such
+# a row must be machine-dispositioned toi-known-fp and can be neither a
+# recovery nor a lead (the TIC 278866211 / TOI 189.01 lesson).
+A05_TOI_REFUTED = ("FP", "FA")
+# Panels a lead's dossier must carry (echo of the dossier contract).
+A05_DOSSIER_PANELS = ("fold_p", "fold_half_p", "fold_2p",
+                      "odd_even", "secondary", "self_injection")
 # Residual-entropy tolerance for M13. A physically-justified band, NOT a fudge: the
 # integrated residual carries a few-percent systematic from the finite temperature
 # window and the trapezoidal integration of a Monte-Carlo C(T). Empirically it lands
@@ -2460,6 +2529,417 @@ def check_a04(report: dict) -> tuple[bool | None, str]:
     return True, detail + " — known planets recovered by a search never told about them"
 
 
+def _a05_gumbel_mle(x: list[float]) -> tuple[float, float] | None:
+    """The check's OWN Gumbel MLE — independent code, same estimator.
+
+    Method-of-moments seed, 1-D Newton on the profile equation in beta, mu in
+    closed form. Written in pure Python against plain lists so the refit
+    shares nothing with the engine but the mathematics; if the two disagree
+    beyond ``A05_GUMBEL_RTOL`` on the same stored maxima, one of them is
+    wrong or the receipt's block was not fit from these numbers.
+    """
+    n = len(x)
+    if n < 8:
+        return None
+    mean = sum(x) / n
+    var = sum((v - mean) ** 2 for v in x) / n
+    if var <= 0:
+        return None
+    beta = math.sqrt(var) * math.sqrt(6.0) / math.pi
+    shift = min(x)
+    xs = [v - shift for v in x]
+    for _ in range(200):
+        w = [math.exp(-v / beta) for v in xs]
+        s0 = sum(w)
+        s1 = sum(v * wi for v, wi in zip(x, w))
+        s2 = sum(v * v * wi for v, wi in zip(x, w))
+        g = beta - mean + s1 / s0
+        gprime = 1.0 + (s2 * s0 - s1 * s1) / (beta * beta * s0 * s0)
+        beta_next = beta - g / gprime
+        if beta_next <= 0:
+            beta_next = beta / 2.0
+        if abs(beta_next - beta) < 1e-12 * max(1.0, beta):
+            beta = beta_next
+            break
+        beta = beta_next
+    if not math.isfinite(beta) or beta <= 0:
+        return None
+    mu = shift - beta * math.log(
+        sum(math.exp(-v / beta) for v in xs) / n)
+    if not math.isfinite(mu):
+        return None
+    return mu, beta
+
+
+def _a05_ks_uniform(ps: list[float]) -> float:
+    """One-sample KS distance from Uniform(0,1), both sides of every step."""
+    s = sorted(ps)
+    n = len(s)
+    return max(max((i + 1) / n - v for i, v in enumerate(s)),
+               max(v - i / n for i, v in enumerate(s)))
+
+
+def _a05_spot(report: dict, cache_dir) -> tuple[bool | None, str]:
+    """Spot reproduction: one stored null, re-derived from pinned bytes.
+
+    The row is picked by hashing the receipt's own content (so neither the
+    run nor the checker chooses a convenient target), its cached FITS is
+    verified against the row's SHA-256, and the iid-scheme null maxima are
+    recomputed from the bytes through the pipeline's own loading path with
+    the receipt's declared grid and the row's pinned seed. Missing or
+    corrupt cache -> ``None`` (nothing to re-derive from); a mismatch beyond
+    ``A05_SPOT_RTOL`` -> ``False`` (the receipt does not reproduce).
+    """
+    rows = [r for r in report.get("targets", [])
+            if r.get("outcome") == "searched" and r.get("stage2")
+            and r.get("fap") and r.get("cache_sha256") and r.get("cache_file")]
+    if not rows:
+        return None, "no stage-2 row carries a pinned cache to reproduce from"
+    rows.sort(key=lambda r: str(r["tic"]))
+    content = json.dumps(
+        [[str(r["tic"]), r["cache_sha256"], r["fap"]["seed"]] for r in rows],
+        sort_keys=True)
+    pick = rows[int(hashlib.sha256(content.encode()).hexdigest()[:8], 16)
+                % len(rows)]
+    path = Path(cache_dir) / str(pick["cache_file"])
+    if not path.exists():
+        return None, f"spot cache missing: {path.name}"
+    blob = path.read_bytes()
+    if hashlib.sha256(blob).hexdigest() != pick["cache_sha256"]:
+        return None, f"spot cache sha256 mismatch for {path.name}"
+    # The replay needs the numeric stack; import it only here so every other
+    # gate stays stdlib and a numpy-less environment still grades them.
+    from . import a05 as _a05           # noqa: PLC0415
+    from . import a05_stats as _stats   # noqa: PLC0415
+    from . import a05_vetting as _vet   # noqa: PLC0415
+    grid = report.get("search_grid") or {}
+    curve = _a05.curve_from_blob(blob)
+    fw, _ = _vet.prewhiten(curve["t"], curve["f"],
+                           **(grid.get("prewhiten") or {}))
+    got = _stats.batched_null(curve["t"], fw, B=int(pick["fap"]["B"]),
+                              scheme="iid", seed=int(pick["fap"]["seed"]),
+                              n_periods=int(grid.get("n_periods", 3000)))
+    stored = [float(v) for v in pick["fap"]["schemes"]["iid"]["raw_maxima"]]
+    if len(stored) != len(got):
+        return False, f"spot row TIC {pick['tic']}: stored {len(stored)} maxima, recomputed {len(got)}"
+    worst = max(abs(a - b) / max(abs(b), 1e-8) for a, b in zip(stored, got))
+    if worst > A05_SPOT_RTOL:
+        return False, (f"spot reproduction FAILED on TIC {pick['tic']}: "
+                       f"max relative deviation {worst:.2e} > {A05_SPOT_RTOL:g}")
+    return True, (f"spot: TIC {pick['tic']} null re-derived from pinned FITS, "
+                  f"max dev {worst:.1e}")
+
+
+def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
+    """Re-derive an A05 hunt receipt without trusting one carried number.
+
+    Gate order is the argument: structure first (a receipt the checker cannot
+    read is ``None`` — unreadable, never negative), then recomputation (a
+    number that contradicts its own raw evidence is ``False`` — fabricated,
+    never merely absent), then the controls (a failed control makes the whole
+    survey UNINTERPRETABLE, so ``None``), then the one physical replay. This
+    mirrors the check_a04 doctrine: broken evidence must never be mistaken
+    for an empty sky.
+    """
+    if report.get("experiment") != "a05-survey-hunt":
+        return None, "not an A05 survey hunt receipt"
+    rows = report.get("targets")
+    if not isinstance(rows, list) or not rows:
+        return None, "A05 receipt carries no target rows"
+
+    # -- 1. counts reconcile from ROWS, never from the counts block ----------
+    searched = [r for r in rows if r.get("outcome") == "searched"]
+    skipped = [r for r in rows if r.get("outcome") == "skipped-no-product"]
+    errors = [r for r in rows if str(r.get("outcome", "")).startswith("error:")]
+    if len(searched) + len(skipped) + len(errors) != len(rows):
+        return None, "A05 rows carry outcomes outside the searched/skipped/error vocabulary"
+    stage2 = [r for r in searched if r.get("stage2")]
+    above = [r for r in searched
+             if isinstance(r.get("sde"), (int, float))
+             and float(r["sde"]) >= A05_SDE_THRESHOLD]
+    leads = [r for r in searched
+             if r.get("disposition") == "lead-awaiting-human-review"]
+    derived = {"attempted": len(rows), "searched": len(searched),
+               "skipped": len(skipped), "errors": len(errors),
+               "stage2": len(stage2), "above_threshold": len(above),
+               "dispositioned": sum(1 for r in above if r.get("disposition")),
+               "leads_awaiting_human_review": len(leads)}
+    counts = report.get("counts") or {}
+    mismatched = {k: (counts.get(k), v) for k, v in derived.items()
+                  if counts.get(k) != v}
+    if mismatched:
+        return None, (f"A05 counts do not reconcile with the rows "
+                      f"(stated, derived): {mismatched} — unreadable by "
+                      "contract rule 2")
+
+    # -- 2. the triage line is the check's line, not the run's ---------------
+    (n1, f1), (n2, f2) = A05_TRIAGE_FLOOR_POINTS
+    beta = (f2 - f1) / (math.log(n2) - math.log(n1))
+    mu = f1 - beta * math.log(n1)
+    triage = report.get("triage") or {}
+    try:
+        t_n = int(triage["n"])
+        own_level = mu + beta * math.log(t_n) - A05_TRIAGE_SAFETY_MARGIN
+        agree = (math.isclose(float(triage["mu"]), mu, rel_tol=1e-9)
+                 and math.isclose(float(triage["beta"]), beta, rel_tol=1e-9)
+                 and math.isclose(float(triage["safety_margin"]),
+                                  A05_TRIAGE_SAFETY_MARGIN, rel_tol=1e-9)
+                 and math.isclose(float(triage["level"]), own_level, rel_tol=1e-9))
+    except (KeyError, TypeError, ValueError):
+        return None, "A05 triage block is absent or malformed"
+    if not agree:
+        return None, ("A05 triage block disagrees with the check's own line "
+                      "through the measured floor points — the run moved its "
+                      "own triage line")
+
+    # -- 3. stage-2 structure: both schemes' raw maxima, B, block length -----
+    for r in stage2:
+        fap = r.get("fap")
+        if not isinstance(fap, dict):
+            return None, f"A05 stage-2 row TIC {r.get('tic')} carries no fap block"
+        try:
+            b_val = int(fap["B"])
+            int(fap["seed"])
+            schemes = fap["schemes"]
+            iid = schemes["iid"]["raw_maxima"]
+            block = schemes["block"]["raw_maxima"]
+            block_days = float(schemes["block"]["block_days"])
+        except (KeyError, TypeError, ValueError):
+            return None, (f"A05 stage-2 row TIC {r.get('tic')} is missing "
+                          "scheme maxima, seed, or block length")
+        if b_val < A05_MIN_B:
+            return None, (f"A05 TIC {r.get('tic')} graded on B={b_val} < "
+                          f"{A05_MIN_B} permutations")
+        if len(iid) != b_val or len(block) != b_val:
+            return None, (f"A05 TIC {r.get('tic')} stores "
+                          f"{len(iid)}/{len(block)} maxima for B={b_val}")
+        if not math.isclose(block_days, A05_BLOCK_DAYS, rel_tol=1e-9):
+            return None, (f"A05 TIC {r.get('tic')} declares block_days="
+                          f"{block_days}, contract is {A05_BLOCK_DAYS}")
+
+    # -- 4. every above-threshold row is dispositioned, in vocabulary --------
+    for r in above:
+        disp = r.get("disposition")
+        if not disp:
+            return None, (f"A05 TIC {r.get('tic')} sits above SDE "
+                          f"{A05_SDE_THRESHOLD:g} with no machine disposition "
+                          "— the run stopped halfway, unreadable")
+    for r in searched:
+        disp = r.get("disposition")
+        if disp is None:
+            continue
+        if disp not in A05_MACHINE_VOCABULARY:
+            return False, (f"A05 TIC {r.get('tic')} carries disposition "
+                           f"{disp!r}, outside the machine vocabulary — the "
+                           "machine has no word for 'planet' and may not "
+                           "invent one")
+
+    # -- 5. a community-refuted TOI is never a recovery, never a lead --------
+    recovery_tics = {str(r.get("tic")) for r in (report.get("recoveries") or [])}
+    for r in searched:
+        cat = (r.get("disposition_evidence") or {}).get("catalog") or {}
+        refuted = (cat.get("known_toi") is not None
+                   and str(cat.get("disposition") or "").strip().upper()
+                   in A05_TOI_REFUTED)
+        if refuted and float(r.get("sde", 0.0)) >= A05_SDE_THRESHOLD:
+            if r.get("disposition") != "toi-known-fp":
+                return False, (f"A05 TIC {r.get('tic')} matches a TOI with "
+                               f"TFOPWG disposition "
+                               f"{cat.get('disposition')!r} but is "
+                               f"dispositioned {r.get('disposition')!r} — a "
+                               "refuted TOI must be toi-known-fp")
+        if r.get("disposition") == "toi-known-fp" and str(r.get("tic")) in recovery_tics:
+            return False, (f"A05 TIC {r.get('tic')} is toi-known-fp AND "
+                           "listed as a recovery — a refuted signal re-found "
+                           "is not a recovery")
+
+    # -- 6. every lead carries a full dossier --------------------------------
+    for r in leads:
+        dossier = r.get("dossier")
+        if not isinstance(dossier, dict):
+            return None, (f"A05 lead TIC {r.get('tic')} carries no dossier — "
+                          "a lead without evidence is not reviewable")
+        missing = [p for p in A05_DOSSIER_PANELS if p not in dossier]
+        if missing:
+            return None, (f"A05 lead TIC {r.get('tic')} dossier is missing "
+                          f"panels: {missing}")
+        if dossier.get("status") != "lead-awaiting-human-review":
+            return False, (f"A05 lead TIC {r.get('tic')} dossier status is "
+                           f"{dossier.get('status')!r} — the machine-terminal "
+                           "state is lead-awaiting-human-review")
+
+    # -- 7. the injection ladder, in full, per stage-2 host ------------------
+    full_ladder = {(d, p, e) for d in A05_INJECTION_DEPTHS
+                   for p in A05_INJECTION_PERIODS
+                   for e in range(A05_INJECTION_EPOCHS)}
+    for r in stage2:
+        inj = r.get("injections")
+        if not isinstance(inj, list) or not inj:
+            return None, (f"A05 stage-2 host TIC {r.get('tic')} carries no "
+                          "injection block — its depth limit was never measured")
+        cells = {(float(i.get("depth", -1)), float(i.get("period_days", -1)),
+                  int(i.get("epoch", -1))) for i in inj}
+        missing_cells = full_ladder - cells
+        if missing_cells:
+            return None, (f"A05 TIC {r.get('tic')} injection ladder is "
+                          f"missing {len(missing_cells)} predeclared cell(s)")
+        if r.get("injections_recovery_rule") not in A05_INJECTION_RULES:
+            return None, (f"A05 TIC {r.get('tic')} does not declare its "
+                          "injection recovery rule — an undeclared rule "
+                          "cannot be audited")
+        if not isinstance(r.get("d_min"), dict):
+            return None, (f"A05 TIC {r.get('tic')} carries injections but no "
+                          "folded d_min")
+
+    # -- 8. recompute every empirical FAP from the stored maxima -------------
+    for r in stage2:
+        fap = r["fap"]
+        b_val = int(fap["B"])
+        sde = float(r["sde"])
+        recomputed = {}
+        for name in ("iid", "block"):
+            maxima = [float(v) for v in fap["schemes"][name]["raw_maxima"]]
+            k = sum(1 for v in maxima if v >= sde)
+            p = (1 + k) / (b_val + 1)
+            recomputed[name] = p
+            stored = float(fap["schemes"][name]["fap_empirical"])
+            if abs(stored - p) > A05_FAP_ABS_TOL:
+                return False, (f"A05 TIC {r['tic']} {name} fap_empirical "
+                               f"{stored:.6f} does not recompute from its own "
+                               f"maxima ({p:.6f}) — fabricated or corrupted")
+        graded = max(recomputed.values())
+        if abs(float(fap.get("fap_graded", -1)) - graded) > A05_FAP_ABS_TOL:
+            return False, (f"A05 TIC {r['tic']} fap_graded "
+                           f"{fap.get('fap_graded')} is not the conservative "
+                           f"max of its schemes ({graded:.6f})")
+
+    # -- 9. refit every reported gumbel with the check's own fitter ----------
+    for r in stage2:
+        fap = r["fap"]
+        gumbel = fap.get("gumbel")
+        if gumbel is None:
+            continue
+        scheme = fap.get("graded_scheme")
+        if scheme not in ("iid", "block"):
+            return None, f"A05 TIC {r['tic']} reports a gumbel with no graded scheme"
+        maxima = [float(v) for v in fap["schemes"][scheme]["raw_maxima"]]
+        refit = _a05_gumbel_mle(maxima)
+        if refit is None:
+            return False, (f"A05 TIC {r['tic']} reports a gumbel block the "
+                           "check's own fitter refuses on the same maxima")
+        mu_fit, beta_fit = refit
+        try:
+            mu_rep, beta_rep = float(gumbel["mu"]), float(gumbel["beta"])
+        except (KeyError, TypeError, ValueError):
+            return None, f"A05 TIC {r['tic']} gumbel block is malformed"
+        if (abs(mu_rep - mu_fit) > A05_GUMBEL_RTOL * max(1.0, abs(mu_fit))
+                or abs(beta_rep - beta_fit) > A05_GUMBEL_RTOL * max(0.1, abs(beta_fit))):
+            return False, (f"A05 TIC {r['tic']} gumbel (mu={mu_rep:.3f}, "
+                           f"beta={beta_rep:.3f}) disagrees with the check's "
+                           f"refit (mu={mu_fit:.3f}, beta={beta_fit:.3f})")
+
+    # -- 10. uniformity: the calibration of the calibrator, re-run -----------
+    uniformity = report.get("uniformity") or {}
+    p_values = uniformity.get("p_values")
+    if not isinstance(p_values, list) or len(p_values) < A05_UNIFORMITY_MIN_N:
+        return None, (f"A05 uniformity control has "
+                      f"{len(p_values) if isinstance(p_values, list) else 0} "
+                      f"p-values; need >= {A05_UNIFORMITY_MIN_N} to grade the "
+                      "calibrator")
+    control_ps = sorted(
+        float(r["fap"]["schemes"]["iid"]["fap_empirical"])
+        for r in searched if r.get("control_subsample") and r.get("fap"))
+    if [round(v, 12) for v in sorted(float(p) for p in p_values)] != [
+            round(v, 12) for v in control_ps]:
+        return False, ("A05 uniformity p-values are not the control rows' own "
+                       "iid FAPs — the ensemble was edited")
+    ks = _a05_ks_uniform([float(p) for p in p_values])
+    ks_pass = ks < A05_UNIFORMITY_CRIT / math.sqrt(len(p_values))
+    if uniformity.get("pass") is not bool(ks_pass) or not math.isclose(
+            float(uniformity.get("ks_stat", -1)), ks, rel_tol=1e-6, abs_tol=1e-9):
+        return False, (f"A05 uniformity block (D={uniformity.get('ks_stat')}, "
+                       f"pass={uniformity.get('pass')}) contradicts the "
+                       f"re-run (D={ks:.4f}, pass={ks_pass})")
+    if not ks_pass:
+        return None, (f"A05 UNIFORMITY CONTROL FAILED (D={ks:.3f} over "
+                      f"n={len(p_values)}): the permutation null does not "
+                      "describe this sample's noise, so every graded FAP is "
+                      "uninterpretable, not negative")
+
+    # -- 11. placebo: the whole ladder must refuse a scrambled sky -----------
+    placebo = report.get("placebo") or {}
+    prows = placebo.get("rows")
+    if not isinstance(prows, list) or not prows:
+        return None, "A05 placebo block carries no per-curve rows to re-derive"
+    n_pc = sum(1 for p in prows
+               if (p.get("vetting") or {}).get("verdict") == "planet-candidate")
+    if placebo.get("n_scrambled") != len(prows) or placebo.get(
+            "planet_candidates") != n_pc or placebo.get("pass") is not (n_pc == 0):
+        return False, ("A05 placebo summary contradicts its own rows "
+                       f"(rows say {len(prows)} scrambled, {n_pc} candidates)")
+    if n_pc > 0:
+        return None, (f"A05 PLACEBO FAILED — {n_pc} planet-candidate(s) from "
+                      "phase-scrambled curves: the pipeline manufactures "
+                      "discoveries and nothing it reports is interpretable")
+
+    # -- 12. budget: shares re-derived from the rows' own clocks -------------
+    budget = report.get("budget") or {}
+    try:
+        soft = float(budget["soft_budget_seconds"])
+        share = float(budget["per_target_share"])
+        reported_sum = float(budget["survey_sum_reported"])
+    except (KeyError, TypeError, ValueError):
+        return None, "A05 budget block is absent or malformed"
+    if not (soft > 0 and 0 < share <= 1):
+        return None, "A05 budget declares a non-positive budget or share"
+    walls = [float(r.get("wall_seconds") or 0.0) for r in rows]
+    derived_sum = sum(walls) / soft
+    if abs(derived_sum - reported_sum) > A05_BUDGET_RTOL * max(derived_sum, 0.01):
+        return False, (f"A05 survey_sum_reported {reported_sum:.4f} does not "
+                       f"re-derive from the rows ({derived_sum:.4f})")
+    worst = max(walls, default=0.0)
+    if worst > share * soft * (1 + A05_BUDGET_RTOL):
+        return False, (f"A05 a single target consumed {worst:.0f}s, over its "
+                       f"declared share ({share:.3f} of {soft:.0f}s)")
+
+    # -- 13. floor history: the extrapolation stays testable -----------------
+    history = report.get("floor_history")
+    if not isinstance(history, list):
+        return None, "A05 receipt carries no floor_history"
+    by_source = {h.get("source"): h for h in history if isinstance(h, dict)}
+    for source, n_pt, floor_pt in A05_FLOOR_PRIOR:
+        h = by_source.get(source)
+        if (h is None or h.get("n") != n_pt
+                or not math.isclose(float(h.get("floor_max", -1)), floor_pt,
+                                    rel_tol=1e-9)):
+            return None, (f"A05 floor_history dropped or altered the prior "
+                          f"point {source} — the triage extrapolation is no "
+                          "longer testable")
+    if len(history) <= len(A05_FLOOR_PRIOR):
+        return None, ("A05 floor_history carries no point from this run — "
+                      "every hunt must append its own measured floor")
+
+    # -- 14. spot reproduction from the SHA-256-pinned cache -----------------
+    from . import a01 as _a01           # noqa: PLC0415 — path constant only
+    spot_ok, spot_txt = _a05_spot(report, cache_dir or _a01.CACHE_DIR)
+    if spot_ok is None:
+        return None, f"A05 receipt is internally consistent but {spot_txt} — cannot re-derive the physics"
+    if spot_ok is False:
+        return False, spot_txt
+
+    detail = (
+        f"sector {report.get('sector')}: {derived['searched']}/"
+        f"{derived['attempted']} searched, {derived['stage2']} stage-2 "
+        f"(all FAPs recomputed from raw maxima, graded = conservative max), "
+        f"{derived['above_threshold']} above SDE {A05_SDE_THRESHOLD:g} all "
+        f"dispositioned in-vocabulary, uniformity D={ks:.3f} over "
+        f"n={len(p_values)}, placebo {len(prows)} scrambled / 0 candidates, "
+        f"{derived['leads_awaiting_human_review']} lead(s) with full "
+        f"dossiers; {spot_txt}"
+    )
+    return True, detail
+
+
 def check_a03(report: dict) -> tuple[bool | None, str]:
     """Re-derive A03's verdict from the saved numbers, not its pass flags.
 
@@ -2741,7 +3221,7 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M16": check_m16, "M17": check_m17, "M18": check_m18,
           "K01": check_k01, "K02": check_k02,
           "C01": check_c01, "A01": check_a01, "A03": check_a03, "A04": check_a04,
-          "I01": check_i01, "CTRL": check_controls}
+          "A05": check_a05, "I01": check_i01, "CTRL": check_controls}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:
