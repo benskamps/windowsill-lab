@@ -116,8 +116,11 @@ A05_TRIAGE_FLOOR_POINTS = ((22, 6.6), (153, 7.65))
 A05_TRIAGE_SAFETY_MARGIN = 1.0
 # Prior floor-history points every receipt must carry forward (source, n,
 # max SDE): dropping history is how an extrapolation stops being testable.
+# Sources are the committed receipt basenames in reports/hunts/ — mirrors
+# a05.PRIOR_FLOOR_HISTORY (lockstep test pins the pair).
 A05_FLOOR_PRIOR = (("run-2026-08-08-2338-a04", 22, 6.6),
-                   ("hunt-2026-08-14-s2", 153, 7.65))
+                   ("hunt-2026-08-14-s2-pilot-158", 153, 7.65),
+                   ("hunt-2026-08-14-s2-pilot-570", 551, 7.875))
 # Asymptotic one-sample KS 5% coefficient for the uniformity re-run, and the
 # smallest control ensemble worth grading (below 5 the KS test has no power
 # and the calibration claim would be decorative).

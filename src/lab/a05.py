@@ -115,13 +115,17 @@ MACHINE_DISPOSITIONS = (
 )
 
 #: Prior false-alarm-floor measurements, appended to every receipt so the
-#: triage extrapolation stays testable (schema `floor_history`). The two
-#: points here are the schema doc's: the A04 graded run and the 2026-08-14
-#: discovery pilot. The runner folds in any later hunt summaries it finds on
-#: disk (e.g. the 500-target wide hunt) before writing the receipt.
+#: triage extrapolation stays testable (schema `floor_history`). Sources are
+#: the COMMITTED receipt basenames under ``reports/hunts/`` (so every point is
+#: one click from its evidence): the A04 graded run, the 2026-08-14 discovery
+#: pilot's first checkpoint (n=153), and the same day's wide slice (n=551 —
+#: the first real test datum for the two-point triage line, which overpredicts
+#: it by ~0.47; see :func:`lab.a05_stats.triage_level`). The runner folds in
+#: any later hunt summaries it finds on disk before writing the receipt.
 PRIOR_FLOOR_HISTORY = (
     {"n": 22, "floor_max": 6.6, "source": "run-2026-08-08-2338-a04"},
-    {"n": 153, "floor_max": 7.65, "source": "hunt-2026-08-14-s2"},
+    {"n": 153, "floor_max": 7.65, "source": "hunt-2026-08-14-s2-pilot-158"},
+    {"n": 551, "floor_max": 7.875, "source": "hunt-2026-08-14-s2-pilot-570"},
 )
 
 #: Default declared cap on any single target's share of the soft wall-clock
@@ -759,6 +763,11 @@ def to_report(result: A05Result,
         "floor_max": max(noise) if noise else None,
         "source": result.hunt_id or "this-run",
     }
+    if floor_point["source"] in {p.get("source") for p in prior_floor_history}:
+        raise A05Error(
+            f"hunt_id {floor_point['source']!r} collides with an existing "
+            "floor-history source — two floor points under one name would be "
+            "indistinguishable; pick a distinct hunt id (suffix it)")
     return {
         "experiment": EXPERIMENT,
         "schema": SCHEMA_VERSION,

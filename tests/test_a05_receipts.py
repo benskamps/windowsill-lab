@@ -169,9 +169,12 @@ def test_e2e_receipt_shape(hunt):
                   "secondary", "self_injection", "amplitude_spectrum"):
         assert panel in lead["dossier"], panel
     assert hunt["result"].dossiers["901"].startswith("<!doctype html>")
-    # floor history: both prior points survive, this run appended its own.
+    # floor history: every prior point survives, this run appended its own,
+    # and the prior sources are the COMMITTED receipt basenames.
     sources = [h["source"] for h in report["floor_history"]]
-    assert sources[:2] == ["run-2026-08-08-2338-a04", "hunt-2026-08-14-s2"]
+    assert sources[:3] == ["run-2026-08-08-2338-a04",
+                           "hunt-2026-08-14-s2-pilot-158",
+                           "hunt-2026-08-14-s2-pilot-570"]
     assert sources[-1] == "hunt-test-s2"
     # graded FAP is the conservative max, per row.
     for r in _stage2_rows(report):
@@ -453,6 +456,31 @@ def test_toi189_fp_is_not_a_recovery(hunt):
     bad["recoveries"].append(bad_row)
     ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
     assert ok is False and "toi-known-fp" in detail
+
+
+# ----------------------------------------------- (5b) floor-history sources --
+
+
+def test_floor_prior_constants_are_lockstep_and_name_committed_receipts():
+    from pathlib import Path
+    engine = [(p["source"], p["n"], p["floor_max"])
+              for p in a05.PRIOR_FLOOR_HISTORY]
+    assert engine == list(checks.A05_FLOOR_PRIOR)
+    hunts = Path(__file__).resolve().parents[1] / "reports" / "hunts"
+    for source, _, _ in checks.A05_FLOOR_PRIOR:
+        if source.startswith("hunt-"):
+            assert (hunts / f"{source}.json").exists(), source
+
+
+def test_hunt_id_colliding_with_a_floor_source_is_refused(hunt):
+    result = hunt["result"]
+    original = result.hunt_id
+    try:
+        result.hunt_id = "hunt-2026-08-14-s2-pilot-570"
+        with pytest.raises(a05.A05Error, match="collides"):
+            a05.to_report(result)
+    finally:
+        result.hunt_id = original
 
 
 # ------------------------------------ (6a) an outage cannot mint a lead ------
