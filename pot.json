@@ -265,7 +265,7 @@
     {
       "id": "K03",
       "title": "Daido vs Hong: is the susceptibility exponent asymmetric across K_c?",
-      "status": "open",
+      "status": "pending",
       "track": "coherence",
       "growth_form": "fern",
       "runner_available": false,
@@ -375,6 +375,31 @@
       "result_plain": "Yes \u2014 three times, with the labels taken away. The earlier planet-weighing run was told where to look; this one searched 26 stars with no planet names or periods. The two planets it was graded on came back first and second in its own ranking. It also flagged a third star nobody had asked about, put it through the same checks, and only afterwards identified it as another already-known planet. During the debugging runs it rejected deep, convincing signals that were alternating eclipses or artifacts at the edge of the search range. The cutoff was measured rather than chosen: fake transits at three depths all cleared it, while twenty-two quieter stars stayed below it. The claim is narrow: a blind sample recovered known planets and measured its own noise floor. It is not a discovery, a survey of the whole sector, or a submission for follow-up."
     },
     {
+      "id": "A05",
+      "title": "Survey-grade detection statistics: can every threshold-crossing event carry its own measured false-alarm probability?",
+      "status": "open",
+      "track": "astronomy",
+      "growth_form": "creeper",
+      "runner_available": false,
+      "short_label": "Pricing false alarms",
+      "question_plain": "When the planet-hunt flags a dip in a star's light, can the lab measure \u2014 for that exact star \u2014 how often pure chance would fake a dip just as convincing, and how small a dip that star could even show?",
+      "why_it_matters": "A hunt that cannot price its own false alarms will eventually announce noise. In one day of pilot runs a signal held 'planet candidate' for forty minutes before being unmasked as a pulsing star, and another matched a catalog entry the community had already refuted \u2014 so every flagged signal needs its own measured odds, and the machine's strongest verdict stays 'a lead awaiting human review', never 'a planet'.",
+      "venue": "ExoFOP",
+      "progress": 0.6
+    },
+    {
+      "id": "A06",
+      "title": "Fresh-sector execution with the pre-committed refutation battery.",
+      "status": "pending",
+      "track": "astronomy",
+      "growth_form": "creeper",
+      "runner_available": false,
+      "short_label": "A fresher sky",
+      "question_plain": "With the statistics proven, can the same search run on a newer patch of sky \u2014 one the community has had less time to comb \u2014 with every test for killing a false signal committed in advance?",
+      "why_it_matters": "Declaring the refutation tests before touching the data is what keeps an exciting blip from bending the rules that judge it.",
+      "venue": "ExoFOP"
+    },
+    {
       "id": "I01",
       "title": "Calibrate the CMOS as a particle detector",
       "status": "null",
@@ -436,7 +461,7 @@
       "venue": "BOINC"
     }
   ],
-  "total": 34,
+  "total": 36,
   "last_run": "2026-08-14T16:13:21.351855+00:00",
   "runs": 54,
   "temp_c": null,
@@ -1182,5 +1207,36 @@
       "linux-rocm": "2026-08-14T13:00:17.099962+00:00"
     },
     "expected_interval_h": 3
+  },
+  "hunt": {
+    "targets_searched": 570,
+    "above_threshold": 19,
+    "dispositions": {
+      "eclipsing-binary-secondary": 4,
+      "harmonic-alias": 5,
+      "eclipsing-binary-odd-even": 3,
+      "low-significance": 2,
+      "phased-brightening": 2,
+      "toi-known-fp": 1,
+      "known-planet": 2
+    },
+    "known_recovered": 2,
+    "leads_awaiting_human_review": 0,
+    "planets_discovered": 0,
+    "last_hunt": {
+      "date": "2026-08-14",
+      "sector": 2,
+      "n": 570,
+      "wall": 3527.206748485565,
+      "provenance": "pilot (pre-A05 statistics)"
+    },
+    "claim_boundary": "A pilot over a deterministic slice of one sector's 2-minute SPOC targets \u2014 territory the official pipeline has already searched. An uncatalogued planet-candidate here is a lead for human review and independent follow-up, not a discovery; nothing is submitted anywhere on the strength of this script.",
+    "as_of": "2026-08-14",
+    "superseded": [
+      {
+        "file": "hunt-2026-08-14-s2-pilot-158.json",
+        "by": "hunt-2026-08-14-s2-pilot-570.json"
+      }
+    ]
   }
 }

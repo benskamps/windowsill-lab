@@ -1,0 +1,99 @@
+{
+  "experiment": "a05-survey-hunt",
+  "schema": 0,
+  "pilot": "pre-A05 pilot (A04 instrument, run-level statistics only)",
+  "date": "2026-08-14",
+  "sector": 2,
+  "slice_rule": "next targets in A04's consistent-hash ranking, graded-run targets and designated recovery targets excluded",
+  "sde_threshold": 8.0,
+  "targets_searched": 158,
+  "targets": [
+    {
+      "tic": "358460464",
+      "outcome": "searched",
+      "sde": 9.227104915897112,
+      "period_days": 0.6043358705772555,
+      "depth": 0.00018941723254584097,
+      "phase": 0.7475,
+      "disposition": "eclipsing-binary-secondary",
+      "known_planet": null
+    },
+    {
+      "tic": "89543393",
+      "outcome": "searched",
+      "sde": 8.288161315516824,
+      "period_days": 0.9416327501657916,
+      "depth": 0.1562413810345642,
+      "phase": 0.695,
+      "disposition": "eclipsing-binary-secondary",
+      "known_planet": null
+    },
+    {
+      "tic": "140940493",
+      "outcome": "searched",
+      "sde": 8.686204412225745,
+      "period_days": 0.6221735497129439,
+      "depth": 0.0008983507011431913,
+      "phase": 0.4775,
+      "disposition": "harmonic-alias",
+      "known_planet": null,
+      "disposition_evidence": {
+        "initial_verdict": "planet-candidate",
+        "pulsation_cpd": 8.035,
+        "refuted": "2026-08-14 follow-up: delta Scuti-type pulsator at P/5 = 2.99 h; BLS latched onto the 5th harmonic; the 'secondary' is a 13-sigma phase-locked brightening"
+      }
+    },
+    {
+      "tic": "160085375",
+      "outcome": "searched",
+      "sde": 8.034225430970878,
+      "period_days": 1.4030194413350117,
+      "depth": 0.23333773669836833,
+      "phase": 0.3325,
+      "disposition": "eclipsing-binary-secondary",
+      "known_planet": null
+    },
+    {
+      "tic": "306470921",
+      "outcome": "searched",
+      "sde": 8.051151503842625,
+      "period_days": 0.5285911171646476,
+      "depth": 0.0009168829987220573,
+      "phase": 0.23,
+      "disposition": "eclipsing-binary-secondary",
+      "known_planet": null
+    }
+  ],
+  "injections": [
+    {
+      "host_tic": "259847258",
+      "injected_depth": 0.01,
+      "injected_period_days": 3.7,
+      "recovered_period_days": 3.7007297863618467,
+      "sde": 9.991200364654864,
+      "recovered": true
+    },
+    {
+      "host_tic": "259847258",
+      "injected_depth": 0.004,
+      "injected_period_days": 2.3,
+      "recovered_period_days": 2.3001826483081005,
+      "sde": 8.284998578242833,
+      "recovered": true
+    },
+    {
+      "host_tic": "259847258",
+      "injected_depth": 0.002,
+      "injected_period_days": 5.1,
+      "recovered_period_days": 5.106437054149822,
+      "sde": 4.856747054226692,
+      "recovered": false
+    }
+  ],
+  "floor": {
+    "n": 153,
+    "max_sde": 7.651324254380396
+  },
+  "wall_seconds": 1085.283230304718,
+  "claim_boundary": "A pilot over a deterministic slice of one sector's 2-minute SPOC targets \u2014 territory the official pipeline has already searched. An uncatalogued planet-candidate here is a lead for human review and independent follow-up, not a discovery; nothing is submitted anywhere on the strength of this script."
+}

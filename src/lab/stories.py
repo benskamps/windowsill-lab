@@ -222,6 +222,18 @@ STORIES: dict[str, dict[str, str | None]] = {
         "why_it_matters": "It tests whether the search and vetting can find real signals without leaking the catalogue answer into the hunt — the calibration needed before any genuinely new candidate could be trusted.",
         "result_plain": "Yes — three times, with the labels taken away. The earlier planet-weighing run was told where to look; this one searched 26 stars with no planet names or periods. The two planets it was graded on came back first and second in its own ranking. It also flagged a third star nobody had asked about, put it through the same checks, and only afterwards identified it as another already-known planet. During the debugging runs it rejected deep, convincing signals that were alternating eclipses or artifacts at the edge of the search range. The cutoff was measured rather than chosen: fake transits at three depths all cleared it, while twenty-two quieter stars stayed below it. The claim is narrow: a blind sample recovered known planets and measured its own noise floor. It is not a discovery, a survey of the whole sector, or a submission for follow-up.",
     },
+    "A05": {
+        "short_label": "Pricing false alarms",
+        "question_plain": "When the planet-hunt flags a dip in a star's light, can the lab measure — for that exact star — how often pure chance would fake a dip just as convincing, and how small a dip that star could even show?",
+        "why_it_matters": "A hunt that cannot price its own false alarms will eventually announce noise. In one day of pilot runs a signal held 'planet candidate' for forty minutes before being unmasked as a pulsing star, and another matched a catalog entry the community had already refuted — so every flagged signal needs its own measured odds, and the machine's strongest verdict stays 'a lead awaiting human review', never 'a planet'.",
+        "result_plain": None,
+    },
+    "A06": {
+        "short_label": "A fresher sky",
+        "question_plain": "With the statistics proven, can the same search run on a newer patch of sky — one the community has had less time to comb — with every test for killing a false signal committed in advance?",
+        "why_it_matters": "Declaring the refutation tests before touching the data is what keeps an exciting blip from bending the rules that judge it.",
+        "result_plain": None,
+    },
     # ── Track I — the machine as instrument ──────────────────────────────────
     "I01": {
         "short_label": "Camera as detector",

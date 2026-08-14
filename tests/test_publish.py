@@ -783,6 +783,29 @@ def test_backfill_renders_m03_reports(tmp_path, monkeypatch):
     assert (reports / "2026-06-16-m03.html").exists()   # re-rendered, not skipped
 
 
+# ── The hunt block rides the snapshot (the aggregation itself is tested in
+#    test_hunt_block.py — this is only the feed contract seam) ────────────────
+
+def test_build_snapshot_carries_hunt_only_when_present():
+    """A feed built before the survey era carries no ``hunt`` key and the page
+    hides the section; when the aggregate exists it ships verbatim."""
+    snap = build_snapshot([], "2026-08-14T00:00:00+00:00", 1, 47.0)
+    assert "hunt" not in snap
+    block = {"targets_searched": 158, "above_threshold": 5,
+             "planets_discovered": 0}
+    snap = build_snapshot([], "2026-08-14T00:00:00+00:00", 1, 47.0, hunt=block)
+    assert snap["hunt"] == block
+
+
+def test_hunt_block_is_none_without_committed_receipts(tmp_path):
+    """No reports/hunts/ directory (or an empty one) → no hunt key at all —
+    absence, not a rendering slot full of zeros."""
+    assert publish.hunt_block(tmp_path / "missing") is None
+    empty = tmp_path / "hunts"
+    empty.mkdir()
+    assert publish.hunt_block(empty) is None
+
+
 def test_backfill_preserves_source_mtime(tmp_path, monkeypatch):
     """A backfilled old run must not masquerade as the newest (2026-07-19).
 
