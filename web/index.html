@@ -328,6 +328,20 @@
     body[data-phase="dawn"] #scene[data-sunlow] .blade-glow,
     body[data-phase="dusk"] #scene[data-sunlow] .blade-glow { opacity:0.4; }
     body[data-phase="dawn"] .dew { opacity:0.6; }
+    /* ── The painterly skin (phase 1) ─────────────────────────────────────
+       Every living organ wears a soft outer glow at the GROUP level — the
+       bible's light-from-within blades (docs/design/plant-bible/). A folded
+       null stays matte: a kept miss does not glow, and stillness + flatness
+       are part of how it reads. The .leaf-lumen wash is the DATA-LIT layer:
+       its opacity is set per-leaf from the run ledger's recency in
+       milestoneLeaf (the planner's own log2(1+days/7) staleness shape), so
+       brightness is a reading, not a decoration. The wash is static; only
+       the freshest light breathes, and reduced-motion stills it. */
+    .leaf { filter:url(#organGlow); }
+    .leaf.null-leaf { filter:none; }
+    .leaf-lumen { pointer-events:none; }
+    .leaf-lumen.fresh { animation: lumen-breathe 11s ease-in-out infinite; }
+    @keyframes lumen-breathe { 0%,100% { opacity:1; } 50% { opacity:0.72; } }
 
     /* The shelf rides the SAME wind as the centre plant — one gust timeline,
        one amplitude, lagged by how far down the sill a specimen stands. The
@@ -881,6 +895,8 @@
       body[data-phase="dusk"] .firefly, body[data-phase="night"] .firefly { opacity: 0.4; }
       body[data-phase="night"] #bud-halo[data-on] { opacity: 0.6; }
       .fieldnote, .garden-specimen { animation:none !important; }
+      /* the data-lit wash holds its reading steady instead of breathing */
+      .leaf-lumen { animation:none !important; }
       /* pots carry no animation lane at all — only the shared opacity fades */
       .garden-specimen.is-open .specimen-status::before { animation:none; }
       .garden-specimen svg, .specimen-action::before { transition:none; }
@@ -979,6 +995,17 @@
             <stop offset="0" class="backlight-stop" stop-opacity="0.5"/>
             <stop offset="1" class="backlight-stop" stop-opacity="0"/>
           </radialGradient>
+          <!-- The painterly outer glow (phase 1 of the repaint): a soft halo of
+               the organ's OWN colours behind the crisp source — light from
+               within, per the plant bible (docs/design/plant-bible/). Applied
+               at the organ group level by CSS (.leaf); null folds opt out.
+               The per-archetype luminous-core gradients (leafCore-*) are
+               installed at boot from GrowthForms.SKINS — one source of truth
+               shared with the module and its tests. -->
+          <filter id="organGlow" x="-40%" y="-40%" width="180%" height="180%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="1.7" result="halo"/>
+            <feMerge><feMergeNode in="halo"/><feMergeNode in="SourceGraphic"/></feMerge>
+          </filter>
           <filter id="bloom" x="-80%" y="-80%" width="260%" height="260%"><feGaussianBlur stdDeviation="7"/></filter>
           <filter id="soft"  x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6"/></filter>
           <filter id="cloudBlur" x="-40%" y="-40%" width="180%" height="180%"><feGaussianBlur stdDeviation="5"/></filter>
@@ -1831,11 +1858,66 @@
     return f(ctx);
   }
 
+  // ── The painterly skin (2026-08-14, phase 1 of the repaint) ───────────────
+  // The den's art bible (docs/design/plant-bible/) paints every archetype as a
+  // soft luminous blade — a pale core that reads as light from within, falling
+  // to a deeper rim — in a terracotta pot against a warm-vs-cosmic window.
+  // This registry carries those per-form colours so the page's gradient defs
+  // and the tests share ONE source of truth. Colours only: the GRAMMAR
+  // (root+tip homogeneity, node frames, spine/mat) is untouched per the
+  // 2026-08-07 spec §16 — Ben authorized reskinning the RENDER, not the bones.
+  var SKINS = {
+    fern:      { core: "#d9f2a6", mid: "#8fce62", rim: "#3f7a34" }, // luminous frond green
+    vine:      { core: "#e4f7c4", mid: "#a8dd7e", rim: "#4c8a3f" }, // pale heart-leaf glow
+    creeper:   { core: "#ddf3d1", mid: "#a9d9a0", rim: "#578a55" }, // silvery runner green
+    succulent: { core: "#e7f4d3", mid: "#b1d793", rim: "#5f8f57" }, // jade pad translucence
+    moss:      { core: "#f1eeae", mid: "#c3d47a", rim: "#6a7f3c" }, // gold-tipped colony
+    sprout:    { core: "#e9f8d0", mid: "#b6e393", rim: "#63a04e" }, // seed-leaf lantern
+  };
+
+  // ── Data-lit recency (phase 1: brightness is a reading, not a decoration) ─
+  // How bright a verified leaf's inner light burns tracks how RECENTLY its
+  // rung last produced a receipt — deliberately the same log2(1 + days/7)
+  // staleness shape the planner's verified-canary law uses
+  // (src/lab/curriculum.py, CANARY_HALF_LIFE_DAYS = 7): the page and the
+  // planner agree on what "recent" means. A receipt from today glows at full
+  // strength, a week-old one at half, and by ~three weeks the light settles
+  // at the floor. Verified-green only — the page never lights null folds
+  // (a kept miss is matte) or unscored rungs.
+  var LUMEN_FLOOR = 0.25, LUMEN_CEIL = 1.0;
+  function lumenOpacity(days) {
+    // no dated receipt on record is indistinguishable from long-stale: floor
+    if (typeof days !== "number" || !isFinite(days) || days < 0) return LUMEN_FLOOR;
+    var staleness = Math.log2(1 + days / 7);   // the planner's canary shape
+    return Math.max(LUMEN_FLOOR, Math.min(LUMEN_CEIL, LUMEN_CEIL - 0.5 * staleness));
+  }
+  // Days since the NEWEST dated receipt for a milestone, from the feed's run
+  // ledger (pot.json reports[]) — data already in hand, no new network calls.
+  // Pure and defensive: rows without a date are skipped; no matching dated
+  // row → NaN (the caller's "no receipt on record" case). Future-dated rows
+  // clamp to 0 rather than going negative.
+  function daysSinceNewestReceipt(reports, mid, nowMs) {
+    if (!Array.isArray(reports) || !mid) return NaN;
+    var newest = NaN;
+    reports.forEach(function (r) {
+      if (!r || r.milestone !== mid || !r.date) return;
+      var t = Date.parse(String(r.date) + "T12:00:00Z");
+      if (isFinite(t) && !(t <= newest)) newest = t;
+    });
+    if (!isFinite(newest)) return NaN;
+    return Math.max(0, (nowMs - newest) / 86400000);
+  }
+
   var api = {
     FORMS: FORMS,
     DEFAULT_FORM: DEFAULT_FORM,
     build: build,
     pageGrowthForm: pageGrowthForm,
+    SKINS: SKINS,
+    lumenOpacity: lumenOpacity,
+    daysSinceNewestReceipt: daysSinceNewestReceipt,
+    LUMEN_FLOOR: LUMEN_FLOOR,
+    LUMEN_CEIL: LUMEN_CEIL,
     // exposed for tests / advanced callers
     _tipY: tipY,
     _nodeY: nodeY,
@@ -3235,7 +3317,11 @@
                    centroid: { x: p + L * 0.5, y: L * 0.1 }, extent: p + L };
         }
         parts.push(petioleSpec(p, o.fill));
-        var b = splitBlade(p, L, -0.08 * L, 0.5 * L, 0.34 * L);
+        // Seeded bulge wobble: the bible's blades are hand-painted, no two
+        // edges alike — a parameter tweak only, the skeleton is untouched.
+        var b = splitBlade(p, L, -0.08 * L,
+                           (0.46 + (o.seed % 9) / 100) * L,
+                           (0.30 + (o.seed % 7) / 100) * L);
         parts.push({ d: b.shadow, fill: shade(o.fill, -26) });
         parts.push({ d: b.lit, fill: shade(o.fill, 8) });
         // the drip tip: a small cusp past the blade's point
@@ -3269,7 +3355,10 @@
                    centroid: { x: p + L * 0.5, y: L * 0.1 }, extent: p + L };
         }
         parts.push(petioleSpec(p, o.fill));
-        var b = splitBlade(p, L, -0.04 * L, 0.5 * L, 0.45 * L);
+        // Seeded bulge wobble, same law as vine: irregular hand-painted edges.
+        var b = splitBlade(p, L, -0.04 * L,
+                           (0.46 + (o.seed % 9) / 100) * L,
+                           (0.41 + (o.seed % 7) / 100) * L);
         parts.push({ d: b.shadow, fill: shade(o.fill, -26) });
         parts.push({ d: b.lit, fill: shade(o.fill, 8) });
         parts.push({ d: b.rimD, stroke: shade(o.fill, 48), sw: 1.1, cap: 'round',
@@ -3355,7 +3444,11 @@
                    centroid: { x: p + L * 0.5, y: L * 0.1 }, extent: p + L };
         }
         parts.push(petioleSpec(p, o.fill));
-        var b = splitBlade(p, L, -0.05 * L, (cot ? 0.31 : 0.42) * L, (cot ? 0.31 : 0.36) * L);
+        // True leaves get the seeded edge wobble; cotyledons stay smooth —
+        // in the bible the seed leaves are the one untextured surface.
+        var b = splitBlade(p, L, -0.05 * L,
+                           (cot ? 0.31 : 0.38 + (o.seed % 9) / 100) * L,
+                           (cot ? 0.31 : 0.32 + (o.seed % 7) / 100) * L);
         parts.push({ d: b.shadow, fill: shade(o.fill, -26) });
         parts.push({ d: b.lit, fill: shade(o.fill, 8) });
         parts.push({ d: b.rimD, stroke: shade(o.fill, 48), sw: 1.1, cap: 'round',
@@ -3477,6 +3570,29 @@
       wind.style.setProperty('--t', t.toFixed(3));
       wind.style.setProperty('--lamp', ((0.6 + t * 0.9) * (0.92 + (seed % 13) / 80)).toFixed(3));
       org.parts.forEach(function (spec) { wind.appendChild(partEl(spec)); });
+      // Data-lit skin: a verified leaf's inner light tracks its run's recency,
+      // read from the run ledger already in hand (pot.json reports[] — no new
+      // network calls), mapped through the SAME log2(1+days/7) staleness shape
+      // the planner's verified-canary law uses (src/lab/curriculum.py) — a
+      // deliberate rhyme: page and planner agree on what "recent" means. The
+      // opacity clamps to [0.25, 1.0]; a rung with no dated receipt sits at
+      // the floor. Verified-green ONLY: null folds stay their muted grey and
+      // review/unscored organs are untouched.
+      if (!nul && m.status === 'verified') {
+        var lumenDays = GF.daysSinceNewestReceipt(
+          _lastFeedState && _lastFeedState.reports, m.id, Date.now());
+        var lumenOp = GF.lumenOpacity(lumenDays);
+        var lumenSpec = org.glow
+          ? { d: org.glow, fill: 'url(#leafCore-' + form + ')' }
+          // moss tufts are strokes, not fillable blades: the colony's light is
+          // a small radial pool at the tuft's centroid instead
+          : { ellipse: [org.centroid.x, org.centroid.y,
+                        Math.max(4, org.extent * 0.55), Math.max(3, org.extent * 0.4)],
+              fill: 'url(#leafCore-' + form + ')' };
+        lumenSpec.op = lumenOp;
+        lumenSpec.cls = 'leaf-lumen' + (lumenOp >= 0.9 ? ' fresh' : '');
+        wind.appendChild(partEl(lumenSpec));
+      }
       if (!nul && org.glow) {
         wind.appendChild(partEl({ d: org.glow, fill: 'url(#bladeBacklight)', cls: 'blade-glow' }));
       }
@@ -4629,8 +4745,32 @@
       return Math.max(0.15, Math.min(1, 1 - h / (iv ? 2 * iv : 16)));
     }
 
+    // Painterly skin defs: one luminous-core radial per archetype — pale
+    // light-from-within centre falling to a deeper rim, per the plant bible
+    // (docs/design/plant-bible/). Built from the single SKINS registry in
+    // growth-forms.js so the page and the module cannot drift apart.
+    function installSkinDefs() {
+      var defs = document.querySelector('#scene svg defs');
+      if (!defs || !GF || !GF.SKINS) return;
+      Object.keys(GF.SKINS).forEach(function (form) {
+        var s = GF.SKINS[form];
+        var gr = document.createElementNS(SVGNS, 'radialGradient');
+        gr.setAttribute('id', 'leafCore-' + form);
+        gr.setAttribute('cx', '0.38'); gr.setAttribute('cy', '0.4'); gr.setAttribute('r', '0.72');
+        [['0', s.core, '0.85'], ['0.55', s.mid, '0.4'], ['1', s.rim, '0']].forEach(function (st) {
+          var stop = document.createElementNS(SVGNS, 'stop');
+          stop.setAttribute('offset', st[0]);
+          stop.setAttribute('stop-color', st[1]);
+          stop.setAttribute('stop-opacity', st[2]);
+          gr.appendChild(stop);
+        });
+        defs.appendChild(gr);
+      });
+    }
+
     // ── Boot ────────────────────────────────────────────────────────────────
     var now = labNow();
+    installSkinDefs();
     applyPhase(now);
     seedStars();
     seedDust();

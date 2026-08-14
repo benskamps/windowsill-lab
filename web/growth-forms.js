@@ -320,11 +320,66 @@
     return f(ctx);
   }
 
+  // ── The painterly skin (2026-08-14, phase 1 of the repaint) ───────────────
+  // The den's art bible (docs/design/plant-bible/) paints every archetype as a
+  // soft luminous blade — a pale core that reads as light from within, falling
+  // to a deeper rim — in a terracotta pot against a warm-vs-cosmic window.
+  // This registry carries those per-form colours so the page's gradient defs
+  // and the tests share ONE source of truth. Colours only: the GRAMMAR
+  // (root+tip homogeneity, node frames, spine/mat) is untouched per the
+  // 2026-08-07 spec §16 — Ben authorized reskinning the RENDER, not the bones.
+  var SKINS = {
+    fern:      { core: "#d9f2a6", mid: "#8fce62", rim: "#3f7a34" }, // luminous frond green
+    vine:      { core: "#e4f7c4", mid: "#a8dd7e", rim: "#4c8a3f" }, // pale heart-leaf glow
+    creeper:   { core: "#ddf3d1", mid: "#a9d9a0", rim: "#578a55" }, // silvery runner green
+    succulent: { core: "#e7f4d3", mid: "#b1d793", rim: "#5f8f57" }, // jade pad translucence
+    moss:      { core: "#f1eeae", mid: "#c3d47a", rim: "#6a7f3c" }, // gold-tipped colony
+    sprout:    { core: "#e9f8d0", mid: "#b6e393", rim: "#63a04e" }, // seed-leaf lantern
+  };
+
+  // ── Data-lit recency (phase 1: brightness is a reading, not a decoration) ─
+  // How bright a verified leaf's inner light burns tracks how RECENTLY its
+  // rung last produced a receipt — deliberately the same log2(1 + days/7)
+  // staleness shape the planner's verified-canary law uses
+  // (src/lab/curriculum.py, CANARY_HALF_LIFE_DAYS = 7): the page and the
+  // planner agree on what "recent" means. A receipt from today glows at full
+  // strength, a week-old one at half, and by ~three weeks the light settles
+  // at the floor. Verified-green only — the page never lights null folds
+  // (a kept miss is matte) or unscored rungs.
+  var LUMEN_FLOOR = 0.25, LUMEN_CEIL = 1.0;
+  function lumenOpacity(days) {
+    // no dated receipt on record is indistinguishable from long-stale: floor
+    if (typeof days !== "number" || !isFinite(days) || days < 0) return LUMEN_FLOOR;
+    var staleness = Math.log2(1 + days / 7);   // the planner's canary shape
+    return Math.max(LUMEN_FLOOR, Math.min(LUMEN_CEIL, LUMEN_CEIL - 0.5 * staleness));
+  }
+  // Days since the NEWEST dated receipt for a milestone, from the feed's run
+  // ledger (pot.json reports[]) — data already in hand, no new network calls.
+  // Pure and defensive: rows without a date are skipped; no matching dated
+  // row → NaN (the caller's "no receipt on record" case). Future-dated rows
+  // clamp to 0 rather than going negative.
+  function daysSinceNewestReceipt(reports, mid, nowMs) {
+    if (!Array.isArray(reports) || !mid) return NaN;
+    var newest = NaN;
+    reports.forEach(function (r) {
+      if (!r || r.milestone !== mid || !r.date) return;
+      var t = Date.parse(String(r.date) + "T12:00:00Z");
+      if (isFinite(t) && !(t <= newest)) newest = t;
+    });
+    if (!isFinite(newest)) return NaN;
+    return Math.max(0, (nowMs - newest) / 86400000);
+  }
+
   var api = {
     FORMS: FORMS,
     DEFAULT_FORM: DEFAULT_FORM,
     build: build,
     pageGrowthForm: pageGrowthForm,
+    SKINS: SKINS,
+    lumenOpacity: lumenOpacity,
+    daysSinceNewestReceipt: daysSinceNewestReceipt,
+    LUMEN_FLOOR: LUMEN_FLOOR,
+    LUMEN_CEIL: LUMEN_CEIL,
     // exposed for tests / advanced callers
     _tipY: tipY,
     _nodeY: nodeY,
