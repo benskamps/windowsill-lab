@@ -11,6 +11,8 @@ constants that grade it and re-derives everything from the raw stored numbers.
   "generated_at": "2026-08-14T17:00:00+00:00",   // UTC ISO
   "sector": 2,
   "slice_rule": "consistent-hash ranking, seed 2026, graded-run + prior-hunt targets excluded",
+  "seed": 2026,                      // top-level: the run seed behind slice ranking + control draw
+  "control_fraction": 0.10,          // top-level: pre-data fraction routed to the uniformity control
   "n_enumerated": 1994,
   "targets": [                       // one row per target ATTEMPTED
     {
@@ -22,7 +24,7 @@ constants that grade it and re-derives everything from the raw stored numbers.
       "depth": 0.000898,
       "phase": 0.4775,
       "stage2": true,                // paid the bootstrap (above triage OR control subsample)
-      "control_subsample": false,    // deterministically chosen sub-triage uniformity member
+      "control_subsample": false,    // pre-data uniformity-control member (hash draw, NO SDE filter)
       "fap": {                       // present iff stage2
         "B": 256,
         "seed": 123456789,           // RNG seed for this target's permutations
@@ -61,9 +63,12 @@ constants that grade it and re-derives everything from the raw stored numbers.
     "planet_candidates": 0,
     "pass": true
   },
-  "floor_history": [                 // appended every run; makes the triage heuristic testable
-    { "n": 22, "floor_max": 6.6, "source": "run-2026-08-08-2338-a04" },
-    { "n": 153, "floor_max": 7.65, "source": "hunt-2026-08-14-s2" }
+  "floor_history": [                 // appended every run; makes the triage heuristic testable.
+                                     // Sources are the COMMITTED receipt filenames (renamed from
+                                     // the earlier shorthand constants), so every point is checkable.
+    { "n": 22, "floor_max": 6.6, "source": "run-2026-08-08-2338-a04.json" },
+    { "n": 153, "floor_max": 7.65, "source": "hunt-2026-08-14-s2-pilot-158.json" },
+    { "n": 551, "floor_max": 7.875, "source": "hunt-2026-08-14-s2-pilot-570.json" }
   ],
   "triage": {                        // compute-bounding HEURISTIC — never graded, never "measured"
     "level": 7.9, "mu": 5.9, "beta": 0.54, "safety_margin": 1.0
@@ -102,7 +107,26 @@ Contract rules (binding on all lanes):
    the aggregator excludes superseded receipts from counters (naming them in
    `hunt.superseded`) so cumulative runs cannot double-count. Only an accepted
    receipt may supersede.
-6. **Module map:** Lane 1 `src/lab/a05_stats.py`, Lane 2
+6. **The uniformity control is chosen pre-data, on purpose.** Control
+   membership is a deterministic hash of `(seed, tic)` with **no SDE filter**
+   (the top-level `seed` and `control_fraction` fields pin the draw), so a
+   control member can legitimately host a real astrophysical signal and drag
+   the KS statistic. That is accepted behavior, not a defect: filtering
+   controls by outcome would bias the very calibration the control exists to
+   test. A KS degraded by a genuine signal is investigated, not excluded.
+7. **The triage line is a heuristic with its first real test datum.** The
+   two-point line fit to (22, 6.6) and (153, 7.65) predicted the n=551 floor
+   about **0.47 SDE high** against the measured (551, 7.875) — conservative in
+   the safe direction, but a miss. It stays a compute-bounding heuristic,
+   never graded and never "measured"; `floor_history` exists precisely so
+   every run retests it against a committed receipt.
+8. **Known-planet boundary.** A confirmed known planet whose flux genuinely
+   shows a secondary — WASP-18 b, with a real 399 ppm occultation — is
+   dispositioned `known-planet`, with the physics verdict preserved as
+   `disposition_evidence.initial_verdict`. Catalog identity outranks a bare
+   secondary verdict **only for confirmed planets** (TFOPWG KP / CP); for
+   anything else the physics verdict stands.
+9. **Module map:** Lane 1 `src/lab/a05_stats.py`, Lane 2
    `src/lab/a05_vetting.py` (+ minimal `a01.py` reader extension), Lane 3
    `src/lab/a05_sensitivity.py`, Lane 4 `src/lab/a05.py` (orchestrator) +
    `checks.py` + `scripts/a05_hunt.py`, Lane 5 `publish.py` + `web/index.html`

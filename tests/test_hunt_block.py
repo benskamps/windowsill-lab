@@ -393,13 +393,14 @@ def test_known_recovered_dedupes_target_and_recovery_mentions(tmp_path):
 
 
 def test_serendipitous_known_planets_count_as_recoveries_not_leads():
-    """TOI 111.01 (HATS-34 b, KP) and TOI 125.01 (TOI-125 c, CP) surfaced in
+    """TOI 111.01 (HATS-34 b, KP) and TOI 125.01 (TOI-125 b, CP) surfaced in
     the wide slice and were identified at grading time — ``known-planet``
-    dispositions that feed known_recovered and never the lead counter."""
+    dispositions that feed known_recovered and never the lead counter.
+    (TOI 125.01 at P≈4.652 d is TOI-125 b; TOI-125 c is the 9.15 d planet.)"""
     wide = json.loads((HUNTS / "hunt-2026-08-14-s2-pilot-570.json")
                       .read_text(encoding="utf-8"))
     known = [r for r in wide["targets"] if r["disposition"] == "known-planet"]
-    assert {r["known_planet"] for r in known} == {"HATS-34 b", "TOI-125 c"}
+    assert {r["known_planet"] for r in known} == {"HATS-34 b", "TOI-125 b"}
     for row in known:
         assert row["disposition_evidence"]["catalog_disposition"] in ("KP", "CP")
 
@@ -450,6 +451,25 @@ def test_page_ledger_is_labeled_machine_disposition_and_renders_verbatim():
     assert "name.textContent = verdict;" in html
 
 
+def test_page_impostors_derive_from_the_histogram_not_by_subtraction():
+    """An impostor is an event the machine POSITIVELY unmasked. The counter
+    sums disposition buckets and excludes ``low-significance`` (unresolved
+    weak signals), ``known-planet``, and the open lead states — the old
+    events − known − leads subtraction silently dressed unresolved signals
+    up as unmasked impostors."""
+    html = _page()
+    assert "above - known - leads" not in html, \
+        "impostors must come from the dispositions histogram, not subtraction"
+    assert "if (verdict === 'low-significance') { unresolved += n; return; }" in html
+    assert "verdict === 'known-planet'" in html
+    assert "verdict === 'lead-awaiting-human-review'" in html
+    # And the unresolved count is surfaced as a ledger note, so the strip's
+    # arithmetic (impostors + known + leads + unresolved = events) stays
+    # legible to a reader.
+    assert 'id="hunt-unresolved"' in html
+    assert "never as impostors." in html
+
+
 def test_page_dates_the_strip_as_of_the_last_published_run_never_live():
     html = _page()
     assert "as of the last published run" in html
@@ -465,6 +485,9 @@ def test_page_impostor_card_tells_the_forty_minutes_story():
     # disclosure, and the source receipt is named.
     assert "TIC 140940493" in html
     assert "hunt-2026-08-14-s2-pilot-158.json" in html
+    # The 42-event count and the 1.7σ odd/even figure live in the pilot
+    # investigation summary, not in the receipt — both sources are named.
+    assert "docs/investigations/2026-08-14-a04-discovery-pilot-summary.json" in html
     assert "harmonic-alias" in html
 
 

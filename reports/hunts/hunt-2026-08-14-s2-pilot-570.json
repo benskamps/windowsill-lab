@@ -202,7 +202,7 @@
       "depth": 0.0007250937524173606,
       "phase": 0.05,
       "disposition": "known-planet",
-      "known_planet": "TOI-125 c",
+      "known_planet": "TOI-125 b",
       "disposition_evidence": {
         "known_toi": "125.01",
         "catalog_disposition": "CP",
