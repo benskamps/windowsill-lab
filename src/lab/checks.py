@@ -147,6 +147,12 @@ A05_SPOT_RTOL = 1e-5
 # own wall clocks within this relative band, and no row may exceed its
 # declared per-target share of the soft budget by more than the same slack.
 A05_BUDGET_RTOL = 0.05
+# Mirror of the engine's default per-target share (a05.PER_TARGET_SHARE) so a
+# drifted default is caught by the lockstep test, not discovered when an
+# honest ~180 s stage-2 row is refused against a 60 s cap. Row clocks are
+# per-worker wall inside process_target; the soft budget is serial survey
+# wall — the two are compared per ROW, never summed against each other.
+A05_PER_TARGET_SHARE = 0.10
 # The machine's ENTIRE disposition vocabulary, restated. "planet" is absent
 # by design and its appearance anywhere is an affirmative contract violation,
 # not a formatting problem.

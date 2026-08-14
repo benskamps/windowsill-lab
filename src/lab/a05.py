@@ -119,10 +119,16 @@ PRIOR_FLOOR_HISTORY = (
 )
 
 #: Default declared cap on any single target's share of the soft wall-clock
-#: budget. 2 % means a 50-minute survey refuses to let one pathological target
-#: hold the line for more than a minute — the receipt reports the cap and the
-#: check re-derives every row's share against it.
-PER_TARGET_SHARE = 0.02
+#: budget. Clock semantics: a row's ``wall_seconds`` is the PER-WORKER wall
+#: measured inside :func:`process_target` (plus loader time), while the soft
+#: budget is the survey's serial wall — with 12 workers the sum of row clocks
+#: legitimately exceeds the survey wall severalfold. A measured stage-2 target
+#: costs ~180 s of worker wall (B=256 double-scheme null + injection ladder),
+#: so 2 % of the 3000 s soft default (= 60 s) refused every HONEST stage-2
+#: row; 10 % (= 300 s) clears the measured cost with margin while still
+#: refusing a pathological target that ate a triple share. Mirrored by
+#: ``checks.A05_PER_TARGET_SHARE`` — change both or the lockstep test fails.
+PER_TARGET_SHARE = 0.10
 
 
 class A05Error(RuntimeError):
@@ -286,7 +292,12 @@ def process_target(item: dict) -> dict:
     fw, components = a05_vetting.prewhiten(t, f, **prewhiten_kwargs)
     det = a04.blind_search(t, fw, n_periods=n_periods)
     control = bool(item["control_member"])
-    stage2 = bool(det.sde >= float(item["triage_level"]) or control)
+    # The triage line is a compute-SAVER, never a compute-excuse: at large n
+    # the extrapolated line can rise above the detection threshold itself, and
+    # a threshold-clearing candidate must NEVER skip its FAP just because the
+    # noise ceiling grew — so the stage-2 bar is the LOWER of the two.
+    stage2_line = min(float(item["triage_level"]), a04.SDE_THRESHOLD)
+    stage2 = bool(det.sde >= stage2_line or control)
     row: dict = {
         "tic": tic, "outcome": "searched",
         "cache_sha256": item.get("cache_sha256"),

@@ -21,7 +21,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from lab import a04, a05, checks
+from lab import a04, a05, a05_stats, a05_vetting, checks
 
 # Small-but-honest scale: 27 d baseline (real sector length) at 7.2-minute
 # cadence, 300-period grid, B=64 permutations — the coarsest configuration
@@ -375,6 +375,51 @@ def test_spot_reproduction_fails_wrong_seed(hunt):
 def test_spot_reproduction_none_when_cache_absent(hunt, tmp_path):
     ok, detail = checks.check_a05(hunt["report"], cache_dir=tmp_path)
     assert ok is None and "missing" in detail
+
+
+# ----------------------------- (3d) the triage line never outgrows the bar ---
+
+
+def test_stage2_bar_never_exceeds_the_detection_threshold():
+    """At large n the extrapolated triage line rises above SDE 8 — and an
+    above-threshold candidate must still pay for its FAP at any n."""
+    assert a05_stats.triage_level(3000) > a04.SDE_THRESHOLD   # the regime
+    t, f = _synth(901, depth=PLANT_DEPTH)
+    curve = a05.curve_from_blob(fits_bytes(t, f))
+    fw, _ = a05_vetting.prewhiten(curve["t"], curve["f"], f_hi=45.0)
+    det = a04.blind_search(curve["t"], fw, n_periods=N_PERIODS)
+    assert det.sde >= a04.SDE_THRESHOLD
+    row = a05.process_target({
+        "tic": "901", "t": curve["t"], "f": curve["f"],
+        "cx": None, "cy": None, "crowdsap": None,
+        "triage_level": det.sde + 2.0,      # mocked huge-n line, above the SDE
+        "control_member": False, "B": 32, "seed": 7,
+        "n_periods": N_PERIODS, "prewhiten_kwargs": {"f_hi": 45.0}})
+    assert row["stage2"] is True
+    assert row["fap"] is not None
+
+
+# --------------------------------------------------- (4b) the budget gate ----
+
+
+def test_budget_constants_are_lockstep():
+    assert checks.A05_PER_TARGET_SHARE == a05.PER_TARGET_SHARE == 0.10
+
+
+def test_honest_stage2_wall_passes_at_default_budget(hunt):
+    """A measured ~180 s stage-2 worker wall must pass at the DEFAULTS
+    (soft 3000 s, share 0.10): the old 0.02 share refused honest rows."""
+    mod = _mut(hunt["report"])
+    walls = [float(r.get("wall_seconds") or 0.0) for r in mod["targets"]]
+    heavy = max(range(len(walls)), key=lambda i: walls[i])
+    mod["targets"][heavy]["wall_seconds"] = 185.0
+    walls[heavy] = 185.0
+    soft = 3000.0
+    mod["budget"] = {"soft_budget_seconds": soft,
+                     "per_target_share": a05.PER_TARGET_SHARE,
+                     "survey_sum_reported": sum(walls) / soft}
+    ok, detail = checks.check_a05(mod, cache_dir=hunt["cache"])
+    assert ok is True, detail
 
 
 # ------------------------------------------- (5) count reconciliation --------
