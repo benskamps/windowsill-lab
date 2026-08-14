@@ -689,6 +689,44 @@ def _prune(row: dict) -> dict:
 
 
 # ── render_index: the HTML page (reuses the report templates' calm CSS) ───────
+
+#: A run of at least this many CONSECUTIVE same-milestone rows — in the global
+#: newest-first ordering the index renders — condenses into one era band (a
+#: <details> element). Below this, repetition is just cadence; at and above it,
+#: it is a treadmill worth bundling. Chosen so a normal 2–3-turn day never
+#: bands while every real 2026 treadmill streak (the shortest was ×5) does.
+ERA_MIN_STREAK = 4
+
+#: Honest labels for the two REAL treadmill eras, written from the receipts and
+#: the fixes that ended them. Keyed by ``(milestone, first-date-prefix)`` where
+#: "first date" is the band's OLDEST date; a band whose first date starts with
+#: the prefix gets the label. Prefixes are deliberately loose enough to span
+#: every band of their era — the schedulers' failures produced SEVERAL streaks
+#: interrupted by other runs sneaking through, and each fragment deserves the
+#: same diagnosis. The banding MECHANISM above is general; this dict is the
+#: curated part: exactly the two failure modes the lab actually had, no more.
+ANNOTATIONS: dict[tuple[str, str], str] = {
+    # 40 M01 runs, June–July 2026: a stuck open-pointer made the scheduler fall
+    # back to its safe default — the already-verified M01 rung — night after
+    # night. Spans the ×5, ×8, ×5 and ×11 M01 bands of that stretch.
+    ("M01", "2026-0"): (
+        "the stuck-pointer era — the scheduler's safe default ran nightly; "
+        "root-fixed by the portfolio rotation, PR #77"
+    ),
+    # 44 M02 runs, Aug 2–11 2026: a filename stem-slice parse bug livelocked
+    # the fresh rotation into M01→M02 every turn for 9 days. Spans the ×19, ×6
+    # and ×10 M02 bands of that stretch.
+    ("M02", "2026-08-0"): (
+        "the livelock era — a filename parse bug pinned the rotation for "
+        "9 days; root-fixed in PR #97"
+    ),
+}
+
+#: The one-line disclosure shown in the header region iff any band rendered —
+#: the reader must never wonder whether condensation deleted anything.
+ERA_NOTE = ("Repeated-run eras are bundled — every receipt is still here, "
+            "expanded in place.")
+
 _LEAF = {
     # Run verdicts describe the deterministic checker, not the separate human
     # milestone-promotion lifecycle exposed by pot.json v4.
@@ -739,6 +777,17 @@ INDEX_TEMPLATE = """<!doctype html>
   .flag {{ font-size: 11px; opacity: 0.55; margin-left: 6px; }}
   .footer {{ margin-top: 56px; padding-top: 18px; border-top: 1px solid #d6c0a2;
              opacity: 0.55; font-size: 12px; }}
+  /* Era bands — a condensed treadmill streak. Muted on purpose: repetition is
+     the least interesting thing on the page, so it takes the least ink. */
+  tr.era > td {{ padding: 4px 0; }}
+  details.era {{ background: #f1e7d2; border: 1px solid #e2d4ba; border-radius: 2px; }}
+  details.era > summary {{ cursor: pointer; padding: 8px 10px; font-size: 13px;
+                           opacity: 0.72; font-variant-numeric: tabular-nums; }}
+  details.era > summary:hover {{ opacity: 1; }}
+  details.era[open] > summary {{ border-bottom: 1px solid #e2d4ba; }}
+  .era-label {{ font-size: 12.5px; font-style: italic; opacity: 0.68;
+                padding: 6px 10px 2px; }}
+  details.era table {{ margin: 0; }}
   figure.scoreboard {{ margin: 8px 0 4px; }}
   figure.scoreboard img {{ width: 100%; max-width: 100%; height: auto;
                            border-radius: 4px; border: 1px solid #e2d4ba; }}
@@ -756,7 +805,7 @@ INDEX_TEMPLATE = """<!doctype html>
   <em>run</em>: a check ran and the number missed. They can legitimately
   disagree — a milestone can stand verified while an earlier messy run for it
   stays a null here, with its measured numbers kept on the books.</p>
-{groups}
+{eranote}{groups}
   <div class="footer">
     {count} runs on record · newest first · generated {generated}.
     The calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>;
@@ -808,25 +857,134 @@ def _row_html(run: dict) -> str:
     )
 
 
-def _group_html(milestone: str, runs: list[dict]) -> str:
+#: The one table header, shared by group tables and the nested table inside an
+#: era band — so the expanded body of a band reads exactly like the open index.
+_TABLE_HEADER = ('    <tr><th></th><th>date</th><th>run</th><th>numbers</th>'
+                 '<th>evidence</th></tr>')
+
+
+def _era_annotation(milestone: str, first_date: str) -> str | None:
+    """The curated label for a band, or ``None`` for an uncurated streak.
+
+    Matching is by milestone plus a startswith on the band's OLDEST date — see
+    ``ANNOTATIONS`` for why prefixes rather than exact dates. An unmatched band
+    still bands (the mechanism is general); it just carries count + dates only
+    (the diagnosis is curated, never guessed).
+    """
+    for (mid, prefix), label in ANNOTATIONS.items():
+        if mid == milestone and first_date.startswith(prefix):
+            return label
+    return None
+
+
+def _era_items(runs: list[dict],
+               era_min_streak: int | None) -> list[tuple[str, object]]:
+    """Segment the GLOBAL newest-first run list into rows and era bands.
+
+    Returns ``("run", row)`` and ``("band", [rows])`` items in order. A band is
+    ``era_min_streak`` or more CONSECUTIVE rows sharing one named milestone —
+    consecutive in the global ordering, so a single interleaved run of another
+    slug breaks the streak (two fragments of the same treadmill separated by an
+    interruption are two bands, or no band at all if each fragment is short:
+    the seam in the record is kept, not smoothed). Rows with ``milestone None``
+    never band — same fail-closed reasoning as ``_collapse_streaks``: freeform
+    and unreadable rows share an UNKNOWN identity, not a common one.
+
+    ``era_min_streak=None`` disables banding entirely; the unbundled render it
+    produces is the reference surface the no-deletion test compares against.
+    """
+    items: list[tuple[str, object]] = []
+    i, n = 0, len(runs)
+    while i < n:
+        mid = runs[i].get("milestone")
+        j = i + 1
+        while mid is not None and j < n and runs[j].get("milestone") == mid:
+            j += 1
+        if (mid is not None and era_min_streak is not None
+                and j - i >= era_min_streak):
+            items.append(("band", runs[i:j]))
+        else:
+            items.extend(("run", r) for r in runs[i:j])
+        i = j
+    return items
+
+
+def _verdict_mix(rows: list[dict]) -> str:
+    """``"19 verified"`` / ``"10 verified · 1 null"`` — a band's honest ledger.
+
+    Every verdict present in the band is named with its count, in the fixed
+    severity order; a verdict this module doesn't know still gets counted and
+    shown (sorted, after the known ones) rather than silently dropped.
+    """
+    counts: dict[str, int] = {}
+    for r in rows:
+        v = str(r.get("verdict"))
+        counts[v] = counts.get(v, 0) + 1
+    known = ("verified", "null", "unscored", "unreadable")
+    bits = [f"{counts[v]} {v}" for v in known if counts.get(v)]
+    bits += [f"{counts[v]} {v}" for v in sorted(counts) if v not in known]
+    return " · ".join(bits) if bits else "—"
+
+
+def _band_html(rows: list[dict]) -> str:
+    """One era band: a summary line over the SAME full rows, zero deleted.
+
+    The collapsed face is one line — ``M02 × 19 · 2026-08-02 → 2026-08-07 ·
+    19 verified`` — and the expanded body is the identical ``_row_html`` rows
+    the index renders unbundled, inside a nested table with the same header:
+    every anchor id, every receipt link, every real number survives verbatim
+    (browsers auto-expand a ``<details>`` when a fragment inside it is
+    navigated to, so published deep links still land). A curated annotation,
+    when one matches, is the first body line.
+    """
+    milestone = str(rows[0].get("milestone"))
+    first = str(rows[-1].get("date") or "—")     # newest-first → last row is oldest
+    last = str(rows[0].get("date") or "—")
+    summary = (f"{milestone} × {len(rows)} · {first} → {last} · "
+               f"{_verdict_mix(rows)}")
+    label = _era_annotation(milestone, first)
+    note = (f'<div class="era-label">{html.escape(label)}</div>'
+            if label else "")
+    inner = "\n".join(_row_html(r) for r in rows)
+    return (
+        f'<tr class="era"><td colspan="5">'
+        f'<details class="era"><summary>{html.escape(summary)}</summary>'
+        f'{note}'
+        f'<table>\n{_TABLE_HEADER}\n{inner}\n</table>'
+        f'</details></td></tr>'
+    )
+
+
+def _group_html(milestone: str, items: list[tuple[str, object]]) -> str:
     head = html.escape(milestone)
-    rows = "\n".join(_row_html(r) for r in runs)
+    rows = "\n".join(
+        _band_html(payload) if kind == "band" else _row_html(payload)
+        for kind, payload in items
+    )
     return (
         f'  <h2>{head}</h2>\n'
         f'  <table>\n'
-        f'    <tr><th></th><th>date</th><th>run</th><th>numbers</th><th>evidence</th></tr>\n'
+        f'{_TABLE_HEADER}\n'
         f'{rows}\n'
         f'  </table>'
     )
 
 
-def render_index(runs: list[dict] | None = None) -> str:
+def render_index(runs: list[dict] | None = None, *,
+                 era_min_streak: int | None = ERA_MIN_STREAK) -> str:
     """Render the archive index to an HTML string (pure when ``runs`` given).
 
     Groups runs by milestone (newest milestone group first, by its newest run),
     keeps EVERY run — verified, null, unscored, unreadable — and HTML-escapes
     every interpolated value. A null row stays a muted folded-grey row that
     still shows its real numbers and links its report.
+
+    Treadmill streaks — ``era_min_streak`` or more consecutive same-milestone
+    rows in the global newest-first order — render as one era band whose
+    expanded body contains the identical full rows (see ``_era_items`` /
+    ``_band_html``): the page condenses the 2026 scheduler waste without
+    deleting a byte of it. ``era_min_streak=None`` renders unbundled — that
+    surface is what the row-count-invariant test compares against.
     """
     if runs is None:
         # The committed HTML is a PUBLIC archive. LAB_HOME is still scanned for
@@ -834,15 +992,21 @@ def render_index(runs: list[dict] | None = None) -> str:
         # a second run nor a URL a visitor can open.
         runs = public_runs()
 
-    # Group by milestone, preserving newest-first order within each group.
-    groups: dict[str, list[dict]] = {}
+    # Band FIRST, on the global order — an interruption by another slug must
+    # break a streak even though the interrupted fragments end up rendered
+    # adjacent inside their milestone's group — THEN group by milestone,
+    # preserving newest-first order within each group.
+    items = _era_items(runs, era_min_streak)
+    any_band = any(kind == "band" for kind, _ in items)
+    groups: dict[str, list[tuple[str, object]]] = {}
     order: list[str] = []
-    for r in runs:
-        key = r.get("milestone") or "unfiled"
+    for kind, payload in items:
+        row = payload[0] if kind == "band" else payload
+        key = row.get("milestone") or "unfiled"
         if key not in groups:
             groups[key] = []
             order.append(key)
-        groups[key].append(r)
+        groups[key].append((kind, payload))
 
     n_verified = sum(1 for r in runs if r["verdict"] == "verified")
     n_null = sum(1 for r in runs if r["verdict"] == "null")
@@ -866,12 +1030,16 @@ def render_index(runs: list[dict] | None = None) -> str:
         + "."
     )
     groups_html = "\n".join(_group_html(m, groups[m]) for m in order)
+    # The disclosure rides exactly when a band does — a page with no bands
+    # must not carry a sentence about bundling that happened to nobody.
+    eranote = (f'  <p class="note">{html.escape(ERA_NOTE)}</p>\n'
+               if any_band else "")
     # Local date, matching how runs are dated (publish.today_local) — an evening
     # regen must not stamp the archive "tomorrow" in UTC.
     generated = today_local()
     return INDEX_TEMPLATE.format(
         summary=summary, scoreboard=_scoreboard_section(), groups=groups_html,
-        count=len(runs), generated=generated,
+        count=len(runs), generated=generated, eranote=eranote,
     )
 
 
