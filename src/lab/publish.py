@@ -804,15 +804,382 @@ def discover_runs() -> list[dict]:
     return [rec for _, rec, _ in records]
 
 
+# ── The hunt block: the survey ledger, aggregated from committed receipts ────
+# reports/hunts/ holds one JSON receipt per completed hunt run (the A05
+# contract, docs/a05-receipt-schema.md; schema 0 = the pre-A05 pilots). The
+# ``hunt`` key in pot.json is a PURE FUNCTION of those committed files — the
+# same rule the milestones key follows with MILESTONES.md — so every clone
+# publishes the same numbers and the page can never say "live": it says
+# "as of" the newest receipt, because that is all the committed record knows.
+HUNTS_DIR = REPORTS_DIR / "hunts"
+
+#: Fallback detection threshold for receipts that do not declare their own
+#: ``sde_threshold``. Mirrors ``lab.a04.SDE_THRESHOLD`` (measured, not chosen —
+#: see a04.py) but is deliberately restated here as a constant: publish stays
+#: import-light (stdlib only) and a04 pulls numpy. A receipt that used a
+#: different threshold must say so; the aggregator never guesses.
+HUNT_SDE_THRESHOLD = 8.0
+
+#: Machine dispositions that mean "the catalog already refutes this signal".
+#: A TOI whose community disposition is FP (e.g. TIC 278866211 = TOI 189.01,
+#: TFOPWG FP, hit at SDE 10.3 in the 2026-08-14 wide hunt) is NOT a recovery
+#: and NOT a lead — it is a validation target for the blend/centroid gates,
+#: and it gets its own verdict so the histogram cannot launder it into either.
+HUNT_KNOWN_FP = "toi-known-fp"
+
+#: The machine-terminal candidate states. ``lead-awaiting-human-review`` is the
+#: A05 vocabulary; ``planet-candidate`` is the pre-A05 pilot vocabulary for the
+#: same thing (the A04 claim boundary: "a lead for human review ... not a
+#: discovery"). No machine path may emit ``planet`` — a receipt that does is
+#: refused outright rather than counted.
+HUNT_LEAD_STATES = ("lead-awaiting-human-review", "planet-candidate")
+
+#: The TFOPWG-refuted false positive from the 2026-08-14 wide hunt. Any
+#: schema-0 pilot row for this target carries ``toi-known-fp`` no matter what
+#: the run-time vetting said: the catalog match with disposition FP outranks a
+#: machine planet-candidate verdict, and the target becomes a validation case
+#: for the centroid-shift gate rather than a lead.
+_PILOT_KNOWN_FPS = {
+    "278866211": {"known_toi": "TOI 189.01", "catalog_disposition": "FP"},
+}
+
+#: The pilot's own refutations, applied at translation time so the committed
+#: schema-0 receipt records what the instrument NOW knows, not the forty
+#: minutes it didn't. TIC 140940493 was vetted ``planet-candidate`` on
+#: 2026-08-14 and refuted the same day (five equally spaced dips in the fold at
+#: P; amplitude spectrum peaking at 8.035 c/d = the P/5 prediction — a δ Scuti-
+#: type pulsator whose 5th harmonic the BLS grid latched onto; the "secondary"
+#: a 13σ phase-locked brightening). The hardened vetting regrades the same
+#: detection ``harmonic-alias`` (docs/investigations/2026-08-14-a04-discovery-pilot.md).
+_PILOT_REGRADES = {
+    "140940493": {
+        "disposition": "harmonic-alias",
+        "evidence": {
+            "initial_verdict": "planet-candidate",
+            "pulsation_cpd": 8.035,
+            "refuted": ("2026-08-14 follow-up: delta Scuti-type pulsator at "
+                        "P/5 = 2.99 h; BLS latched onto the 5th harmonic; the "
+                        "'secondary' is a 13-sigma phase-locked brightening"),
+        },
+    },
+}
+
+#: The provenance label the aggregator stamps on a schema-0 last-hunt: the
+#: pilot ran on the A04 instrument with run-level statistics only, before the
+#: A05 per-target FAP machinery existed. Never presented as A05 output.
+PILOT_PROVENANCE = "pilot (pre-A05 statistics)"
+
+
+def translate_pilot_summary(summary: dict, supersedes: str | None = None) -> dict:
+    """An ``a04-discovery-pilot`` summary → a schema-0 hunt receipt.
+
+    Tolerant on purpose: today's two hunt runs share this summary shape but the
+    second completes after the first lands, so the translator takes whatever
+    rows the summary has and derives nothing it cannot see. A schema-0 receipt
+    carries the searched rows (the above-threshold hits — the pilot's
+    per-target checkpoints stay deliberately uncommitted), the machine
+    dispositions, the RUN-LEVEL injections, the noise-floor block that lets the
+    aggregator re-derive the searched count (``floor.n + len(rows)``), and an
+    explicit ``pilot`` marker so no consumer can mistake it for A05 output.
+
+    Grading-time corrections, applied in order:
+
+    1. A catalog match with TFOPWG disposition **FP** → ``toi-known-fp``. A
+       community-refuted false positive is not a recovery and not a lead —
+       whatever the run-time vetting said, the catalog verdict outranks it,
+       and the target becomes a validation case for the blend gates. The
+       ``_PILOT_KNOWN_FPS`` map is the fallback for rows missing their
+       catalog block.
+    2. A catalog match with disposition **KP**/**CP** → ``known-planet``: a
+       serendipitous recovery of an already-confirmed planet, identified at
+       grading time only (the A04 pattern), never a lead and never counted as
+       anything new.
+    3. The pilot's own same-day refutations (``_PILOT_REGRADES``) — e.g.
+       TIC 140940493's forty-minute planet-candidate, regraded
+       ``harmonic-alias``.
+
+    ``supersedes`` names an earlier receipt this one replaces: the wide run's
+    summary is CUMULATIVE (its jsonl checkpoints carry the first run's targets
+    forward), so committing both without the link would double-count the first
+    slice. The superseded receipt stays on the books as history; the
+    aggregator excludes it from every counter.
+    """
+    rows = []
+    for hit in summary.get("hits") or []:
+        tic = str(hit.get("tic", ""))
+        verdict = ((hit.get("vetting") or {}).get("verdict")) or None
+        catalog = hit.get("catalog") or {}
+        row = {
+            "tic": tic,
+            "outcome": "searched",
+            "sde": hit.get("sde"),
+            "period_days": hit.get("period_days"),
+            "depth": hit.get("depth"),
+            "phase": hit.get("phase"),
+            "disposition": verdict,
+            "known_planet": catalog.get("known_planet"),
+        }
+        cat_disp = catalog.get("disposition")
+        if cat_disp == "FP" or tic in _PILOT_KNOWN_FPS:
+            fallback = _PILOT_KNOWN_FPS.get(tic, {})
+            row["disposition"] = HUNT_KNOWN_FP
+            row["known_planet"] = None      # an FP is nobody's planet
+            row["disposition_evidence"] = {
+                "known_toi": catalog.get("known_toi") or fallback.get("known_toi"),
+                "catalog_disposition": cat_disp or fallback.get("catalog_disposition"),
+                "initial_verdict": verdict,
+            }
+        elif cat_disp in ("KP", "CP"):
+            row["disposition"] = "known-planet"
+            row["known_planet"] = (catalog.get("known_planet")
+                                   or ("TOI " + str(catalog.get("known_toi"))))
+            row["disposition_evidence"] = {
+                "known_toi": catalog.get("known_toi"),
+                "catalog_disposition": cat_disp,
+                "published_period_days": catalog.get("published_period_days"),
+                "initial_verdict": verdict,
+            }
+        elif tic in _PILOT_REGRADES:
+            regrade = _PILOT_REGRADES[tic]
+            row["disposition"] = regrade["disposition"]
+            row["disposition_evidence"] = dict(regrade["evidence"])
+        rows.append(row)
+    floor_n = summary.get("floor_n")
+    receipt = {
+        "experiment": "a05-survey-hunt",
+        "schema": 0,
+        "pilot": "pre-A05 pilot (A04 instrument, run-level statistics only)",
+        "date": summary.get("date"),
+        "sector": summary.get("sector"),
+        "slice_rule": summary.get("slice_rule"),
+        "sde_threshold": HUNT_SDE_THRESHOLD,
+        "targets_searched": summary.get("targets_searched"),
+        "targets": rows,
+        "injections": summary.get("injections") or [],
+        "floor": {"n": floor_n, "max_sde": summary.get("floor_max_sde")},
+        "wall_seconds": summary.get("wall_seconds"),
+        "claim_boundary": summary.get("claim_boundary"),
+    }
+    if supersedes:
+        receipt["supersedes"] = supersedes
+    return receipt
+
+
+def _hunt_receipt_date(receipt: dict, path: Path) -> str:
+    """The receipt's own date: ``date`` (schema 0), else ``generated_at``'s day,
+    else the date embedded in the filename (``hunt-<date>-…``)."""
+    date = receipt.get("date")
+    if isinstance(date, str) and len(date) >= 10:
+        return date[:10]
+    stamp = receipt.get("generated_at")
+    if isinstance(stamp, str) and len(stamp) >= 10:
+        return stamp[:10]
+    m = re.search(r"(\d{4}-\d{2}-\d{2})", path.stem)
+    return m.group(1) if m else ""
+
+
+def _hunt_refusal(receipt: dict, path: Path) -> str | None:
+    """Why this receipt cannot be honestly aggregated, or ``None`` if it can.
+
+    The refusals are the contract's teeth (docs/a05-receipt-schema.md rules
+    2–3): an above-threshold row with no machine disposition is an unfinished
+    grading pass, a schema≥1 receipt with no injection coverage on its hits has
+    no sensitivity measurement to stand on, a schema-0 receipt without its
+    pilot marker or run-level injections is not the shape the pilot committed,
+    and a receipt whose declared searched count disagrees with what its own
+    rows + floor imply is lying about one of them. Any ``planet`` disposition
+    is refused outright — no machine path may emit it.
+    """
+    schema = receipt.get("schema")
+    if not isinstance(schema, int) or schema < 0:
+        return "missing-or-bad-schema"
+    threshold = receipt.get("sde_threshold", HUNT_SDE_THRESHOLD)
+    rows = receipt.get("targets")
+    if not isinstance(rows, list):
+        return "missing-targets"
+    above = [r for r in rows
+             if isinstance(r, dict) and r.get("outcome") == "searched"
+             and isinstance(r.get("sde"), (int, float)) and r["sde"] >= threshold]
+    for row in above:
+        disposition = row.get("disposition")
+        if not (isinstance(disposition, str) and disposition.strip()):
+            return f"undispositioned-above-threshold-hit:{row.get('tic')}"
+    all_rows = rows + list(receipt.get("recoveries") or [])
+    for row in all_rows:
+        if isinstance(row, dict) and row.get("disposition") == "planet":
+            return f"machine-emitted-planet:{row.get('tic')}"
+    if schema == 0:
+        if not (isinstance(receipt.get("pilot"), str) and receipt["pilot"].strip()):
+            return "schema0-missing-pilot-marker"
+        if not receipt.get("injections"):
+            return "schema0-missing-run-level-injections"
+        floor = receipt.get("floor") or {}
+        floor_n = floor.get("n")
+        declared = receipt.get("targets_searched")
+        if not isinstance(floor_n, int):
+            return "schema0-missing-floor-count"
+        # Schema 0 carries only the above-threshold rows, so the searched count
+        # is derived floor.n + rows; a declared total that disagrees means one
+        # of the two is wrong and the receipt cannot be honestly counted.
+        if isinstance(declared, int) and declared != floor_n + len(above):
+            return "schema0-searched-count-mismatch"
+    else:
+        for row in above:
+            if not row.get("injections"):
+                return f"missing-injection-block:{row.get('tic')}"
+    return None
+
+
+def _hunt_receipt_counters(receipt: dict) -> dict:
+    """Counters re-derived from a single accepted receipt's rows.
+
+    Never reads the receipt's own ``counts``/``above_threshold`` fields — rule
+    2 of the contract. Schema-0's searched count is ``floor.n + hit rows``
+    (consistency with any declared total is enforced at refusal time).
+    """
+    schema = receipt.get("schema", 0)
+    threshold = receipt.get("sde_threshold", HUNT_SDE_THRESHOLD)
+    rows = [r for r in receipt.get("targets", []) if isinstance(r, dict)]
+    searched = [r for r in rows if r.get("outcome") == "searched"]
+    above = [r for r in searched
+             if isinstance(r.get("sde"), (int, float)) and r["sde"] >= threshold]
+    if schema == 0:
+        n_searched = (receipt.get("floor") or {}).get("n", 0) + len(above)
+    else:
+        n_searched = len(searched)
+    dispositions: dict[str, int] = {}
+    for row in above:
+        d = row["disposition"]
+        dispositions[d] = dispositions.get(d, 0) + 1
+    known = [r for r in above
+             if r.get("known_planet") and r.get("disposition") != HUNT_KNOWN_FP]
+    for row in receipt.get("recoveries") or []:
+        if isinstance(row, dict) and row.get("known_planet") \
+                and row.get("disposition") != HUNT_KNOWN_FP:
+            known.append(row)
+    leads = sum(dispositions.get(state, 0) for state in HUNT_LEAD_STATES)
+    return {
+        "targets_searched": n_searched,
+        "above_threshold": len(above),
+        "dispositions": dispositions,
+        "known_recovered": len(known),
+        "leads_awaiting_human_review": leads,
+    }
+
+
+def hunt_block(hunts_dir: Path | None = None) -> dict | None:
+    """Aggregate every committed hunt receipt into pot.json's ``hunt`` block.
+
+    A pure function of ``reports/hunts/*.json`` — no clock, no local state — so
+    every clone derives the same block, exactly as the milestones key is a pure
+    function of MILESTONES.md. ``None`` when no receipts exist (the page then
+    omits the section entirely).
+
+    Refused receipts are EXCLUDED from every counter and named in ``refused``
+    (file + reason): a refusal is a fact about the record worth publishing, not
+    a silent skip. ``claim_boundary`` and ``as_of`` come verbatim from the
+    newest accepted receipt — the page must say "as of", never "live", because
+    a committed ledger only knows its newest entry. ``planets_discovered`` is
+    pinned to the literal 0 below and is not computed from anything: promoting
+    a lead to a planet is a human act on the record (MILESTONES.md), and no
+    machine path through this function can raise the number.
+    """
+    directory = hunts_dir if hunts_dir is not None else HUNTS_DIR
+    if not directory.exists():
+        return None
+    paths = sorted(directory.glob("*.json"))
+    if not paths:
+        return None
+    accepted: list[tuple[str, Path, dict]] = []
+    refused: list[dict] = []
+    for path in paths:
+        try:
+            receipt = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            refused.append({"file": path.name, "reason": "unreadable"})
+            continue
+        reason = _hunt_refusal(receipt, path)
+        if reason is not None:
+            refused.append({"file": path.name, "reason": reason})
+            continue
+        accepted.append((_hunt_receipt_date(receipt, path), path, receipt))
+
+    # A receipt named by another ACCEPTED receipt's ``supersedes`` is history,
+    # not a counter: the wide pilot run's summary is cumulative over the first
+    # slice, so counting both would double-count 158 stars. The superseded
+    # file stays committed and is named here, so nothing quietly vanishes.
+    superseded_by = {}
+    for _, path, receipt in accepted:
+        target = receipt.get("supersedes")
+        if isinstance(target, str) and target:
+            superseded_by[target] = path.name
+    superseded = [{"file": p.name, "by": superseded_by[p.name]}
+                  for _, p, _ in accepted if p.name in superseded_by]
+    accepted = [item for item in accepted if item[1].name not in superseded_by]
+
+    if not accepted:
+        empty = {"targets_searched": 0, "above_threshold": 0, "dispositions": {},
+                 "known_recovered": 0, "leads_awaiting_human_review": 0,
+                 "planets_discovered": 0, "last_hunt": None,
+                 "claim_boundary": None, "as_of": None, "refused": refused}
+        if superseded:
+            empty["superseded"] = superseded
+        return empty
+
+    totals = {"targets_searched": 0, "above_threshold": 0,
+              "known_recovered": 0, "leads_awaiting_human_review": 0}
+    dispositions: dict[str, int] = {}
+    for _, _, receipt in accepted:
+        counters = _hunt_receipt_counters(receipt)
+        for key in totals:
+            totals[key] += counters[key]
+        for verdict, n in counters["dispositions"].items():
+            dispositions[verdict] = dispositions.get(verdict, 0) + n
+
+    newest_date, newest_path, newest = max(
+        accepted, key=lambda item: (item[0], item[1].name))
+    newest_counters = _hunt_receipt_counters(newest)
+    block = {
+        "targets_searched": totals["targets_searched"],
+        "above_threshold": totals["above_threshold"],
+        "dispositions": dispositions,
+        "known_recovered": totals["known_recovered"],
+        "leads_awaiting_human_review": totals["leads_awaiting_human_review"],
+        # HARD-PINNED. Assigned from a literal, after all aggregation, on
+        # purpose: there is no data path from any receipt to this number.
+        "planets_discovered": 0,
+        "last_hunt": {
+            "date": newest_date,
+            "sector": newest.get("sector"),
+            "n": newest_counters["targets_searched"],
+            "wall": newest.get("wall_seconds"),
+            "provenance": (PILOT_PROVENANCE if newest.get("schema") == 0
+                           else "a05"),
+        },
+        # Verbatim from the newest accepted receipt — never paraphrased here,
+        # never paraphrased by the page.
+        "claim_boundary": newest.get("claim_boundary"),
+        "as_of": newest_date,
+    }
+    if refused:
+        block["refused"] = refused
+    if superseded:
+        block["superseded"] = superseded
+    block["planets_discovered"] = 0   # the pin, restated last so nothing above can move it
+    return block
+
+
 def build_snapshot(milestones, last_run, runs, temp_c, report=None,
                    reports=None, reports_ledger=None, turns=None,
-                   divergence=None) -> dict:
+                   divergence=None, hunt=None) -> dict:
     """Assemble the sanitized snapshot the /windowsill/ page consumes.
 
     ``turns`` (optional) is the ``turn_cadence()`` object — the pass counter and
     the declared cadence. ``divergence`` (optional) is the machine-aligned
     disagreement list from ``archive.detect_divergence``; both are omitted when
     absent and the page degrades to its legacy constants without them.
+    ``hunt`` (optional) is the ``hunt_block()`` aggregate of the committed
+    survey receipts; omitted when absent and the page hides its hunt section.
 
     ``reports_ledger`` (new) is the archive's sanitized every-run ledger
     (``archive.run_ledger()`` — rows of ``{date, milestone, verdict, headline,
@@ -852,6 +1219,8 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
         snap["turns"] = turns
     if divergence:
         snap["divergence"] = divergence
+    if hunt is not None:
+        snap["hunt"] = hunt
     return snap
 
 
@@ -878,14 +1247,16 @@ def collect() -> dict:
         divergence = archive.detect_divergence(archive.public_runs())
     except Exception:  # noqa: BLE001 — same guard: the turn layer never breaks the feed
         pass
+    hunt = hunt_block()   # pure function of committed reports/hunts/*.json
     if ledger is not None:
         return build_snapshot(
             parse_milestones(text), last_run, runs, cpu_temp_c(),
             reports_ledger=ledger, turns=turns, divergence=divergence,
+            hunt=hunt,
         )
     return build_snapshot(
         parse_milestones(text), last_run, runs, cpu_temp_c(),
-        reports=discover_runs(),
+        reports=discover_runs(), hunt=hunt,
     )
 
 

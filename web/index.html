@@ -602,6 +602,44 @@
     .arc-all:hover { color:var(--text); }
 
     .journey, .garden { margin-top:clamp(4rem, 9vw, 7rem); padding-top:1.25rem; border-top:1px solid var(--border); }
+
+    /* ── The hunt ledger: committed survey counters, dated, never "live" ──── */
+    .hunt { margin-top:clamp(4rem, 9vw, 7rem); padding-top:1.25rem; border-top:1px solid var(--border); }
+    .hunt-asof { margin-top:2.2rem; font:0.68rem var(--font-mono); color:var(--text-muted); letter-spacing:0.04em; }
+    .hunt-strip { list-style:none; display:grid; grid-template-columns:repeat(6,1fr);
+                  margin-top:0.6rem; border-top:1px solid var(--border); border-bottom:1px solid var(--border); }
+    .hunt-strip li { min-width:0; padding:1rem 1rem 1.1rem 0; border-right:1px solid var(--border); }
+    .hunt-strip li:last-child { border-right:none; }
+    .hunt-strip li + li { padding-left:1rem; }
+    .hunt-strip b { display:block; font-size:clamp(1.4rem, 2.6vw, 2.2rem); font-weight:520; color:var(--text-secondary); font-variant-numeric:tabular-nums; }
+    .hunt-strip span { display:block; margin-top:0.4rem; font:0.67rem/1.45 var(--font-mono); color:var(--text-muted); }
+    /* The zero is the design centerpiece: the biggest number on the strip is
+       the one the machine is forbidden to raise. */
+    .hunt-zero { background:rgba(255,255,255,0.02); }
+    .hunt-zero b { font-size:clamp(2rem, 3.6vw, 3rem); color:var(--text); }
+    .hunt-zero span { color:var(--text-secondary); }
+    .hunt-cols { display:grid; grid-template-columns:1fr 1.4fr; gap:1.5rem; margin-top:1.5rem; align-items:start; }
+    .hunt-ledger { border:1px solid var(--border); border-radius:6px; background:rgba(255,255,255,0.015); padding:0.7rem 0.9rem; }
+    .hunt-ledger-label { display:block; font:0.64rem var(--font-mono); letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); }
+    .hunt-ledger ul { list-style:none; margin-top:0.45rem; }
+    .hunt-ledger li { display:flex; align-items:baseline; gap:0.55rem; padding:0.26rem 0;
+                      border-top:1px solid var(--border); font:0.74rem var(--font-mono); color:var(--text-secondary); }
+    .hunt-ledger li:first-child { border-top:none; }
+    .hunt-ledger li b { margin-left:auto; font-weight:520; color:var(--text); font-variant-numeric:tabular-nums; }
+    .hunt-story h3 { font-size:1.15rem; font-weight:560; letter-spacing:-0.01em; }
+    .hunt-story p { margin-top:0.55rem; color:var(--text-muted); line-height:1.6; font-size:0.88rem; }
+    .hunt-boundary { margin-top:1.4rem; padding:0.7rem 0.9rem; border-left:2px solid var(--border); }
+    .hunt-boundary p { margin-top:0.4rem; color:var(--text-muted); line-height:1.6; font-size:0.82rem; font-style:italic; }
+    .hunt-credit { margin-top:1rem; font:0.68rem/1.55 var(--font-mono); color:var(--text-muted); }
+    @media (max-width:760px) {
+      .hunt-strip { grid-template-columns:repeat(2,1fr); }
+      .hunt-strip li:nth-child(2n) { border-right:none; }
+      .hunt-strip li { border-bottom:1px solid var(--border); padding-left:0; }
+      .hunt-strip li + li { padding-left:0; }
+      .hunt-strip li:nth-child(2n) { padding-left:1rem; }
+      .hunt-cols { grid-template-columns:1fr; }
+    }
+
     .section-intro { display:grid; grid-template-columns:minmax(120px, 0.65fr) 1.5fr 1fr; gap:1.5rem; align-items:start; }
     .section-intro h2 { font-size:clamp(1.9rem, 4vw, 3.4rem); line-height:1.04; letter-spacing:-0.035em; font-weight:520; }
     .section-intro p { color:var(--text-muted); line-height:1.6; font-size:0.88rem; }
@@ -1268,6 +1306,70 @@
         <p>Height tracks how far each track has climbed. Amber waits for review; grey keeps the boundary visible.</p>
       </div>
       <ul class="garden-row" id="garden-row"></ul>
+    </section>
+
+    <!-- The hunt ledger. Every counter is re-derived by the publisher from the
+         committed hunt receipts (pot.json `hunt` — a pure function of
+         reports/hunts/*.json), and the section is dated to the newest receipt:
+         a committed ledger is "as of" its last entry, never "live". Hidden
+         until a feed carrying a hunt block arrives. -->
+    <section class="hunt" id="hunt" hidden aria-labelledby="hunt-title">
+      <div class="section-intro">
+        <span class="section-kicker">The hunt</span>
+        <h2 id="hunt-title">Stars searched, alarms priced, and a zero kept on purpose.</h2>
+        <p>The astronomy track keeps a running ledger of its blind planet search.
+        Each number is re-derived from the committed run receipts, never copied
+        from a run's own summary, and the strongest verdict the machine can hand
+        out is a lead for a human to review. The zero at the end of the strip is
+        the honest headline: nothing here counts as found until human review and
+        independent follow-up say so.</p>
+      </div>
+      <p class="hunt-asof" id="hunt-asof">as of the last published run</p>
+      <ul class="hunt-strip" role="list" aria-label="hunt counters, as of the last published run">
+        <li><b id="hunt-searched">—</b><span>stars searched blind</span></li>
+        <li><b id="hunt-events">—</b><span>threshold-crossing events</span></li>
+        <li><b id="hunt-impostors">—</b><span>impostors unmasked</span></li>
+        <li><b id="hunt-known">—</b><span>known planets re-found</span></li>
+        <li><b id="hunt-leads">—</b><span>leads awaiting human review</span></li>
+        <li class="hunt-zero"><b id="hunt-planets">0</b><span>planets discovered</span></li>
+      </ul>
+      <div class="hunt-cols">
+        <div class="hunt-ledger" role="group" aria-label="machine dispositions of every threshold-crossing event">
+          <span class="hunt-ledger-label">machine disposition</span>
+          <ul id="hunt-dispositions"></ul>
+        </div>
+        <div class="hunt-story">
+          <h3>For forty minutes this was a planet.</h3>
+          <p>On the first pilot hunt — 158 stars searched blind — one signal
+          cleared every test on the books: a dip the right size for a planet,
+          42 separate crossings, no mismatch between alternating events, and no
+          entry in any catalog. Then the follow-up looked closer. The dip
+          repeated five times too neatly inside each cycle, and the star turned
+          out to be one that pulses on its own every three hours — the search
+          had latched onto an echo of that rhythm. The ledger's verdict changed
+          from candidate to impostor the same day, and the receipt keeps both
+          the mistake and the correction.</p>
+          <details class="curious">
+            <summary>the numbers, from the committed receipt</summary>
+            <p>TIC 140940493, sector 2: SDE 8.7 at P&nbsp;=&nbsp;0.6222&nbsp;d,
+            depth 898&nbsp;ppm, 42 events, odd/even consistent at 1.7σ. The
+            amplitude spectrum peaks at 8.035 cycles/day — exactly the P/5
+            prediction (a 2.99-hour pulsation, δ&nbsp;Scuti-type; the search
+            grid's floor of 0.5&nbsp;d latched onto the 5th harmonic) — and the
+            apparent "secondary" is a 13σ phase-locked <em>brightening</em>,
+            impossible for an occultation and natural for a pulsating star.
+            Machine disposition: <code>harmonic-alias</code>. Source:
+            <code>reports/hunts/hunt-2026-08-14-s2-pilot-158.json</code>.</p>
+          </details>
+        </div>
+      </div>
+      <blockquote class="hunt-boundary">
+        <span class="hunt-ledger-label">claim boundary — verbatim from the newest receipt</span>
+        <p id="hunt-boundary"></p>
+      </blockquote>
+      <p class="hunt-credit">The search itself is box least squares — Kovács,
+      Zucker &amp; Mazeh (2002). The agents build, run, and grade the
+      instrument; the math is classical.</p>
     </section>
 
     <div class="footer">
@@ -3926,7 +4028,7 @@
       { track:'physics', form:'fern', label:'Physics', domain:'matter · disorder · time', expected:18 },
       { track:'coherence', form:'fern', label:'Coherence', domain:'clocks · agreement · sharpness', expected:3 },
       { track:'compute', form:'vine', label:'Compute', domain:'proofs · exact arithmetic', expected:4 },
-      { track:'astronomy', form:'creeper', label:'Astronomy', domain:'public light · long baselines', expected:4 },
+      { track:'astronomy', form:'creeper', label:'Astronomy', domain:'public light · long baselines', expected:6 },
       { track:'instrument', form:'succulent', label:'Instruments', domain:'dark noise · patient counts', expected:3 },
       { track:'boinc', form:'moss', label:'Distributed compute', domain:'shared cycles · long projects', expected:2 }
     ];
@@ -4242,6 +4344,61 @@
         + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     }
 
+    // ── The hunt ledger: committed survey receipts, dated, never "live" ─────
+    // Renders pot.json's `hunt` block. Everything here is display of numbers
+    // the PUBLISHER re-derived from committed receipts; the only figure this
+    // function computes is the impostor count, and that is a derivation, not a
+    // restatement: impostors = threshold-crossing events − known planets
+    // re-found − leads still open. It closes because the aggregator refuses
+    // any receipt with an undispositioned above-threshold hit, so every event
+    // is accounted one of the three ways. The section stays hidden without a
+    // hunt block — a feed from before the survey era degrades cleanly.
+    function drawHunt(hunt) {
+      var box = $('hunt');
+      if (!box) return;
+      if (!hunt || typeof hunt !== 'object' || !hunt.as_of) { box.hidden = true; return; }
+      var above = Number(hunt.above_threshold) || 0;
+      var known = Number(hunt.known_recovered) || 0;
+      var leads = Number(hunt.leads_awaiting_human_review) || 0;
+      var impostors = Math.max(0, above - known - leads);
+      $('hunt-searched').textContent = String(Number(hunt.targets_searched) || 0);
+      $('hunt-events').textContent = String(above);
+      $('hunt-impostors').textContent = String(impostors);
+      $('hunt-known').textContent = String(known);
+      $('hunt-leads').textContent = String(leads);
+      // Rendered from the feed's hard-pinned counter (the producer assigns it
+      // from a literal 0; no machine path can raise it) — never computed here.
+      $('hunt-planets').textContent = String(Number(hunt.planets_discovered) || 0);
+      // "as of", never "live": the ledger only knows its newest receipt. The
+      // provenance label rides along so a pilot-era number can never dress up
+      // as survey-grade statistics.
+      var last = hunt.last_hunt || {};
+      var asof = 'as of the last published run · ' + hunt.as_of;
+      if (last.sector != null) asof += ' · sector ' + last.sector;
+      if (last.n != null) asof += ' · ' + last.n + ' stars';
+      if (typeof last.wall === 'number') asof += ' · ' + Math.round(last.wall / 60) + ' min';
+      if (last.provenance) asof += ' · ' + last.provenance;
+      $('hunt-asof').textContent = asof;
+      // The machine-disposition ledger: verdict strings VERBATIM (textContent,
+      // no prettifying) — the vocabulary is part of the record.
+      var list = $('hunt-dispositions');
+      list.textContent = '';
+      var verdicts = Object.keys(hunt.dispositions || {}).sort();
+      verdicts.forEach(function (verdict) {
+        var row = document.createElement('li');
+        var name = document.createElement('span');
+        name.textContent = verdict;
+        var n = document.createElement('b');
+        n.textContent = String(hunt.dispositions[verdict]);
+        row.appendChild(name); row.appendChild(n);
+        list.appendChild(row);
+      });
+      // The claim boundary ships verbatim from the newest receipt — the page
+      // never paraphrases it.
+      $('hunt-boundary').textContent = hunt.claim_boundary || '';
+      box.hidden = false;
+    }
+
     var _renderState = { mode:'local-scene' };
     var _lastFeedState = null;
 
@@ -4366,6 +4523,8 @@
 
       // The honest every-run ledger — hidden unless the feed carries reports[].
       drawRunList(state.reports, state.archive_url, milestones, state.divergence);
+      // The hunt ledger — hidden unless the feed carries a hunt block.
+      drawHunt(state.hunt);
       setFooterStatus(freshness, state, open);
 
       _renderState = {

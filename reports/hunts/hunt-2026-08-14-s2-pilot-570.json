@@ -1,0 +1,257 @@
+{
+  "experiment": "a05-survey-hunt",
+  "schema": 0,
+  "pilot": "pre-A05 pilot (A04 instrument, run-level statistics only)",
+  "date": "2026-08-14",
+  "sector": 2,
+  "slice_rule": "next targets in A04's consistent-hash ranking, graded-run targets and designated recovery targets excluded",
+  "sde_threshold": 8.0,
+  "targets_searched": 570,
+  "targets": [
+    {
+      "tic": "358460464",
+      "outcome": "searched",
+      "sde": 9.227104915897112,
+      "period_days": 0.6043358705772555,
+      "depth": 0.00018941723254584097,
+      "phase": 0.7475,
+      "disposition": "eclipsing-binary-secondary",
+      "known_planet": null
+    },
+    {
+      "tic": "89543393",
+      "outcome": "searched",
+      "sde": 8.288161315516824,
+      "period_days": 0.9416327501657916,
+      "depth": 0.1562413810345642,
+      "phase": 0.695,
+      "disposition": "eclipsing-binary-secondary",
+      "known_planet": null
+    },
+    {
+      "tic": "140940493",
+      "outcome": "searched",
+      "sde": 8.686204412225745,
+      "period_days": 0.6221735497129439,
+      "depth": 0.0008983507011431913,
+      "phase": 0.4775,
+      "disposition": "harmonic-alias",
+      "known_planet": null,
+      "disposition_evidence": {
+        "initial_verdict": "planet-candidate",
+        "pulsation_cpd": 8.035,
+        "refuted": "2026-08-14 follow-up: delta Scuti-type pulsator at P/5 = 2.99 h; BLS latched onto the 5th harmonic; the 'secondary' is a 13-sigma phase-locked brightening"
+      }
+    },
+    {
+      "tic": "160085375",
+      "outcome": "searched",
+      "sde": 8.034225430970878,
+      "period_days": 1.4030194413350117,
+      "depth": 0.23333773669836833,
+      "phase": 0.3325,
+      "disposition": "eclipsing-binary-secondary",
+      "known_planet": null
+    },
+    {
+      "tic": "306470921",
+      "outcome": "searched",
+      "sde": 8.051151503842625,
+      "period_days": 0.5285911171646476,
+      "depth": 0.0009168829987220573,
+      "phase": 0.23,
+      "disposition": "eclipsing-binary-secondary",
+      "known_planet": null
+    },
+    {
+      "tic": "339607421",
+      "outcome": "searched",
+      "sde": 8.944498344247343,
+      "period_days": 2.4380722304378875,
+      "depth": 0.04776979690146932,
+      "phase": 0.33,
+      "disposition": "eclipsing-binary-odd-even",
+      "known_planet": null
+    },
+    {
+      "tic": "229810745",
+      "outcome": "searched",
+      "sde": 8.97313275985554,
+      "period_days": 0.994775866819626,
+      "depth": 0.18314633813139525,
+      "phase": 0.415,
+      "disposition": "harmonic-alias",
+      "known_planet": null
+    },
+    {
+      "tic": "279950870",
+      "outcome": "searched",
+      "sde": 8.196912910925835,
+      "period_days": 0.7311432808137853,
+      "depth": 0.00032041403043436834,
+      "phase": 0.4875,
+      "disposition": "low-significance",
+      "known_planet": null
+    },
+    {
+      "tic": "349308191",
+      "outcome": "searched",
+      "sde": 8.760591301921018,
+      "period_days": 0.5708977502414245,
+      "depth": 0.0010375209492297088,
+      "phase": 0.395,
+      "disposition": "phased-brightening",
+      "known_planet": null
+    },
+    {
+      "tic": "224283342",
+      "outcome": "searched",
+      "sde": 8.159203361513061,
+      "period_days": 0.8878764009993111,
+      "depth": 0.028856700747422637,
+      "phase": 0.8625,
+      "disposition": "phased-brightening",
+      "known_planet": null
+    },
+    {
+      "tic": "349154435",
+      "outcome": "searched",
+      "sde": 8.440571647883187,
+      "period_days": 4.435414211433542,
+      "depth": 0.02424140989964596,
+      "phase": 0.465,
+      "disposition": "eclipsing-binary-odd-even",
+      "known_planet": null
+    },
+    {
+      "tic": "167602738",
+      "outcome": "searched",
+      "sde": 8.230504293329735,
+      "period_days": 0.5300736896060754,
+      "depth": 0.0008063092002342787,
+      "phase": 0.8625,
+      "disposition": "harmonic-alias",
+      "known_planet": null
+    },
+    {
+      "tic": "382069441",
+      "outcome": "searched",
+      "sde": 8.028870820902222,
+      "period_days": 2.7461807218836793,
+      "depth": 0.002748824797549121,
+      "phase": 0.21,
+      "disposition": "eclipsing-binary-odd-even",
+      "known_planet": null
+    },
+    {
+      "tic": "43398254",
+      "outcome": "searched",
+      "sde": 8.468325277827706,
+      "period_days": 0.6032458022631282,
+      "depth": 0.19873990465499114,
+      "phase": 0.92,
+      "disposition": "harmonic-alias",
+      "known_planet": null
+    },
+    {
+      "tic": "278866211",
+      "outcome": "searched",
+      "sde": 10.283114978323837,
+      "period_days": 2.1951560006095763,
+      "depth": 0.0037902354858510012,
+      "phase": 0.6675,
+      "disposition": "toi-known-fp",
+      "known_planet": null,
+      "disposition_evidence": {
+        "known_toi": "189.01",
+        "catalog_disposition": "FP",
+        "initial_verdict": "planet-candidate"
+      }
+    },
+    {
+      "tic": "158596311",
+      "outcome": "searched",
+      "sde": 8.4422859168265,
+      "period_days": 0.6185347627289969,
+      "depth": 0.005280078578795422,
+      "phase": 0.27,
+      "disposition": "harmonic-alias",
+      "known_planet": null
+    },
+    {
+      "tic": "355703913",
+      "outcome": "searched",
+      "sde": 11.286672365991969,
+      "period_days": 2.1048482122580228,
+      "depth": 0.00796351403784712,
+      "phase": 0.0375,
+      "disposition": "known-planet",
+      "known_planet": "HATS-34 b",
+      "disposition_evidence": {
+        "known_toi": "111.01",
+        "catalog_disposition": "KP",
+        "published_period_days": 2.1061569,
+        "initial_verdict": "planet-candidate"
+      }
+    },
+    {
+      "tic": "52368076",
+      "outcome": "searched",
+      "sde": 8.305572387438124,
+      "period_days": 4.656733355554805,
+      "depth": 0.0007250937524173606,
+      "phase": 0.05,
+      "disposition": "known-planet",
+      "known_planet": "TOI-125 c",
+      "disposition_evidence": {
+        "known_toi": "125.01",
+        "catalog_disposition": "CP",
+        "published_period_days": 4.6517186,
+        "initial_verdict": "low-significance"
+      }
+    },
+    {
+      "tic": "389669796",
+      "outcome": "searched",
+      "sde": 8.507251922694573,
+      "period_days": 8.453602120252718,
+      "depth": 0.001933139980860088,
+      "phase": 0.6275,
+      "disposition": "low-significance",
+      "known_planet": null
+    }
+  ],
+  "injections": [
+    {
+      "host_tic": "238007651",
+      "injected_depth": 0.01,
+      "injected_period_days": 3.7,
+      "recovered_period_days": 3.700770815798729,
+      "sde": 8.772701331378757,
+      "recovered": true
+    },
+    {
+      "host_tic": "238007651",
+      "injected_depth": 0.004,
+      "injected_period_days": 2.3,
+      "recovered_period_days": 2.3001969911746185,
+      "sde": 9.073279966198367,
+      "recovered": true
+    },
+    {
+      "host_tic": "238007651",
+      "injected_depth": 0.002,
+      "injected_period_days": 5.1,
+      "recovered_period_days": 5.106518532909224,
+      "sde": 8.945903026572648,
+      "recovered": true
+    }
+  ],
+  "floor": {
+    "n": 551,
+    "max_sde": 7.8752631815526755
+  },
+  "wall_seconds": 3527.206748485565,
+  "claim_boundary": "A pilot over a deterministic slice of one sector's 2-minute SPOC targets \u2014 territory the official pipeline has already searched. An uncatalogued planet-candidate here is a lead for human review and independent follow-up, not a discovery; nothing is submitted anywhere on the strength of this script.",
+  "supersedes": "hunt-2026-08-14-s2-pilot-158.json"
+}
