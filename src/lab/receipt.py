@@ -20,6 +20,44 @@ from typing import Any
 
 RECEIPT_SCHEMA = "windowsill.measurement-receipt.v1"
 
+#: Scheduler decision for the CURRENT process's turn, or ``None`` for manual
+#: runs. A module-level seam on purpose: the planner decides in ``cli._run_next``
+#: and the receipt is written many frames deeper (render → write_public_receipt)
+#: without a parameter path that survives the dispatch boundary. The scheduler
+#: sets it around exactly one dispatch and clears it in a ``finally``, so a
+#: manual ``lab m03`` can never inherit a stale decision.
+_PLANNED_DECISION: dict | None = None
+
+
+def set_planned_decision(decision: dict | None) -> None:
+    """Arm the compact ``planned`` block for receipts written by this turn."""
+    global _PLANNED_DECISION
+    _PLANNED_DECISION = decision
+
+
+def clear_planned_decision() -> None:
+    """Disarm the seam — the scheduler's ``finally`` companion to ``set``."""
+    set_planned_decision(None)
+
+
+def planned_block(decision: dict) -> dict:
+    """The compact, receipt-ready view of a planner decision.
+
+    Chosen + one-line reason + the top-3 scoreboard mids with scores: enough
+    for a future check to re-derive the pick from the same ledger (the
+    re-derivation test in tests/test_planner.py is the pattern), small enough
+    to commit nightly forever.
+    """
+    return {
+        "planner": decision.get("planner"),
+        "chosen": decision.get("chosen"),
+        "reason": decision.get("reason"),
+        "scoreboard": [
+            {"mid": e.get("mid"), "cls": e.get("cls"), "score": e.get("score")}
+            for e in (decision.get("scoreboard") or [])[:3]
+        ],
+    }
+
 
 def _canonical_bytes(value: Any) -> bytes:
     return json.dumps(
@@ -69,6 +107,10 @@ def build_public_receipt(report: dict, source_bytes: bytes | None = None) -> dic
     }
     if source_bytes is not None:
         metadata["source_report_sha256"] = hashlib.sha256(source_bytes).hexdigest()
+    # Present exactly when a scheduler turn armed the seam above — a scheduled
+    # receipt carries its own selection rationale; a manual run carries none.
+    if _PLANNED_DECISION is not None:
+        metadata["planned"] = planned_block(_PLANNED_DECISION)
     clean["public_receipt"] = metadata
     return clean
 
