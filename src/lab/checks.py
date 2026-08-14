@@ -2995,6 +2995,25 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
     if len(history) <= len(A05_FLOOR_PRIOR):
         return None, ("A05 floor_history carries no point from this run — "
                       "every hunt must append its own measured floor")
+    # The run's own point (appended LAST by to_report) must re-derive from
+    # the receipt's rows: n = the sub-threshold searched rows, floor_max =
+    # their max SDE. A floor that cannot be recomputed from its own rows is
+    # a fabricated calibration datum for every future triage line.
+    own = history[-1]
+    noise = [float(r["sde"]) for r in searched
+             if float(r["sde"]) < A05_SDE_THRESHOLD]
+    own_floor = max(noise) if noise else None
+    if not isinstance(own, dict):
+        return None, "A05 floor_history's own point is malformed"
+    stated_floor = own.get("floor_max")
+    floor_agrees = (stated_floor is None and own_floor is None) or (
+        isinstance(stated_floor, (int, float)) and own_floor is not None
+        and math.isclose(float(stated_floor), own_floor, rel_tol=1e-9))
+    if own.get("n") != len(noise) or not floor_agrees:
+        return False, (f"A05 floor_history's own point (n={own.get('n')}, "
+                       f"floor_max={stated_floor}) does not re-derive from "
+                       f"the rows (n={len(noise)}, floor_max={own_floor}) — "
+                       "the run misreported its measured floor")
 
     # -- 14. spot reproduction from the SHA-256-pinned cache -----------------
     from . import a01 as _a01           # noqa: PLC0415 — path constant only

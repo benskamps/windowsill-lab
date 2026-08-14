@@ -30,7 +30,7 @@ hunt receipts. Floor history likewise folds in every hunt summary found in
 as its summary exists) on top of the schema doc's two prior points.
 
 Usage:  python scripts/a05_hunt.py [--n 500] [--sector 2] [--minutes 50]
-                                   [--workers 12] [--B 256]
+                                   [--workers 12] [--B 256] [--hunt-id ID]
 """
 from __future__ import annotations
 
@@ -55,6 +55,14 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 MAX_WORKERS = 12
 
 
+def _lab_roots() -> tuple[Path, ...]:
+    """Where checkpoints and summaries actually land: LAB_HOME and its
+    ``cache/`` — the 2026-08-14 wide hunt wrote today's summaries and
+    checkpoints under ``cache/``, and a glob that missed them re-searched
+    already-searched stars and dropped a measured floor."""
+    return (LAB_HOME, LAB_HOME / "cache")
+
+
 def prior_targets() -> set[str]:
     """Every TIC any earlier graded run, pilot, or hunt already touched."""
     already: set[str] = set()
@@ -63,14 +71,15 @@ def prior_targets() -> set[str]:
         receipt = json.loads(graded.read_text(encoding="utf-8"))
         rep = receipt.get("report", receipt)
         already |= {row["tic"] for row in rep.get("searched", [])}
-    for pattern in ("a04-hunt-*.jsonl", "a05-hunt-*.jsonl"):
-        for path in LAB_HOME.glob(pattern):
-            for line in path.read_text(encoding="utf-8").splitlines():
-                if line.strip():
-                    try:
-                        already.add(json.loads(line)["tic"])
-                    except (ValueError, KeyError):
-                        continue
+    for root in _lab_roots():
+        for pattern in ("a04-hunt-*.jsonl", "a05-hunt-*.jsonl"):
+            for path in root.glob(pattern):
+                for line in path.read_text(encoding="utf-8").splitlines():
+                    if line.strip():
+                        try:
+                            already.add(json.loads(line)["tic"])
+                        except (ValueError, KeyError):
+                            continue
     hunts_dir = REPO_ROOT / "reports/hunts"
     if hunts_dir.exists():
         for path in hunts_dir.glob("hunt-*.json"):
@@ -84,21 +93,69 @@ def prior_targets() -> set[str]:
 
 
 def floor_history() -> list[dict]:
-    """The schema doc's prior floor points plus every hunt summary on disk."""
+    """The prior floor points, plus every hunt summary on disk (LAB_HOME and
+    its cache/), plus the floors of committed schema-0 receipts.
+
+    Deduped by source name AND by n: the same physical floor can reach here
+    under two names (a summary in LAB_HOME and its committed receipt), and n —
+    the count of noise targets behind the floor — identifies the sample.
+    """
     points = [dict(p) for p in a05.PRIOR_FLOOR_HISTORY]
-    seen = {p["source"] for p in points}
-    for path in sorted(LAB_HOME.glob("a04-hunt-*-summary.json")):
-        try:
-            s = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        source = path.stem.replace("-summary", "")
-        n, floor_max = s.get("floor_n"), s.get("floor_max_sde")
-        if source not in seen and n and floor_max is not None:
-            points.append({"n": int(n), "floor_max": float(floor_max),
-                           "source": source})
-            seen.add(source)
+    seen_sources = {p["source"] for p in points}
+    seen_n = {int(p["n"]) for p in points}
+
+    def _add(source: str, n, floor_max) -> None:
+        if (source in seen_sources or not n or floor_max is None
+                or int(n) in seen_n):
+            return
+        points.append({"n": int(n), "floor_max": float(floor_max),
+                       "source": source})
+        seen_sources.add(source)
+        seen_n.add(int(n))
+
+    for root in _lab_roots():
+        for pattern in ("a04-hunt-*-summary.json", "a05-hunt-*-summary.json"):
+            for path in sorted(root.glob(pattern)):
+                try:
+                    s = json.loads(path.read_text(encoding="utf-8"))
+                except (OSError, ValueError):
+                    continue
+                _add(path.stem.replace("-summary", ""),
+                     s.get("floor_n"), s.get("floor_max_sde"))
+    hunts_dir = REPO_ROOT / "reports/hunts"
+    if hunts_dir.exists():
+        for path in sorted(hunts_dir.glob("hunt-*.json")):
+            try:
+                rep = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if rep.get("schema") == 0:
+                floor = rep.get("floor") or {}
+                _add(path.stem, floor.get("n"), floor.get("max_sde"))
     return points
+
+
+def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]:
+    """(hunt_id, checkpoint path): resume what is OPEN, not what is dated today.
+
+    A run that starts before midnight checkpoints under yesterday's date; the
+    old date-stamped naming made the post-midnight rerun open a FRESH file and
+    re-search the slice. The rule now: resume the NEWEST ``a05-hunt-*-s{sector}``
+    checkpoint that has no committed receipt, whatever its date; ``--hunt-id``
+    overrides for surgical resumes. Only when every checkpoint is receipted
+    does a fresh dated id start.
+    """
+    if hunt_id:
+        return hunt_id, LAB_HOME / f"a05-{hunt_id}.jsonl"
+    hunts_dir = REPO_ROOT / "reports/hunts"
+    candidates = sorted(LAB_HOME.glob(f"a05-hunt-*-s{sector}.jsonl"),
+                        key=lambda p: p.stat().st_mtime, reverse=True)
+    for ckpt in candidates:
+        hid = ckpt.stem[len("a05-"):]
+        if not (hunts_dir / f"{hid}.json").exists():
+            return hid, ckpt
+    hid = f"hunt-{date.today().isoformat()}-s{sector}"
+    return hid, LAB_HOME / f"a05-{hid}.jsonl"
 
 
 def provenance() -> dict:
@@ -121,12 +178,14 @@ def main() -> int:
                     help="soft wall-clock budget; stops cleanly, resume by rerun")
     ap.add_argument("--workers", type=int, default=MAX_WORKERS)
     ap.add_argument("--B", type=int, default=256)
+    ap.add_argument("--hunt-id", default=None,
+                    help="resume/name a specific hunt id (default: newest "
+                         "receipt-less checkpoint for the sector, else a "
+                         "fresh dated id)")
     args = ap.parse_args()
 
     t0 = time.time()
-    stamp = date.today().isoformat()
-    hunt_id = f"hunt-{stamp}-s{args.sector}"
-    ckpt = LAB_HOME / f"a05-{hunt_id}.jsonl"
+    hunt_id, ckpt = find_checkpoint(args.sector, args.hunt_id)
     ckpt.parent.mkdir(parents=True, exist_ok=True)
 
     done_rows: list[dict] = []

@@ -472,6 +472,15 @@ def test_floor_prior_constants_are_lockstep_and_name_committed_receipts():
             assert (hunts / f"{source}.json").exists(), source
 
 
+def test_misreported_own_floor_point_is_false(hunt):
+    """Gate 13's counterpart: the run's own appended floor point must
+    re-derive from the receipt's own rows."""
+    bad = _mut(hunt["report"])
+    bad["floor_history"][-1]["floor_max"] += 0.5
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is False and "floor" in detail
+
+
 def test_hunt_id_colliding_with_a_floor_source_is_refused(hunt):
     result = hunt["result"]
     original = result.hunt_id
