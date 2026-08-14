@@ -868,7 +868,7 @@ def collect() -> dict:
     try:
         from . import archive
         turns = turn_cadence()
-        divergence = archive.detect_divergence(archive.scan_runs())
+        divergence = archive.detect_divergence(archive.public_runs())
     except Exception:  # noqa: BLE001 — same guard: the turn layer never breaks the feed
         pass
     if ledger is not None:
