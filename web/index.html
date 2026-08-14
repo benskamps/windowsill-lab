@@ -1133,16 +1133,19 @@
       <a id="record-snapshot" href="#" target="_blank" rel="noopener">snapshot.json</a>
     </div>
 
-    <!-- Look through the instrument: the real measurements, plotted straight
-         from physics-latest.json (the plant's own committed heartbeat report).
-         Hidden until the feed loads — progressive enhancement over the calm scene. -->
+    <!-- Look through the instrument: the real measurements from the newest
+         compatible physics-latest.json calibration. The live plant may have
+         advanced to a newer curriculum turn whose receipt does not contain the
+         lattice snapshots and curves this panel needs. Hidden until the feed
+         loads — progressive enhancement over the calm scene. -->
     <section class="instrument-panel" id="instrument-panel" hidden aria-labelledby="instrument-panel-title">
       <div class="section-intro">
         <span class="section-kicker">The measurement</span>
         <h2 id="instrument-panel-title">Look through the instrument</h2>
-        <p>The plant is the calm face. This is what the machine actually measured — read straight from
-        <a id="ip-source-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">the latest committed run</a>,
-        the same committed heartbeat report the plant grows from. Nothing here is redrawn by hand.</p>
+        <p>The plant is the calm face. This panel replays the
+        <a id="ip-source-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">latest compatible calibration</a>
+        that includes the lattice snapshots and response curves below. The live plant above follows the newest turn;
+        this panel stays on the newest compatible calibration until another one replaces it. Nothing here is redrawn by hand.</p>
       </div>
 
       <figure class="triptych" id="triptych-fig" aria-label="2D Ising spin lattice at three temperatures">
@@ -1317,7 +1320,7 @@
       was never blocked on flops — it was blocked on the months of human evenings it takes to write
       the simulation, the checker, the provenance, the scheduler and the write-up, for a question
       nobody is paying you to answer. Agents absorb that cost. What one person still has to supply is
-      the judgement about which answers count, and that has not been handed over.</p>
+      the judgment about which answers count, and that has not been handed over.</p>
       <p>Whatever comes out is meant to be given away. Every run's numbers, every receipt, every
       kept null, the whole instrument and this page are public and MIT-licensed: you can read how a
       result was reached, re-derive it from the saved measurements, fork the lab onto your own GPU, or
@@ -1333,7 +1336,7 @@
         <b>Lars Onsager in 1944</b> — so the plant's first job is calibration: prove the computer can
         be trusted by re-finding that number on its own. Each calibration turn sweeps across temperatures and
         watches for the moment the magnets line up, where a measurement called the <b>magnetic
-        susceptibility</b> spikes. Last run it landed near <code>2.30 ± 0.05</code> — a clean match —
+        susceptibility</b> spikes. In the compatible calibration plotted above it landed near <code>2.30 ± 0.05</code> — a clean match —
         in well under a minute on the GPU (the graphics chip that also runs video games). That steady re-check is the lab's <b>heartbeat</b> — most turns it
         re-proves it can still find an answer we already trust, while the curriculum's frontier climbs
         on ahead of it. The counter under the plant counts turns — one scheduled pass, whichever
@@ -3505,9 +3508,23 @@
       if (m.venue) meta.push(m.venue);
       if (m.doi) meta.push('doi:' + m.doi);
       if (meta.length) tech = (tech ? tech + ' · ' : '') + meta.join(' · ');
-      var safeUrl = (typeof m.url === 'string' && /^https?:\/\//i.test(m.url)) ? m.url : null;
+      // v5 keeps public record URLs on the run ledger rather than duplicating
+      // them into every milestone. Prefer the milestone's legacy URL when one
+      // exists, then fall back to the newest matching run's exact receipt.
+      var matchingReport = reportForMilestone(
+        _lastFeedState && _lastFeedState.reports,
+        m.id
+      );
+      var recordUrl = m.url
+        || (matchingReport && matchingReport.receipt_url)
+        || (matchingReport && matchingReport.href);
+      var safeUrl = (typeof recordUrl === 'string' && /^https?:\/\//i.test(recordUrl))
+        ? recordUrl : null;
       var receipt = $('fn-receipt'), link = $('fn-link');
-      if (tech || safeUrl) {
+      // A planned venue is context, not evidence. Do not offer “show the
+      // receipt” for a milestone that has never produced a result or record.
+      var hasReceiptEvidence = Boolean(m.result) || Boolean(safeUrl) || Boolean(m.doi);
+      if (hasReceiptEvidence) {
         $('fn-tech').textContent = tech || '';
         _setHidden($('fn-tech'), !tech);
         if (safeUrl) { link.href = safeUrl; _setHidden(link, false); }
@@ -4305,13 +4322,16 @@
         var repMilestone = milestones.find(function (m) { return m && m.id === rep.milestone; });
         var repVerdict = /^(verified|review|null|unscored|unreadable)$/.test(rep.verdict)
           ? rep.verdict : 'unscored';
-        var repTag = 'unscored field note';
-        if (repVerdict === 'verified') repTag = 'machine-checked field note';
-        if (repVerdict === 'null') repTag = 'null · no claim';
-        if (repVerdict === 'unreadable') repTag = 'unreadable record';
+        var repState = 'unscored';
+        if (repVerdict === 'verified') repState = 'machine checked';
+        if (repVerdict === 'null') repState = 'null · no claim';
+        if (repVerdict === 'unreadable') repState = 'unreadable';
         if (repVerdict === 'review' || (repMilestone && repMilestone.status === 'review')) {
-          repTag = 'machine check · review pending';
+          repState = 'review pending';
         }
+        var repId = (typeof rep.milestone === 'string' && /^[A-Z]\d{2}$/.test(rep.milestone))
+          ? ' · ' + rep.milestone : '';
+        var repTag = 'latest turn' + repId + ' · ' + repState;
         document.querySelector('.report-tag').textContent = repTag;
         $('report-line').textContent = rep.headline + (rep.date ? ' · ' + rep.date : '');
         // The feed's ledger rows carry `href`; the older fallback path carries `url`.
@@ -4598,8 +4618,8 @@
     try { reduce = matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
 
     // Refetched on the pot side's 5-minute tick (via the window hook below), so
-    // a long-lived tab plots the latest turn instead of a frozen instrument. A
-    // byte-identical response skips the re-render.
+    // a long-lived tab plots the newest compatible calibration instead of a
+    // frozen instrument. A byte-identical response skips the re-render.
     var _lastPhysicsText = null;
     function loadPhysics() {
       return fetch(url, { cache: 'no-store' })

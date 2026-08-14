@@ -473,6 +473,17 @@ def scan_runs() -> list[dict]:
     return [row for _, (_, row) in ordered]
 
 
+def public_runs() -> list[dict]:
+    """Committed runs a visitor can verify, newest first.
+
+    ``scan_runs`` deliberately includes publisher-local ``~/.lab`` inputs for
+    recovery. Those files are not a second public record and their ``file://``
+    paths cannot work for anyone else, so every published surface crosses this
+    boundary before counting, grouping, or comparing machines.
+    """
+    return [r for r in scan_runs() if not r.get("local_only")]
+
+
 # ── run_ledger: the sanitized rows that ride in pot.json ─────────────────────
 def _public_href(href: str | None) -> str | None:
     """Keep only http(s) hrefs in the public feed (the page's link-guard)."""
@@ -566,15 +577,16 @@ def run_ledger(limit: int | None = None) -> list[dict]:
     standing for a collapsed streak, ``group_count`` / ``group_first_date``
     (see ``_collapse_streaks``; the archive index page keeps every run).
     ``href`` opens the human-readable archive row; ``receipt_url`` opens the
-    durable measurement evidence. A non-http href (a local-only ~/.lab path)
-    becomes ``None`` so the page never tries to link it. ``unreadable`` and
+    durable measurement evidence. Publisher-local ``~/.lab`` rows are recovery
+    inputs, not public records, so they are omitted entirely rather than counted
+    with an unusable ``file://`` link. ``unreadable`` and
     ``unscored`` rows are mapped to the schema's
     ``verified``/``null`` enum is NOT done here — the schema's ``report`` enum is
     extended to carry all four verdicts honestly. ``limit`` bounds the number
     of underlying RUNS considered (applied before grouping), not the number of
     grouped rows emitted.
     """
-    rows = scan_runs()
+    rows = public_runs()
     if limit is not None:
         rows = rows[:limit]
     return _collapse_streaks([
@@ -730,12 +742,12 @@ INDEX_TEMPLATE = """<!doctype html>
   <h1>windowsill-lab · the archive</h1>
   <div class="lede">{summary}</div>
 {scoreboard}
-  <p class="note">Two honesties live here. A milestone's <b>green leaf</b> on the
+  <p class="note">Two ledgers live here. A milestone's <b>green leaf</b> on the
   <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a> grades the
   <em>stem</em> — the curriculum. A <b>folded grey leaf</b> below grades a single
   <em>run</em>: a check ran and the number missed. They can legitimately
   disagree — a milestone can stand verified while an earlier messy run for it
-  stays an honest null here, with its real numbers kept on the books.</p>
+  stays a null here, with its measured numbers kept on the books.</p>
 {groups}
   <div class="footer">
     {count} runs on record · newest first · generated {generated}.
@@ -809,7 +821,10 @@ def render_index(runs: list[dict] | None = None) -> str:
     still shows its real numbers and links its report.
     """
     if runs is None:
-        runs = scan_runs()
+        # The committed HTML is a PUBLIC archive. LAB_HOME is still scanned for
+        # recovery and local inspection, but a publisher's raw cache is neither
+        # a second run nor a URL a visitor can open.
+        runs = public_runs()
 
     # Group by milestone, preserving newest-first order within each group.
     groups: dict[str, list[dict]] = {}
@@ -823,11 +838,24 @@ def render_index(runs: list[dict] | None = None) -> str:
 
     n_verified = sum(1 for r in runs if r["verdict"] == "verified")
     n_null = sum(1 for r in runs if r["verdict"] == "null")
+    n_unscored = sum(1 for r in runs if r["verdict"] == "unscored")
+    n_unreadable = sum(1 for r in runs if r["verdict"] == "unreadable")
+    verdict_counts = [
+        f"{n_verified} passing check" + ("s" if n_verified != 1 else ""),
+        f"{n_null} null" + ("s" if n_null != 1 else ""),
+    ]
+    if n_unscored:
+        verdict_counts.append(
+            f"{n_unscored} unscored run" + ("s" if n_unscored != 1 else "")
+        )
+    if n_unreadable:
+        verdict_counts.append(
+            f"{n_unreadable} unreadable run" + ("s" if n_unreadable != 1 else "")
+        )
     summary = html.escape(
-        f"Every run the lab has on record — {len(runs)} so far, "
-        f"{n_verified} passing checks, {n_null} honest null"
-        + ("s" if n_null != 1 else "")
-        + ". Nothing hidden, nothing deleted."
+        f"Every committed run on the public record — {len(runs)} so far, "
+        + ", ".join(verdict_counts)
+        + "."
     )
     groups_html = "\n".join(_group_html(m, groups[m]) for m in order)
     # Local date, matching how runs are dated (publish.today_local) — an evening

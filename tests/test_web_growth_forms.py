@@ -97,6 +97,15 @@ def test_field_notes_and_rail_fail_closed_for_unknown_milestone_status():
     assert "m.status || 'verified'" not in html
 
 
+def test_field_notes_fall_back_to_the_v5_run_ledger_for_public_receipts():
+    """v5 no longer duplicates record URLs into milestone rows."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert "var matchingReport = reportForMilestone(" in html
+    assert "_lastFeedState && _lastFeedState.reports" in html
+    assert "matchingReport && matchingReport.receipt_url" in html
+    assert "matchingReport && matchingReport.href" in html
+
+
 def test_host_only_walk_does_not_404_in_local_file_mode():
     html = PAGE.read_text(encoding="utf-8")
     assert '<script defer src="/walk/walk.js"></script>' not in html
@@ -146,6 +155,21 @@ def test_conservatory_is_feed_driven_and_opens_real_field_notes():
     assert "openFieldNote(focusMilestone, action)" in html
     assert "garden: garden" in html
     assert "count:5, total:8" not in html
+
+
+def test_latest_turn_names_its_milestone_and_future_work_has_no_fake_receipt():
+    """The current question and latest result are different concepts.
+
+    A stranger must not have to infer that the K03 expedition and the M15
+    heartbeat belong to different experiments. Likewise a planned venue alone
+    is not a receipt for an experiment that has never run.
+    """
+    html = PAGE.read_text(encoding="utf-8")
+    assert "var repTag = 'latest turn' + repId + ' · ' + repState;" in html
+    assert "rep.milestone" in html
+    assert "var hasReceiptEvidence" in html
+    assert "Boolean(m.result)" in html
+    assert "Boolean(safeUrl)" in html
 
 
 # ── One feed lifecycle: qualification in render, shared tick, change-detected
@@ -204,6 +228,20 @@ def test_triptych_states_disclose_missing_or_carried_snapshots():
     assert "omitted its lattice snapshots" in html
     assert 'id="ip-lattice-dims">128' not in html
     assert 'id="ip-lattice-src"' in html
+
+
+def test_measurement_panel_names_its_compatible_calibration_not_the_latest_turn():
+    """physics-latest is the newest M01-shaped panel, not the newest lab turn.
+
+    Calling it “the latest committed run” made an August 1 M01 panel sound like
+    the August 13 M15 heartbeat shown directly above it.
+    """
+    html = PAGE.read_text(encoding="utf-8")
+    assert "latest compatible calibration" in html
+    assert "live plant above follows the newest turn" in html
+    assert "the same committed heartbeat report the plant grows from" not in html
+    assert "In the compatible calibration plotted above it landed" in html
+    assert "Last run it landed" not in html
     assert "snapshots_date" in html
 
 

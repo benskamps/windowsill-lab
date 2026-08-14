@@ -217,11 +217,48 @@ def test_run_ledger_rows_are_sanitized(tmp_path, monkeypatch):
 
 def test_run_ledger_non_http_href_becomes_none(tmp_path, monkeypatch):
     reports, lab_home = _patch(tmp_path, monkeypatch)
-    p = _write_report(lab_home, "2026-06-08-m01", mtime=500)
+    _write_report(lab_home, "2026-06-08-m01", mtime=500)
     rows = run_ledger()
-    # A local file:// / bare-path href is NOT a public link → None (link-guard).
-    for r in rows:
-        assert r["href"] is None or r["href"].startswith("http")
+    # A publisher-local cache file is not part of the PUBLIC run ledger. Keeping
+    # it with href=None still inflated the public total and later generated a
+    # dead file:///home/... link in reports/index.html.
+    assert rows == []
+
+
+def test_public_surfaces_do_not_double_count_the_publishers_raw_cache(
+    tmp_path, monkeypatch
+):
+    """One real receipt stays one public run when ~/.lab keeps its raw input.
+
+    The publisher writes an un-stamped raw report to LAB_HOME, then enriches and
+    commits the receipt. They are two files for one run, not two runs. The local
+    scanner may retain both for recovery, but neither pot.json nor the committed
+    archive may expose the publisher's private path or count it again.
+    """
+    reports, lab_home = _patch(tmp_path, monkeypatch)
+    receipts = reports / "receipts"
+    receipts.mkdir(parents=True)
+    payload = {
+        "experiment": "M01-ising-verification",
+        "headline": "one measurement",
+        "T": [2.2, 2.3, 2.4],
+        "chi": [1.0, 9.0, 1.0],
+    }
+    _write_report(lab_home, "2026-08-13-m01", mtime=1000, **payload)
+    (receipts / "run-2026-08-13-1803-m01.json").write_text(
+        json.dumps({**payload, "generated_at": "2026-08-13T22:03:00+00:00"}),
+        encoding="utf-8",
+    )
+
+    assert len(scan_runs()) == 2             # recovery view keeps both files
+    rows = run_ledger()
+    assert len(rows) == 1                    # public feed counts the receipt once
+    assert rows[0]["receipt_url"].endswith("run-2026-08-13-1803-m01.json")
+
+    html = render_index()
+    assert "Every committed run on the public record — 1 so far" in html
+    assert "file://" not in html
+    assert "local report" not in html
 
 
 def test_run_ledger_validates_against_pot_schema(tmp_path, monkeypatch):
@@ -428,8 +465,28 @@ def test_render_index_links_committed_run_to_public_receipt(tmp_path, monkeypatc
     assert "run-2026-06-15-m01.json" in html
     assert "receipt.json" in html
     assert "2026-06-15-m01.html" not in html
-    # ... and a local-only run still carries its dated JSON path for traceability.
-    assert "2026-06-08" in html and "local report" in html
+    # ... and the committed PUBLIC archive never leaks the publisher's local path.
+    assert "2026-06-08" not in html
+    assert "local report" not in html
+    assert "file://" not in html
+
+
+def test_render_index_states_verdicts_without_certifying_its_own_honesty():
+    html = render_index(runs=[
+        {"date": "2026-06-14", "milestone": "M02", "verdict": "null",
+         "kind": "fss", "headline": "off", "detail": "slope 0.50",
+         "report_href": "https://example/run", "receipt_href": None,
+         "has_dated_html": False, "local_only": False, "numbers": "slope=0.50"},
+        {"date": "2026-06-13", "milestone": "C02", "verdict": "unscored",
+         "kind": "other", "headline": "not graded", "detail": "",
+         "report_href": "https://example/unscored", "receipt_href": None,
+         "has_dated_html": False, "local_only": False, "numbers": "—"},
+    ])
+    assert "1 null" in html
+    assert "1 unscored" in html
+    assert "honest null" not in html.lower()
+    assert "two honesties" not in html.lower()
+    assert "nothing hidden, nothing deleted" not in html.lower()
 
 
 def test_render_index_is_html_escaped(tmp_path, monkeypatch):
