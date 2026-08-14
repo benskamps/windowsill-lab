@@ -67,6 +67,7 @@ callables so the whole pipeline runs on synthetic curves in tests.
 from __future__ import annotations
 
 import hashlib
+import inspect
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
@@ -507,6 +508,13 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
     """
     t_start = time.time()
     catalog = catalog or a04.catalog_crosscheck
+    # The detected period disambiguates multi-planet catalog rows (the
+    # TOI-125 b-vs-c lesson); injected test doubles may keep the 1-arg shape.
+    try:
+        catalog_takes_period = "detected_period_days" in inspect.signature(
+            catalog).parameters
+    except (TypeError, ValueError):
+        catalog_takes_period = False
     loader = curve_loader or (lambda tic: load_curve(tic, sector))
     already = already or set()
     if targets is None:
@@ -623,7 +631,11 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
         designated = a04.RECOVERY_TARGETS.get(row["tic"])
         if row.get("pending_catalog") or designated:
             try:
-                cat = catalog(row["tic"])
+                if catalog_takes_period:
+                    cat = catalog(row["tic"],
+                                  detected_period_days=row.get("period_days"))
+                else:
+                    cat = catalog(row["tic"])
             except Exception as exc:  # noqa: BLE001 — outage must not sink the wrap
                 cat = {"lookup_error": type(exc).__name__, "known_toi": None,
                        "known_planet": None, "published_period_days": None,

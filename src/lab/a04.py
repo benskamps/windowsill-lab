@@ -412,7 +412,27 @@ def _tap(query: str, deadline: float | None = None) -> list[dict]:
     return json.loads(a01._request(url, deadline=deadline))
 
 
-def catalog_crosscheck(tic: str, deadline: float | None = None) -> dict:
+def _nearest_period_row(rows: list[dict], period_days: float | None,
+                        key: str = "pl_orbper") -> dict:
+    """The catalog row whose period sits nearest the DETECTED one.
+
+    Multi-planet systems return several unordered rows; picking ``rows[0]``
+    once misnamed TOI-125 b as c. When the detection carries a period, the row
+    with the nearest ``pl_orbper`` is the one the search actually re-found;
+    rows without a usable period (or a call without one) fall back to
+    ``rows[0]`` — the old behaviour, now the exception rather than the rule.
+    """
+    if period_days is None:
+        return rows[0]
+    keyed = [r for r in rows if isinstance(r.get(key), (int, float))
+             and not isinstance(r.get(key), bool)]
+    if not keyed:
+        return rows[0]
+    return min(keyed, key=lambda r: abs(float(r[key]) - float(period_days)))
+
+
+def catalog_crosscheck(tic: str, deadline: float | None = None,
+                       detected_period_days: float | None = None) -> dict:
     """Is this candidate already a known planet or TOI? Asked AFTER the search.
 
     A blind search that surfaces a real transit will mostly surface things other
@@ -425,6 +445,10 @@ def catalog_crosscheck(tic: str, deadline: float | None = None) -> dict:
     but only if the report SAYS so. Without this lookup a future reader meets an
     unannotated "planet-candidate" in a public artifact and has every reason to
     read it as a discovery. Run at report time, never during the search.
+
+    ``detected_period_days`` selects among multi-planet rows: the TOI/ps row
+    whose published period lands nearest the detection is the signal actually
+    re-found (see :func:`_nearest_period_row`).
     """
     out = {"tic": tic, "known_toi": None, "known_planet": None,
            "published_period_days": None, "disposition": None}
@@ -432,18 +456,20 @@ def catalog_crosscheck(tic: str, deadline: float | None = None) -> dict:
         rows = _tap(f"select toi,pl_orbper,tfopwg_disp from toi where tid={int(tic)}",
                     deadline)
         if rows:
-            out["known_toi"] = rows[0].get("toi")
-            out["disposition"] = rows[0].get("tfopwg_disp")
-            out["published_period_days"] = rows[0].get("pl_orbper")
+            row = _nearest_period_row(rows, detected_period_days)
+            out["known_toi"] = row.get("toi")
+            out["disposition"] = row.get("tfopwg_disp")
+            out["published_period_days"] = row.get("pl_orbper")
     except Exception:  # noqa: BLE001 — a lookup outage must not sink the survey
         out["lookup_error"] = True
     try:
         rows = _tap(f"select pl_name,pl_orbper from ps where tic_id='TIC {int(tic)}'",
                     deadline)
         if rows:
-            out["known_planet"] = rows[0].get("pl_name")
+            row = _nearest_period_row(rows, detected_period_days)
+            out["known_planet"] = row.get("pl_name")
             out["published_period_days"] = (out["published_period_days"]
-                                            or rows[0].get("pl_orbper"))
+                                            or row.get("pl_orbper"))
     except Exception:  # noqa: BLE001
         out["lookup_error"] = True
     return out
@@ -505,7 +531,8 @@ def run_a04(sector: int = DEFAULT_SECTOR, n_targets: int = 24,
             # Above threshold and not a known planet: a CANDIDATE, which must be
             # vetted rather than counted as either a planet or a false alarm.
             row["vetting"] = vet_candidate(*tf, det)
-            row["catalog"] = catalog_crosscheck(tic)
+            row["catalog"] = catalog_crosscheck(
+                tic, detected_period_days=det.period_days)
             result.candidates.append(row)
         else:
             result.false_alarm_sde.append(det.sde)
