@@ -421,6 +421,12 @@ def resolve_catalog(row: dict, catalog_row: dict,
         row["disposition"] = "toi-known-fp"
     elif known_planet or known_toi is not None or designated:
         row["disposition"] = "recovery-or-known"
+    elif catalog_row.get("lookup_error"):
+        # An outage answered NOTHING: "uncatalogued" cannot be concluded from
+        # a failed lookup, so no lead is minted. The row stays
+        # pending_catalog, which keeps the run incomplete — ``to_report``
+        # refuses it and the runner resumes when the catalog answers.
+        row["pending_catalog"] = True
     else:
         row["disposition"] = "lead-awaiting-human-review"
 
@@ -675,6 +681,14 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
                                                  prewhiten_kwargs)
                     row["dossier"] = panels
                     result.dossiers[row["tic"]] = html
+
+    # A catalog outage that left rows unresolved makes the run INCOMPLETE:
+    # the slice was searched but the ladder did not finish, and an unfinished
+    # ladder must never become a receipt (to_report refuses).
+    if any(r.get("pending_catalog") for r in result.rows):
+        result.complete = False
+        result.wall_seconds = time.time() - t_start
+        return result
 
     # ---- calibration of the calibrator -------------------------------------
     controls = [r for r in result.rows

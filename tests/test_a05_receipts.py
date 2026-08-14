@@ -455,6 +455,41 @@ def test_toi189_fp_is_not_a_recovery(hunt):
     assert ok is False and "toi-known-fp" in detail
 
 
+# ------------------------------------ (6a) an outage cannot mint a lead ------
+
+def test_catalog_outage_mints_no_lead(tmp_path):
+    """A TAP outage on an uncatalogued hit leaves the row undispositioned and
+    the run incomplete — to_report refuses; no lead from a failed lookup."""
+    cache = tmp_path / "cache"
+    _write_cache(cache, ["901"])
+
+    def broken_catalog(tic):
+        raise OSError("TAP down")
+
+    result = a05.run_a05(
+        sector=2, targets=["901"], curve_loader=_loader(cache),
+        catalog=broken_catalog, B=32, n_periods=N_PERIODS,
+        control_fraction=1.0, n_placebo=1, prewhiten_kwargs={"f_hi": 45.0},
+        soft_budget_seconds=600.0, per_target_share=0.5,
+        hunt_id="hunt-outage-s2")
+    row = result.rows[0]
+    assert row["disposition"] is None
+    assert row.get("pending_catalog") is True
+    assert row["disposition_evidence"]["catalog"].get("lookup_error")
+    assert not result.complete
+    with pytest.raises(a05.A05Error):
+        a05.to_report(result)
+
+
+def test_check_refuses_a_lead_with_a_lookup_error(hunt):
+    bad = _mut(hunt["report"])
+    lead = next(r for r in bad["targets"]
+                if r.get("disposition") == "lead-awaiting-human-review")
+    lead["disposition_evidence"]["catalog"]["lookup_error"] = "OSError"
+    ok, detail = checks.check_a05(bad, cache_dir=hunt["cache"])
+    assert ok is None and "lookup error" in detail
+
+
 # ---------------------------------------- (6b) the WASP-18 boundary ----------
 
 def _eb_secondary_row(tic: str = "100100827") -> dict:

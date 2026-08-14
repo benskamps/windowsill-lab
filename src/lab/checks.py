@@ -2817,6 +2817,14 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
                            "listed as a recovery — a refuted signal re-found "
                            "is not a recovery")
 
+    # -- 5b. an outage cannot certify "uncatalogued" -------------------------
+    for r in leads:
+        cat = (r.get("disposition_evidence") or {}).get("catalog") or {}
+        if cat.get("lookup_error"):
+            return None, (f"A05 TIC {r.get('tic')} is a lead whose catalog "
+                          "evidence records a lookup error — an outage cannot "
+                          "certify 'uncatalogued', so the lead is unreadable")
+
     # -- 6. every lead carries a full dossier --------------------------------
     for r in leads:
         dossier = r.get("dossier")
