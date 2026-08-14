@@ -369,3 +369,86 @@ def test_a_garden_card_draws_its_whole_ladder_not_only_the_measured_rungs():
                  "path.specimen-branch.unreached",
                  ".specimen-leaf.unreached"):
         assert rule in html, f"missing style for unreached rungs: {rule}"
+
+
+# ── The painterly repaint, phase 1 (2026-08-14): skin defs, group glow,
+#    data-lit lumen, reduced-motion, and the committed art-bible reference ────
+
+
+def test_painterly_skin_registry_lives_in_the_module_and_reaches_the_page():
+    """SKINS (per-archetype luminous core→rim colours) is defined ONCE in
+    growth-forms.js; the page builds its gradient defs from it at boot, so the
+    module, the page, and the node tests cannot drift apart."""
+    src = MODULE.read_text(encoding="utf-8")
+    html = PAGE.read_text(encoding="utf-8")
+    assert "var SKINS" in src, "growth-forms.js must carry the SKINS registry"
+    assert "lumenOpacity" in src and "daysSinceNewestReceipt" in src
+    # the page installs one radialGradient per archetype from that registry
+    assert "function installSkinDefs()" in html
+    assert "installSkinDefs();" in html, "boot must install the skin defs"
+    assert "'leafCore-' + form" in html
+    assert "GF.SKINS" in html
+
+
+def test_organ_glow_filter_is_defined_and_applied_at_the_organ_group_level():
+    """The soft outer glow (light from within, per the plant bible) is one
+    feGaussianBlur+merge filter applied to the whole organ group — and a folded
+    null opts out: a kept miss is matte."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert '<filter id="organGlow"' in html
+    glow = html.split('<filter id="organGlow"', 1)[1].split("</filter>", 1)[0]
+    assert "feGaussianBlur" in glow and "feMerge" in glow
+    assert ".leaf { filter:url(#organGlow); }" in html
+    assert ".leaf.null-leaf { filter:none; }" in html
+
+
+def test_lumen_is_data_lit_verified_only_and_rhymes_with_the_planner():
+    """A verified leaf's glow opacity is derived from the run ledger already in
+    the feed (no new network calls), through the SAME log2(1+days/7) staleness
+    shape the planner uses — and only verified organs are lit."""
+    html = PAGE.read_text(encoding="utf-8")
+    # derivation: ledger in hand → days → opacity, guarded to verified organs
+    assert "if (!nul && m.status === 'verified') {" in html
+    assert "GF.daysSinceNewestReceipt(" in html
+    assert "_lastFeedState && _lastFeedState.reports, m.id, Date.now())" in html
+    assert "GF.lumenOpacity(lumenDays)" in html
+    # the page comment names the deliberate rhyme with the planner's shape
+    assert "log2(1+days/7)" in html
+    assert "src/lab/curriculum.py" in html
+    # the module clamps to the contract's window
+    src = MODULE.read_text(encoding="utf-8")
+    assert "LUMEN_FLOOR = 0.25, LUMEN_CEIL = 1.0" in src
+
+
+def test_reduced_motion_stills_the_lumen_breathe():
+    """The only pulsing the repaint adds (the freshest leaf's breathing wash)
+    must hold steady under prefers-reduced-motion; the static glow stays."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert "lumen-breathe" in html, "the fresh-leaf breathe animation exists"
+    reduce_block = html.split("@media (prefers-reduced-motion: reduce)", 1)[1]
+    reduce_block = reduce_block.split("</style>", 1)[0]
+    assert ".leaf-lumen { animation:none !important; }" in reduce_block
+
+
+def test_the_committed_plant_bible_reference_exists_and_stays_small():
+    """The PR is art-directed against docs/design/plant-bible/ — six plant
+    portraits + four backdrops, shrunk to 512px/q80 so the committed reference
+    stays around a third of a megabyte."""
+    bible = Path(__file__).resolve().parent.parent / "docs" / "design" / "plant-bible"
+    names = ["plant-bible-%s.jpg" % f
+             for f in ("fern", "vine", "creeper", "succulent", "moss", "sprout")]
+    names += ["backdrop-%s.jpg" % p for p in ("dawn", "day", "dusk", "night")]
+    total = 0
+    for name in names:
+        p = bible / name
+        assert p.exists(), "missing bible reference: %s" % name
+        total += p.stat().st_size
+    assert total < 1_000_000, "the committed bible reference must stay under ~1 MB"
+
+
+def test_backdrops_are_reference_only_not_wired_into_the_live_page():
+    """Phase 2 (backdrops on the live page) is gated on Ben; phase 1 commits
+    them as reference only."""
+    html = PAGE.read_text(encoding="utf-8")
+    assert "backdrop-dawn" not in html
+    assert "plant-bible/" not in html.replace("docs/design/plant-bible/", "")
