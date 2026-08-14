@@ -126,9 +126,27 @@ lab i01 --camera 0              # bounded live capture (install .[camera])
 
 `lab i01` without real frames deliberately writes a grey hardware-null report.
 Synthetic fixtures test the classifier but can never masquerade as a sensor run.
-M16, C01 and A01 were promoted to green on 2026-08-02; a machine pass alone never
-awards a green leaf, so anything measured since then sits amber until a human
-reviews it.
+A machine pass alone never awards a green leaf — every promotion is a human
+review. The most recent (2026-08-14): M18 and A04.
+
+### The headline so far: a blind planet search that found three
+
+**A04** is the result to read first. The astronomy track's earlier runs were
+told where to look; A04 took the labels away. Handed raw TESS light curves with
+no names, no periods, and no hint which star hosted anything, the search
+recovered **WASP-18 b** and **HIP 65 A b** ranked 1st and 2nd by its own
+statistic — then flagged a third star nobody designated, put it through
+eclipsing-binary vetting, and only at grading time learned it was **WASP-20 b**,
+a third known planet recovered without being asked. The detection threshold was
+*measured*, not chosen: injected transits at three depths all cleared it while
+22 quiet stars stayed under it, and the periods agree with the NASA Exoplanet
+Archive to a few parts in 10⁵. The claim stays narrow — recovery of confirmed
+planets plus a measured false-alarm floor, not a discovery — but it is the
+calibration a *real* hunt needs, and that hunt is the next rung.
+
+```bash
+lab a04     # the blind transit search, end to end
+```
 
 ## The Citizen Science book
 
