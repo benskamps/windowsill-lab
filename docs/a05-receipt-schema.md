@@ -44,7 +44,7 @@ constants that grade it and re-derives everything from the raw stored numbers.
                                            // machine states include "lead-awaiting-human-review"
       "disposition_evidence": { "pulsation_cpd": 8.035 },   // gate-specific, optional
       "injections": [                // per-host ladder, Stage-2 + recovery hosts
-        { "depth": 0.002, "period_days": 2.3, "epoch": 0, "sde": 4.9, "fap_graded": null, "recovered": false }
+        { "depth": 0.002, "period_days": 2.3, "epoch": 0, "sde": 4.9, "fap_injection_iid": null, "recovered": false }
       ],
       "d_min": { "2.3": 0.004, "3.7": 0.002, "5.1": 0.002 },  // per-period measured depth limit
       "known_planet": null,          // grading-time catalog identification, or name
