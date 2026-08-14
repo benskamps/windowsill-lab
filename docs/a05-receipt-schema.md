@@ -93,7 +93,16 @@ Contract rules (binding on all lanes):
    and recompute without trust. Cached FITS are pinned by SHA-256 for spot
    reproduction within a checks-owned numerical tolerance (seed-pinned, not
    bit-for-bit across platforms).
-5. **Module map:** Lane 1 `src/lab/a05_stats.py`, Lane 2
+5. **Schema 0 (pre-A05 pilots) and `supersedes`.** The two 2026-08-14 pilot
+   receipts carry `"schema": 0` and an explicit pilot marker: they predate the
+   FAP engine, so only hit rows and floor stats are recorded and the aggregator
+   accepts them for counters it can honestly derive, labeling provenance
+   "pilot (pre-A05 statistics)". A receipt whose target set extends an earlier
+   one (shared checkpoint file) declares `"supersedes": "<receipt filename>"`;
+   the aggregator excludes superseded receipts from counters (naming them in
+   `hunt.superseded`) so cumulative runs cannot double-count. Only an accepted
+   receipt may supersede.
+6. **Module map:** Lane 1 `src/lab/a05_stats.py`, Lane 2
    `src/lab/a05_vetting.py` (+ minimal `a01.py` reader extension), Lane 3
    `src/lab/a05_sensitivity.py`, Lane 4 `src/lab/a05.py` (orchestrator) +
    `checks.py` + `scripts/a05_hunt.py`, Lane 5 `publish.py` + `web/index.html`

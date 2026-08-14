@@ -517,9 +517,6 @@ _NIGHT_ALLOWLIST = (
     "dawn, noon, dusk, night",                       # sky legend row
     "before July 2026 it counted nights",            # the counter's definition change
     "began as one machine's night shift",            # the lab's real history
-    # The og:image alt text describes the card's night SKY — the visitor-clock
-    # imagery the first allowlist row already covers, not lab-cadence framing.
-    "a night windowsill",
 )
 
 
