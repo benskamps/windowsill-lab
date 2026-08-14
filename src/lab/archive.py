@@ -430,9 +430,17 @@ def scan_runs() -> list[dict]:
     if RECEIPTS_DIR.exists():
         for p in RECEIPTS_DIR.glob(f"run-{_DATE_GLOB}-*.json"):
             date, turn, slug = _split_receipt_stem(p.stem[len("run-"):])
-            if not slug or (date, slug, turn) in by_key:
+            if not slug:
                 continue
             key = (date, slug, turn)
+            current = by_key.get(key)
+            # A committed report is already the richer public row. A local raw
+            # report with the same turn stamp is only a recovery input: it must
+            # never prevent its committed receipt from becoming the public row.
+            # Filtering local rows later is too late because the key has already
+            # been occupied; replace that local shadow here at the source.
+            if current is not None and not current[1].get("local_only"):
+                continue
             mtime = p.stat().st_mtime
             try:
                 data = json.loads(p.read_text(encoding="utf-8"))

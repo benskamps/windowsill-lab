@@ -261,6 +261,40 @@ def test_public_surfaces_do_not_double_count_the_publishers_raw_cache(
     assert "local report" not in html
 
 
+def test_committed_receipt_replaces_same_turn_local_raw_report(
+    tmp_path, monkeypatch
+):
+    """A turn-stamped LAB_HOME file cannot shadow its committed receipt.
+
+    The Windows publisher keeps exact-turn raw files such as
+    ``2026-08-14-0733-c01.json``. Once the matching receipt is committed, the
+    public scanner must use that receipt-backed row rather than retaining the
+    local row and filtering the whole turn out at the publication boundary.
+    """
+    reports, lab_home = _patch(tmp_path, monkeypatch)
+    receipts = reports / "receipts"
+    receipts.mkdir(parents=True)
+    payload = {
+        "experiment": "M01-ising-verification",
+        "headline": "one turn-stamped measurement",
+        "generated_at": "2026-08-14T07:33:00-04:00",
+        "T": [2.2, 2.3, 2.4],
+        "chi": [1.0, 9.0, 1.0],
+    }
+    _write_report(
+        lab_home, "2026-08-14-0733-m01", mtime=2000, **payload
+    )
+    receipt = receipts / "run-2026-08-14-0733-m01.json"
+    receipt.write_text(json.dumps(payload), encoding="utf-8")
+    os.utime(receipt, (1000, 1000))
+
+    rows = scan_runs()
+    assert len(rows) == 1
+    assert rows[0]["local_only"] is False
+    assert rows[0]["receipt_href"].endswith(receipt.name)
+    assert len(archive.public_runs()) == 1
+
+
 def test_run_ledger_validates_against_pot_schema(tmp_path, monkeypatch):
     """build_snapshot(reports_ledger=run_ledger()) conforms to pot.schema.json."""
     reports, lab_home = _patch(tmp_path, monkeypatch)
