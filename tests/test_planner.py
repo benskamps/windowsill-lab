@@ -36,8 +36,11 @@ NOW = datetime(2026, 8, 14, 12, 0, tzinfo=timezone.utc)
 #: An open frontier id with a real runner that is NOT a ROTATION member —
 #: exactly the shape the frontier seam exists for. Guarded like test_next's
 #: NO_RUNNER_ID so a curriculum edit fails loudly instead of silently
-#: rewriting what these tests mean.
-FRONTIER_ID = "M18"
+#: rewriting what these tests mean. M12 holds this shape PERMANENTLY: it is
+#: excluded from the rotation by wall-clock class (2026-08-01 doc), not by
+#: review status, so planner-era rotation growth can never absorb it the way
+#: it absorbed M18 on 2026-08-14.
+FRONTIER_ID = "M12"
 assert FRONTIER_ID in curriculum.RUNNERS, f"{FRONTIER_ID} lost its runner"
 assert FRONTIER_ID not in curriculum.ROTATION, f"{FRONTIER_ID} joined ROTATION"
 
@@ -376,6 +379,7 @@ def test_next_dry_run_prints_the_planner_reason(
     """The scheduler path speaks planner: the one-line reason on a dry run
     names the decision, not just the branch."""
     from lab import publish as publish_mod
+    monkeypatch.setattr(cli, "_hunt_status", lambda: None)   # non-hunt path
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
         {"id": "M99", "status": "open"},
     ])
@@ -420,6 +424,7 @@ def test_scheduled_dispatch_arms_the_receipt_seam_and_clears_it(
     """Non-dry scheduled pass: the planned decision is armed in lab.receipt for
     exactly the dispatch (so the receipt written inside carries it) and cleared
     after — a manual run following in the same process inherits nothing."""
+    monkeypatch.setattr(cli, "_hunt_status", lambda: None)   # non-hunt path
     from lab import publish as publish_mod
     monkeypatch.setattr(publish_mod, "parse_milestones", lambda _text: [
         {"id": "M99", "status": "open"},
@@ -449,3 +454,41 @@ def test_scheduled_dispatch_arms_the_receipt_seam_and_clears_it(
     assert seen[0] is not None and seen[0]["chosen"] == "M03"
     assert seen[0]["planner"] == "v1"
     assert receipt_mod._PLANNED_DECISION is None       # cleared after dispatch
+
+# ── the hunt seam: committed coverage state → the survey slot ─────────────────
+
+def test_hunt_status_reads_the_committed_receipt():
+    """Live committed state: the 570-target pilot receipt carries
+    n_enumerated=1994, so the seam derives 1,424 remaining and the sector."""
+    from lab import cli
+    status = cli._hunt_status()
+    assert status is not None
+    assert status["remaining_targets"] == 1994 - 570
+    assert status["sectors"] == [2]
+
+
+def test_hunt_status_is_none_without_enumeration(tmp_path, monkeypatch):
+    """A receipt without its enumeration total keeps the candidate OFF —
+    honest over wishful (the pre-backfill state, pinned as a test)."""
+    import json as _json
+    from lab import cli, publish
+    hunts = tmp_path / "reports" / "hunts"
+    hunts.mkdir(parents=True)
+    (hunts / "hunt-2026-01-01-s9.json").write_text(_json.dumps(
+        {"date": "2026-01-01", "sector": 9, "targets_searched": 10}),
+        encoding="utf-8")
+    monkeypatch.setattr(publish, "REPO_ROOT", tmp_path)
+    assert cli._hunt_status() is None
+
+
+def test_planner_sends_the_scheduler_hunting(capsys):
+    """End to end on real committed state: A05 is the open frontier with no
+    RUNNERS entry, the hunt receipt proves 1,424 stars remain, so the dry-run
+    scheduler must dispatch `lab hunt` — the survey slot outranks every
+    canary and cannot repeat-decay."""
+    from lab import cli
+    rc = cli.main(["next", "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "would run `lab hunt`" in out
+    assert "A05-HUNT" in out

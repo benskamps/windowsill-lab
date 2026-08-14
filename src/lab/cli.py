@@ -228,6 +228,42 @@ def _planner_ledger() -> tuple[list[tuple[str, str]], dict[str, list[float]]]:
     return records, durations
 
 
+def _hunt_status() -> dict | None:
+    """Remaining survey coverage from the newest committed hunt receipt.
+
+    The planner's synthetic ``A05-HUNT`` candidate exists only when COMMITTED
+    state proves there is new sky to search: the newest ``reports/hunts``
+    receipt must carry both its sector's enumeration total (``n_enumerated``)
+    and its cumulative ``targets_searched``. Anything missing → ``None`` and
+    the candidate never appears — honest over wishful. Newest-by-stamp wins,
+    which also resolves ``supersedes`` chains (a superseding receipt is newer
+    by construction).
+    """
+    from . import publish as publish_mod
+    hunts_dir = publish_mod.REPO_ROOT / "reports" / "hunts"
+    if not hunts_dir.exists():
+        return None
+    newest, stamp_best = None, ""
+    for path in hunts_dir.glob("hunt-*.json"):
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        stamp = str(data.get("generated_at") or data.get("date") or "")
+        if stamp >= stamp_best:
+            newest, stamp_best = data, stamp
+    if not isinstance(newest, dict):
+        return None
+    enum_total = newest.get("n_enumerated")
+    searched = newest.get("targets_searched")
+    if not (isinstance(enum_total, int) and isinstance(searched, int)):
+        return None
+    remaining = enum_total - searched
+    if remaining <= 0:
+        return None
+    return {"remaining_targets": remaining, "sectors": [newest.get("sector")]}
+
+
 HELP = """lab — a windowsill physics lab.
 
 Usage:
@@ -929,18 +965,21 @@ def _run_next(args, dry, lock_path=None):
             }
             pick: str | None
             try:
-                # TODO(hunt seam): plan_turn scores a synthetic A05-HUNT
-                # candidate, but the committed hunt receipts
-                # (reports/hunts/*.json) carry targets_searched without the
-                # sector's enumeration total, so remaining_targets cannot be
-                # derived cheaply from committed state. Wired OFF
-                # (hunt_status=None) until a hunt receipt carries its
-                # enumeration — honest over wishful.
                 pick, decision = curriculum.plan_turn(
-                    records, status_map, durations=durations, hunt_status=None,
+                    records, status_map, durations=durations,
+                    hunt_status=_hunt_status(),
                 )
                 skips.extend(decision.get("skips", []))
-                if pick is not None and pick in RUNNERS:
+                if pick == curriculum.HUNT_CANDIDATE:
+                    # The survey slot: `lab hunt` runs a bounded, resumable
+                    # A05 slice whose driver owns its own checkpoint, receipt
+                    # and check. It writes a HUNT receipt (reports/hunts/),
+                    # not a run receipt, so the planned-block seam does not
+                    # apply — the decision is disclosed here in the log line.
+                    mid, subcmd = "A05", "hunt"
+                    passthrough = []
+                    reason = f"{why} — {decision['reason']}"
+                elif pick is not None and pick in RUNNERS:
                     mid, subcmd = pick, RUNNERS[pick]
                     reason = f"{why} — {decision['reason']}"
                     planned_decision = decision
@@ -1048,6 +1087,32 @@ def main(argv=None):
             print("web page missing — expected web/index.html", file=sys.stderr); return 1
         webbrowser.open(f"file://{path}")
         print(path); return 0
+
+    if cmd == "hunt":
+        # The scheduler's survey slot: a bounded, resumable A05 hunt slice.
+        # scripts/a05_hunt.py owns checkpointing, the committed receipt and
+        # check_a05; this wrapper pins slot-safe defaults (well inside the
+        # Windows task ExecutionTimeLimit) and lets explicit flags override.
+        import subprocess
+        from . import publish as publish_mod
+        script = publish_mod.REPO_ROOT / "scripts" / "a05_hunt.py"
+        if not script.exists():
+            print("hunt driver missing — expected scripts/a05_hunt.py",
+                  file=sys.stderr)
+            return 1
+        extra = list(args[1:])
+        defaults = []
+        if not any(a == "--n" for a in extra):
+            defaults += ["--n", "150"]
+        if not any(a == "--minutes" for a in extra):
+            defaults += ["--minutes", "45"]
+        env = dict(os.environ)
+        src_dir = str(publish_mod.REPO_ROOT / "src")
+        env["PYTHONPATH"] = (src_dir + os.pathsep + env["PYTHONPATH"]
+                             if env.get("PYTHONPATH") else src_dir)
+        return subprocess.call(
+            [sys.executable, str(script), *defaults, *extra],
+            env=env, cwd=str(publish_mod.REPO_ROOT))
 
     if cmd == "publish":
         from . import publish as publish_mod

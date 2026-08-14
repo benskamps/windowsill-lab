@@ -4,6 +4,7 @@
   "pilot": "pre-A05 pilot (A04 instrument, run-level statistics only)",
   "date": "2026-08-14",
   "sector": 2,
+  "n_enumerated": 1994,
   "slice_rule": "next targets in A04's consistent-hash ranking, graded-run targets and designated recovery targets excluded",
   "sde_threshold": 8.0,
   "targets_searched": 570,

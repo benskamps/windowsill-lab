@@ -100,9 +100,21 @@ def runner_for(milestone_id: str) -> str | None:
 # recovers an injected chirp mass to ~2e-5 Msun before reporting on the sky, so
 # a passing receipt is a live statement that the pipeline still works, and the
 # day the sky column changes it will be because something real changed.
+# 2026-08-14 growth (the planner era): M18, K02 and A04 joined once the value
+# function took over selection — the original curation existed partly to stop
+# a dumb wheel from wasting turns, and the planner's class ordering + repeat
+# decay now do that by law, so membership is bounded by SAFETY, not taste.
+# M18 = 227 s full GPU run; A04 ≈ 130 s warm with deadline-guarded MAST calls
+# (a network outage fails one slot, never wedges it); K02's hero ladder is
+# ~63 min — inside the Windows task ExecutionTimeLimit, and its cost divisor
+# makes the planner reach for it rarely, which is the correct cadence for a
+# verified rung. M12/M16 REMAIN excluded by wall-clock class (PT2H-exceeding
+# full runs / null-spam quick variants — see the 2026-08-01 rotation doc);
+# they are still hand-run.
 ROTATION: tuple[str, ...] = (
     "M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10",
-    "M11", "M13", "M14", "M15", "M17", "K01", "C01", "A01", "A03", "I01",
+    "M11", "M13", "M14", "M15", "M17", "M18", "K01", "K02", "C01", "A01",
+    "A03", "A04", "I01",
 )
 
 

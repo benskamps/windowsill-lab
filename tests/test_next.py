@@ -22,10 +22,17 @@ from lab.publish import parse_milestones
 def _isolated_lab_home(tmp_path, monkeypatch):
     """Non-dry `lab next` now takes a run lock under ``LAB_HOME``. Redirect it so
     no test ever creates a lock in the live ``~/.lab`` — a leaked one there would
-    make the real scheduler skip its next slot."""
+    make the real scheduler skip its next slot.
+
+    The hunt seam is pinned OFF file-wide for the same isolation reason: this
+    file tests the milestone scheduler with stubbed ledgers, while
+    ``cli._hunt_status`` reads the REAL committed hunt receipts and (since
+    2026-08-14) the survey slot outranks every fixture here. The hunt path has
+    its own tests in test_planner.py."""
     home = tmp_path / "lab-home"
     home.mkdir()
     monkeypatch.setattr(cli, "LAB_HOME", home)
+    monkeypatch.setattr(cli, "_hunt_status", lambda: None)
 
 
 #: A milestone id deliberately NOT in RUNNERS. These tests need "an open
@@ -343,15 +350,18 @@ def test_next_routes_to_the_open_milestones_runner(monkeypatch, capsys):
 # ── the portfolio rotation registry (curriculum.ROTATION) ─────────────────────
 
 def test_rotation_is_curated_and_every_slot_is_dispatchable():
-    """ROTATION is a curated committed list, not blanket RUNNERS: M12/M16 are
-    excluded by name (wall-clock class exceeds the Windows PT2H slot; --quick
-    variants ship a null every pass), M18 is measured-but-unreviewed so it is
-    not a rotation member yet. M01 stays as one slot
-    — the calibration pulse, demoted from daily headline."""
+    """ROTATION is bounded by SAFETY, not taste (the 2026-08-14 planner-era
+    rule): M12/M16 stay excluded by wall-clock class (PT2H-exceeding full runs;
+    --quick variants ship a null every pass), while M18/K02/A04 joined once
+    the planner's value ordering + repeat decay replaced the dumb wheel —
+    growth no longer risks a treadmill. M01 stays as one slot — the
+    calibration pulse, demoted from daily headline."""
     assert curriculum.ROTATION[0] == "M01"
     assert "M12" not in curriculum.ROTATION
     assert "M16" not in curriculum.ROTATION
-    assert "M18" not in curriculum.ROTATION
+    assert "M18" in curriculum.ROTATION           # planner-era admit, 227 s
+    assert "K02" in curriculum.ROTATION           # 63 min — cost model rations it
+    assert "A04" in curriculum.ROTATION           # ~130 s warm, deadline-guarded
     assert "I01" in curriculum.ROTATION           # in rotation, hardware-gated
     assert len(set(curriculum.ROTATION)) == len(curriculum.ROTATION)
     for mid in curriculum.ROTATION:
@@ -392,10 +402,13 @@ def test_select_rotation_walks_to_the_next_slot():
     pick, skips = curriculum.select_rotation(_all_verified(), "M01")
     assert (pick, skips) == ("M02", [])
     # The walk is grouped: the convergence ladders (M, then K) come before the
-    # citizen-science tracks, so M17's successor is K01 and K01's is C01.
+    # citizen-science tracks — M18 follows M17 and K02 follows K01 since the
+    # 2026-08-14 planner-era growth, so M18's successor is K01 and K02's is C01.
     pick, _ = curriculum.select_rotation(_all_verified(), "M17")
+    assert pick == "M18"
+    pick, _ = curriculum.select_rotation(_all_verified(), "M18")
     assert pick == "K01"
-    pick, _ = curriculum.select_rotation(_all_verified(), "K01")
+    pick, _ = curriculum.select_rotation(_all_verified(), "K02")
     assert pick == "C01"
     # Unknown or absent pointer starts the rotation at its first slot.
     pick, _ = curriculum.select_rotation(_all_verified(), "ZZ99")
@@ -728,8 +741,9 @@ def test_rotation_pointer_ignores_receipts_outside_the_rotation():
     ]
     assert curriculum.rotation_pointer(records) == "M07"
     assert curriculum.select_rotation(_all_verified(), "M07")[0] == "M08"
-    # M16 and a non-rotation frontier receipt (M18) are skipped on the same rule.
-    for outsider in ("M16", "M18"):
+    # M16 is skipped on the same rule (M18 stopped being an example when it
+    # joined the rotation in the 2026-08-14 planner-era growth).
+    for outsider in ("M16",):
         assert curriculum.rotation_pointer(
             [("2026-08-01T02:00:00+00:00", "M07"),
              ("2026-08-01T09:00:00+00:00", outsider)]
