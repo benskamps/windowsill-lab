@@ -626,6 +626,7 @@
                       border-top:1px solid var(--border); font:0.74rem var(--font-mono); color:var(--text-secondary); }
     .hunt-ledger li:first-child { border-top:none; }
     .hunt-ledger li b { margin-left:auto; font-weight:520; color:var(--text); font-variant-numeric:tabular-nums; }
+    .hunt-ledger-note { margin-top:0.55rem; font:0.68rem/1.55 var(--font-mono); color:var(--text-muted); }
     .hunt-story h3 { font-size:1.15rem; font-weight:560; letter-spacing:-0.01em; }
     .hunt-story p { margin-top:0.55rem; color:var(--text-muted); line-height:1.6; font-size:0.88rem; }
     .hunt-boundary { margin-top:1.4rem; padding:0.7rem 0.9rem; border-left:2px solid var(--border); }
@@ -1339,6 +1340,7 @@
         <div class="hunt-ledger" role="group" aria-label="machine dispositions of every threshold-crossing event">
           <span class="hunt-ledger-label">machine disposition</span>
           <ul id="hunt-dispositions"></ul>
+          <p class="hunt-ledger-note" id="hunt-unresolved" hidden></p>
         </div>
         <div class="hunt-story">
           <h3>For forty minutes this was a planet.</h3>
@@ -4348,13 +4350,16 @@
 
     // ── The hunt ledger: committed survey receipts, dated, never "live" ─────
     // Renders pot.json's `hunt` block. Everything here is display of numbers
-    // the PUBLISHER re-derived from committed receipts; the only figure this
-    // function computes is the impostor count, and that is a derivation, not a
-    // restatement: impostors = threshold-crossing events − known planets
-    // re-found − leads still open. It closes because the aggregator refuses
-    // any receipt with an undispositioned above-threshold hit, so every event
-    // is accounted one of the three ways. The section stays hidden without a
-    // hunt block — a feed from before the survey era degrades cleanly.
+    // the PUBLISHER re-derived from committed receipts; the only figures this
+    // function computes are the impostor and unresolved counts, and both come
+    // straight off the dispositions histogram: an impostor is an event the
+    // machine POSITIVELY unmasked, so `low-significance` (an unresolved weak
+    // signal) never counts as one, and neither do `known-planet` or the open
+    // lead states. The arithmetic stays legible because the histogram covers
+    // every event — its buckets (impostors + known + leads + unresolved) sum
+    // to the event count — and the unresolved count gets its own ledger note.
+    // The section stays hidden without a hunt block — a feed from before the
+    // survey era degrades cleanly.
     function drawHunt(hunt) {
       var box = $('hunt');
       if (!box) return;
@@ -4362,7 +4367,15 @@
       var above = Number(hunt.above_threshold) || 0;
       var known = Number(hunt.known_recovered) || 0;
       var leads = Number(hunt.leads_awaiting_human_review) || 0;
-      var impostors = Math.max(0, above - known - leads);
+      var disp = hunt.dispositions || {};
+      var impostors = 0, unresolved = 0;
+      Object.keys(disp).forEach(function (verdict) {
+        var n = Number(disp[verdict]) || 0;
+        if (verdict === 'low-significance') { unresolved += n; return; }
+        if (verdict === 'known-planet' || verdict === 'lead-awaiting-human-review'
+            || verdict === 'planet-candidate') return;
+        impostors += n;
+      });
       $('hunt-searched').textContent = String(Number(hunt.targets_searched) || 0);
       $('hunt-events').textContent = String(above);
       $('hunt-impostors').textContent = String(impostors);
@@ -4395,6 +4408,21 @@
         row.appendChild(name); row.appendChild(n);
         list.appendChild(row);
       });
+      // Unresolved weak signals are counted among the events but never as
+      // impostors — this note keeps the strip's arithmetic legible.
+      var note = $('hunt-unresolved');
+      if (note) {
+        if (unresolved > 0) {
+          note.textContent = unresolved + ' low-significance event'
+            + (unresolved === 1 ? '' : 's') + ' stay'
+            + (unresolved === 1 ? 's' : '') + ' unresolved — counted in the '
+            + above + ' events, never as impostors.';
+          note.hidden = false;
+        } else {
+          note.textContent = '';
+          note.hidden = true;
+        }
+      }
       // The claim boundary ships verbatim from the newest receipt — the page
       // never paraphrases it.
       $('hunt-boundary').textContent = hunt.claim_boundary || '';

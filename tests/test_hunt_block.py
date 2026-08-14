@@ -435,6 +435,25 @@ def test_page_ledger_is_labeled_machine_disposition_and_renders_verbatim():
     assert "name.textContent = verdict;" in html
 
 
+def test_page_impostors_derive_from_the_histogram_not_by_subtraction():
+    """An impostor is an event the machine POSITIVELY unmasked. The counter
+    sums disposition buckets and excludes ``low-significance`` (unresolved
+    weak signals), ``known-planet``, and the open lead states — the old
+    events − known − leads subtraction silently dressed unresolved signals
+    up as unmasked impostors."""
+    html = _page()
+    assert "above - known - leads" not in html, \
+        "impostors must come from the dispositions histogram, not subtraction"
+    assert "if (verdict === 'low-significance') { unresolved += n; return; }" in html
+    assert "verdict === 'known-planet'" in html
+    assert "verdict === 'lead-awaiting-human-review'" in html
+    # And the unresolved count is surfaced as a ledger note, so the strip's
+    # arithmetic (impostors + known + leads + unresolved = events) stays
+    # legible to a reader.
+    assert 'id="hunt-unresolved"' in html
+    assert "never as impostors." in html
+
+
 def test_page_dates_the_strip_as_of_the_last_published_run_never_live():
     html = _page()
     assert "as of the last published run" in html
