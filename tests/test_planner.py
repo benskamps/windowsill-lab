@@ -458,12 +458,14 @@ def test_scheduled_dispatch_arms_the_receipt_seam_and_clears_it(
 # ── the hunt seam: committed coverage state → the survey slot ─────────────────
 
 def test_hunt_status_reads_the_committed_receipt():
-    """Live committed state: the 570-target pilot receipt carries
-    n_enumerated=1994, so the seam derives 1,424 remaining and the sector."""
+    """Live committed state: the newest accepted receipt (the 2026-08-14
+    schema-1 survey run) enumerates 3034 targets, and the accepted receipts
+    together account for 722 searched (570 pilot + 152 survey), so the seam
+    derives 2,312 remaining and the sector."""
     from lab import cli
     status = cli._hunt_status()
     assert status is not None
-    assert status["remaining_targets"] == 1994 - 570
+    assert status["remaining_targets"] == 3034 - 722
     assert status["sectors"] == [2]
 
 
@@ -483,7 +485,7 @@ def test_hunt_status_is_none_without_enumeration(tmp_path, monkeypatch):
 
 def test_planner_sends_the_scheduler_hunting(capsys):
     """End to end on real committed state: A05 is the open frontier with no
-    RUNNERS entry, the hunt receipt proves 1,424 stars remain, so the dry-run
+    RUNNERS entry, the hunt receipts prove 2,312 stars remain, so the dry-run
     scheduler must dispatch `lab hunt` — the survey slot outranks every
     canary and cannot repeat-decay."""
     from lab import cli

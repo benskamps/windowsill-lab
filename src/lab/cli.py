@@ -232,36 +232,37 @@ def _hunt_status() -> dict | None:
     """Remaining survey coverage from the newest committed hunt receipt.
 
     The planner's synthetic ``A05-HUNT`` candidate exists only when COMMITTED
-    state proves there is new sky to search: the newest ``reports/hunts``
-    receipt must carry both its sector's enumeration total (``n_enumerated``)
-    and its cumulative ``targets_searched``. Anything missing → ``None`` and
-    the candidate never appears — honest over wishful. Newest-by-stamp wins,
-    which also resolves ``supersedes`` chains (a superseding receipt is newer
-    by construction).
+    state proves there is new sky to search: the newest ACCEPTED
+    ``reports/hunts`` receipt must carry its sector's enumeration total
+    (``n_enumerated``), and the searched count is summed across every accepted
+    receipt by the same per-receipt counters pot.json uses — one reader, one
+    truth. Anything missing → ``None`` and the candidate never appears —
+    honest over wishful. Acceptance, refusal, and ``supersedes`` resolution
+    are ``publish._accepted_hunt_receipts``'s, not re-derived here.
     """
     from . import publish as publish_mod
     hunts_dir = publish_mod.REPO_ROOT / "reports" / "hunts"
     if not hunts_dir.exists():
         return None
-    newest, stamp_best = None, ""
-    for path in hunts_dir.glob("hunt-*.json"):
-        try:
-            data = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        stamp = str(data.get("generated_at") or data.get("date") or "")
-        if stamp >= stamp_best:
-            newest, stamp_best = data, stamp
-    if not isinstance(newest, dict):
+    accepted, _refused, _superseded = publish_mod._accepted_hunt_receipts(
+        hunts_dir)
+    if not accepted:
         return None
+    _, _, newest = max(accepted, key=lambda item: (item[0], item[1].name))
     enum_total = newest.get("n_enumerated")
-    searched = newest.get("targets_searched")
-    if not (isinstance(enum_total, int) and isinstance(searched, int)):
+    if not isinstance(enum_total, int):
         return None
+    # Summed by the same per-receipt counters the pot uses — the schema-1
+    # survey receipt carries no top-level ``targets_searched``, and a reader
+    # that required one dropped the survey slot the night it landed.
+    searched = sum(publish_mod._hunt_receipt_counters(receipt)
+                   ["targets_searched"] for _, _, receipt in accepted)
     remaining = enum_total - searched
     if remaining <= 0:
         return None
-    return {"remaining_targets": remaining, "sectors": [newest.get("sector")]}
+    sectors = sorted({receipt.get("sector") for _, _, receipt in accepted
+                      if isinstance(receipt.get("sector"), int)})
+    return {"remaining_targets": remaining, "sectors": sectors}
 
 
 HELP = """lab — a windowsill physics lab.

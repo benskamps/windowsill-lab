@@ -1070,29 +1070,18 @@ def _hunt_receipt_counters(receipt: dict) -> dict:
     }
 
 
-def hunt_block(hunts_dir: Path | None = None) -> dict | None:
-    """Aggregate every committed hunt receipt into pot.json's ``hunt`` block.
+def _accepted_hunt_receipts(
+        directory: Path) -> tuple[list[tuple[str, Path, dict]],
+                                  list[dict], list[dict]]:
+    """Accepted hunt receipts as ``(date, path, receipt)`` rows, plus the
+    refused and superseded listings.
 
-    A pure function of ``reports/hunts/*.json`` — no clock, no local state — so
-    every clone derives the same block, exactly as the milestones key is a pure
-    function of MILESTONES.md. ``None`` when no receipts exist (the page then
-    omits the section entirely).
-
-    Refused receipts are EXCLUDED from every counter and named in ``refused``
-    (file + reason): a refusal is a fact about the record worth publishing, not
-    a silent skip. ``claim_boundary`` and ``as_of`` come verbatim from the
-    newest accepted receipt — the page must say "as of", never "live", because
-    a committed ledger only knows its newest entry. ``planets_discovered`` is
-    pinned to the literal 0 below and is not computed from anything: promoting
-    a lead to a planet is a human act on the record (MILESTONES.md), and no
-    machine path through this function can raise the number.
+    The ONE reader of ``reports/hunts``: pot.json's hunt block and the
+    planner's hunt seam must count from the same accepted set — two readers
+    drifted apart on 2026-08-14 (the schema-1 survey receipt fed the pot but
+    not the planner) and the survey slot silently vanished.
     """
-    directory = hunts_dir if hunts_dir is not None else HUNTS_DIR
-    if not directory.exists():
-        return None
     paths = sorted(directory.glob("*.json"))
-    if not paths:
-        return None
     accepted: list[tuple[str, Path, dict]] = []
     refused: list[dict] = []
     for path in paths:
@@ -1119,6 +1108,32 @@ def hunt_block(hunts_dir: Path | None = None) -> dict | None:
     superseded = [{"file": p.name, "by": superseded_by[p.name]}
                   for _, p, _ in accepted if p.name in superseded_by]
     accepted = [item for item in accepted if item[1].name not in superseded_by]
+    return accepted, refused, superseded
+
+
+def hunt_block(hunts_dir: Path | None = None) -> dict | None:
+    """Aggregate every committed hunt receipt into pot.json's ``hunt`` block.
+
+    A pure function of ``reports/hunts/*.json`` — no clock, no local state — so
+    every clone derives the same block, exactly as the milestones key is a pure
+    function of MILESTONES.md. ``None`` when no receipts exist (the page then
+    omits the section entirely).
+
+    Refused receipts are EXCLUDED from every counter and named in ``refused``
+    (file + reason): a refusal is a fact about the record worth publishing, not
+    a silent skip. ``claim_boundary`` and ``as_of`` come verbatim from the
+    newest accepted receipt — the page must say "as of", never "live", because
+    a committed ledger only knows its newest entry. ``planets_discovered`` is
+    pinned to the literal 0 below and is not computed from anything: promoting
+    a lead to a planet is a human act on the record (MILESTONES.md), and no
+    machine path through this function can raise the number.
+    """
+    directory = hunts_dir if hunts_dir is not None else HUNTS_DIR
+    if not directory.exists():
+        return None
+    if not any(directory.glob("*.json")):
+        return None
+    accepted, refused, superseded = _accepted_hunt_receipts(directory)
 
     if not accepted:
         empty = {"targets_searched": 0, "above_threshold": 0, "dispositions": {},
