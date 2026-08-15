@@ -310,11 +310,12 @@ def test_committed_hunt_block_headline_numbers():
     claimed discovery is the alarm working as designed."""
     from lab.checks import A05_MACHINE_VOCABULARY
     block = json.loads((ROOT / "pot.json").read_text(encoding="utf-8"))["hunt"]
-    # The floor is history: the 2026-08-15 ledger stood at 1,439 searched /
-    # 38 above threshold, and receipts only accumulate (a superseding
-    # receipt is always the wider one).
-    assert block["targets_searched"] >= 1439
-    assert block["above_threshold"] >= 38
+    # No numeric floors: searched is a work-done sum that a superseding
+    # consolidation can shrink, and the star-level numbers are distinct-star
+    # aggregates that a re-grade can lower. Positivity is the invariant; the
+    # numbers themselves are data the receipts carry.
+    assert block["targets_searched"] >= 570      # the pilot receipt alone
+    assert block["above_threshold"] >= 1
     # Disposition completeness: every threshold-crossing event carries a
     # machine disposition from the closed vocabulary — none invented,
     # none missing.

@@ -1054,6 +1054,18 @@ def _hunt_refusal(receipt: dict, path: Path) -> str | None:
     return None
 
 
+def _receipt_target_rows(receipt: dict) -> tuple[list[dict], list[dict]]:
+    """(searched rows, above-threshold rows) of one receipt — the one row
+    filter both the per-receipt counters and the cross-receipt star ledger
+    derive from, so the two can never disagree about what a row is."""
+    threshold = receipt.get("sde_threshold", HUNT_SDE_THRESHOLD)
+    rows = [r for r in receipt.get("targets", []) if isinstance(r, dict)]
+    searched = [r for r in rows if r.get("outcome") == "searched"]
+    above = [r for r in searched
+             if isinstance(r.get("sde"), (int, float)) and r["sde"] >= threshold]
+    return searched, above
+
+
 def _hunt_receipt_counters(receipt: dict) -> dict:
     """Counters re-derived from a single accepted receipt's rows.
 
@@ -1062,11 +1074,7 @@ def _hunt_receipt_counters(receipt: dict) -> dict:
     (consistency with any declared total is enforced at refusal time).
     """
     schema = receipt.get("schema", 0)
-    threshold = receipt.get("sde_threshold", HUNT_SDE_THRESHOLD)
-    rows = [r for r in receipt.get("targets", []) if isinstance(r, dict)]
-    searched = [r for r in rows if r.get("outcome") == "searched"]
-    above = [r for r in searched
-             if isinstance(r.get("sde"), (int, float)) and r["sde"] >= threshold]
+    searched, above = _receipt_target_rows(receipt)
     if schema == 0:
         n_searched = (receipt.get("floor") or {}).get("n", 0) + len(above)
     else:
@@ -1168,15 +1176,52 @@ def hunt_block(hunts_dir: Path | None = None) -> dict | None:
             empty["superseded"] = superseded
         return empty
 
-    totals = {"targets_searched": 0, "above_threshold": 0,
-              "known_recovered": 0, "leads_awaiting_human_review": 0}
+    # ``targets_searched`` stays a per-receipt counter SUM — it is a statement
+    # of work done, and re-searching a star in a later slice really is more
+    # work. Every star-level number below is aggregated per DISTINCT star
+    # instead, newest receipt's verdict winning: overlapping slices exist
+    # (two boxes hunted overlapping sector-2 slices on 2026-08-15, and a
+    # restore preserved all three), and a row-sum would report the same
+    # lead-awaiting-human-review star once per slice it appears in. A lead
+    # is a star, not a row.
+    total_searched = 0
+    star_disposition: dict[str, str] = {}
+    star_known: dict[str, bool] = {}
+    for _, _, receipt in sorted(accepted,
+                                key=lambda item: (item[0], item[1].name)):
+        total_searched += _hunt_receipt_counters(receipt)["targets_searched"]
+        searched_rows, above = _receipt_target_rows(receipt)
+        above_tics = {str(r.get("tic")) for r in above}
+        for row in searched_rows:
+            tic = str(row.get("tic"))
+            if tic in above_tics:
+                continue
+            # Newest verdict wins: a re-searched star that no longer crosses
+            # threshold leaves the EVENT ledger. Its recovery flag stays —
+            # a detection already made is history, not a live claim a weaker
+            # slice can un-make.
+            star_disposition.pop(tic, None)
+        for row in above:
+            tic = str(row.get("tic"))
+            star_disposition[tic] = row["disposition"]
+            if row["disposition"] == HUNT_KNOWN_FP:
+                # The community-refuted re-grade DOES clear a recovery: FP/FA
+                # means the signal was never the planet (the TOI 189.01 rule).
+                star_known.pop(tic, None)
+        for row in above + [r for r in (receipt.get("recoveries") or [])
+                            if isinstance(r, dict)]:
+            if row.get("known_planet") and row.get("disposition") != HUNT_KNOWN_FP:
+                star_known[str(row.get("tic"))] = True
     dispositions: dict[str, int] = {}
-    for _, _, receipt in accepted:
-        counters = _hunt_receipt_counters(receipt)
-        for key in totals:
-            totals[key] += counters[key]
-        for verdict, n in counters["dispositions"].items():
-            dispositions[verdict] = dispositions.get(verdict, 0) + n
+    for verdict in star_disposition.values():
+        dispositions[verdict] = dispositions.get(verdict, 0) + 1
+    totals = {
+        "targets_searched": total_searched,
+        "above_threshold": len(star_disposition),
+        "known_recovered": len(star_known),
+        "leads_awaiting_human_review": sum(
+            dispositions.get(state, 0) for state in HUNT_LEAD_STATES),
+    }
 
     newest_date, newest_path, newest = max(
         accepted, key=lambda item: (item[0], item[1].name))

@@ -154,7 +154,20 @@ def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]
         hid = ckpt.stem[len("a05-"):]
         if not (hunts_dir / f"{hid}.json").exists():
             return hid, ckpt
+    # Fresh id — but NEVER one whose receipt is already committed. The bare
+    # dated id collides the moment a second producer (or a second same-day
+    # slot) hunts the same sector: on 2026-08-15 loam's bare survey-slot hunt
+    # defaulted to sector 2 and silently overwrote win's committed s2 receipt,
+    # taking a lead-awaiting-human-review row with it. Same-day second slices
+    # get a UTC time stamp — a NEW receipt beside the old one, never an
+    # overwrite (the #79 turn-stamp lesson, re-learned the hard way).
     hid = f"hunt-{date.today().isoformat()}-s{sector}"
+    if (hunts_dir / f"{hid}.json").exists():
+        stamp = time.strftime("%H%M", time.gmtime())
+        hid = f"{hid}-{stamp}"
+        if (hunts_dir / f"{hid}.json").exists():
+            stamp = time.strftime("%H%M%S", time.gmtime())
+            hid = f"hunt-{date.today().isoformat()}-s{sector}-{stamp}"
     return hid, LAB_HOME / f"a05-{hid}.jsonl"
 
 
