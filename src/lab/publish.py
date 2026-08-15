@@ -287,37 +287,61 @@ def parse_milestones(text: str) -> list[dict]:
     return out
 
 
+#: Substrings that mark a sensor as an actual CPU/package monitor.
+_CPU_SENSOR_TAGS = ("cpu", "x86_pkg", "k10temp", "tctl", "coretemp", "zenpower")
+
+
+def _cpu_temp_linux(thermal_base: Path, hwmon_base: Path) -> float | None:
+    """CPU temperature from sysfs, or ``None`` when no sensor NAMES a CPU.
+
+    Two roots, because the kernel splits them: ACPI thermal zones under
+    ``/sys/class/thermal`` and hwmon chips under ``/sys/class/hwmon`` —
+    AMD's ``k10temp`` (Tctl) lives only in the latter (the 2026-08-12
+    two-producer investigation, §axis-two). There is deliberately NO
+    first-readable-zone fallback: that fail-open path published loam's WiFi
+    adapter to the public feed as "CPU heat". Unknown is ``None``, not a
+    guess.
+    """
+    if thermal_base.exists():
+        for zone in sorted(thermal_base.glob("thermal_zone*")):
+            try:
+                kind = (zone / "type").read_text().strip().lower()
+            except OSError:
+                continue
+            if any(tag in kind for tag in _CPU_SENSOR_TAGS):
+                try:
+                    return round(
+                        int((zone / "temp").read_text().strip()) / 1000.0, 1)
+                except (OSError, ValueError):
+                    pass
+    if hwmon_base.exists():
+        for chip in sorted(hwmon_base.glob("hwmon*")):
+            try:
+                name = (chip / "name").read_text().strip().lower()
+            except OSError:
+                continue
+            if any(tag in name for tag in _CPU_SENSOR_TAGS):
+                for sensor in sorted(chip.glob("temp*_input")):
+                    try:
+                        return round(
+                            int(sensor.read_text().strip()) / 1000.0, 1)
+                    except (OSError, ValueError):
+                        continue
+    return None
+
+
 def cpu_temp_c() -> float | None:
     """Best-effort CPU temperature — sets the windowsill's season.
 
-    Linux: ``/sys/class/thermal``. Windows: LibreHardwareMonitor's web JSON at
-    localhost:8085 (enable it: Options > Web Server > Run). ``None`` (the page
-    falls back to spring) when neither is available.
+    Linux: a sysfs sensor that names a CPU (``_cpu_temp_linux``). Windows:
+    LibreHardwareMonitor's web JSON at localhost:8085 (enable it: Options >
+    Web Server > Run). ``None`` (the page falls back to spring) when no
+    CPU-named sensor is available — fail closed, never a mystery zone.
     """
     if os.name == "nt":
         return _cpu_temp_windows()
-    base = Path("/sys/class/thermal")
-    if not base.exists():
-        return None
-    zones = sorted(base.glob("thermal_zone*"))
-    # Prefer a zone that names a CPU/package sensor.
-    for zone in zones:
-        try:
-            kind = (zone / "type").read_text().strip().lower()
-        except OSError:
-            continue
-        if any(tag in kind for tag in ("cpu", "x86_pkg", "k10temp", "tctl", "coretemp")):
-            try:
-                return round(int((zone / "temp").read_text().strip()) / 1000.0, 1)
-            except (OSError, ValueError):
-                pass
-    # Fall back to the first readable zone.
-    for zone in zones:
-        try:
-            return round(int((zone / "temp").read_text().strip()) / 1000.0, 1)
-        except (OSError, ValueError):
-            continue
-    return None
+    return _cpu_temp_linux(Path("/sys/class/thermal"),
+                           Path("/sys/class/hwmon"))
 
 
 def _cpu_temp_windows() -> float | None:
