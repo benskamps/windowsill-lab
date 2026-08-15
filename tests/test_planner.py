@@ -458,17 +458,51 @@ def test_scheduled_dispatch_arms_the_receipt_seam_and_clears_it(
 # ── the hunt seam: committed coverage state → the survey slot ─────────────────
 
 def test_hunt_status_reads_the_committed_receipt():
-    """Live committed state after the 2026-08-15 runs (win s2, loam s3 +
-    the sector-30 arm of the split): three sectors carry enumerations —
-    s2 3332 enumerated / 854 searched (570 pilot + 152 + 132 survey),
-    s3 3161 / 402, s30 3471 / 163 — so the seam derives 8,545 remaining
-    across the three sectors."""
+    """The seam agrees with a straight re-derivation of the committed
+    receipts.
+
+    Until 2026-08-15 this test pinned the exact remaining-target count and
+    went red after every landed hunt (receipts now arrive 4-8x/day from two
+    boxes). What the seam PROMISES is arithmetic, not a number: per sector,
+    remaining = newest declared enumeration minus the sum of searched
+    counters across accepted receipts, clamped at zero; sectors sorted;
+    None once nothing remains. This test re-derives that inline from the
+    same committed files and requires exact agreement — a parsing or
+    aggregation regression still fails, but a new receipt no longer does."""
+    from pathlib import Path
+
     from lab import cli
+    from lab import publish as pm
+
+    accepted, _refused, _superseded = pm._accepted_hunt_receipts(
+        pm.REPO_ROOT / "reports" / "hunts")
+    assert accepted, "committed receipts exist — the survey has run"
+    enums: dict[int, tuple[tuple[str, str], int]] = {}
+    searched: dict[int, int] = {}
+    for date, path, receipt in accepted:
+        sector = receipt.get("sector")
+        if not isinstance(sector, int):
+            continue
+        searched[sector] = (searched.get(sector, 0)
+                            + pm._hunt_receipt_counters(receipt)
+                            ["targets_searched"])
+        enum_total = receipt.get("n_enumerated")
+        stamp = (date, path.name)
+        if isinstance(enum_total, int) and stamp >= enums.get(
+                sector, (("", ""), 0))[0]:
+            enums[sector] = (stamp, enum_total)
+    expected = sum(max(0, total - searched.get(s, 0))
+                   for s, (_, total) in enums.items())
+
     status = cli._hunt_status()
+    if expected <= 0:
+        assert status is None                 # sky exhausted → slot vanishes
+        return
     assert status is not None
-    assert status["remaining_targets"] == (
-        (3332 - 854) + (3161 - 402) + (3471 - 163))
-    assert status["sectors"] == [2, 3, 30]
+    assert status["remaining_targets"] == expected
+    assert status["sectors"] == sorted(enums)
+    # The split is live: at least sector 2 (win) carries an enumeration.
+    assert 2 in enums
 
 
 def test_hunt_status_is_none_without_enumeration(tmp_path, monkeypatch):

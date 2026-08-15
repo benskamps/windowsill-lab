@@ -1319,22 +1319,23 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 1419,
-    "above_threshold": 34,
+    "targets_searched": 1439,
+    "above_threshold": 38,
     "dispositions": {
       "eclipsing-binary-secondary": 6,
-      "harmonic-alias": 6,
-      "eclipsing-binary-odd-even": 3,
+      "harmonic-alias": 7,
+      "eclipsing-binary-odd-even": 4,
       "low-significance": 2,
       "phased-brightening": 2,
       "toi-known-fp": 1,
       "known-planet": 7,
-      "recovery-or-known": 2,
+      "recovery-or-known": 3,
       "stellar-pulsation": 4,
-      "insufficient-coverage": 1
+      "insufficient-coverage": 1,
+      "lead-awaiting-human-review": 1
     },
-    "known_recovered": 9,
-    "leads_awaiting_human_review": 0,
+    "known_recovered": 10,
+    "leads_awaiting_human_review": 1,
     "planets_discovered": 0,
     "last_hunt": {
       "date": "2026-08-15",

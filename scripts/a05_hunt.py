@@ -244,6 +244,18 @@ def main() -> int:
           f"{counts['leads_awaiting_human_review']}")
     ok, detail = checks.check_a05(report)
     print(f"check_a05: {ok} — {detail}")
+
+    # pot.json's ``hunt`` key is a pure function of the committed receipts
+    # (CI enforces pot == hunt_block()). A receipt written WITHOUT refreshing
+    # the pot ships a red main in the producer's own commit — the 2026-08-15
+    # nightly did exactly that. Refresh surgically: the hunt key only, the
+    # publisher's own serialization (indent=2, insertion order — never
+    # sort_keys), so the receipt and its aggregate land together.
+    from lab.publish import POT_JSON, hunt_block
+    pot = json.loads(POT_JSON.read_text(encoding="utf-8"))
+    pot["hunt"] = hunt_block()
+    POT_JSON.write_text(json.dumps(pot, indent=2) + "\n", encoding="utf-8")
+    print(f"pot hunt block refreshed -> {POT_JSON}")
     return 0
 
 
