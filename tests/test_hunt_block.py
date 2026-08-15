@@ -297,34 +297,35 @@ def test_pot_json_hunt_block_is_in_sync_with_the_committed_receipts():
 
 
 def test_committed_hunt_block_headline_numbers():
-    """The committed ledger after the pilot day PLUS the first autonomous
-    survey runs (152 targets in sector 2, then the first 2-target slice of
-    sector 3, schema 1, same date): the wide (570-target) pilot receipt still
-    supersedes the 158-target checkpoint, 23 threshold-crossing events all
-    carry a machine disposition, one is the community-refuted TOI 189.01
-    (``toi-known-fp``), five confirmed planets stand recovered across the
-    three accepted receipts, zero leads remain open, zero planets
-    discovered."""
+    """The committed ledger after the 2026-08-15 runs (win's 132-target s2
+    survey, loam's 201-target s3 slices, and the 163-target arm of sector
+    30): the wide (570-target) pilot receipt still supersedes the
+    158-target checkpoint, 34 threshold-crossing events all carry a
+    machine disposition, one is the community-refuted TOI 189.01
+    (``toi-known-fp``), nine confirmed planets stand recovered across the
+    accepted receipts, zero leads remain open, zero planets discovered."""
     block = json.loads((ROOT / "pot.json").read_text(encoding="utf-8"))["hunt"]
-    assert block["targets_searched"] == 724
-    assert block["above_threshold"] == 23
+    assert block["targets_searched"] == 1419
+    assert block["above_threshold"] == 34
     assert block["dispositions"] == {
-        "eclipsing-binary-secondary": 5,
+        "eclipsing-binary-secondary": 6,
         "eclipsing-binary-odd-even": 3,
-        "harmonic-alias": 5,
+        "harmonic-alias": 6,
         "low-significance": 2,
         "phased-brightening": 2,
         "toi-known-fp": 1,
-        "known-planet": 4,
-        "recovery-or-known": 1,
+        "known-planet": 7,
+        "recovery-or-known": 2,
+        "stellar-pulsation": 4,
+        "insufficient-coverage": 1,
     }
     assert sum(block["dispositions"].values()) == block["above_threshold"]
-    assert block["known_recovered"] == 5
+    assert block["known_recovered"] == 9
     assert block["leads_awaiting_human_review"] == 0
     assert block["planets_discovered"] == 0
     assert block["claim_boundary"]                        # verbatim, non-empty
-    assert block["as_of"] == "2026-08-14"
-    assert block["last_hunt"]["n"] == 2
+    assert block["as_of"] == "2026-08-15"
+    assert block["last_hunt"]["n"] == 201
     # The newest accepted receipt is a schema-1 survey run, not the pilot.
     assert block["last_hunt"]["provenance"] == "a05"
     assert block["superseded"] == [{"file": "hunt-2026-08-14-s2-pilot-158.json",

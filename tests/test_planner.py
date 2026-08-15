@@ -458,16 +458,17 @@ def test_scheduled_dispatch_arms_the_receipt_seam_and_clears_it(
 # ── the hunt seam: committed coverage state → the survey slot ─────────────────
 
 def test_hunt_status_reads_the_committed_receipt():
-    """Live committed state: the newest accepted receipt (the 2026-08-14
-    schema-1 survey runs) enumerate 3034 targets in sector 2 and 3166 in
-    sector 3; the accepted receipts account for 722 searched in sector 2
-    (570 pilot + 152 survey) and 2 in sector 3, so the seam derives 5,476
-    remaining across both sectors."""
+    """Live committed state after the 2026-08-15 runs (win s2, loam s3 +
+    the sector-30 arm of the split): three sectors carry enumerations —
+    s2 3332 enumerated / 854 searched (570 pilot + 152 + 132 survey),
+    s3 3161 / 402, s30 3471 / 163 — so the seam derives 8,545 remaining
+    across the three sectors."""
     from lab import cli
     status = cli._hunt_status()
     assert status is not None
-    assert status["remaining_targets"] == (3034 - 722) + (3166 - 2)
-    assert status["sectors"] == [2, 3]
+    assert status["remaining_targets"] == (
+        (3332 - 854) + (3161 - 402) + (3471 - 163))
+    assert status["sectors"] == [2, 3, 30]
 
 
 def test_hunt_status_is_none_without_enumeration(tmp_path, monkeypatch):
