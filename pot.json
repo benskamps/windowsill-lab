@@ -462,23 +462,23 @@
     }
   ],
   "total": 36,
-  "last_run": "2026-08-14T19:00:27.555071+00:00",
+  "last_run": "2026-08-15T01:03:32.825322+00:00",
   "runs": 54,
-  "temp_c": 40.0,
+  "temp_c": 46.0,
   "latest_report": {
     "date": "2026-08-14",
-    "milestone": "M01",
+    "milestone": "M18",
     "verdict": "verified",
-    "headline": "\u03c7 peaked at T\u22482.300 vs Onsager 2.2692 \u00b7 11s on GPU",
+    "headline": "2+1d DP: delta bracketed to [0.4128, 0.5375] around p_c = 0.22415\u00b10.00005; contains the DP value 0.4505 and excludes mean-field 1.0",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-14-1500-m01.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-14-2103-m18.json",
     "machine": "linux-rocm",
-    "at": "2026-08-14T19:00:27.555071+00:00"
+    "at": "2026-08-15T01:03:32.825322+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-14T19:00:27.990479+00:00",
+  "updated": "2026-08-15T01:03:33.266045+00:00",
   "provenance": {
-    "code_sha": "0fa2bcf",
+    "code_sha": "c9ce3f2",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -487,6 +487,16 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-14",
+      "milestone": "M18",
+      "verdict": "verified",
+      "headline": "2+1d DP: delta bracketed to [0.4128, 0.5375] around p_c = 0.22415\u00b10.00005; contains the DP value 0.4505 and excludes mean-field 1.0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-14-2103-m18",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-14-2103-m18.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-15T01:03:32.825322+00:00"
+    },
     {
       "date": "2026-08-14",
       "milestone": "M01",
@@ -1300,37 +1310,38 @@
     }
   ],
   "turns": {
-    "count": 136,
-    "today": 6,
+    "count": 137,
+    "today": 7,
     "last_by_machine": {
       "windows-cuda": "2026-08-14T16:13:21.351855+00:00",
-      "linux-rocm": "2026-08-14T19:00:27.555071+00:00"
+      "linux-rocm": "2026-08-15T01:03:32.825322+00:00"
     },
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 570,
-    "above_threshold": 19,
+    "targets_searched": 724,
+    "above_threshold": 23,
     "dispositions": {
-      "eclipsing-binary-secondary": 4,
+      "eclipsing-binary-secondary": 5,
       "harmonic-alias": 5,
       "eclipsing-binary-odd-even": 3,
       "low-significance": 2,
       "phased-brightening": 2,
       "toi-known-fp": 1,
-      "known-planet": 2
+      "known-planet": 4,
+      "recovery-or-known": 1
     },
-    "known_recovered": 2,
+    "known_recovered": 5,
     "leads_awaiting_human_review": 0,
     "planets_discovered": 0,
     "last_hunt": {
       "date": "2026-08-14",
-      "sector": 2,
-      "n": 570,
-      "wall": 3527.206748485565,
-      "provenance": "pilot (pre-A05 statistics)"
+      "sector": 3,
+      "n": 2,
+      "wall": 154.5801601409912,
+      "provenance": "a05"
     },
-    "claim_boundary": "A pilot over a deterministic slice of one sector's 2-minute SPOC targets \u2014 territory the official pipeline has already searched. An uncatalogued planet-candidate here is a lead for human review and independent follow-up, not a discovery; nothing is submitted anywhere on the strength of this script.",
+    "claim_boundary": "Per-target statistics over a predeclared consistent-hash slice of one sector's 2-minute SPOC targets: each graded number is an empirical permutation FAP bounded by (1+k)/(B+1), each above-threshold detection carries a machine disposition from a closed vocabulary, and each Stage-2 host carries its own measured injection depth limit. The survey claims completeness of DISPOSITION over that sample \u2014 every hit named, no hit promoted \u2014 not completeness of detection, not an occurrence rate, and no discovery: the terminal machine state is lead-awaiting-human-review, nothing is submitted anywhere on the strength of this receipt, and Gumbel tails plus survey-level sums are reported, never graded.",
     "as_of": "2026-08-14",
     "superseded": [
       {
