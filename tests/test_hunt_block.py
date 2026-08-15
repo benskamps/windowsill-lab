@@ -297,32 +297,36 @@ def test_pot_json_hunt_block_is_in_sync_with_the_committed_receipts():
 
 
 def test_committed_hunt_block_headline_numbers():
-    """The full pilot day's honest ledger: the wide (570-target) receipt
-    supersedes the 158-target checkpoint (its summary was cumulative — counting
-    both would double-count the first slice), 19 threshold-crossing events all
+    """The committed ledger after the pilot day PLUS the first autonomous
+    survey runs (152 targets in sector 2, then the first 2-target slice of
+    sector 3, schema 1, same date): the wide (570-target) pilot receipt still
+    supersedes the 158-target checkpoint, 23 threshold-crossing events all
     carry a machine disposition, one is the community-refuted TOI 189.01
-    (``toi-known-fp``), two are serendipitous recoveries of confirmed planets,
-    zero leads remain open, zero planets discovered."""
+    (``toi-known-fp``), five confirmed planets stand recovered across the
+    three accepted receipts, zero leads remain open, zero planets
+    discovered."""
     block = json.loads((ROOT / "pot.json").read_text(encoding="utf-8"))["hunt"]
-    assert block["targets_searched"] == 570
-    assert block["above_threshold"] == 19
+    assert block["targets_searched"] == 724
+    assert block["above_threshold"] == 23
     assert block["dispositions"] == {
-        "eclipsing-binary-secondary": 4,
+        "eclipsing-binary-secondary": 5,
         "eclipsing-binary-odd-even": 3,
         "harmonic-alias": 5,
         "low-significance": 2,
         "phased-brightening": 2,
         "toi-known-fp": 1,
-        "known-planet": 2,
+        "known-planet": 4,
+        "recovery-or-known": 1,
     }
     assert sum(block["dispositions"].values()) == block["above_threshold"]
-    assert block["known_recovered"] == 2
+    assert block["known_recovered"] == 5
     assert block["leads_awaiting_human_review"] == 0
     assert block["planets_discovered"] == 0
     assert block["claim_boundary"]                        # verbatim, non-empty
     assert block["as_of"] == "2026-08-14"
-    assert block["last_hunt"]["n"] == 570
-    assert block["last_hunt"]["provenance"] == PILOT_PROVENANCE
+    assert block["last_hunt"]["n"] == 2
+    # The newest accepted receipt is a schema-1 survey run, not the pilot.
+    assert block["last_hunt"]["provenance"] == "a05"
     assert block["superseded"] == [{"file": "hunt-2026-08-14-s2-pilot-158.json",
                                     "by": "hunt-2026-08-14-s2-pilot-570.json"}]
 

@@ -248,21 +248,32 @@ def _hunt_status() -> dict | None:
         hunts_dir)
     if not accepted:
         return None
-    _, _, newest = max(accepted, key=lambda item: (item[0], item[1].name))
-    enum_total = newest.get("n_enumerated")
-    if not isinstance(enum_total, int):
-        return None
-    # Summed by the same per-receipt counters the pot uses — the schema-1
-    # survey receipt carries no top-level ``targets_searched``, and a reader
-    # that required one dropped the survey slot the night it landed.
-    searched = sum(publish_mod._hunt_receipt_counters(receipt)
-                   ["targets_searched"] for _, _, receipt in accepted)
-    remaining = enum_total - searched
+    # Per-SECTOR ledger: each sector's enumeration total comes from its own
+    # newest receipt that declares one, and its searched count is summed by
+    # the same per-receipt counters the pot uses — the schema-1 survey
+    # receipts carry no top-level cumulative ``targets_searched``, and a
+    # reader that required one dropped the survey slot the night it landed.
+    # A sector that never declared an enumeration contributes nothing:
+    # honest over wishful.
+    enums: dict[int, tuple[tuple[str, str], int]] = {}
+    searched: dict[int, int] = {}
+    for date, path, receipt in accepted:
+        sector = receipt.get("sector")
+        if not isinstance(sector, int):
+            continue
+        searched[sector] = (searched.get(sector, 0)
+                            + publish_mod._hunt_receipt_counters(receipt)
+                            ["targets_searched"])
+        enum_total = receipt.get("n_enumerated")
+        stamp = (date, path.name)
+        if isinstance(enum_total, int) and stamp >= enums.get(
+                sector, (("", ""), 0))[0]:
+            enums[sector] = (stamp, enum_total)
+    remaining = sum(max(0, enum_total - searched.get(sector, 0))
+                    for sector, (_, enum_total) in enums.items())
     if remaining <= 0:
         return None
-    sectors = sorted({receipt.get("sector") for _, _, receipt in accepted
-                      if isinstance(receipt.get("sector"), int)})
-    return {"remaining_targets": remaining, "sectors": sectors}
+    return {"remaining_targets": remaining, "sectors": sorted(enums)}
 
 
 HELP = """lab — a windowsill physics lab.
