@@ -1269,12 +1269,12 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 2086,
-    "above_threshold": 40,
+    "targets_searched": 2238,
+    "above_threshold": 43,
     "dispositions": {
       "eclipsing-binary-secondary": 8,
       "harmonic-alias": 8,
-      "eclipsing-binary-odd-even": 6,
+      "eclipsing-binary-odd-even": 9,
       "low-significance": 2,
       "phased-brightening": 2,
       "toi-known-fp": 1,
