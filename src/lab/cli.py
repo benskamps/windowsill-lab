@@ -331,6 +331,7 @@ Usage:
   lab m17             run M17: KPZ growth on a ring — β=1/3, α=1/2, z=3/2 + Tracy–Widom class
   lab k01             run K01: Kuramoto synchronization — verify K_c = 2γ (Track K)
   lab k02             run K02: does the χ(r) shape survive N? (Track K)
+  lab k03             run K03: Daido vs Hong — is the susceptibility exponent asymmetric across K_c? (Track K)
   lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
   lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
   lab a03             run A03: chirp mass of a GWOSC event by matched filtering
@@ -881,6 +882,35 @@ def _parse_k02(args):
         ns.critical_t_burn, ns.critical_t_measure = 10.0, 20.0
     ns.ladder = tuple(int(x) for x in ns.ladder.split(",") if x.strip())
     ns.seeds = tuple(int(x) for x in ns.seeds.split(",") if x.strip())
+    return ns
+
+
+def _parse_k03(args):
+    # Import-late like _parse_k01/_parse_k02: defaults anchored to the module's
+    # measurement identity so the CLI and the runner cannot drift.
+    from . import k03 as k03_mod
+
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--n", type=int, default=k03_mod.N_OSCILLATORS)
+    p.add_argument("--gamma", type=float, default=k03_mod.GAMMA,
+                   help="Lorentzian half-width γ; exact K_c = 2γ (default 0.5)")
+    p.add_argument("--points", type=int, default=k03_mod.EPS_POINTS,
+                   help="ε grid points per branch (default 7)")
+    p.add_argument("--eps-min", type=float, default=k03_mod.EPS_MIN)
+    p.add_argument("--eps-max", type=float, default=k03_mod.EPS_MAX)
+    p.add_argument("--rungs", type=int, default=k03_mod.LADDER_RUNGS,
+                   help="h>0 field-ladder rungs per column (default 3)")
+    p.add_argument("--quick", action="store_true",
+                   help="small fast pass — proves grid, ladders, gates and "
+                        "check end to end; will not resolve the exponents")
+    p.add_argument("--dt", type=float, default=k03_mod.DT)
+    p.add_argument("--t-burn", type=float, default=k03_mod.T_BURN)
+    p.add_argument("--t-measure", type=float, default=k03_mod.T_MEASURE)
+    p.add_argument("--seed", type=int, default=42)
+    ns = p.parse_args(args)
+    if ns.quick:
+        ns.n, ns.points, ns.rungs = 200, 4, 2
+        ns.t_burn, ns.t_measure = 30.0, 60.0
     return ns
 
 
@@ -2046,6 +2076,66 @@ def main(argv=None):
         verdict = ("interior peak resolved at every N; see the report for the shape verdict"
                    if report["status"] == "pass" else "[~] null — see the report")
         print(f"  → {verdict} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "k03":
+        ns = _parse_k03(args[1:])
+        from . import checks as checks_mod
+        from . import k03 as k03_mod
+        from . import render as render_mod
+        k_c = 2.0 * ns.gamma
+        print(f"K03 Daido vs Hong · N={ns.n} · γ={ns.gamma} · exact K_c = 2γ = "
+              f"{k_c:g} · ε ∈ [{ns.eps_min:g}, {ns.eps_max:g}] × {ns.points} "
+              f"per branch · {ns.rungs}-rung per-column field ladders")
+        print("  Daido predicts (γ, γ') = (1/4, 1); Hong et al. (1/4, 1/4) — "
+              "the check gates the measurement, the σ-distances adjudicate")
+        last = [None]
+
+        def progress(stage, done, total):
+            if stage != last[0]:
+                labels = {"pilot": "pilot pass — scaling the field ladders",
+                          "graded": "graded pass — the measurement",
+                          "burn-in": "  settling (burn-in)",
+                          "measure": "  measuring both observables"}
+                if stage in labels:
+                    print(f"  · {labels[stage]}")
+                last[0] = stage
+
+        result = k03_mod.run_k03(
+            n=ns.n, gamma=ns.gamma, n_points=ns.points, eps_min=ns.eps_min,
+            eps_max=ns.eps_max, rungs=ns.rungs, dt=ns.dt, t_burn=ns.t_burn,
+            t_measure=ns.t_measure, seed=ns.seed, progress=progress,
+        )
+        report = k03_mod.to_report(result)
+        for branch, cols, fit, name in (
+                ("below", result.below, result.fit_below, "γ'"),
+                ("above", result.above, result.fit_above, "γ")):
+            ok = sum(1 for c in cols if c["ok"])
+            print(f"  → {branch}: {ok}/{len(cols)} columns passed the "
+                  "linearity gate")
+            for c in cols:
+                if not c["ok"]:
+                    print(f"     · refused ε={c['eps']:g} — {c['reason']} "
+                          f"(spread {c['secant_spread'] if c['secant_spread'] is None else round(c['secant_spread'], 3)})")
+            if fit.get("gamma") is not None:
+                print(f"  → {name} = {fit['gamma']:.3f} ± {fit['err']:.3f} "
+                      f"(R²={fit['r2']:.3f}, {fit['n_columns']} columns)")
+            else:
+                print(f"  → {name}: NOT MEASURED — {fit.get('reason')}")
+        v = report["verdict"]
+        if v.get("nearest"):
+            print(f"  → nearest published pair: {v['nearest'].upper()} "
+                  f"(σ_daido={v['sigma_daido']:.1f}, σ_hong={v['sigma_hong']:.1f})")
+        ok, detail = checks_mod.check_k03(report)
+        print(f"  check_k03: {ok} — {detail}")
+        print(f"  · {result.wall_seconds:.0f}s")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")
         try:

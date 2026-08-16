@@ -1,0 +1,363 @@
+{
+  "claim_boundary": "Finite-N (N=200) linear-response exponents on the regular (deterministic-quantile, tail-clipped) Lorentzian Kuramoto model, measured over eps in [0.02, 0.32] with per-column field ladders and a refusing linearity gate; two observables, one per branch (cos-theta below K_c, longitudinal r above). This grades the measurement's validity, not which published exponent pair is right: the Daido-vs-Hong comparison is reported with its sigma-distances and left to the reader. No infinite-N claim, no claim outside the swept eps window.",
+  "columns_above": [
+    {
+      "K": 1.02,
+      "baseline": 0.17023051111382664,
+      "branch": "above",
+      "chi": null,
+      "eps": 0.02,
+      "fit": {
+        "intercept": 0.17273933090966787,
+        "r2": 0.7724505920383646,
+        "slope": -19.04038729458291,
+        "stderr": 10.33423368151584
+      },
+      "h_ladder": [
+        0.0,
+        0.0004204862680049441,
+        0.0008409725360098882
+      ],
+      "half_window_drift": 0.0508801333168398,
+      "obs": [
+        0.17023051111382664,
+        0.1697507491064824,
+        0.1542180683240908
+      ],
+      "ok": false,
+      "pilot_chi": 23.781989474820186,
+      "reason": "nonlinear-secants",
+      "secant_spread": 0.9400763501679128,
+      "secants": [
+        -1.1409695009079106,
+        -36.93980508825792
+      ]
+    },
+    {
+      "K": 1.050396841995795,
+      "baseline": 0.23493234176520908,
+      "branch": "above",
+      "chi": 4.818924339119144,
+      "eps": 0.05039684199579492,
+      "fit": {
+        "intercept": 0.23517010989945225,
+        "r2": 0.9968259792194426,
+        "slope": 4.818924339119144,
+        "stderr": 0.2719226077356707
+      },
+      "h_ladder": [
+        0.0,
+        0.001514498894958954,
+        0.003028997789917908
+      ],
+      "half_window_drift": 0.01931515604238071,
+      "obs": [
+        0.23493234176520908,
+        0.24294390175442535,
+        0.24952885293818258
+      ],
+      "ok": true,
+      "pilot_chi": 6.602844038569616,
+      "reason": null,
+      "secant_spread": 0.09773628701771553,
+      "secants": [
+        5.289908111443948,
+        4.347940566794341
+      ]
+    },
+    {
+      "K": 1.1269920841574559,
+      "baseline": 0.33631753851347707,
+      "branch": "above",
+      "chi": 0.7129718141157636,
+      "eps": 0.12699208415745597,
+      "fit": {
+        "intercept": 0.33621431182410005,
+        "r2": 0.9944159980160588,
+        "slope": 0.7129718141157636,
+        "stderr": 0.053427037311473254
+      },
+      "h_ladder": [
+        0.0,
+        0.0033465054342386212,
+        0.0066930108684772425
+      ],
+      "half_window_drift": 0.03419458695766875,
+      "obs": [
+        0.33631753851347707,
+        0.3383938224957434,
+        0.3410894666142718
+      ],
+      "ok": true,
+      "pilot_chi": 2.9881917709406456,
+      "reason": null,
+      "secant_spread": 0.12979242838108118,
+      "secants": [
+        0.6204334709944138,
+        0.8055101572371134
+      ]
+    },
+    {
+      "K": 1.32,
+      "baseline": 0.49295974242623286,
+      "branch": "above",
+      "chi": null,
+      "eps": 0.32,
+      "fit": {
+        "intercept": 0.4896132929264047,
+        "r2": 0.479999006482265,
+        "slope": 0.4557615576809783,
+        "stderr": 0.47437261334902264
+      },
+      "h_ladder": [
+        0.0,
+        0.012218708238118922,
+        0.024437416476237844
+      ],
+      "half_window_drift": 0.026488280047217094,
+      "obs": [
+        0.49295974242623286,
+        0.48848921142620305,
+        0.5040973774251418
+      ],
+      "ok": false,
+      "pilot_chi": 0.8184171194793588,
+      "reason": "nonlinear-secants",
+      "secant_spread": 1.8027792256556694,
+      "secants": [
+        -0.3658759103587574,
+        1.277399025720714
+      ]
+    }
+  ],
+  "columns_below": [
+    {
+      "K": 0.98,
+      "baseline": 0.12434553155830042,
+      "branch": "below",
+      "chi": null,
+      "eps": 0.02,
+      "fit": {
+        "intercept": 0.12461186760011166,
+        "r2": 0.985508014678747,
+        "slope": 4.623214910522816,
+        "stderr": 0.5606320795217747
+      },
+      "h_ladder": [
+        0.0,
+        0.0008228347487666749,
+        0.0016456694975333498
+      ],
+      "half_window_drift": 0.06222938214317421,
+      "obs": [
+        0.12434553155830042,
+        0.1289486815631285,
+        0.1319538153170892
+      ],
+      "ok": false,
+      "pilot_chi": 12.153108525118482,
+      "reason": "nonlinear-secants",
+      "secant_spread": 0.2100363631970783,
+      "secants": [
+        5.594258156607535,
+        3.6521716644380997
+      ]
+    },
+    {
+      "K": 0.949603158004205,
+      "baseline": 0.0348773864323321,
+      "branch": "below",
+      "chi": -36.81302136211269,
+      "eps": 0.05039684199579492,
+      "fit": {
+        "intercept": 0.03552906501074735,
+        "r2": 0.9934866777800315,
+        "slope": -36.81302136211269,
+        "stderr": 2.980723700461743
+      },
+      "h_ladder": [
+        0.0,
+        0.00037867998561712685,
+        0.0007573599712342537
+      ],
+      "half_window_drift": 0.12448617501706867,
+      "obs": [
+        0.0348773864323321,
+        0.022892067767650046,
+        0.00699667763247646
+      ],
+      "ok": true,
+      "pilot_chi": 26.407521864941476,
+      "reason": null,
+      "secant_spread": 0.14024290051448696,
+      "secants": [
+        -31.65025646958824,
+        -41.97578625463715
+      ]
+    },
+    {
+      "K": 0.873007915842544,
+      "baseline": 0.051291937608418596,
+      "branch": "below",
+      "chi": null,
+      "eps": 0.12699208415745597,
+      "fit": {
+        "intercept": 0.053638819483201164,
+        "r2": 0.9268827344200057,
+        "slope": -16.065166492084536,
+        "stderr": 4.512142483486547
+      },
+      "h_ladder": [
+        0.0,
+        0.0009008843717508072,
+        0.0018017687435016145
+      ],
+      "half_window_drift": 0.05684625846770236,
+      "obs": [
+        0.051291937608418596,
+        0.043859725810472594,
+        0.0223462227638312
+      ],
+      "ok": false,
+      "pilot_chi": 11.100203659394916,
+      "reason": "nonlinear-secants",
+      "secant_spread": 0.4864723958036392,
+      "secants": [
+        -8.249906459695827,
+        -23.880426524473247
+      ]
+    },
+    {
+      "K": 0.6799999999999999,
+      "baseline": 0.04249059133367015,
+      "branch": "below",
+      "chi": null,
+      "eps": 0.32,
+      "fit": {
+        "intercept": 0.038652891531521974,
+        "r2": 0.752429065255268,
+        "slope": 1.7519591099824583,
+        "stderr": 1.0049420345760478
+      },
+      "h_ladder": [
+        0.0,
+        0.006614402435979172,
+        0.013228804871958344
+      ],
+      "half_window_drift": 0.028691566570488464,
+      "obs": [
+        0.04249059133367015,
+        0.042565654532029484,
+        0.0656669165432779
+      ],
+      "ok": false,
+      "pilot_chi": 1.5118523701558895,
+      "reason": "nonlinear-secants",
+      "secant_spread": 0.9935224244844287,
+      "secants": [
+        0.011348447435104398,
+        3.4925697725298126
+      ]
+    }
+  ],
+  "dt": 0.01,
+  "eps_grid": [
+    0.02,
+    0.05039684199579492,
+    0.12699208415745597,
+    0.32
+  ],
+  "experiment": "K03-daido-vs-hong",
+  "fit_above": {
+    "err": null,
+    "gamma": null,
+    "n_columns": 2,
+    "r2": null,
+    "reason": "only 2 column(s) passed the linearity gate (need 4) — the measurement did not happen on this branch"
+  },
+  "fit_below": {
+    "err": null,
+    "gamma": null,
+    "n_columns": 1,
+    "r2": null,
+    "reason": "only 1 column(s) passed the linearity gate (need 4) — the measurement did not happen on this branch"
+  },
+  "gamma_width": 0.5,
+  "generated_at": "2026-08-16T01:29:40.384194+00:00",
+  "headline": "linearity gate refused too many columns — the exponents were not measured; the refusals are the result",
+  "k_c": 1.0,
+  "milestone": "K03",
+  "n": 200,
+  "pilot": {
+    "chi": [
+      12.153108525118482,
+      26.407521864941476,
+      11.100203659394916,
+      1.5118523701558895,
+      23.781989474820186,
+      6.602844038569616,
+      2.9881917709406456,
+      0.8184171194793588
+    ],
+    "field": 0.002,
+    "h_max": [
+      0.0016456694975333498,
+      0.0007573599712342537,
+      0.0018017687435016145,
+      0.013228804871958344,
+      0.0008409725360098882,
+      0.003028997789917908,
+      0.0066930108684772425,
+      0.024437416476237844
+    ]
+  },
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.0",
+      "numpy": "2.4.6",
+      "torch": "2.6.0+cu124"
+    },
+    "platform": "windows-amd64",
+    "python": "3.13.14",
+    "source_clean": false,
+    "source_commit": "37b983f9958709b8ffc8d523e927fa815a84c5e1",
+    "source_diff_sha256": "2c0c68f2628c909e8130ffc8ab482f451ef66f2009f8d2e06002fa132210b8f1",
+    "source_tree_sha256": "e35b78df39ce2002881f3ccb9606cab19e011b7155246e05ed5812a4eb7685e2"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "34f3213ca8c945cbad2a0ee7ad140d9f48a256b0e06e44c2bbbb6b32940112ff"
+  },
+  "references": {
+    "daido": {
+      "gamma": 0.25,
+      "gamma_prime": 1.0,
+      "source": "Daido, Prog. Theor. Phys. 75, 1460 (1986); J. Stat. Phys. 60, 753 (1990)"
+    },
+    "hong": {
+      "gamma": 0.25,
+      "gamma_prime": 0.25,
+      "source": "Hong, Chaté, Tang & Park, PRE 92, 022122 (2015) §IV"
+    }
+  },
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify K03",
+    "rerun": "python -m lab.cli k03"
+  },
+  "seed": 42,
+  "status": "fail",
+  "surviving_columns": {
+    "above": 2,
+    "below": 1
+  },
+  "t_burn": 30.0,
+  "t_measure": 60.0,
+  "verdict": {
+    "nearest": null,
+    "note": "one or both branches unmeasured — no adjudication"
+  },
+  "wall_seconds": 28.626920700073242
+}

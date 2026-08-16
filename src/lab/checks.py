@@ -3690,13 +3690,111 @@ def audit_planned_decisions(reports: list[dict], records=None) -> dict | None:
 
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
+def check_k03(report: dict) -> tuple[bool | None, str]:
+    """Daido vs Hong: was the two-branch linear-response measurement VALID?
+
+    Returns ``None`` unless this is a K03 report. Re-derives every column's
+    secant gate and susceptibility from its raw ``(h_ladder, obs)`` table and
+    both branch exponents from the surviving columns — a receipt, not an echo.
+
+    What is gated: the MEASUREMENT. (1) Every column's recorded gate verdict
+    and χ must reproduce from its own ladder; (2) each branch keeps at least
+    ``k03.MIN_COLUMNS_PER_BRANCH`` linear columns; (3) both re-fitted
+    exponents are POSITIVE — a negative exponent is the assay's bug-class-6
+    signature (four estimators produced one before this design existed);
+    (4) the branch power-law fits reach ``k03.BRANCH_R2_MIN``; (5) baselines:
+    the subcritical h=0 observable sits on the finite-N floor (≤ 5/√N) and
+    the supercritical h=0 coherence tracks the exact √(1−K_c/K) to
+    ``k03.BASELINE_R_TOL`` — the control that catches the Goldstone/transverse
+    confusion, which misses by the whole spontaneous r, not by a smearing
+    width. What is deliberately NOT gated: which published exponent pair —
+    Daido's (1/4, 1) or Hong's (1/4, 1/4) — the numbers land nearer. Gating
+    that would let the grader manufacture the scientific answer.
+    """
+    if report.get("experiment") != "K03-daido-vs-hong":
+        return None, "not a K03 report"
+    # Lazy: this module must import WITHOUT numpy (the lean CI job), and k03
+    # pulls numpy in — same guard as the a05 cross-checks.
+    try:
+        import numpy as np
+
+        from . import k03 as k03_mod
+        from .kuramoto import mean_field_r
+    except ImportError:
+        return None, "numpy unavailable — K03 regrade skipped (lean job)"
+
+    n = int(report.get("n", 0))
+    if n <= 0:
+        return False, "report carries no population size"
+    floor = k03_mod.BASELINE_FLOOR_SCALE / math.sqrt(n)
+
+    surviving = {"below": [], "above": []}
+    for branch in ("below", "above"):
+        for col in report.get(f"columns_{branch}", []):
+            re_col = k03_mod.column_response(
+                np.asarray(col["h_ladder"]), np.asarray(col["obs"]))
+            if bool(re_col["ok"]) != bool(col.get("ok")):
+                return False, (f"{branch} ε={col['eps']:g}: recorded gate "
+                               f"verdict {col.get('ok')} does not reproduce")
+            if re_col["ok"]:
+                if abs(re_col["chi"] - col.get("chi", np.nan)) > 1e-9 * max(
+                        1.0, abs(re_col["chi"])):
+                    return False, (f"{branch} ε={col['eps']:g}: recorded χ "
+                                   "does not reproduce from the ladder")
+                surviving[branch].append((col["eps"], re_col["chi"]))
+            baseline = float(col["obs"][0])
+            if branch == "below" and abs(baseline) > floor:
+                return False, (f"below ε={col['eps']:g}: h=0 baseline "
+                               f"{baseline:.4f} above the {floor:.4f} "
+                               "finite-N floor — the incoherent state is not "
+                               "incoherent")
+            if branch == "above":
+                exact = float(mean_field_r(col["K"],
+                                           report.get("gamma_width", 0.5)))
+                if abs(baseline - exact) > k03_mod.BASELINE_R_TOL:
+                    return False, (f"above ε={col['eps']:g}: h=0 coherence "
+                                   f"{baseline:.4f} vs exact spontaneous "
+                                   f"{exact:.4f} — outside "
+                                   f"±{k03_mod.BASELINE_R_TOL} (transverse/"
+                                   "Goldstone confusion, or not equilibrated)")
+
+    parts = []
+    for branch, gamma_name in (("above", "γ"), ("below", "γ'")):
+        cols = surviving[branch]
+        if len(cols) < k03_mod.MIN_COLUMNS_PER_BRANCH:
+            return False, (f"{branch} branch: only {len(cols)} column(s) "
+                           "survived the linearity gate — the measurement "
+                           "did not happen (an honest refusal, not a defect "
+                           "in this receipt)")
+        fit = k03_mod.branch_exponent(
+            np.asarray([e for e, _ in cols]), np.asarray([c for _, c in cols]))
+        if fit["gamma"] is None:
+            return False, f"{branch} branch: {fit['reason']}"
+        recorded = report.get(f"fit_{branch}", {}).get("gamma")
+        if recorded is None or abs(fit["gamma"] - recorded) > 1e-9 * max(
+                1.0, abs(fit["gamma"])):
+            return False, f"{branch} branch: recorded exponent does not reproduce"
+        if fit["gamma"] <= 0:
+            return False, (f"{branch} branch: exponent {fit['gamma']:.3f} ≤ 0 "
+                           "— a diverging susceptibility cannot have a "
+                           "negative exponent (bug-class 6)")
+        if fit["r2"] < k03_mod.BRANCH_R2_MIN:
+            return False, (f"{branch} branch: power-law fit R²={fit['r2']:.3f} "
+                           f"below {k03_mod.BRANCH_R2_MIN}")
+        parts.append(f"{gamma_name}={fit['gamma']:.3f} "
+                     f"(R²={fit['r2']:.3f}, {len(cols)} cols)")
+    return True, ("two-branch linear response re-derived: " + " · ".join(parts)
+                  + " — Daido (0.25, 1) vs Hong (0.25, 0.25) adjudication "
+                    "left to the reported σ-distances")
+
+
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
           "M10": check_m10, "M11": check_m11, "M12": check_m12,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
           "M16": check_m16, "M17": check_m17, "M18": check_m18,
-          "K01": check_k01, "K02": check_k02,
+          "K01": check_k01, "K02": check_k02, "K03": check_k03,
           "C01": check_c01, "A01": check_a01, "A03": check_a03, "A04": check_a04,
           "A05": check_a05, "I01": check_i01, "CTRL": check_controls}
 

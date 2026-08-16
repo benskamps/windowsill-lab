@@ -403,12 +403,15 @@ def test_select_rotation_walks_to_the_next_slot():
     assert (pick, skips) == ("M02", [])
     # The walk is grouped: the convergence ladders (M, then K) come before the
     # citizen-science tracks — M18 follows M17 and K02 follows K01 since the
-    # 2026-08-14 planner-era growth, so M18's successor is K01 and K02's is C01.
+    # 2026-08-14 planner-era growth; K03 joined the K group 2026-08-15 with
+    # its runner, so K02's successor is K03 and K03's is C01.
     pick, _ = curriculum.select_rotation(_all_verified(), "M17")
     assert pick == "M18"
     pick, _ = curriculum.select_rotation(_all_verified(), "M18")
     assert pick == "K01"
     pick, _ = curriculum.select_rotation(_all_verified(), "K02")
+    assert pick == "K03"
+    pick, _ = curriculum.select_rotation(_all_verified(), "K03")
     assert pick == "C01"
     # Unknown or absent pointer starts the rotation at its first slot.
     pick, _ = curriculum.select_rotation(_all_verified(), "ZZ99")

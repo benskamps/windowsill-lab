@@ -35,6 +35,10 @@ RUNNERS = {
     "M18": "m18",
     "K01": "k01",
     "K02": "k02",
+    # K03's runner landed 2026-08-15 (the forlorn-pots session): the gated
+    # two-branch linear-response measurement the 2026-08-08 estimator assay
+    # specified. ~45-60 min of NumPy CPU — K02's wall-clock class.
+    "K03": "k03",
     "C01": "c01",
     "A01": "a01",
     "A03": "a03",
@@ -59,6 +63,9 @@ RUNNER_SCHEDULER_OPTIONS = {
     "M17": frozenset({"seed"}),
     "M18": frozenset({"seed", "device"}),
     "K01": frozenset({"seed"}),
+    # K03 accepts a scheduler seed (it varies the shared initial condition);
+    # --device would abort at its argparse (NumPy CPU only).
+    "K03": frozenset({"seed"}),
     # K02 sweeps a LADDER of population sizes over a fixed set of initial
     # conditions (`--seeds`), so a scheduler's single `--seed` is not a thing it
     # can accept — the seed set is part of the measurement's identity.
@@ -122,10 +129,14 @@ def runner_for(milestone_id: str) -> str | None:
 # verified rung. M12/M16 REMAIN excluded by wall-clock class (PT2H-exceeding
 # full runs / null-spam quick variants — see the 2026-08-01 rotation doc);
 # they are still hand-run.
+# K03 joined 2026-08-15 with its runner: ~45-60 min of NumPy CPU — the same
+# wall-clock class as K02's hero ladder, which the planner's cost divisor
+# already prices correctly. Its verdict is a live literature adjudication
+# (Daido vs Hong), so a rare re-measure is meaningful, not receipt spam.
 ROTATION: tuple[str, ...] = (
     "M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10",
-    "M11", "M13", "M14", "M15", "M17", "M18", "K01", "K02", "C01", "A01",
-    "A03", "A04", "I01",
+    "M11", "M13", "M14", "M15", "M17", "M18", "K01", "K02", "K03", "C01",
+    "A01", "A03", "A04", "I01",
 )
 
 
