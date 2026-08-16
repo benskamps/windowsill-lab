@@ -268,7 +268,7 @@
       "status": "pending",
       "track": "coherence",
       "growth_form": "fern",
-      "runner_available": false,
+      "runner_available": true,
       "short_label": "Two answers, one question",
       "question_plain": "Right at the edge where a crowd of clocks falls into step, does the crowd react just as sharply coming from below the edge as from above \u2014 or is the edge lopsided?",
       "why_it_matters": "Two sets of physicists have published opposite answers to this about the exact system this lab already runs, and nobody has settled it. It is the first question on the page where the lab is not checking a known answer but trying to break a tie."
