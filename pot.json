@@ -1269,33 +1269,33 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 1734,
-    "above_threshold": 35,
+    "targets_searched": 2086,
+    "above_threshold": 40,
     "dispositions": {
-      "eclipsing-binary-secondary": 7,
-      "harmonic-alias": 7,
-      "eclipsing-binary-odd-even": 4,
+      "eclipsing-binary-secondary": 8,
+      "harmonic-alias": 8,
+      "eclipsing-binary-odd-even": 6,
       "low-significance": 2,
       "phased-brightening": 2,
       "toi-known-fp": 1,
       "known-planet": 3,
-      "recovery-or-known": 2,
+      "recovery-or-known": 3,
       "stellar-pulsation": 4,
       "insufficient-coverage": 1,
       "lead-awaiting-human-review": 2
     },
-    "known_recovered": 5,
+    "known_recovered": 6,
     "leads_awaiting_human_review": 2,
     "planets_discovered": 0,
     "last_hunt": {
-      "date": "2026-08-15",
+      "date": "2026-08-16",
       "sector": 3,
-      "n": 201,
-      "wall": 1319.7883987426758,
+      "n": 200,
+      "wall": 2314.625103712082,
       "provenance": "a05"
     },
     "claim_boundary": "Per-target statistics over a predeclared consistent-hash slice of one sector's 2-minute SPOC targets: each graded number is an empirical permutation FAP bounded by (1+k)/(B+1), each above-threshold detection carries a machine disposition from a closed vocabulary, and each Stage-2 host carries its own measured injection depth limit. The survey claims completeness of DISPOSITION over that sample \u2014 every hit named, no hit promoted \u2014 not completeness of detection, not an occurrence rate, and no discovery: the terminal machine state is lead-awaiting-human-review, nothing is submitted anywhere on the strength of this receipt, and Gumbel tails plus survey-level sums are reported, never graded.",
-    "as_of": "2026-08-15",
+    "as_of": "2026-08-16",
     "superseded": [
       {
         "file": "hunt-2026-08-14-s2-pilot-158.json",
