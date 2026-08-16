@@ -168,6 +168,41 @@
       border-left:2px solid var(--clay); padding-left:0.8rem;
     }
 
+    /* The shelf hero: the door to the public explainer rooms. A band, not a
+       button — it borrows the pots' clay and sits between the ambition and
+       the sill, so the reader meets the goal and then the door to the rooms
+       where every run explains itself. */
+    .shelf-hero {
+      display:block; max-width:760px; margin:0 0 1.7rem;
+      padding:0.95rem 1.15rem 0.9rem;
+      border:1px solid var(--border); border-left:3px solid var(--clay);
+      border-radius:12px; text-decoration:none;
+      background:linear-gradient(135deg, rgba(201,123,84,0.10), rgba(201,123,84,0.02));
+      transition:border-color .25s ease, background .25s ease;
+    }
+    .shelf-hero:hover, .shelf-hero:focus-visible {
+      border-color:var(--clay);
+      background:linear-gradient(135deg, rgba(201,123,84,0.17), rgba(201,123,84,0.05));
+    }
+    .shelf-kicker {
+      font-family:var(--font-mono); font-size:0.68rem; letter-spacing:0.14em;
+      text-transform:uppercase; color:var(--clay); margin-bottom:0.35rem;
+    }
+    .shelf-line {
+      font-size:clamp(1.02rem, 2.1vw, 1.22rem); line-height:1.45;
+      color:var(--text-secondary); margin-bottom:0.4rem;
+    }
+    .shelf-line strong { color:var(--text); font-weight:560; }
+    .shelf-dot {
+      display:inline-block; width:0.55em; height:0.55em; border-radius:50%;
+      position:relative; top:-0.06em; margin:0 0.12em;
+    }
+    .shelf-dot.moss{background:#8aa86b} .shelf-dot.amber{background:#d79535} .shelf-dot.clay{background:#c4744a}
+    .shelf-cta {
+      font-family:var(--font-mono); font-size:0.78rem; color:var(--text);
+      margin:0;
+    }
+
     /* The scene breaks out of the text column — the windowsill deserves the wall. */
     .scene {
       position:relative;
@@ -930,6 +965,16 @@
       <p class="sowhat-who">A fleet of AI agents wrote this instrument and keeps it running; a human decides what earns a leaf. Two home machines take the turns.</p>
       <p class="sowhat-read">Below: six pots on one windowsill, one for each science. Every leaf is one real experiment — green means a person checked it, amber is waiting for one, grey is a miss we kept on purpose. And the pots wear the work: the glaze climbs as a track climbs, the scratches count its runs, the chips are its failures.</p>
     </section>
+
+    <!-- The shelf hero: every captured run now has a live explainer room on the
+         public site. Deliberately the page's loudest link — the rooms are the
+         instrument's most legible artifact, so their door sits right where the
+         ambition lands, before the reader reaches the plants. -->
+    <a class="shelf-hero" href="https://www.brokenbranch.dev/windowsill/experiments/">
+      <p class="shelf-kicker">The experiment shelf · every run, a room of its own</p>
+      <p class="shelf-line"><strong>Twenty-seven captured runs, every one with a live explainer</strong> — the real update rules running in your browser, with the receipts beside them. A <span class="shelf-dot moss"></span> run reproduced its target, an <span class="shelf-dot amber"></span> run returned a null, a <span class="shelf-dot clay"></span> run refused its own measurement and was kept for the lesson.</p>
+      <p class="shelf-cta">walk the shelf →</p>
+    </a>
 
     <div class="scene" id="scene">
       <!-- role=group, not img: an img role makes every SVG child presentational,
