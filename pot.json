@@ -380,7 +380,7 @@
       "status": "open",
       "track": "astronomy",
       "growth_form": "creeper",
-      "runner_available": false,
+      "runner_available": true,
       "short_label": "Pricing false alarms",
       "question_plain": "When the planet-hunt flags a dip in a star's light, can the lab measure \u2014 for that exact star \u2014 how often pure chance would fake a dip just as convincing, and how small a dip that star could even show?",
       "why_it_matters": "A hunt that cannot price its own false alarms will eventually announce noise. In one day of pilot runs a signal held 'planet candidate' for forty minutes before being unmasked as a pulsing star, and another matched a catalog entry the community had already refuted \u2014 so every flagged signal needs its own measured odds, and the machine's strongest verdict stays 'a lead awaiting human review', never 'a planet'.",
@@ -462,23 +462,23 @@
     }
   ],
   "total": 36,
-  "last_run": "2026-08-15T01:03:32.825322+00:00",
-  "runs": 54,
-  "temp_c": 46.0,
+  "last_run": "2026-08-16T01:00:25.259181+00:00",
+  "runs": 55,
+  "temp_c": 74.0,
   "latest_report": {
-    "date": "2026-08-14",
-    "milestone": "M18",
+    "date": "2026-08-15",
+    "milestone": "M04",
     "verdict": "verified",
-    "headline": "2+1d DP: delta bracketed to [0.4128, 0.5375] around p_c = 0.22415\u00b10.00005; contains the DP value 0.4505 and excludes mean-field 1.0",
+    "headline": "2D Ising specific heat (L=128): C(T) peaks at T_c=2.274 vs Onsager exact 2.2692 (rel. err 0.2%); \u03c7-peak cross-check 2.283 \u00b7 22s",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-14-2103-m18.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-15-2100-m04.json",
     "machine": "linux-rocm",
-    "at": "2026-08-15T01:03:32.825322+00:00"
+    "at": "2026-08-16T01:00:25.259181+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-15T01:03:33.266045+00:00",
+  "updated": "2026-08-16T01:00:25.683394+00:00",
   "provenance": {
-    "code_sha": "c9ce3f2",
+    "code_sha": "37b983f",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -487,6 +487,16 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-15",
+      "milestone": "M04",
+      "verdict": "verified",
+      "headline": "2D Ising specific heat (L=128): C(T) peaks at T_c=2.274 vs Onsager exact 2.2692 (rel. err 0.2%); \u03c7-peak cross-check 2.283 \u00b7 22s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-15-2100-m04",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-15-2100-m04.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-16T01:00:25.259181+00:00"
+    },
     {
       "date": "2026-08-14",
       "milestone": "M18",
@@ -1310,11 +1320,11 @@
     }
   ],
   "turns": {
-    "count": 137,
-    "today": 7,
+    "count": 138,
+    "today": 1,
     "last_by_machine": {
       "windows-cuda": "2026-08-14T16:13:21.351855+00:00",
-      "linux-rocm": "2026-08-15T01:03:32.825322+00:00"
+      "linux-rocm": "2026-08-16T01:00:25.259181+00:00"
     },
     "expected_interval_h": 3
   },
