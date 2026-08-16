@@ -519,14 +519,108 @@ def test_hunt_status_is_none_without_enumeration(tmp_path, monkeypatch):
     assert cli._hunt_status() is None
 
 
-def test_planner_sends_the_scheduler_hunting(capsys):
-    """End to end on real committed state: A05 is the open frontier with no
-    RUNNERS entry, the hunt receipts prove 5,476 stars remain, so the dry-run
-    scheduler must dispatch `lab hunt` — the survey slot outranks every
-    canary and cannot repeat-decay."""
-    from lab import cli
+def test_frontier_sends_the_scheduler_hunting_when_lane_armed(monkeypatch,
+                                                              capsys):
+    """End to end on real committed state: A05 is the open frontier WITH a
+    registered runner (2026-08-15), so a box with an armed sector lane
+    dispatches `lab hunt` from the frontier branch — every slot goes to new
+    sky, not to re-measuring finished work."""
+    from lab import cli, curriculum
+    monkeypatch.setattr(curriculum, "hunt_lane", lambda: (2, 29))
     rc = cli.main(["next", "--dry-run"])
     out = capsys.readouterr().out
     assert rc == 0
     assert "would run `lab hunt`" in out
-    assert "A05-HUNT" in out
+    assert "open milestone A05" in out
+
+
+def test_frontier_without_lane_skips_a05_and_runs_the_portfolio(monkeypatch,
+                                                                capsys):
+    """A box with NO assigned lane must not hunt — the 2026-08-15 clobber
+    lesson. The gate refuses with a named reason, the planner sees no survey
+    candidate (dispatch status is lane-filtered), and the pass goes to the
+    portfolio instead of refusal-spamming the survey slot."""
+    from lab import cli, curriculum
+    monkeypatch.setattr(curriculum, "hunt_lane", lambda: None)
+    rc = cli.main(["next", "--dry-run"])
+    out = capsys.readouterr().out
+    assert rc == 0
+    assert "skipped A05 — no-lane" in out
+    assert "would run `lab hunt`" not in out
+    assert "would run" in out                      # the portfolio still turns
+
+
+# ── the sector lane: box-local config → gate → dispatch ──────────────────────
+
+def test_hunt_lane_env_wins_and_malformed_reads_unassigned(monkeypatch,
+                                                           tmp_path):
+    from lab import curriculum
+    from lab import labhome
+    monkeypatch.setattr(labhome, "LAB_HOME", tmp_path)
+    monkeypatch.setenv("WINDOWSILL_HUNT_SECTORS", "2,29")
+    assert curriculum.hunt_lane() == (2, 29)
+    monkeypatch.setenv("WINDOWSILL_HUNT_SECTORS", "two,three")
+    assert curriculum.hunt_lane() is None          # malformed → unassigned
+    monkeypatch.delenv("WINDOWSILL_HUNT_SECTORS")
+    assert curriculum.hunt_lane() is None          # nothing configured
+    (tmp_path / "hunt-sectors").write_text("3, 30\n", encoding="utf-8")
+    assert curriculum.hunt_lane() == (3, 30)       # file fallback
+
+
+def test_a05_gate_reasons(monkeypatch):
+    from lab import cli, curriculum
+    monkeypatch.setattr(curriculum, "hunt_lane", lambda: None)
+    assert "no-lane" in curriculum.hardware_gate_reason("A05")
+    monkeypatch.setattr(curriculum, "hunt_lane", lambda: (2, 29))
+    monkeypatch.setattr(cli, "_hunt_status", lambda: None)
+    assert "no-sky" in curriculum.hardware_gate_reason("A05")
+    monkeypatch.setattr(cli, "_hunt_status", lambda: {
+        "remaining_targets": 100, "sectors": [3], "per_sector": {3: 100}})
+    assert "lane-exhausted" in curriculum.hardware_gate_reason("A05")
+    monkeypatch.setattr(cli, "_hunt_status", lambda: {
+        "remaining_targets": 100, "sectors": [2, 3],
+        "per_sector": {2: 40, 3: 60}})
+    assert curriculum.hardware_gate_reason("A05") is None
+
+
+def test_dispatch_status_filters_to_the_lane(monkeypatch):
+    from lab import cli, curriculum
+    monkeypatch.setattr(cli, "_hunt_status", lambda: {
+        "remaining_targets": 100, "sectors": [2, 3, 30],
+        "per_sector": {2: 40, 3: 50, 30: 10}})
+    monkeypatch.setattr(curriculum, "hunt_lane", lambda: (2, 29))
+    status = cli._hunt_status_for_dispatch()
+    assert status == {"remaining_targets": 40, "sectors": [2],
+                      "per_sector": {2: 40}}
+    monkeypatch.setattr(curriculum, "hunt_lane", lambda: None)
+    assert cli._hunt_status_for_dispatch() is None
+
+
+def test_bare_hunt_injects_the_lane_sector_and_refuses_without_one(
+        monkeypatch, capsys):
+    """A bare `lab hunt` hunts the lane sector with the most remaining
+    committed coverage; with no eligible lane it refuses (exit 3) instead of
+    falling into the driver's hardcoded default sector — the exact path that
+    clobbered win's receipt on 2026-08-15."""
+    import subprocess
+    from lab import cli
+    calls = []
+    monkeypatch.setattr(subprocess, "call",
+                        lambda argv, **kw: calls.append(argv) or 0)
+    monkeypatch.setattr(cli, "_hunt_status_for_dispatch", lambda: {
+        "remaining_targets": 70, "sectors": [2, 29],
+        "per_sector": {2: 30, 29: 40}})
+    assert cli.main(["hunt"]) == 0
+    assert calls and "--sector" in calls[0]
+    assert calls[0][calls[0].index("--sector") + 1] == "29"   # most remaining
+    calls.clear()
+    monkeypatch.setattr(cli, "_hunt_status_for_dispatch", lambda: None)
+    rc = cli.main(["hunt"])
+    assert rc == 3 and not calls
+    assert "refusing bare dispatch" in capsys.readouterr().err
+    # An explicit sector is an attended run — never second-guessed.
+    monkeypatch.setattr(cli, "_hunt_status_for_dispatch",
+                        lambda: (_ for _ in ()).throw(AssertionError(
+                            "explicit --sector must not consult the lane")))
+    assert cli.main(["hunt", "--sector", "3"]) == 0
+    assert calls and calls[0][calls[0].index("--sector") + 1] == "3"

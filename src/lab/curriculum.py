@@ -39,6 +39,14 @@ RUNNERS = {
     "A01": "a01",
     "A03": "a03",
     "A04": "a04",
+    # A05's runner is the survey driver: a bounded, checkpointed, resumable
+    # hunt slice (scripts/a05_hunt.py via `lab hunt`). Registered 2026-08-15 —
+    # until then the planner's survey-slot special case carried dispatch and
+    # the groundskeeper flagged "frontier A05 has NO RUNNER while the pipeline
+    # is active". Dispatch is gated by _a05_survey_gate below: a box hunts
+    # only its assigned sector lane, and only while committed receipts show
+    # remaining coverage there.
+    "A05": "hunt",
     "I01": "i01",
 }
 
@@ -61,6 +69,9 @@ RUNNER_SCHEDULER_OPTIONS = {
     # not change the measurement, only pretend to.
     "A03": frozenset(),
     "A04": frozenset(),
+    # The hunt driver names its own seed and slice; scheduler --seed/--device
+    # would abort at its argparse.
+    "A05": frozenset(),
     "I01": frozenset(),
 }
 
@@ -146,9 +157,68 @@ def _i01_hardware_gate() -> str | None:
     )
 
 
+def hunt_lane() -> tuple[int, ...] | None:
+    """This box's assigned survey sectors, or ``None`` when unassigned.
+
+    The A05 sector split (2026-08-14 handoff: win = 2,29 · loam = 3,30) is
+    box-local configuration, exactly like I01's frame stack: the env var
+    ``WINDOWSILL_HUNT_SECTORS`` wins, else the ``LAB_HOME/hunt-sectors`` file
+    (one line, comma-separated sector ints — friendlier to a Windows
+    Scheduled Task than env plumbing). Malformed config reads as unassigned:
+    a box that cannot prove its lane must not hunt — on 2026-08-15 a bare
+    hunt on the wrong box's lane silently overwrote a committed receipt and
+    took a lead-awaiting-human-review row with it.
+    """
+    raw = os.environ.get("WINDOWSILL_HUNT_SECTORS", "")
+    if not raw:
+        from .labhome import LAB_HOME   # lazy: keep module import stdlib-only
+        path = LAB_HOME / "hunt-sectors"
+        try:
+            raw = path.read_text(encoding="utf-8").strip() if path.exists() else ""
+        except OSError:
+            raw = ""
+    if not raw:
+        return None
+    try:
+        sectors = tuple(int(part) for part in raw.replace(",", " ").split())
+    except ValueError:
+        return None
+    return sectors or None
+
+
+def _a05_survey_gate() -> str | None:
+    """A05 dispatches only on a box with an assigned lane that still has sky.
+
+    Same contract as the I01 gate: deterministic, configuration + committed
+    files only, never probes hardware or network. Refusing here keeps the
+    scheduler honest instead of livelocked — a dispatched hunt with no lane
+    or no remaining coverage would exit without a receipt and be re-picked
+    forever.
+    """
+    lane = hunt_lane()
+    if lane is None:
+        return (
+            "no-lane: this box has no assigned survey sectors — set "
+            "WINDOWSILL_HUNT_SECTORS or write LAB_HOME/hunt-sectors "
+            "(2026-08-14 split: win '2,29' · loam '3,30') to put A05 in "
+            "dispatch"
+        )
+    from . import cli   # lazy: cli imports this module at load time
+    status = cli._hunt_status()
+    if status is None:
+        return "no-sky: committed receipts show no remaining enumerated coverage"
+    per_sector = status.get("per_sector") or {}
+    remaining = sum(per_sector.get(sector, 0) for sector in lane)
+    if remaining <= 0:
+        return (f"lane-exhausted: sectors {','.join(map(str, lane))} have no "
+                "remaining committed coverage (other lanes may still have sky)")
+    return None
+
+
 # milestone id → gate; a gate returns None (eligible) or a named skip reason.
 HARDWARE_GATES: dict[str, Callable[[], str | None]] = {
     "I01": _i01_hardware_gate,
+    "A05": _a05_survey_gate,
 }
 
 

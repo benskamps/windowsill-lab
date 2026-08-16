@@ -269,11 +269,38 @@ def _hunt_status() -> dict | None:
         if isinstance(enum_total, int) and stamp >= enums.get(
                 sector, (("", ""), 0))[0]:
             enums[sector] = (stamp, enum_total)
-    remaining = sum(max(0, enum_total - searched.get(sector, 0))
-                    for sector, (_, enum_total) in enums.items())
+    per_sector = {sector: max(0, enum_total - searched.get(sector, 0))
+                  for sector, (_, enum_total) in enums.items()}
+    remaining = sum(per_sector.values())
     if remaining <= 0:
         return None
-    return {"remaining_targets": remaining, "sectors": sorted(enums)}
+    return {"remaining_targets": remaining, "sectors": sorted(enums),
+            "per_sector": per_sector}
+
+
+def _hunt_status_for_dispatch() -> dict | None:
+    """The seam restricted to THIS box's assigned lane — the dispatch truth.
+
+    ``_hunt_status()`` is the global committed ledger; a scheduler must only
+    act on the slice of it this box is allowed to hunt (curriculum.hunt_lane),
+    or two boxes end up hunting the same sector — the 2026-08-15 receipt
+    clobber. ``None`` when the box has no lane or its lane has no remaining
+    coverage; the planner then simply never sees a survey candidate, and the
+    portfolio continues without refusal spam.
+    """
+    status = _hunt_status()
+    if status is None:
+        return None
+    lane = curriculum.hunt_lane()
+    if lane is None:
+        return None
+    per_sector = {s: n for s, n in status["per_sector"].items()
+                  if s in lane and n > 0}
+    remaining = sum(per_sector.values())
+    if remaining <= 0:
+        return None
+    return {"remaining_targets": remaining, "sectors": sorted(per_sector),
+            "per_sector": per_sector}
 
 
 HELP = """lab — a windowsill physics lab.
@@ -979,7 +1006,7 @@ def _run_next(args, dry, lock_path=None):
             try:
                 pick, decision = curriculum.plan_turn(
                     records, status_map, durations=durations,
-                    hunt_status=_hunt_status(),
+                    hunt_status=_hunt_status_for_dispatch(),
                 )
                 skips.extend(decision.get("skips", []))
                 if pick == curriculum.HUNT_CANDIDATE:
@@ -1118,6 +1145,24 @@ def main(argv=None):
             defaults += ["--n", "150"]
         if not any(a == "--minutes" for a in extra):
             defaults += ["--minutes", "45"]
+        if not any(a == "--sector" for a in extra):
+            # A bare (scheduled) hunt must hunt THIS box's lane, never the
+            # driver's hardcoded default — loam's bare survey-slot hunt
+            # defaulted into win's sector on 2026-08-15 and overwrote a
+            # committed receipt. The sector with the most remaining committed
+            # coverage in the lane is the honest pick; with no lane or no
+            # remaining lane coverage a bare hunt refuses (attended runs say
+            # `lab hunt --sector N` explicitly).
+            status = _hunt_status_for_dispatch()
+            if status is None:
+                reason = (curriculum.hardware_gate_reason("A05")
+                          or "no eligible lane sector")
+                print(f"lab hunt · refusing bare dispatch — {reason}",
+                      file=sys.stderr)
+                return 3
+            sector = max(status["per_sector"],
+                         key=lambda s: status["per_sector"][s])
+            defaults += ["--sector", str(sector)]
         env = dict(os.environ)
         src_dir = str(publish_mod.REPO_ROOT / "src")
         env["PYTHONPATH"] = (src_dir + os.pathsep + env["PYTHONPATH"]
