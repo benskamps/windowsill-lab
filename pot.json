@@ -1269,20 +1269,21 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 3176,
-    "above_threshold": 48,
+    "targets_searched": 3529,
+    "above_threshold": 51,
     "dispositions": {
-      "eclipsing-binary-secondary": 9,
+      "eclipsing-binary-secondary": 10,
       "harmonic-alias": 9,
       "eclipsing-binary-odd-even": 9,
-      "low-significance": 2,
+      "low-significance": 3,
       "phased-brightening": 2,
       "toi-known-fp": 1,
       "known-planet": 3,
       "recovery-or-known": 3,
       "stellar-pulsation": 5,
       "insufficient-coverage": 2,
-      "lead-awaiting-human-review": 3
+      "lead-awaiting-human-review": 3,
+      "centroid-shift": 1
     },
     "known_recovered": 6,
     "leads_awaiting_human_review": 3,
