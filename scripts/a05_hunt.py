@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import platform
 import subprocess
 import sys
@@ -205,7 +206,11 @@ def main() -> int:
     if ckpt.exists():
         for line in ckpt.read_text(encoding="utf-8").splitlines():
             if line.strip():
-                done_rows.append(json.loads(line))
+                try:
+                    done_rows.append(json.loads(line))
+                except (ValueError, json.JSONDecodeError):
+                    print(f"warning: skipping malformed checkpoint line in {ckpt.name}")
+                    continue
         print(f"resuming: {len(done_rows)} targets already checkpointed")
 
     already = prior_targets() - {r["tic"] for r in done_rows}
@@ -242,7 +247,11 @@ def main() -> int:
     hunts_dir = REPO_ROOT / "reports/hunts"
     hunts_dir.mkdir(parents=True, exist_ok=True)
     receipt_path = hunts_dir / f"{hunt_id}.json"
-    receipt_path.write_text(json.dumps(report, indent=1), encoding="utf-8")
+    tmp_receipt = receipt_path.with_suffix('.tmp')
+    with tmp_receipt.open("w", encoding="utf-8") as f:
+        f.write(json.dumps(report, indent=1))
+        os.fsync(f.fileno())
+    tmp_receipt.replace(receipt_path)
     for tic, html in result.dossiers.items():
         dossier_dir = hunts_dir / "dossiers"
         dossier_dir.mkdir(parents=True, exist_ok=True)
@@ -267,7 +276,11 @@ def main() -> int:
     from lab.publish import POT_JSON, hunt_block
     pot = json.loads(POT_JSON.read_text(encoding="utf-8"))
     pot["hunt"] = hunt_block()
-    POT_JSON.write_text(json.dumps(pot, indent=2) + "\n", encoding="utf-8")
+    tmp_pot = POT_JSON.with_suffix('.tmp')
+    with tmp_pot.open("w", encoding="utf-8") as f:
+        f.write(json.dumps(pot, indent=2) + "\n")
+        os.fsync(f.fileno())
+    tmp_pot.replace(POT_JSON)
     print(f"pot hunt block refreshed -> {POT_JSON}")
     return 0
 

@@ -506,7 +506,8 @@
       min-height:44px; border:0; background:transparent; color:var(--text-secondary);
       font:0.72rem var(--font-mono); cursor:pointer; padding:0 0.25rem;
     }
-    .rail-action:hover, .rail-action:focus-visible { color:var(--leaf); outline:none; }
+    .rail-action:hover, .rail-action:focus-visible { color:var(--leaf); }
+    .rail-action:focus-visible { outline:2px solid var(--leaf); outline-offset:2px; }
     .rail-now { color:var(--leaf); text-align:left; }
     .milestone-rail {
       display:flex; gap:0.45rem; overflow-x:auto; padding:0.85rem 0 0.55rem;
@@ -972,7 +973,7 @@
          ambition lands, before the reader reaches the plants. -->
     <a class="shelf-hero" href="https://www.brokenbranch.dev/windowsill/experiments/">
       <p class="shelf-kicker">The experiment shelf · every run, a room of its own</p>
-      <p class="shelf-line"><strong>Twenty-seven captured runs, every one with a live explainer</strong> — the real update rules running in your browser, with the receipts beside them. A <span class="shelf-dot moss"></span> run reproduced its target, an <span class="shelf-dot amber"></span> run returned a null, a <span class="shelf-dot clay"></span> run refused its own measurement and was kept for the lesson.</p>
+      <p class="shelf-line"><strong><span id="shelf-total">25</span> captured runs, every one with a live explainer</strong> — the real update rules running in your browser, with the receipts beside them. <span id="shelf-moss-count">22</span> <span class="shelf-dot moss" aria-label="verified runs"></span> run<span id="shelf-moss-plural">s</span> reproduced their targets, <span id="shelf-amber-count">0</span> <span class="shelf-dot amber" aria-label="runs in review"></span> run<span id="shelf-amber-plural"></span> remain in review, <span id="shelf-clay-count">3</span> <span class="shelf-dot clay" aria-label="null runs"></span> run<span id="shelf-clay-plural">s</span> refused their own measurement and were kept for the lesson.</p>
       <p class="shelf-cta">walk the shelf →</p>
     </a>
 
@@ -4667,6 +4668,23 @@
       // Feed-drive the explainer's verified count so the prose can't drift stale.
       var exV = $('ex-verified');
       if (exV) exV.textContent = verifiedList.length;
+
+      // Wire the shelf-hero counts from the live data so they can't drift.
+      var shelfTotal = verifiedList.length + reviewList.length + nullList.length;
+      var shelfTotalEl = $('shelf-total');
+      if (shelfTotalEl) shelfTotalEl.textContent = shelfTotal;
+      var shelfMossCount = $('shelf-moss-count');
+      if (shelfMossCount) shelfMossCount.textContent = verifiedList.length;
+      var shelfMossPl = $('shelf-moss-plural');
+      if (shelfMossPl) shelfMossPl.textContent = verifiedList.length === 1 ? '' : 's';
+      var shelfAmberCount = $('shelf-amber-count');
+      if (shelfAmberCount) shelfAmberCount.textContent = reviewList.length;
+      var shelfAmberPl = $('shelf-amber-plural');
+      if (shelfAmberPl) shelfAmberPl.textContent = reviewList.length === 1 ? '' : 's';
+      var shelfClayCount = $('shelf-clay-count');
+      if (shelfClayCount) shelfClayCount.textContent = nullList.length;
+      var shelfClayPl = $('shelf-clay-plural');
+      if (shelfClayPl) shelfClayPl.textContent = nullList.length === 1 ? '' : 's';
 
       var rep = state.latest_report, rbox = $('report');
       if (rbox && rep && rep.headline) {

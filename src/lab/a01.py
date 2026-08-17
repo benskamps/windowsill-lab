@@ -510,6 +510,8 @@ def fit_ephemeris(transit_times, epochs) -> dict:
         mad = float(np.median(np.abs(residual[keep] - med)))
         sigma = max(1.4826 * mad, 2.0 / 1440.0)  # never clip tighter than one cadence
         keep = np.abs(residual - med) <= 4.0 * sigma
+    if keep.sum() < 8:
+        raise ValueError("Too many transits rejected as outliers")
     design = np.column_stack([np.ones(int(keep.sum())), n[keep]])
     epoch0, period = np.linalg.lstsq(design, t[keep], rcond=None)[0]
     residual = t[keep] - (epoch0 + period * n[keep])

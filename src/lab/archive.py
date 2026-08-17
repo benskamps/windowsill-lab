@@ -292,7 +292,7 @@ def _stamp_provenance(row: dict, data: dict) -> None:
         row["at"] = stamp
 
 
-def _href_for(date: str, slug: str, is_repo: bool, has_dated_html: bool,
+def _href_for(date: str, slug: str, is_repo: bool,
               local_path: Path, turn: str | None = None) -> str:
     """The report deep-link for a run.
 
@@ -409,7 +409,7 @@ def scan_runs() -> list[dict]:
             row["turn"] = turn
             row["has_dated_html"] = has_html
             row["local_only"] = not is_repo
-            row["report_href"] = _href_for(date, slug, is_repo, has_html, p, turn)
+            row["report_href"] = _href_for(date, slug, is_repo, p, turn)
             row["receipt_href"] = (
                 RECEIPT_URL_BASE + receipt.name if receipt is not None else None
             )

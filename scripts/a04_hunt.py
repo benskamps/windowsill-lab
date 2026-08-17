@@ -155,6 +155,7 @@ def main() -> int:
     uncatalogued = [
         r for r in hits
         if r.get("vetting", {}).get("verdict") == "planet-candidate"
+        and not r.get("catalog", {}).get("lookup_error")
         and not (r.get("catalog", {}).get("known_planet")
                  or r.get("catalog", {}).get("known_toi"))]
 

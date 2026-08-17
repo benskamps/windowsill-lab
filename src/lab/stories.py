@@ -226,7 +226,7 @@ STORIES: dict[str, dict[str, str | None]] = {
         "short_label": "Pricing false alarms",
         "question_plain": "When the planet-hunt flags a dip in a star's light, can the lab measure — for that exact star — how often pure chance would fake a dip just as convincing, and how small a dip that star could even show?",
         "why_it_matters": "A hunt that cannot price its own false alarms will eventually announce noise. In one day of pilot runs a signal held 'planet candidate' for forty minutes before being unmasked as a pulsing star, and another matched a catalog entry the community had already refuted — so every flagged signal needs its own measured odds, and the machine's strongest verdict stays 'a lead awaiting human review', never 'a planet'.",
-        "result_plain": None,
+        "result_plain": "3,730 stars searched so far, 51 dips clear enough to earn their own odds. Most of those 51 got explained away by the machine's own checks — eclipsing pairs, pulsing stars, aliases of a known rhythm, six already-known planets recovered along the way. Three did not get explained away. Those three are leads awaiting human review, priced but not judged: no person has looked at them yet, and until someone does, the lab will not call them planets, candidates, or anything stronger than a lead.",
     },
     "A06": {
         "short_label": "A fresher sky",

@@ -196,9 +196,10 @@ mkdir -p "$(dirname "$LOG")"
   # has a runner, otherwise the committed portfolio rotation past the receipts-ledger
   # pointer (M01 heartbeat only when the rotation is empty). Best-effort; always
   # leave the feed fresh. (Frontier scheduler 2026-07-05 PR #49; rotation 2026-08-01.)
-  # The UTC-date --seed makes each night an independent sample (a rerun within
-  # the same day repeats deterministically; successive nights differ).
-  "{PY}" -m lab.cli next --seed "$(date -u +%Y%m%d)" || "{PY}" -m lab.cli publish
+  # The UTC date+HOUR --seed makes each nightly run an independent sample; a retry
+  # within the same hour repeats deterministically. This retires the documented
+  # "same-day rerun repeats" property of the old date-only seed.
+  "{PY}" -m lab.cli next --seed "$(date -u +%Y%m%d%H)" || "{PY}" -m lab.cli publish
   # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
   # per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.
   git add pot.json physics-latest.json 2>/dev/null || true
