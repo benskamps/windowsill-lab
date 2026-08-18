@@ -70,11 +70,36 @@ def _git(repo, *args):
     return proc.stdout.strip()
 
 
+def _bash() -> str | None:
+    """A POSIX bash that can actually run the slot script.
+
+    On Windows, ``shutil.which("bash")`` resolves to System32's WSL stub, which
+    answers with an RPC error unless a WSL distro is installed — prefer the bash
+    that ships with Git, and skip rather than run the stub.
+    """
+    if os.name == "nt":
+        program_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
+        for candidate in (program_files / "Git" / "bin" / "bash.exe",
+                          program_files / "Git" / "usr" / "bin" / "bash.exe"):
+            if candidate.exists():
+                return str(candidate)
+        return None
+    return shutil.which("bash")
+
+
 @pytest.fixture
 def slot(tmp_path):
     """A bare origin, a clone wired to the stub runner, and a runnable slot script."""
-    if shutil.which("bash") is None or shutil.which("git") is None:
+    bash = _bash()
+    if bash is None or shutil.which("git") is None:
         pytest.skip("needs bash and git on PATH")
+    # Without flock the script's own lock line (`flock -n 9 || exit 0`) exits 0
+    # having done NOTHING — every "nothing was pushed" assertion then passes
+    # vacuously. Git Bash on Windows ships no flock; the slot only runs on loam.
+    if subprocess.run([bash, "-c", "command -v flock"],
+                      capture_output=True).returncode != 0:
+        pytest.skip("the slot script needs flock (absent on Windows Git Bash; "
+                    "the slot itself only ever runs on loam)")
 
     origin = tmp_path / "origin.git"
     origin.mkdir()
@@ -116,7 +141,7 @@ def slot(tmp_path):
             if dossier:
                 env["STUB_DOSSIER"] = dossier
             return subprocess.run(
-                ["bash", str(SLOT_SH)], env=env, capture_output=True, text=True, timeout=300
+                [bash, str(SLOT_SH)], env=env, capture_output=True, text=True, timeout=300
             )
 
         def pushed_files(self):
