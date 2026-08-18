@@ -1,4 +1,5 @@
 """Safety contracts for the unattended campaign: static text pins plus a bash parse gate."""
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -220,3 +221,34 @@ def test_next_wake_seconds_targets_the_next_listed_hour():
     assert _run_next_wake(exe, fn, epoch(23, 30), "3 9 15 21") == 12600
     # Exactly ON a boundary → the NEXT boundary (a pass never re-fires its own slot).
     assert _run_next_wake(exe, fn, epoch(3), "3 9 15 21") == 6 * 3600
+
+
+# ── The survey lane's units (loam only; win runs the campaign side) ──────────
+#
+# These were installed-only until 2026-08-18, so nothing could compare the
+# machine against the repo — the exact gap Class 2 of the estate's bug taxonomy
+# names, and the one that let LAB_CAMPAIGN_HOURS sit unset for weeks. Committing
+# them lets groundskeeper's `units` check diff installed against committed.
+
+def test_hunt_service_runs_the_versioned_script():
+    """The slot script lived loose in ~/.lab until a stale glob in it stranded
+    graded receipts unnoticed. The unit must point at the tested copy."""
+    service = (ROOT / "scripts" / "windowsill-hunt.service").read_text(encoding="utf-8")
+    assert "projects/windowsill-lab/scripts/a05-hunt-slot.sh" in service
+    assert "%h/.lab/a05-hunt-slot.sh" not in service
+
+
+def test_hunt_timer_fires_on_loams_interleave_slots():
+    """Loam owns 03/09/15/21; win owns 00/06/12/18. The +2min offset lets the
+    campaign pass claim the slot first — the two lanes coexist, CPU vs GPU."""
+    timer = (ROOT / "scripts" / "windowsill-hunt.timer").read_text(encoding="utf-8")
+    assert "OnCalendar=*-*-* 03,09,15,21:02:00" in timer
+
+
+def test_hunt_slot_script_is_executable_and_gated():
+    """The three behaviours that were production failures on 2026-08-17/18."""
+    slot = (ROOT / "scripts" / "a05-hunt-slot.sh").read_text(encoding="utf-8")
+    assert 'sed -n \'s|^receipt -> ||p\'' in slot, "stage what the runner printed"
+    assert '"reports/hunts/dossiers/${stem}"-tic*.html' in slot, "dossier travels with receipt"
+    assert "restore_pot" in slot and "git add -- pot.json" in slot, "the pot's two rules"
+    assert os.access(ROOT / "scripts" / "a05-hunt-slot.sh", os.X_OK)

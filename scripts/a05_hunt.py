@@ -184,6 +184,40 @@ def provenance() -> dict:
             "python": platform.python_version()}
 
 
+def settle_receipt(receipt_path: Path, ok: bool | None,
+                   dossiers: dict | None = None) -> Path:
+    """Where a graded receipt belongs — in the ledger, or beside the logs.
+
+    ``check_a05`` returns ``None`` for *uninterpretable* (a control failed, so
+    the FAPs mean nothing) and ``False`` for a real failure; neither may be
+    published. Enforcing that in the SCHEDULER was not enough: the slot script
+    held ungraded receipts back, and the campaign lane — which reaches the same
+    hunt through ``lab next`` when A05 is the open milestone — staged all of
+    ``reports/`` and published them anyway. Two lanes, one runner, one gate: it
+    belongs here, where every caller inherits it.
+
+    Leaving the file in ``reports/hunts/`` is not a neutral act. The pot
+    aggregator globs that DIRECTORY rather than git, so an ungraded receipt is
+    counted into the public hunt ledger by the next run that publishes, while CI
+    recomputes the block from the committed receipts alone and goes red. Its
+    dossiers travel with it for the same reason.
+
+    Cost, eyes open: ``already_searched()`` globs the same directory, so a
+    quarantined run's targets become eligible for a later slice again.
+    """
+    if ok is True:
+        return receipt_path
+    dest_dir = LAB_HOME / "ungraded"
+    dest_dir.mkdir(parents=True, exist_ok=True)
+    for tic in (dossiers or {}):
+        rendered = receipt_path.parent / "dossiers" / f"{receipt_path.stem}-tic{tic}.html"
+        if rendered.exists():
+            rendered.replace(dest_dir / rendered.name)
+    dest = dest_dir / receipt_path.name
+    receipt_path.replace(dest)
+    return dest
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=500)
@@ -266,6 +300,11 @@ def main() -> int:
           f"{counts['leads_awaiting_human_review']}")
     ok, detail = checks.check_a05(report)
     print(f"check_a05: {ok} — {detail}")
+    settled = settle_receipt(receipt_path, ok, dossiers=result.dossiers)
+    if settled != receipt_path:
+        print(f"receipt -> {settled}  (ungraded: filed with the logs, "
+              "not published and not aggregated)")
+        return 0
 
     # pot.json's ``hunt`` key is a pure function of the committed receipts
     # (CI enforces pot == hunt_block()). A receipt written WITHOUT refreshing

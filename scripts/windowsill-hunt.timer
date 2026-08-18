@@ -1,0 +1,9 @@
+[Unit]
+Description=Fire the A05 hunt at loam's interleave slots (3/9/15/21 local)
+
+[Timer]
+OnCalendar=*-*-* 03,09,15,21:02:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

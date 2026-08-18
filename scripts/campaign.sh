@@ -323,6 +323,13 @@ while :; do
           safe_pull_rebase || break
         done
         if [ "$pushed" -eq 1 ]; then
+          # Heartbeat for the estate watcher, touched ONLY here. Everything else
+          # this loop writes moves on a REFUSED pass too — the counter advances,
+          # the log grows, pot.json gets rewritten by the other lane — so an
+          # mtime watcher reading any of them scores a halted campaign as
+          # healthy. That is how passes 119-124 stalled ~33h in plain sight.
+          # Consumer: groundskeeper/checks/freshness.py.
+          : > "$STATE_DIR/campaign.published" 2>/dev/null || true
           log "campaign: pass $iter — published"
         else
           log "campaign: pass $iter — committed locally; push failed"
