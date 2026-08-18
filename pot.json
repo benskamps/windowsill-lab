@@ -1269,18 +1269,18 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 4539,
-    "above_threshold": 63,
+    "targets_searched": 4691,
+    "above_threshold": 66,
     "dispositions": {
-      "eclipsing-binary-secondary": 12,
+      "eclipsing-binary-secondary": 13,
       "harmonic-alias": 12,
-      "eclipsing-binary-odd-even": 9,
+      "eclipsing-binary-odd-even": 10,
       "low-significance": 5,
       "phased-brightening": 2,
       "toi-known-fp": 1,
       "known-planet": 3,
       "recovery-or-known": 5,
-      "stellar-pulsation": 6,
+      "stellar-pulsation": 7,
       "insufficient-coverage": 2,
       "lead-awaiting-human-review": 5,
       "centroid-shift": 1
