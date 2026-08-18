@@ -1269,13 +1269,13 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 5093,
-    "above_threshold": 66,
+    "targets_searched": 5245,
+    "above_threshold": 70,
     "dispositions": {
-      "eclipsing-binary-secondary": 12,
-      "harmonic-alias": 12,
-      "eclipsing-binary-odd-even": 10,
-      "low-significance": 6,
+      "eclipsing-binary-secondary": 13,
+      "harmonic-alias": 13,
+      "eclipsing-binary-odd-even": 11,
+      "low-significance": 7,
       "phased-brightening": 2,
       "toi-known-fp": 1,
       "known-planet": 3,
