@@ -64,6 +64,13 @@ pinned in `docs/assays/2026-08-19-fold-gates-and-tempering-prior-art.md`):
       same wall-clock (75.7 s vs 78.3 s), with a 4x-sweeps control that fails as
       the module's own docstring predicted.
       `docs/investigations/2026-08-19-parallel-tempering-lifts-the-floor.md`.
+- [x] **M11 runs tempered, and keeps the untempered ladder beside it** (Ben's
+      ruling, 2026-08-19). `T_min = 0.30`, `swap_every = 50`, and a second
+      identical-seed pass with the exchange off stored in `comparison` — so the
+      six new cold rungs arrive with evidence rather than as a silent revision of
+      what this milestone already published. `check_m11` now REFUSES a report
+      that goes below T = 0.6 without a tempering move: a run may go cold, or it
+      may go untempered, but a report that does both is publishing a transient.
 - [x] **Audit the auditor** (`lab.mutation`). Corrupts every number in a report a
       check passes and asks whether the verdict moves. Found 31 fields across
       M03/M07/M14 that were **graded when present and ignored when absent** — a
@@ -79,11 +86,16 @@ pinned in `docs/assays/2026-08-19-fold-gates-and-tempering-prior-art.md`):
    strong one. `combine_p2_folds` is the first instance; the general version —
    carry a star's per-sector evidence forward and grade the star — is a pipeline
    change, not a gate.
-2. **The shelf-exit rule.** `docs/shelf-exit-contract.md` is written and its
-   mechanism is built; §4 thresholds and §6 destination (ExoFOP as CTOIs) need
-   Ben's ruling. Until then the machine can refute a lead but nothing can promote
-   one, which is the state the outside read correctly called "a way of never
-   shipping".
+2. **Build the shelf exit — the policy is ruled, the code is not written.**
+   `docs/shelf-exit-contract.md` was ruled by Ben on 2026-08-19: **≥2 sectors
+   required** for promotion, and a promoted lead goes to **ExoFOP as a CTOI**.
+   That answers the question the outside read called "a way of never shipping";
+   what is left is mechanism. Nothing enforces §4 in code, `first_seen` and the
+   §5 clock do not exist, and there is no submission path. Note the two
+   consequences the ruling carries: the pipeline is now *structurally blind to
+   single-sector planets* by choice (any completeness figure must say so), and
+   a submitted CTOI is a public artifact — so weakening a gate now has an
+   external blast radius, and refutations get filed as well as candidates.
 3. **Limb-darkened depths instead of box depths.** The admissibility gate
    reproduces WASP-18 b's radius 7 % high, and the box-fit mean depth is why. A
    real upgrade (fit a transit model), not a coefficient — and it improves every
@@ -98,7 +110,21 @@ pinned in `docs/assays/2026-08-19-fold-gates-and-tempering-prior-art.md`):
    exponent for 662 named Kepler stars. Pull the same stars, compute H, compare:
    an external benchmark on real data for a sky-track instrument, needing no
    unpublished idea to be worth doing.
-6. **Close the assay pinning gap.** Both 2026-08-19 assays pin citations at
+6. **`--quick` publishes to the live surface.** Every milestone command in
+   `cli.py` ends with `publish_mod.publish(quiet=True)`, and nothing exempts
+   `--quick` — the flag whose entire purpose is "a fast sanity pass". Running
+   `lab m11 --quick` on 2026-08-19 overwrote `pot.json` so that a 6-second L=8
+   toy run became the lab's public headline, with a `receipt_url` pointing at a
+   receipt that does not exist, and it also modified the tracked
+   `reports/index.html` and `reports/latest.html` and wrote into
+   `reports/receipts/`. Caught and reverted by hand. `pot.json` is staged by the
+   campaign cron, so the next pass would have committed it.
+   **Fix:** `--quick` must not publish, render into tracked surfaces, or write a
+   receipt. ~10 call sites; deliberately not done in the same change as the M11
+   work, because it touches every milestone's path in a production-critical file
+   and deserves its own diff. Anyone dogfooding this repo hits it on their first
+   sanity run.
+7. **Close the assay pinning gap.** Both 2026-08-19 assays pin citations at
    abstract level, not equation level, which PROTOCOL section 7 requires. Four
    papers to read.
 

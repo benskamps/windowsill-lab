@@ -196,6 +196,9 @@ TIC 49558810 reads 2.6σ in sector 3 and 9.0σ in sector 30; TIC 369603748 reads
 5.1σ and 6.5σ. Grading the star rather than the sector is doing real work in this
 table, not just on the one object it was found on.
 
+Raw output: `docs/investigations/2026-08-19-shelf-sweep.json` — every sector of
+every lead, with the per-sector verdicts and the combination.
+
 **Robustness:** this sweep ran on detrended-only flux with the phase re-fitted
 per sector by `a04.bls_power`, while §5 ran on prewhitened flux with a full blind
 search. TIC 287328866 comes out at 9.8σ here and 9.4σ there — the verdict is

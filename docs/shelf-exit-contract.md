@@ -1,7 +1,15 @@
 # The shelf-exit contract — how a lead stops being a lead
 
-**Status: proposed 2026-08-19. §4 thresholds and §6 destination are Ben's ruling
-and are marked. Everything else is mechanism and is already built or buildable.**
+**Status: RULED 2026-08-19 by Ben. The three open questions are answered below
+and marked ✅. What remains open is build work, not policy.**
+
+The rulings, in one place:
+
+| # | Question | Ruling |
+|---|---|---|
+| §4 | Does a lead need ≥2 sectors to be promotable? | **Yes, ≥2 sectors required.** |
+| §6 | Where does a promoted lead go? | **ExoFOP, as a CTOI.** |
+| — | M11 and parallel tempering | **Re-run tempered, keep both ladders.** |
 
 **Update, same day:** with the new gates in place, five of the six leads on the
 shelf were refuted and one survives
@@ -78,14 +86,21 @@ grade the star — is not built yet.
 
 ## 4. Exit condition — what a lead must clear to be promoted
 
-**⚠ Ben's ruling. The mechanism below is proposed; the numbers are his.**
+**✅ RULED 2026-08-19.** A lead is promotable when all of the following hold,
+each of them a number already measured by the pipeline:
 
-A lead is promotable when all of the following hold, each of them a number
-already measured by the pipeline:
+- **Persistence — ✅ ≥ 2 sectors required.** Detected independently in ≥ 2 sectors
+  at consistent period and depth (period agreement within `PERIOD_TOL_FRAC`,
+  depths consistent within 3σ).
 
-- **Persistence.** Detected independently in ≥ 2 sectors at consistent period
-  and depth. *(Proposed: period agreement within `PERIOD_TOL_FRAC`, depths
-  consistent within 3σ.)*
+  **What this costs, recorded because it is a real cost.** This is the only
+  criterion here that can reject something true: a genuine planet observed in
+  exactly one sector — a long period, a star with a single visit — fails it
+  permanently, however clean it is. The pipeline is therefore *structurally
+  blind to single-sector planets*, by choice, because a single-sector candidate
+  has no independent confirmation available and this instrument has no way to
+  go and get one. Any future occurrence-rate statement must say so; a
+  completeness figure that ignores this is wrong.
 - **Significance.** Combined FAP below the declared α in both shuffling schemes.
   *(Proposed: the existing `FAP_ALPHA` = 0.01, applied to the combined evidence
   rather than per sector.)*
@@ -123,27 +138,40 @@ known quantity rather than an accumulating silence.
 
 ## 6. Where a promoted lead goes
 
-**⚠ Ben's ruling, and the one with the most on it.**
+**✅ RULED 2026-08-19: ExoFOP, as a CTOI.**
 
-Today: nowhere. A promoted lead would sit in this repo. The lab's stated goal is
-*"a measurement nobody has made yet, given away free"*, and a candidate that
-never reaches the community has not been given away.
+Decided while nothing was queued, which was the point — the worst moment to
+choose a destination is while holding a candidate you are excited about.
 
-The obvious destination for the sky track is **ExoFOP as a CTOI** — the same
-table §2.4 now reads. Submitting is what the table is for, it costs nothing but
-an account, and a CTOI is explicitly a *candidate*, which is exactly the claim
-level the pipeline's vocabulary tops out at. It requires no change to the
-"never say planet" rule.
+Why this is the right ceiling rather than a compromise:
 
-Open questions that are genuinely Ben's:
+- **A CTOI is explicitly a *candidate*,** which is exactly where this pipeline's
+  vocabulary tops out. Filing one requires no change to the "never say planet"
+  rule; it files at precisely the claim level the machine already refuses to
+  exceed.
+- **It is the table the pipeline now reads.** Three of the six refutations on
+  2026-08-19 came out of it. Submitting is what it is for, and a lab that takes
+  from a community table and never gives to it is a free rider.
+- **It is reversible and low-stakes.** CTOIs are updated and withdrawn routinely;
+  being wrong in public and then filing the refutation is the normal life of that
+  table, and it is also how this register already behaves.
 
-- Submit as CTOIs, or hold everything until something clears a higher internal
-  bar? Submitting is reversible and low-claim; holding is the current default by
-  omission rather than by decision.
-- Does a promoted lead get its own page on the register, or only a row?
-- Does the lab publish its **parked** and **refuted** leads too? (Consistent with
-  the misses-stay-visible rule, this should be yes — and it is the part that
-  makes the register unusual.)
+**Consequences that follow, and are now binding:**
+
+- A submitted CTOI is a public artifact with Ben's name on it. The gates that
+  refuted five of six leads are the filter standing between the machine and that
+  artifact, so **weakening a gate is now a decision with an external blast
+  radius**, not an internal one.
+- **Refutations get filed too.** If the lab submits candidates it must also
+  submit — or at minimum publish — the ones it later kills, including its own.
+  Asymmetric submission is how a table fills with junk.
+- The register publishes **parked and refuted leads alongside promoted ones**.
+  This follows from the misses-stay-visible rule, and it is the part that makes
+  the register unusual: most pipelines publish only what survived.
+
+**Still open, but build questions rather than policy:** whether a promoted lead
+gets its own page or only a row, and the mechanics of submission (ExoFOP account,
+the upload format, who presses the button — Ben, since it is his name).
 
 ## 7. What this contract does not do
 
@@ -163,7 +191,7 @@ candidate, and every new gate emits refutations only.
 | 2.2 | `fold_gate` in the mandatory list | **built** 2026-08-19, wired into `a05.process_target` |
 | 2.4 | CTOI in `catalog_crosscheck` | **built** 2026-08-19 (`lab.exofop`) |
 | 3 | per-sector evidence combined | `combine_p2_folds` built; general version **not built** |
-| 4 | promotion criteria | **proposed**, awaiting ruling |
+| 4 | promotion criteria | **ruled** 2026-08-19; not yet enforced in code |
 | 4 | companion-radius admissibility gate | **built** 2026-08-19 (`lab.a05_physical`), wired into `a05.process_target` |
 | 5 | `first_seen` + the clock | **not built** |
-| 6 | destination | **awaiting ruling** |
+| 6 | destination | **ruled** 2026-08-19 — ExoFOP as CTOI; submission path not built |

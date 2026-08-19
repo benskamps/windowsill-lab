@@ -1,0 +1,380 @@
+{
+ "234518605": {
+  "tic": "234518605",
+  "period_days": 5.672497861382893,
+  "ctoi": {
+   "known_ctoi": "234518605.01",
+   "ctoi_alias_n": 1,
+   "n_ctoi": 1
+  },
+  "sectors": [
+   {
+    "sector": 1,
+    "depth": 0.052335919422748955,
+    "difference_sigma": 1.3175808100392985,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 2,
+    "depth": 0.04889638414594055,
+    "difference_sigma": 11.348028859869302,
+    "verdict": "eclipsing-binary-p2-alias",
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 68,
+    "depth": 0.04900504967904551,
+    "difference_sigma": 3.093679765877885,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 69,
+    "depth": 0.04730922685958938,
+    "difference_sigma": 48.3854574953833,
+    "verdict": "eclipsing-binary-p2-alias",
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 103,
+    "depth": 0.048191264584408255,
+    "difference_sigma": 2.0902445877596123,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 104,
+    "depth": 0.051627674881538965,
+    "difference_sigma": 0.6706178100196595,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   }
+  ],
+  "combined": {
+   "verdict": "eclipsing-binary-p2-alias",
+   "n_sectors": 6,
+   "difference": 0.004804309002815709,
+   "sigma": 0.00016963184687903503,
+   "difference_sigma": 28.321975449820318,
+   "sign_consistent": true,
+   "per_sector_sigma": [
+    1.3175808100392985,
+    11.348028859869302,
+    3.093679765877885,
+    48.3854574953833,
+    2.0902445877596123,
+    0.6706178100196595
+   ]
+  }
+ },
+ "272357134": {
+  "tic": "272357134",
+  "period_days": 4.195947298104868,
+  "ctoi": {
+   "known_ctoi": "272357134.01",
+   "ctoi_alias_n": 1,
+   "n_ctoi": 2
+  },
+  "sectors": [
+   {
+    "sector": 1,
+    "depth": 0.014736759153945567,
+    "difference_sigma": 2.220542354304221,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 2,
+    "depth": 0.01481815270287834,
+    "difference_sigma": 0.8331559042527716,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 3,
+    "depth": 0.015023413474801184,
+    "difference_sigma": 7.236996585711178,
+    "verdict": "eclipsing-binary-p2-alias",
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 4,
+    "depth": 0.014719909586797031,
+    "difference_sigma": 4.016165014530065,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 5,
+    "depth": 0.014449783655144932,
+    "difference_sigma": 18.29032690586908,
+    "verdict": "eclipsing-binary-p2-alias",
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 6,
+    "depth": 0.01498330330918407,
+    "difference_sigma": 2.515214456481232,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 7,
+    "depth": 0.014466908088214714,
+    "difference_sigma": 10.12014715932165,
+    "verdict": "eclipsing-binary-p2-alias",
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 8,
+    "depth": 0.01469060039859893,
+    "difference_sigma": 1.9481355501508502,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   }
+  ],
+  "combined": {
+   "verdict": "eclipsing-binary-p2-alias",
+   "n_sectors": 8,
+   "difference": 0.0002879261128141975,
+   "sigma": 1.754263203361422e-05,
+   "difference_sigma": 16.412936910635157,
+   "sign_consistent": true,
+   "per_sector_sigma": [
+    2.220542354304221,
+    0.8331559042527716,
+    7.236996585711178,
+    4.016165014530065,
+    18.29032690586908,
+    2.515214456481232,
+    10.12014715932165,
+    1.9481355501508502
+   ]
+  }
+ },
+ "49558810": {
+  "tic": "49558810",
+  "period_days": 3.354638187285455,
+  "ctoi": {
+   "known_ctoi": null,
+   "ctoi_alias_n": null,
+   "n_ctoi": 0
+  },
+  "sectors": [
+   {
+    "sector": 3,
+    "depth": 0.05319066741534573,
+    "difference_sigma": 2.6279867771904146,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 30,
+    "depth": 0.05900310862342539,
+    "difference_sigma": 8.97756876857761,
+    "verdict": "eclipsing-binary-p2-alias",
+    "reason": null,
+    "both_significant": true
+   }
+  ],
+  "combined": {
+   "verdict": "eclipsing-binary-p2-alias",
+   "n_sectors": 2,
+   "difference": 0.0011529823768396132,
+   "sigma": 0.0001347894834801217,
+   "difference_sigma": 8.553949069844542,
+   "sign_consistent": true,
+   "per_sector_sigma": [
+    2.6279867771904146,
+    8.97756876857761
+   ]
+  }
+ },
+ "77044472": {
+  "tic": "77044472",
+  "period_days": 2.685728750580555,
+  "ctoi": {
+   "known_ctoi": null,
+   "ctoi_alias_n": null,
+   "n_ctoi": 0
+  },
+  "sectors": [
+   {
+    "sector": 2,
+    "depth": 0.06137556701395819,
+    "difference_sigma": 0.8753967694195816,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 69,
+    "depth": 0.07609196338754554,
+    "difference_sigma": 1.1107030330422973,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   }
+  ],
+  "combined": {
+   "verdict": null,
+   "n_sectors": 2,
+   "difference": 0.009796371447152523,
+   "sigma": 0.007185932121566971,
+   "difference_sigma": 1.3632708020927309,
+   "sign_consistent": true,
+   "per_sector_sigma": [
+    0.8753967694195816,
+    1.1107030330422973
+   ]
+  }
+ },
+ "287328866": {
+  "tic": "287328866",
+  "period_days": 1.0382372521706764,
+  "ctoi": {
+   "known_ctoi": "287328866.01",
+   "ctoi_alias_n": 2,
+   "n_ctoi": 2
+  },
+  "sectors": [
+   {
+    "sector": 1,
+    "depth": 0.014116561540821415,
+    "difference_sigma": 5.7669959751038915,
+    "verdict": "eclipsing-binary-p2-alias",
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 2,
+    "depth": 0.01387797878883179,
+    "difference_sigma": 5.885586407534852,
+    "verdict": "eclipsing-binary-p2-alias",
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 3,
+    "depth": 0.014418696388483254,
+    "difference_sigma": 3.509877712104432,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 4,
+    "depth": 0.014818071822943923,
+    "difference_sigma": 3.1260133222118887,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 5,
+    "depth": 0.014553765393155449,
+    "difference_sigma": 4.838019472216772,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 6,
+    "depth": 0.015442442643488818,
+    "difference_sigma": 0.8165873524674214,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 7,
+    "depth": 0.015487660485441368,
+    "difference_sigma": 1.7595254514783907,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 8,
+    "depth": 0.014901561242687267,
+    "difference_sigma": 1.9988174896063504,
+    "verdict": null,
+    "reason": null,
+    "both_significant": true
+   }
+  ],
+  "combined": {
+   "verdict": "eclipsing-binary-p2-alias",
+   "n_sectors": 8,
+   "difference": 0.0013602267237798153,
+   "sigma": 0.00013916315267749126,
+   "difference_sigma": 9.774331046754327,
+   "sign_consistent": true,
+   "per_sector_sigma": [
+    5.7669959751038915,
+    5.885586407534852,
+    3.509877712104432,
+    3.1260133222118887,
+    4.838019472216772,
+    0.8165873524674214,
+    1.7595254514783907,
+    1.9988174896063504
+   ]
+  }
+ },
+ "369603748": {
+  "tic": "369603748",
+  "period_days": 3.0298039714000313,
+  "ctoi": {
+   "known_ctoi": null,
+   "ctoi_alias_n": null,
+   "n_ctoi": 0
+  },
+  "sectors": [
+   {
+    "sector": 29,
+    "depth": 0.1341040748160025,
+    "difference_sigma": 5.127460759493829,
+    "verdict": "eclipsing-binary-p2-alias",
+    "reason": null,
+    "both_significant": true
+   },
+   {
+    "sector": 30,
+    "depth": 0.1552573931946497,
+    "difference_sigma": 6.515003761506468,
+    "verdict": "eclipsing-binary-p2-alias",
+    "reason": null,
+    "both_significant": true
+   }
+  ],
+  "combined": {
+   "verdict": "eclipsing-binary-p2-alias",
+   "n_sectors": 2,
+   "difference": 0.04545310315092609,
+   "sigma": 0.005525789987747565,
+   "difference_sigma": 8.225629864998504,
+   "sign_consistent": true,
+   "per_sector_sigma": [
+    5.127460759493829,
+    6.515003761506468
+   ]
+  }
+ }
+}
