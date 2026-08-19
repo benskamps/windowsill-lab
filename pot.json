@@ -1269,15 +1269,15 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 5509,
-    "above_threshold": 73,
+    "targets_searched": 5710,
+    "above_threshold": 75,
     "dispositions": {
       "eclipsing-binary-secondary": 13,
       "harmonic-alias": 13,
-      "eclipsing-binary-odd-even": 11,
+      "eclipsing-binary-odd-even": 12,
       "low-significance": 7,
       "phased-brightening": 2,
-      "toi-known-fp": 1,
+      "toi-known-fp": 2,
       "known-planet": 3,
       "recovery-or-known": 5,
       "stellar-pulsation": 8,
