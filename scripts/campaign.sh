@@ -36,7 +36,11 @@ set -uo pipefail
 
 # Both overridable so the conflict fixtures can drive the real functions against a
 # throwaway clone and a stub interpreter instead of this box's paths.
-REPO="${LAB_CAMPAIGN_REPO:-/home/benslinuxbox/projects/windowsill-lab}"
+# Derived from the script's own location, not hardcoded: this file lives in
+# <repo>/scripts/, so the parent of its directory IS the repo. A hardcoded home
+# path published the operator's account name in a public repo AND broke for
+# anyone who cloned it anywhere else.
+REPO="${LAB_CAMPAIGN_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
 cd "$REPO" || exit 1
 export TMPDIR="${TMPDIR:-$HOME/.cache/wtmp}"; mkdir -p "$TMPDIR"
 PY="${LAB_CAMPAIGN_PY:-$REPO/.venv/bin/python3}"

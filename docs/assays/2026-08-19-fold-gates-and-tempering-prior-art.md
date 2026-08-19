@@ -209,7 +209,16 @@ peer list marked unverified. Verified real from these searches: **peapods**
 Intelligence), **SciExplorer** (Phys. Rev. X, *"Agentic Exploration of Physics
 Models"*), **PhyNex** (arXiv 2606.14266, LLM-based agent for automated discovery
 in computational physics). Still unverified after searching: **QUASAR**, **QISG**,
-**BatchTNMC**. Those three do not appear in public copy until someone finds them.
+**BatchTNMC**.
+
+Those three are named *here* on purpose and nowhere else on purpose, and the
+distinction is PROTOCOL §7: an assay is a **receipt**, and a negative result is
+only checkable if the thing that failed to check out is named — "three names I
+will not tell you" is unfalsifiable, and a reader must be able to search them
+again and either confirm the hole or fill it. What they may not do is appear in
+any copy that *presents* them — as peers, as citations, as evidence the field is
+crowded. The 2026-08-19 external-review digest originally listed them in exactly
+that way and has been corrected.
 
 ---
 

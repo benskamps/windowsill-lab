@@ -5,7 +5,7 @@ public surface only — `brokenbranch.dev/windowsill/experiments/` plus web sear
 (the model reported ~30 and ~47 pages of browsing across the two passes). It did
 **not** read this repo, the receipts, `checks.py`, `BACKLOG.md`, or the assay
 protocol. That matters twice over: it is a clean read of what a stranger can see,
-and it is uninformed about everything we already decided.
+and it is uninformed about every decision already recorded in this repo.
 
 Digest written by Claude. Sections: what it praised · what it criticised (graded
 against what the project already knows) · what is genuinely new · the peer list ·
@@ -66,7 +66,7 @@ the 6 pending leads are the whole critique in one queue.
 shelf, and where it goes when it does (ExoFOP is the named destination for the
 sky track). Then let the gates run without a per-lead human turn. This is not
 loosening the standard — it is writing the standard down, so that the standard
-rather than Ben's calendar is what gates.
+gates instead of the calendar.
 
 ### 3.2 Frontier contracts (deployment)
 
@@ -75,9 +75,8 @@ a specific open question, a success criterion, and a decisive-failure criterion 
 then let the machines run until one or the other is met. The human's judgment
 moves upstream (into writing the contract) instead of sitting in the loop.
 
-Same shape as the estate's night-shift contract ("a clock, not a scope"), applied
-to science instead of engineering. Converts critique #5 from a bottleneck into a
-design.
+Converts critique #5 from a bottleneck into a design: the judgment moves from
+per-lead review into the contract, where it can be written down and argued with.
 
 ### 3.3 Information per wall-clock hour, not FLOPs
 
@@ -128,11 +127,9 @@ not citations**:
 
 - **Statistical physics / non-eq:** Janus Collaboration (the heavyweight for
   long-timescale spin-glass dynamics — real, and already the named benchmark in
-  `BACKLOG.md`); plus `peapods` (Rust MC for Ising / spin glass), QISG (GPU
-  quantum Ising spin glass), BatchTNMC (GPU tensor-network MC for 2-D spin
-  glasses).
-- **Agentic scientific discovery (2025–26):** PhyNex, SciExplorer, AgenticSciML,
-  QUASAR. Closer in spirit; typically higher autonomy, bigger compute, no patient
+  `BACKLOG.md`); plus `peapods` (Rust MC for Ising / spin glass).
+- **Agentic scientific discovery (2025–26):** PhyNex, SciExplorer, AgenticSciML.
+  Closer in spirit; typically higher autonomy, bigger compute, no patient
   human-gated home instrument.
 - **Open TESS re-analysis:** LEO-Vetter, COUNTESS, `eleanor` derivatives, various
   Zenodo-released complete analysis packages.
@@ -142,8 +139,14 @@ intersection (permanent small hardware + AI-maintained instrument + dual tracks 
 visible nulls + live public provenance). *"The closest peers are still working in
 parallel rather than head-to-head."*
 
-**Action:** verify the four unfamiliar names before any of them appears in public
-copy. Janus, `eleanor` and LEO-Vetter are safe anchors; the rest are not yet.
+The review offered three further names that searching did not confirm. They are
+deliberately **not** reproduced here: repeating an unverified name is how it
+becomes a citation.
+
+**Action taken, same day.** Every name was searched and the survivors pinned with
+arXiv ids in `docs/assays/2026-08-19-fold-gates-and-tempering-prior-art.md` §5:
+peapods, LEO-Vetter, COUNTESS, AgenticSciML, SciExplorer, PhyNex. Three did not
+survive and appear nowhere in this repo.
 
 ---
 

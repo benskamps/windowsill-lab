@@ -1,7 +1,6 @@
 # The Windowsill Plant Rethink — "One plant, one light, one wind"
 
-Implementation spec for `web/index.html` + `web/growth-forms.js` in
-`C:/Users/beschipp/projects/_workspaces/windowsill-plant-rethink/`.
+Implementation spec for `web/index.html` + `web/growth-forms.js`.
 One implementer, no open questions. Everything below was verified against the
 actual files on 2026-08-07; line numbers are current.
 
