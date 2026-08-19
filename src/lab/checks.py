@@ -685,12 +685,25 @@ def check_m03(report: dict) -> tuple[bool | None, str]:
         return None, "not a data-collapse report"
     raw = report.get("curves") or []
     curves = []
+    malformed = 0
     for c in raw:
         L, T, M = c.get("L"), c.get("T"), c.get("M")
         if L and T and M and len(T) == len(M):
             curves.append((L, list(T), list(M)))
+        else:
+            malformed += 1
     if len(curves) < 3:
         return None, "data-collapse report missing per-L (T, M) curves"
+    # A curve that lost a field is a REFUSAL, not a skip. Silently grading the
+    # remainder means a report can lose data in serialisation and still come
+    # back green — the mutation audit (lab.mutation, 2026-08-19) found exactly
+    # that: deleting `curves.N.L` left this check passing while corrupting the
+    # same field failed it. A gate may refuse a report; it may not quietly
+    # grade a subset of one.
+    if malformed:
+        return False, (f"data-collapse report has {malformed} malformed curve(s) "
+                       f"(missing L/T/M or mismatched lengths) — refusing to "
+                       f"grade the remainder")
 
     bon_fit, _ = _fit_beta_over_nu(curves)
     quality = _collapse_loss(curves, BETA_OVER_NU)   # loss at the EXACT exponents
@@ -910,10 +923,12 @@ def check_m07(report: dict) -> tuple[bool | None, str]:
     parts: list[str] = []
     all_ok = True
     graded = 0
+    malformed = 0
     for entry in per_q:
         q = entry.get("q")
         T, chi = entry.get("T"), entry.get("chi")
         if not q or not T or not chi or len(T) != len(chi) or len(T) < 3:
+            malformed += 1
             continue
         graded += 1
         peak_T = _refine_peak_stdlib(T, chi)
@@ -928,6 +943,11 @@ def check_m07(report: dict) -> tuple[bool | None, str]:
 
     if graded == 0:
         return None, "M07 report has no gradable (T, χ) per-q arrays"
+    # See check_m03: a malformed q-block is refused, not skipped.
+    if malformed:
+        return False, (f"M07 report has {malformed} malformed per-q block(s) "
+                       f"(missing q/T/χ or mismatched lengths) — refusing to "
+                       f"grade the remainder")
     return all_ok, "Potts χ peaks — " + "; ".join(parts)
 
 
@@ -1365,9 +1385,11 @@ def check_m14(report: dict) -> tuple[bool | None, str]:
     all_ok = True
     graded = 0
     off_line_count = 0
+    malformed = 0
     for pt in pts:
         p, T, e = pt.get("p"), pt.get("T"), pt.get("energy")
         if p is None or T is None or e is None or T <= 0:
+            malformed += 1
             continue
         # Guard 1 — the point must be on the Nishimori line, else the identity doesn't apply.
         on_line = abs(math.tanh(1.0 / T) - (1.0 - 2.0 * p)) <= NISHIMORI_LINE_TOL
@@ -1390,6 +1412,12 @@ def check_m14(report: dict) -> tuple[bool | None, str]:
     # reserved for reports that structurally lack gradable points.
     if graded < 3 and off_line_count == 0:
         return None, "M14 report has <3 gradable on-line calibration points"
+    # See check_m03: a calibration point that lost p, T or energy is refused,
+    # not skipped past. Grading the survivors would let a truncated report keep
+    # its leaf.
+    if malformed:
+        return False, (f"M14 report has {malformed} malformed calibration point(s) "
+                       f"(missing p/T/energy) — refusing to grade the remainder")
     detail = (
         f"Nishimori-line energy E/N vs exact −2·tanh(1/T) — " + "; ".join(parts) + " — "
         + ("the exact disorder-averaged Nishimori-line energy is reproduced across the "
