@@ -318,6 +318,16 @@ ANCILLARY_COLUMNS = ("MOM_CENTR1", "MOM_CENTR2", "POS_CORR1", "POS_CORR2")
 #: FLFRCSAP the fraction of the target's flux captured by the aperture.
 ANCILLARY_KEYWORDS = ("CROWDSAP", "FLFRCSAP")
 
+#: Stellar parameters SPOC copies from the TESS Input Catalog into the PRIMARY
+#: header — the host's radius (solar radii), effective temperature (K), surface
+#: gravity, and TESS magnitude. They travel with the photometry, so the size of
+#: the body that produced an eclipse is computable from the same file as the
+#: eclipse, with no second catalog and no network. Read from the primary header
+#: rather than the light-curve extension, which is why they are a separate
+#: tuple from ANCILLARY_KEYWORDS. Absent for faint or unclassified targets, and
+#: absent must stay ``None`` — an unknown radius is not a small one.
+PRIMARY_KEYWORDS = ("RADIUS", "TEFF", "LOGG", "TESSMAG")
+
 
 def read_tess_light_curve(blob: bytes, *, ancillary: bool = False) -> dict[str, np.ndarray]:
     """Read TIME/PDCSAP_FLUX/ERR/QUALITY from a TESS LC FITS byte string.
@@ -377,6 +387,11 @@ def read_tess_light_curve(blob: bytes, *, ancillary: bool = False) -> dict[str, 
                          if name in rows.dtype.names else None)
         for key in ANCILLARY_KEYWORDS:
             value = table.get(key)
+            out[key] = (float(value)
+                        if isinstance(value, (int, float)) and not isinstance(value, bool)
+                        else None)
+        for key in PRIMARY_KEYWORDS:
+            value = primary.get(key)
             out[key] = (float(value)
                         if isinstance(value, (int, float)) and not isinstance(value, bool)
                         else None)

@@ -451,7 +451,8 @@ def catalog_crosscheck(tic: str, deadline: float | None = None,
     re-found (see :func:`_nearest_period_row`).
     """
     out = {"tic": tic, "known_toi": None, "known_planet": None,
-           "published_period_days": None, "disposition": None}
+           "published_period_days": None, "disposition": None,
+           "known_ctoi": None, "ctoi_alias_n": None, "n_ctoi": 0}
     try:
         rows = _tap(f"select toi,pl_orbper,tfopwg_disp from toi where tid={int(tic)}",
                     deadline)
@@ -470,6 +471,26 @@ def catalog_crosscheck(tic: str, deadline: float | None = None,
             out["known_planet"] = row.get("pl_name")
             out["published_period_days"] = (out["published_period_days"]
                                             or row.get("pl_orbper"))
+    except Exception:  # noqa: BLE001
+        out["lookup_error"] = True
+    # ExoFOP's COMMUNITY candidates — the third table, and the one that was
+    # missing. Neither the TOI list nor the confirmed-planet list carries a
+    # CTOI, so a star filed by an outside analyst and never promoted came back
+    # from this function as "unknown to every catalog" — which is how
+    # TIC 287328866, on ExoFOP since 2019 as two CTOIs, became a lead.
+    # Alias-aware: the 2019 filings are at 2.06/2.08 d and the hunt found the
+    # 1.038 d P/2 alias, so a direct period match would still have missed it.
+    try:
+        from . import exofop
+        ct = exofop.ctoi_crosscheck(tic, detected_period_days=detected_period_days,
+                                    deadline=deadline)
+        out["known_ctoi"] = ct["known_ctoi"]
+        out["ctoi_alias_n"] = ct["ctoi_alias_n"]
+        out["n_ctoi"] = ct["n_ctoi"]
+        out["ctoi_period_days"] = ct["ctoi_period_days"]
+        out["ctoi_table_age_days"] = ct["table_age_days"]
+        if ct.get("lookup_error"):
+            out["lookup_error"] = True
     except Exception:  # noqa: BLE001
         out["lookup_error"] = True
     return out

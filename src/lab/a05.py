@@ -80,7 +80,8 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-from . import a01, a04, a05_sensitivity, a05_stats, a05_vetting
+from . import (a01, a04, a05_fold, a05_physical, a05_sensitivity, a05_stats,
+               a05_vetting)
 
 EXPERIMENT = "a05-survey-hunt"
 SCHEMA_VERSION = 1
@@ -110,9 +111,11 @@ TOI_REFUTED_DISPOSITIONS = ("FP", "FA")
 #: identification, or the terminal lead state before the receipt is written.
 MACHINE_DISPOSITIONS = (
     "stellar-pulsation", "harmonic-alias", "eclipsing-binary-odd-even",
-    "eclipsing-binary-secondary", "phased-brightening", "low-significance",
+    "eclipsing-binary-secondary", "eclipsing-binary-p2-alias",
+    "phased-brightening", "low-significance",
     "insufficient-coverage", "period-railed", "centroid-shift",
-    "recovery-or-known", "known-planet", "toi-known-fp",
+    "companion-too-large",
+    "recovery-or-known", "known-planet", "toi-known-fp", "ctoi-known",
     "lead-awaiting-human-review",
 )
 
@@ -223,6 +226,10 @@ def curve_from_blob(blob: bytes) -> dict:
         raise A05Error("detrend reordered cadences; centroid alignment lost")
     return {"t": td, "f": fd, "cx": cx, "cy": cy,
             "crowdsap": aux.get("CROWDSAP"),
+            # The host's radius, straight from the light curve's own PRIMARY
+            # header, so the admissibility gate needs no second catalog.
+            "r_star_sun": curve.get("RADIUS"),
+            "teff_k": curve.get("TEFF"),
             "sha256": hashlib.sha256(blob).hexdigest()}
 
 
@@ -361,12 +368,31 @@ def process_target(item: dict) -> dict:
         if verdict != "planet-candidate":
             row["disposition"] = verdict
         else:
+            # Fold gates before blend gates: they are pure numpy on arrays
+            # already in hand (no ancillary columns, no network), and they ask
+            # the question the fold-based vet could not — is the DETECTED
+            # period half the true one? See lab.a05_fold.
+            fold_ev = a05_fold.fold_gate(t, fw, det)
+            row["disposition_evidence"]["fold"] = fold_ev
+            if fold_ev.get("verdict") is not None:
+                row["disposition"] = fold_ev["verdict"]
+                row["wall_seconds"] = (time.time() - t0
+                                       + float(item.get("load_seconds") or 0.0))
+                return row
+            # How big was the occulter? The cheapest question in the ladder
+            # and, until 2026-08-19, the one nobody asked: TIC 287328866 stayed
+            # a `planet-candidate` while implying 2.5 R_Jup on an F subgiant.
+            phys = a05_physical.companion_radius(
+                det.depth, item.get("r_star_sun"), item.get("crowdsap"))
+            row["disposition_evidence"]["physical"] = phys
             centroid = a05_vetting.centroid_shift(
                 t, item.get("cx"), item.get("cy"), det)
             contam = a05_vetting.contamination(det.depth, item.get("crowdsap"))
             row["disposition_evidence"]["blend"] = {
                 "centroid": centroid, "contamination": contam}
-            if centroid.get("verdict") == "centroid-shift":
+            if phys.get("verdict") == "companion-too-large":
+                row["disposition"] = "companion-too-large"
+            elif centroid.get("verdict") == "centroid-shift":
                 row["disposition"] = "centroid-shift"
             else:
                 row["pending_catalog"] = True
@@ -432,6 +458,13 @@ def resolve_catalog(row: dict, catalog_row: dict,
         row["disposition"] = "toi-known-fp"
     elif known_planet or known_toi is not None or designated:
         row["disposition"] = "recovery-or-known"
+    elif catalog_row.get("known_ctoi"):
+        # Somebody already filed this signal on ExoFOP. That is not a planet,
+        # not a TOI and not a refutation — it is only "not a fresh lead", which
+        # is exactly enough to take the row off the shelf without claiming
+        # anything about what the signal IS. Promotion, refutation and
+        # confirmation all stay human work.
+        row["disposition"] = "ctoi-known"
     elif catalog_row.get("lookup_error"):
         # An outage answered NOTHING: "uncatalogued" cannot be concluded from
         # a failed lookup, so no lead is minted. The row stays
@@ -639,6 +672,8 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
                 "tic": tic, "t": curve["t"], "f": curve["f"],
                 "cx": curve.get("cx"), "cy": curve.get("cy"),
                 "crowdsap": curve.get("crowdsap"),
+                "r_star_sun": curve.get("r_star_sun"),
+                "teff_k": curve.get("teff_k"),
                 "cache_sha256": curve.get("sha256"),
                 "cache_file": curve.get("cache_file"),
                 "triage_level": level,
