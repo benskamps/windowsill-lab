@@ -41,6 +41,77 @@ Supporting invariant: the bench stays trustworthy — armed rotation on both
 boxes, receipts immutable (#83), one turn per box (#84), and every claim graded
 by a check before it is spoken.
 
+## From outside — the 2026-08-19 external review (worked, same day)
+
+Grok read the public surface cold (no repo, no receipts) and returned six
+criticisms; four were already on this page. The two that landed were worked the
+same day, and every item it proposed was routed through the novelty-certification
+protocol before any of it was built up into a claim. Digest:
+`docs/investigations/2026-08-19-external-review-grok.md`.
+
+**Shipped 2026-08-19** (all REDISCOVERED — standard practice adopted, prior art
+pinned in `docs/assays/2026-08-19-fold-gates-and-tempering-prior-art.md`):
+
+- [x] **Four sky-track gates.** Doubled-period fold (`lab.a05_fold.p2_fold`),
+      duration-matched depths, CTOI catalog crosscheck (`lab.exofop`), and a
+      companion-radius admissibility gate (`lab.a05_physical`) — the cheapest
+      question in the ladder and the one nobody was asking. Plus multi-sector
+      evidence combination, which turned out to be the largest of the four seams.
+      Validation, with two false-positive mechanisms found by negative controls
+      on planted planets: `docs/investigations/2026-08-19-fold-gate-validation.md`.
+- [x] **Parallel tempering** (`lab.tempering`, `spin_glass.swap_every`). Lifts
+      M11's documented equilibration floor from T ≈ 0.6 to at least 0.30 at the
+      same wall-clock (75.7 s vs 78.3 s), with a 4x-sweeps control that fails as
+      the module's own docstring predicted.
+      `docs/investigations/2026-08-19-parallel-tempering-lifts-the-floor.md`.
+- [x] **Audit the auditor** (`lab.mutation`). Corrupts every number in a report a
+      check passes and asks whether the verdict moves. Found 31 fields across
+      M03/M07/M14 that were **graded when present and ignored when absent** — a
+      report that lost a field in serialisation kept its leaf. Fixed; the
+      property is now a test over every check with a passing report on disk.
+
+**Open, ranked:**
+
+1. **Grade the star, not the sector — the top sky-track item.** TIC 287328866
+   reads the doubled-fold difference below 5 sigma in six of its eight sectors
+   and 9.4 sigma combined. Every gate in the ladder currently sees one sector at
+   a time, so a star observed eight times gets eight weak looks instead of one
+   strong one. `combine_p2_folds` is the first instance; the general version —
+   carry a star's per-sector evidence forward and grade the star — is a pipeline
+   change, not a gate.
+2. **The shelf-exit rule.** `docs/shelf-exit-contract.md` is written and its
+   mechanism is built; §4 thresholds and §6 destination (ExoFOP as CTOIs) need
+   Ben's ruling. Until then the machine can refute a lead but nothing can promote
+   one, which is the state the outside read correctly called "a way of never
+   shipping".
+3. **Limb-darkened depths instead of box depths.** The admissibility gate
+   reproduces WASP-18 b's radius 7 % high, and the box-fit mean depth is why. A
+   real upgrade (fit a transit model), not a coefficient — and it improves every
+   depth the pipeline reports, not just this gate.
+4. **Houdayer isoenergetic cluster moves** — the next sampler rung past plain
+   tempering for +-J glasses, named and implemented by `peapods`
+   (arXiv 2602.19045). Read Wang-Machta-Katzgraber (Phys. Rev. E 92, 013303)
+   BEFORE spending a sprint on population annealing: they compare it against
+   parallel tempering directly, so that answer can be read rather than measured.
+5. **Reproduce a published Hurst measurement** — the free win from the assay
+   below. de Freitas et al. 2019 (MNRAS 488, 3274) publish the global Hurst
+   exponent for 662 named Kepler stars. Pull the same stars, compute H, compare:
+   an external benchmark on real data for a sky-track instrument, needing no
+   unpublished idea to be worth doing.
+6. **Close the assay pinning gap.** Both 2026-08-19 assays pin citations at
+   abstract level, not equation level, which PROTOCOL section 7 requires. Four
+   papers to read.
+
+**Retired by the assay, not by a build:** the "non-equilibrium diagnostics on
+stellar residuals" greenfield. The umbrella claim is REFUTED (a 662-star Kepler
+multifractal study), the diagnostic advertised as most novel — KPZ roughness — is
+a **renaming** of the Hurst exponent for a 1-D signal, and the two genuinely
+unpublished diagnostics need an observable photometry does not deliver. Full
+verdicts: `docs/assays/2026-08-19-noneq-diagnostics-stellar-photometry.md`. The
+general lesson belongs in PROTOCOL section 3: *"diagnostic X from field A has
+never been applied to field B" deserves the question "is X a renaming of
+something B already does?" before it deserves a backlog slot.*
+
 ## Instrument — a cluster algorithm (the next big unlock)
 
 M02 (finite-size scaling) landed cleanly over L = 32–256 but **stops there**: the

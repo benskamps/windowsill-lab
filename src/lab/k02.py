@@ -538,6 +538,14 @@ def critical_coherence(
     n_meas = int(round(t_measure / dt))
     half = n_meas // 2
     totals = np.zeros(seeds)
+    # Second moment of r over the measurement window, per initial condition. The
+    # susceptibility at criticality is chi_c = N * Var_t(r), and its finite-size
+    # scaling chi_c ~ N^(gamma/nubar_c) is the OTHER exponent this same run can
+    # deliver — see the module docstring and ``fit_chi_exponent``. Accumulated
+    # here rather than measured on the K-sweep because the sweep's window is far
+    # too short at N = 4000 (the reason this function exists at all): a variance
+    # read off a transient is not a susceptibility.
+    sq_totals = np.zeros(seeds)
     first = np.zeros(seeds)
     second = np.zeros(seeds)
     n_first = n_second = 0
@@ -546,6 +554,7 @@ def critical_coherence(
         if step % sample_every == 0:
             r, _ = order_parameter(theta)
             totals += r
+            sq_totals += r * r
             if step < half:
                 first += r
                 n_first += 1
@@ -555,6 +564,16 @@ def critical_coherence(
     samples = n_first + n_second
     per_seed = totals / samples
     mean = float(per_seed.mean())
+    # Time variance per initial condition, then chi = N * Var_t(r).
+    var_per_seed = np.maximum(sq_totals / samples - per_seed ** 2, 0.0)
+    chi_by_seed = n * var_per_seed
+    # MEDIAN over initial conditions, matching the K-sweep's convention: the
+    # per-seed distribution of Var_t(r) is heavy-tailed near criticality (a rare
+    # excursion in one IC dominates a mean), which is exactly why the sweep does
+    # not average it either. The mean is reported alongside so a reader can see
+    # how far apart they are — a large gap IS the heavy tail, visible.
+    chi_median = float(np.median(chi_by_seed))
+    chi_mean = float(chi_by_seed.mean())
     # Per-INITIAL-CONDITION half-window means. Keeping these (rather than only their
     # ensemble averages) is what lets the drift carry its own error bar: a half-to-half
     # change is only evidence of non-equilibration if it is larger than the scatter
@@ -574,6 +593,16 @@ def critical_coherence(
         # would give a spuriously tiny error if used instead.
         "r_sem": float(per_seed.std(ddof=1) / math.sqrt(seeds)) if seeds > 1 else float("nan"),
         "r_by_seed": per_seed.tolist(),
+        "chi_critical": chi_median,
+        "chi_critical_mean": chi_mean,
+        "chi_by_seed": chi_by_seed.tolist(),
+        # Bootstrap-free bar on the MEDIAN: the standard error of a median on n
+        # draws is ~1.253 sigma/sqrt(n) asymptotically, and reporting the mean's
+        # bar on a median would understate it.
+        "chi_sem": (
+            float(1.2533 * chi_by_seed.std(ddof=1) / math.sqrt(seeds))
+            if seeds > 1 else float("nan")
+        ),
         "r_first_half": float(first_by_seed.mean()),
         "r_second_half": float(second_by_seed.mean()),
         "equilibration_drift": abs(float(delta.mean())) / mean if mean > 0 else float("nan"),
@@ -632,6 +661,72 @@ def fit_critical_exponent(rungs) -> dict:
         "err_propagated": float(se_propagated),
         "r2": float(1.0 - float((resid ** 2).sum()) / ss_tot) if ss_tot > 0 else float("nan"),
         "points": len(usable),
+    }
+
+
+def fit_chi_exponent(rungs) -> dict:
+    """gamma/nubar_c from ``log chi(K_c) vs log N`` — the exponent K02 never read.
+
+    Same ladder, same run, same equilibration windows as
+    :func:`fit_critical_exponent`; the only difference is which moment of r is
+    fitted. ``r(K_c) ~ N^(-beta/nubar_c)`` gives the first exponent,
+    ``chi(K_c) = N*Var_t(r) ~ N^(+gamma/nubar_c)`` gives this one.
+
+    **What this measures, and what it does not.** BACKLOG called this "a one-line
+    fit" that would settle the Daido / Hong et al. disagreement. It is a one-line
+    fit, and it does NOT settle that disagreement. Daido's claim is *asymmetric* —
+    gamma = 1/4 approaching K_c from above, gamma' = 1 from below — while Hong et
+    al. report gamma = gamma' = 1/4 with hyperscaling obeyed. Those are exponents
+    of the divergence ``chi ~ |K - K_c|^(-gamma)`` on each SIDE of the transition.
+    A measurement made exactly AT K_c has no side: finite-size scaling there
+    returns one number, ``gamma/nubar_c``, which is a property of the combination
+    and cannot distinguish an asymmetric pair from a symmetric one. Testing the
+    asymmetry needs chi(K) fitted separately above and below, at fixed large N,
+    with the crossover window excluded — a different (and much more expensive)
+    measurement than this.
+
+    So what this IS: the finite-size susceptibility exponent at criticality, in
+    the regular-frequency configuration class, comparable to the value implied by
+    Hong et al.'s gamma and nubar_c. A disagreement here would be evidence
+    against the symmetric reading; agreement is consistent with both and settles
+    nothing on its own. That asymmetry of inference is the honest headline, and
+    the assay it feeds must say so.
+
+    The error bar takes the larger of the regression standard error and the bar
+    propagated from each rung's own initial-condition scatter, exactly as
+    :func:`fit_critical_exponent` does — the same reason applies.
+    """
+    import numpy as np
+
+    usable = [r for r in rungs
+              if r.get("chi_critical", 0) > 0 and math.isfinite(r.get("chi_critical", float("nan")))]
+    if len(usable) < 3:
+        return {"exponent": float("nan"), "err": float("nan"), "r2": float("nan"),
+                "points": len(usable)}
+    x = np.log(np.array([r["n"] for r in usable], dtype=np.float64))
+    y = np.log(np.array([r["chi_critical"] for r in usable], dtype=np.float64))
+    sigma_y = np.array([
+        (r.get("chi_sem", float("nan")) / r["chi_critical"]) if r["chi_critical"] > 0 else np.nan
+        for r in usable])
+    slope, intercept = np.polyfit(x, y, 1)
+    resid = y - (slope * x + intercept)
+    sxx = float(((x - x.mean()) ** 2).sum())
+    dof = len(x) - 2
+    se_regression = math.sqrt(float((resid ** 2).sum()) / dof / sxx) if dof > 0 else float("nan")
+    se_propagated = (
+        math.sqrt(float((((x - x.mean()) * sigma_y) ** 2).sum())) / sxx
+        if np.all(np.isfinite(sigma_y)) else float("nan")
+    )
+    ss_tot = float(((y - y.mean()) ** 2).sum())
+    return {
+        # Positive: chi GROWS with N at criticality.
+        "exponent": float(slope),
+        "err": float(max(se_regression, se_propagated)),
+        "err_regression": float(se_regression),
+        "err_propagated": float(se_propagated),
+        "r2": float(1.0 - float((resid ** 2).sum()) / ss_tot) if ss_tot > 0 else float("nan"),
+        "points": len(usable),
+        "measures": "gamma/nubar_c at K_c (one-sided exponents NOT separable here)",
     }
 
 
