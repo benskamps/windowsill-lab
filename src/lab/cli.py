@@ -620,17 +620,31 @@ def _parse_m11(args):
     # — no finite-T transition) and shows the disorder-averaged P(q) broadening as T
     # falls. It batches realizations × temperatures × 2 replicas in one GPU pass; the
     # disorder average over MANY realizations is mandatory. L is modest (spin glasses
-    # are expensive and the overlap needs two replicas each). The default cold edge is
-    # T=0.6: below ≈0.5–0.6 single-spin Metropolis can't equilibrate the L=16 glass in
-    # tractable time (the coldest points fall into an under-equilibration dip — the
-    # reason parallel tempering exists), so the trustworthy window starts at the floor
-    # and the broadening trend toward T=0 is the claim, the un-equilibrable tail is not.
+    # are expensive and the overlap needs two replicas each).
+    #
+    # The cold edge used to default to T=0.6, because below ≈0.5–0.6 single-spin
+    # Metropolis cannot equilibrate the L=16 glass in tractable time and the coldest
+    # points fall into an under-equilibration dip. Since 2026-08-19 the run TEMPERS
+    # by default (parallel tempering, the move that failure exists to motivate) and
+    # the cold edge is 0.30 — measured, at the same wall-clock, with the untempered
+    # ladder kept alongside as a comparison so nothing already published is silently
+    # replaced. These defaults must track lab.m11's, or `lab m11` would quietly run
+    # the old experiment while the module claimed the new one.
+    from . import m11 as _m11_defaults
     p.add_argument("--L", type=int, default=16,
                    help="lattice side (default 16; spin glasses are expensive)")
     p.add_argument("--quick", action="store_true",
                    help="L=8, few realizations, short sweep for a fast sanity pass")
-    p.add_argument("--t-min", type=float, default=0.6,
-                   help="cold edge (default 0.6 — the single-spin-Metropolis equilibration floor)")
+    p.add_argument("--t-min", type=float, default=_m11_defaults.T_FLOOR_TEMPERED,
+                   help=("cold edge (default %(default)s — reachable because the run "
+                         "tempers; the untempered floor is 0.6)"))
+    p.add_argument("--swap-every", type=int, default=_m11_defaults.SWAP_EVERY,
+                   help=("sweeps between parallel-tempering exchanges (default "
+                         "%(default)s; 0 disables tempering, which below T=0.6 "
+                         "produces the dip and is refused by check_m11)"))
+    p.add_argument("--no-comparison", action="store_true",
+                   help=("skip the second, untempered ladder. Halves the wall-clock "
+                         "and drops the side-by-side that keeps the dip visible"))
     p.add_argument("--t-max", type=float, default=2.0)
     p.add_argument("--n-temps", type=int, default=16)
     p.add_argument("--realizations", type=int, default=64,
@@ -1694,7 +1708,8 @@ def main(argv=None):
         result = m11.run_m11(
             L=L, T_min=ns.t_min, T_max=ns.t_max, n_temps=ns.n_temps,
             n_realizations=realizations, n_sweeps=sweeps, n_burnin=burnin,
-            seed=ns.seed, device=ns.device, progress=_progress_m11,
+            seed=ns.seed, device=ns.device, swap_every=ns.swap_every,
+            comparison=not ns.no_comparison, progress=_progress_m11,
         )
         report = m11.to_report(result)
         verdict = ("P(q) broadens toward T=0" if result.monotone_broadening
@@ -1702,6 +1717,15 @@ def main(argv=None):
         print(f"  → ⟨q²⟩ grows {result.q2_hot:.3f} → {result.q2_cold:.3f} as T→0 "
               f"({result.broadening_fraction*100:.0f}% of steps) · max|⟨q⟩|="
               f"{result.max_abs_q_mean:.3f} · {verdict} · {result.wall_seconds:.0f}s")
+        if result.swap_health:
+            health = result.swap_health
+            print(f"  → exchange: min adjacent acceptance {health['min']:.2f}, "
+                  f"mean {health['mean']:.2f}, "
+                  f"{'ladder connected' if health['connected'] else 'LADDER BROKEN at pair '
+                     + str(health['argmin_pair'])}")
+        if result.comparison and not result.comparison["monotone_broadening"]:
+            print(f"  → without the exchange move the same ladder turns over at "
+                  f"T={result.comparison['q2_argmax_T']:.2f} (the dip, kept in the report)")
         path = render_mod.render_m11(report)
         print(f"  ✓ report: {path}")
         try:

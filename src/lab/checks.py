@@ -1096,6 +1096,14 @@ def check_m10(report: dict) -> tuple[bool | None, str]:
     return ok, detail
 
 
+#: The temperature below which single-spin Metropolis cannot equilibrate the 2D
+#: +-J glass at L=16 — the floor M11 shipped with, and now the line below which a
+#: report must carry a tempering move to be graded at all. Check-owned: it lives
+#: here rather than being read from the report, so a run cannot widen its own
+#: trustworthy window.
+M11_UNTEMPERED_FLOOR = 0.6
+
+
 def check_m11(report: dict) -> tuple[bool | None, str]:
     """2D Edwards–Anderson spin glass: P(q) BROADENS as T → 0 — the T=0-critical signature.
 
@@ -1122,6 +1130,27 @@ def check_m11(report: dict) -> tuple[bool | None, str]:
     """
     if report.get("experiment") != "M11-spin-glass-2d":
         return None, "not an M11 spin-glass report"
+
+    # A run may go cold, or it may go untempered. A report that does both is
+    # publishing a transient: below T ~ 0.6 at L=16 single-spin Metropolis cannot
+    # equilibrate the glass, and the coldest rungs fall into an under-equilibration
+    # dip where the overlap is SUPPRESSED rather than grown (verified 2026-08-19:
+    # 4x the burn-in does not lift it; the exchange move does, at the same
+    # wall-clock). Graded as a failure rather than skipped, because the arrays
+    # would otherwise look like ordinary noisy physics and pass the trend test.
+    cfg_m11 = report.get("config") or {}
+    t_min = cfg_m11.get("T_min")
+    swap_every = cfg_m11.get("swap_every", 0) or 0
+    if isinstance(t_min, (int, float)) and not isinstance(t_min, bool):
+        if t_min < M11_UNTEMPERED_FLOOR and not swap_every:
+            return False, (
+                f"M11 ran to T_min={t_min:g} with no parallel tempering "
+                f"(swap_every=0). Below T={M11_UNTEMPERED_FLOOR:g} single-spin "
+                f"Metropolis cannot equilibrate this glass, so the cold rungs are "
+                f"a transient, not the T=0 approach — go warmer or turn the "
+                f"exchange move on"
+            )
+
     T, q2 = report.get("T"), report.get("q2_mean")
     if not T or not q2 or len(T) != len(q2) or len(T) < 3:
         return None, "M11 report missing (T, q2_mean) arrays (need ≥3 temperatures)"

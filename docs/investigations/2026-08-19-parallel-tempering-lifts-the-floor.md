@@ -126,22 +126,39 @@ is mixing.
   prior-art assay for what is and is not novel about the method itself
   (spoiler: nothing).
 
-## 7. Not wired into M11
+## 7. Wired into M11, with the old ladder kept beside it
 
-`swap_every` defaults to **0**, which reproduces every number measured before
-today bit-for-bit — the exchange draws from its own RNG stream, so an untempered
-run is byte-identical whether the feature exists or not (there is a test for
-this). Turning it on for M11 means changing what a shipped milestone measures
-and re-running the ladder below its published floor, which is Ben's call, not a
-sampler's.
+**Ben's ruling, same day: re-run tempered, keep both ladders.**
 
-The concrete proposal, when he wants it: `T_min = 0.30`, `swap_every = 50`,
-everything else unchanged. It costs the same 76 seconds M11 already spends and
-it returns six rungs the milestone currently cannot claim.
+`run_m11` now defaults to `T_min = 0.30`, `swap_every = 50`, and runs the
+identical ladder a *second* time with the exchange off, storing it in the
+report's `comparison` block. That doubles the wall-clock, and the doubling is
+the point: the untempered ladder is what single-spin Metropolis can see, the
+tempered one is what the glass actually does, and publishing the second without
+the first would quietly replace numbers this milestone has already shipped.
+Nothing is revised away — the dip becomes part of the record, with the
+temperature it turns over at recorded as `q2_argmax_T`.
+
+Both runs use the same seed, so the bonds and the initial spins are the same
+disorder realizations and the two ladders differ *only* in whether
+configurations were allowed to change temperature. That is what makes the
+comparison a comparison rather than two experiments.
+
+`check_m11` gained a guard to match: a report with `T_min` below 0.6 and no
+tempering move is **failed**, not graded. A run may go cold, or it may go
+untempered; a report that does both is publishing a transient, and the arrays
+would otherwise look like ordinary noisy physics and pass the trend test.
+The floor lives in the check, not in the report, so a run cannot widen its own
+trustworthy window.
+
+`swap_every` still defaults to **0** at the `spin_glass` layer, so every other
+caller and every number measured before today is bit-identical — the exchange
+draws from its own RNG stream, and there is a test for it.
 
 ---
 
-**Raw output:** the four arms' full ladders, swap health and wall-clock are in
-the run's JSON. **Code:** `lab/tempering.py` (the move), `lab/spin_glass.py`
+**Raw output:** `docs/investigations/2026-08-19-tempering-benchmark.json` — all
+four arms' full ladders, per-rung ⟨q²⟩, ⟨q⟩, energy, Binder, swap health and
+wall-clock. **Code:** `lab/tempering.py` (the move), `lab/spin_glass.py`
 (`swap_every`), `tests/test_tempering.py` (21 tests, including the exact
 enumeration). **Prior art:** `docs/assays/2026-08-19-fold-gates-and-tempering-prior-art.md`.
