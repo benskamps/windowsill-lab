@@ -74,6 +74,8 @@ from dataclasses import dataclass, asdict
 import numpy as np
 import torch
 
+from . import tempering
+
 
 @dataclass
 class SpinGlassConfig:
@@ -88,6 +90,14 @@ class SpinGlassConfig:
     n_qbins: int = 41              # odd → a bin centred on q = 0; histogram on [-1, 1]
     seed: int = 42
     device: str = "cuda"
+    #: Sweeps between parallel-tempering exchange attempts. **0 disables it**,
+    #: which is the default and reproduces every number measured before
+    #: 2026-08-19 bit-for-bit: the swap generator is drawn from separately, so
+    #: the Metropolis RNG stream is untouched whether tempering is on or off.
+    #: A positive value turns the temperature ladder from M independent chains
+    #: into one coupled chain (see :mod:`lab.tempering`) — the move that exists
+    #: because 4x the burn-in did not lift the cold-end dip.
+    swap_every: int = 0
 
     def n_samples(self) -> int:
         return self.n_sweeps // self.sample_every
@@ -104,6 +114,7 @@ class SpinGlassResult:
     q4_mean: np.ndarray            # ⟨q⁴⟩ disorder-averaged, (n_temps,)
     q_abs_mean: np.ndarray         # ⟨|q|⟩ disorder-averaged, (n_temps,)
     q_mean: np.ndarray             # ⟨q⟩ disorder-averaged, (n_temps,) — ≈0 by symmetry (equil. diagnostic)
+    swap_health: dict | None       # parallel-tempering ladder diagnostics, None when disabled
     binder: np.ndarray             # g = ½(3 − ⟨q⁴⟩/⟨q²⟩²), (n_temps,)
     energy: np.ndarray             # mean energy per spin (replica/realization avg), (n_temps,)
     wall_seconds: float
@@ -119,6 +130,7 @@ class SpinGlassResult:
             "q4_mean": self.q4_mean.tolist(),
             "q_abs_mean": self.q_abs_mean.tolist(),
             "q_mean": self.q_mean.tolist(),
+            "swap_health": self.swap_health,
             "binder": self.binder.tolist(),
             "energy": self.energy.tolist(),
             "wall_seconds": self.wall_seconds,
@@ -199,6 +211,11 @@ def run(cfg: SpinGlassConfig) -> SpinGlassResult:
     g_bond = torch.Generator(device=device).manual_seed(cfg.seed)
     g_init = torch.Generator(device=device).manual_seed(cfg.seed + 1)
     g_step = torch.Generator(device=device).manual_seed(cfg.seed + 2)
+    # A SEPARATE stream for the exchange draws. Creating a generator consumes
+    # nothing from the others, so a tempered run and an untempered one see
+    # identical Metropolis randomness and the only difference between them is
+    # the move that was added.
+    g_swap = torch.Generator(device=device).manual_seed(cfg.seed + 3)
 
     T = torch.linspace(cfg.T_min, cfg.T_max, M, device=device, dtype=torch.float32)
     # beta broadcast over (R, M, 2, L, L): only the M (temperature) axis varies.
@@ -215,10 +232,39 @@ def run(cfg: SpinGlassConfig) -> SpinGlassResult:
     spins = (torch.randint(0, 2, (B, L, L), generator=g_init, device=device, dtype=torch.int8) * 2 - 1)
     mask_a, mask_b = _checkerboard_masks(L, B, device)
 
+    beta_row = (1.0 / T)                                   # (M,) for the exchange
+    n_pairs = max(M - 1, 0)
+    swap_accepts = torch.zeros(n_pairs, device=device)
+    swap_attempts = torch.zeros(n_pairs, device=device)
+    swap_parity = 0
+
+    def _maybe_swap(spins, step):
+        """One parallel-tempering exchange attempt, or a no-op when disabled."""
+        nonlocal swap_parity
+        if not cfg.swap_every or step % cfg.swap_every or n_pairs == 0:
+            return spins
+        sv = spins.view(R, M, 2, L, L).float()
+        field = _weighted_neighbor_sum(spins, Jx, Jy).view(R, M, 2, L, L).float()
+        # TOTAL energy, not per spin: the swap exponent is extensive, and
+        # dividing by N would shrink every ΔE toward zero and make the ladder
+        # look beautifully mixed while nothing physical crossed it.
+        e_tot = -0.5 * (sv * field).sum(dim=(-1, -2))               # (R, M, 2)
+        state = spins.view(R, M, 2, L, L).permute(0, 2, 1, 3, 4)    # (R, 2, M, L, L)
+        state, accept = tempering.exchange(
+            state.contiguous(), beta_row, e_tot.permute(0, 2, 1),
+            swap_parity, g_swap, temp_axis=2)
+        lo = torch.arange(swap_parity, M - 1, 2, device=device)
+        swap_accepts.index_add_(0, lo, accept.float().sum(dim=(0, 1)))
+        swap_attempts.index_add_(0, lo, torch.full((lo.numel(),),
+                                                   float(R * 2), device=device))
+        swap_parity ^= 1
+        return state.permute(0, 2, 1, 3, 4).reshape(B, L, L).contiguous()
+
     t0 = time.time()
-    for _ in range(cfg.n_burnin):
+    for step in range(cfg.n_burnin):
         spins = _half_sweep(spins, beta, Jx, Jy, mask_a, g_step)
         spins = _half_sweep(spins, beta, Jx, Jy, mask_b, g_step)
+        spins = _maybe_swap(spins, step)
 
     # Histogram bins on [-1, 1]; odd n_qbins centres a bin on q = 0.
     edges = torch.linspace(-1.0, 1.0, cfg.n_qbins + 1, device=device)
@@ -234,6 +280,7 @@ def run(cfg: SpinGlassConfig) -> SpinGlassResult:
     for s in range(cfg.n_sweeps):
         spins = _half_sweep(spins, beta, Jx, Jy, mask_a, g_step)
         spins = _half_sweep(spins, beta, Jx, Jy, mask_b, g_step)
+        spins = _maybe_swap(spins, cfg.n_burnin + s)
         if s % cfg.sample_every == 0:
             sv = spins.view(R, M, 2, L, L).float()
             # Overlap between the two replicas of each (realization, temperature).
@@ -285,6 +332,8 @@ def run(cfg: SpinGlassConfig) -> SpinGlassResult:
         q4_mean=q4_mean.cpu().numpy(),
         q_abs_mean=qabs_mean.cpu().numpy(),
         q_mean=q_mean.cpu().numpy(),
+        swap_health=(tempering.ladder_health(swap_accepts, swap_attempts)
+                     if cfg.swap_every else None),
         binder=binder.cpu().numpy(),
         energy=energy.cpu().numpy(),
         wall_seconds=wall,
