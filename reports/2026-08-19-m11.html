@@ -45,7 +45,7 @@
     <summary>Raw measurements (JSON)</summary>
     <pre>{
   "experiment": "M11-spin-glass-2d",
-  "headline": "2D Edwards–Anderson spin glass (L=16, 64 disorder realizations, parallel tempering): ⟨q²⟩ grows 0.011 → 0.476 as T falls 2.00 → 0.30 — P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase); the same ladder without the exchange move turns over at T=0.53 · 151s on GPU",
+  "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations, parallel tempering): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.476 as T falls 2.00 \u2192 0.30 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase); the same ladder without the exchange move turns over at T=0.53 \u00b7 151s on GPU",
   "L": 16,
   "n_realizations": 64,
   "T": [
@@ -1015,25 +1015,6 @@
     "disorder": "bimodal-pm-J",
     "swap_every": 50,
     "device": "cuda"
-  },
-  "report_schema_version": 1,
-  "generated_at": "2026-08-20T01:11:49.221742+00:00",
-  "provenance": {
-    "source_commit": "352ff3cff6e71c9670541c660b839b3e7a0686af",
-    "source_clean": true,
-    "source_diff_sha256": null,
-    "source_tree_sha256": "bb9d81b665c526f39fe04dda254fd93e12c840e27ec1f4013dc2e97a56e5854e",
-    "python": "3.13.14",
-    "platform": "windows-amd64",
-    "dependencies": {
-      "numpy": "2.4.6",
-      "torch": "2.6.0+cu124",
-      "matplotlib": "3.11.0"
-    }
-  },
-  "reproduction": {
-    "regrade": "python -m lab.cli verify M11",
-    "rerun": "python -m lab.cli m11"
   }
 }</pre>
   </details>

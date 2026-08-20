@@ -462,28 +462,23 @@
     }
   ],
   "total": 36,
-  "last_run": "2026-08-16T01:56:45.433995+00:00",
-  "runs": 55,
+  "last_run": "2026-08-20T01:11:49.221742+00:00",
+  "runs": 56,
   "temp_c": null,
   "latest_report": {
-    "date": "2026-08-15",
-    "milestone": "M12",
-    "verdict": "null",
-    "headline": "3D Edwards\u2013Anderson spin glass (L=[6, 8, 10, 12], 500 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 1.221 (benchmark 1.10 \u00b1 0.10) \u2014 no clean crossing near 1.10 \u2014 calibration null \u00b7 2140s",
+    "date": "2026-08-19",
+    "milestone": "M11",
+    "verdict": "verified",
+    "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations, parallel tempering): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.476 as T falls 2.00 \u2192 0.30 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase); the same ladder without the exchange move turns over at T=0.53 \u00b7 151s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-15-2156-m12.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-19-2111-m11.json",
     "machine": "windows-cuda",
-    "at": "2026-08-16T01:56:45.433995+00:00",
-    "group_count": 2,
-    "group_first_date": "2026-08-15",
-    "group_machines": [
-      "windows-cuda"
-    ]
+    "at": "2026-08-20T01:11:49.221742+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-16T01:56:50.969801+00:00",
+  "updated": "2026-08-20T01:11:54.464236+00:00",
   "provenance": {
-    "code_sha": "0cbb49b",
+    "code_sha": "352ff3c",
     "env": "python 3.13.14 \u00b7 windows",
     "deps": {
       "torch": "2.6.0+cu124",
@@ -492,6 +487,16 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-19",
+      "milestone": "M11",
+      "verdict": "verified",
+      "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations, parallel tempering): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.476 as T falls 2.00 \u2192 0.30 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase); the same ladder without the exchange move turns over at T=0.53 \u00b7 151s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-19-2111-m11",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-19-2111-m11.json",
+      "machine": "windows-cuda",
+      "at": "2026-08-20T01:11:49.221742+00:00"
+    },
     {
       "date": "2026-08-15",
       "milestone": "M12",
@@ -1260,10 +1265,10 @@
     }
   ],
   "turns": {
-    "count": 141,
-    "today": 4,
+    "count": 142,
+    "today": 1,
     "last_by_machine": {
-      "windows-cuda": "2026-08-16T01:56:45.433995+00:00",
+      "windows-cuda": "2026-08-20T01:11:49.221742+00:00",
       "linux-rocm": "2026-08-16T01:00:25.259181+00:00"
     },
     "expected_interval_h": 3
