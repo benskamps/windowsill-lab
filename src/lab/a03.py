@@ -46,7 +46,21 @@ DEFAULT_VERSION = "v3"
 from .labhome import CACHE as LAB_CACHE
 
 CACHE_DIR = LAB_CACHE / "a03"
-USER_AGENT = "windowsill-lab/a03 (+https://github.com/benskamps/windowsill-lab)"
+def _user_agent() -> str:
+    """Identify THIS checkout to GWOSC, not the upstream author's.
+
+    A courtesy header, and courtesy that names the wrong party is worse than
+    none: an operator who needs to contact whoever is hitting their archive
+    should reach the person actually running it. Derived from the checkout's own
+    remote; falls back to the bare project name when there is nothing to point
+    at (see :mod:`lab.origin`).
+    """
+    from . import origin
+    url = origin.repo_url()
+    return f"windowsill-lab/a03 (+{url})" if url else "windowsill-lab/a03"
+
+
+USER_AGENT = _user_agent()
 
 FS_RAW = 4096
 DECIM = 4

@@ -33,9 +33,11 @@ import json
 import re
 from pathlib import Path
 
+from . import origin
 from .publish import (
-    ARCHIVE_URL, CADENCE, LAB_HOME, RECEIPTS_DIR, RECEIPT_URL_BASE, REPORTS_DIR,
-    REPORT_URL_BASE, _DATE_GLOB, _date_of, _milestone_for, _peak_t,
+    CADENCE, LAB_HOME, RECEIPTS_DIR, REPORTS_DIR,
+    archive_url, receipt_url_base,
+    _DATE_GLOB, _date_of, _milestone_for, _peak_t,
     _receipt_filename, _slug_for, _split_receipt_stem, cadence_is_effective,
     today_local,
 )
@@ -220,6 +222,21 @@ def classify_run(report: dict) -> dict:
     }
 
 
+def _archive_anchor(date, slug, turn) -> str | None:
+    """Deep link into the committed ledger, or None when this checkout has no
+    resolvable public home. Never a link into somebody else's repository —
+    see :mod:`lab.origin`."""
+    base = archive_url()
+    return f"{base}#{_anchor_for(date, slug, turn)}" if base else None
+
+
+def _repo_link() -> str:
+    """The ledger footer's code link, degraded to plain text when unresolvable."""
+    url = origin.repo_url()
+    name = (origin.slug() or "").split("/")[-1] or "this lab"
+    return f'<a href="{url}">{name}</a>' if url else "this repository"
+
+
 def _anchor_for(date: str, slug: str, turn: str | None = None) -> str:
     """Stable, URL-safe archive row anchor for one dated run.
 
@@ -308,7 +325,8 @@ def _href_for(date: str, slug: str, is_repo: bool,
     publication (the page link-guard keeps non-http hrefs out of the feed).
     """
     if is_repo:
-        return f"{ARCHIVE_URL}#{_anchor_for(date, slug, turn)}"
+        base = archive_url()
+        return f"{base}#{_anchor_for(date, slug, turn)}" if base else None
     # Local-only: a file path to the dated JSON cache. Not an http link.
     return local_path.as_uri() if local_path.exists() else str(local_path)
 
@@ -411,7 +429,8 @@ def scan_runs() -> list[dict]:
             row["local_only"] = not is_repo
             row["report_href"] = _href_for(date, slug, is_repo, p, turn)
             row["receipt_href"] = (
-                RECEIPT_URL_BASE + receipt.name if receipt is not None else None
+                origin.join(receipt_url_base(), receipt.name)
+                if receipt is not None else None
             )
             _stamp_provenance(row, data)
 
@@ -454,7 +473,7 @@ def scan_runs() -> list[dict]:
                     "numbers": "—", "code_sha": None,
                     "has_dated_html": False, "local_only": False,
                     "receipt_href": None,
-                    "report_href": f"{ARCHIVE_URL}#{_anchor_for(date, slug, turn)}",
+                    "report_href": _archive_anchor(date, slug, turn),
                 })
                 continue
             row = classify_run(data)
@@ -464,8 +483,8 @@ def scan_runs() -> list[dict]:
             row["has_dated_html"] = False
             # Receipts are committed — this run is repo-backed, not local-only.
             row["local_only"] = False
-            row["report_href"] = f"{ARCHIVE_URL}#{_anchor_for(date, slug, turn)}"
-            row["receipt_href"] = RECEIPT_URL_BASE + p.name
+            row["report_href"] = _archive_anchor(date, slug, turn)
+            row["receipt_href"] = origin.join(receipt_url_base(), p.name)
             _stamp_provenance(row, data)
             by_key[key] = (mtime, row)
 
@@ -809,7 +828,7 @@ INDEX_TEMPLATE = """<!doctype html>
   <div class="footer">
     {count} runs on record · newest first · generated {generated}.
     The calm face is the <a href="https://www.brokenbranch.dev/windowsill/">windowsill</a>;
-    the code is <a href="https://github.com/benskamps/windowsill-lab">windowsill-lab</a>.
+    the code is {repo_link}.
   </div>
 </div>
 </body>
@@ -1040,6 +1059,7 @@ def render_index(runs: list[dict] | None = None, *,
     return INDEX_TEMPLATE.format(
         summary=summary, scoreboard=_scoreboard_section(), groups=groups_html,
         count=len(runs), generated=generated, eranote=eranote,
+        repo_link=_repo_link(),
     )
 
 

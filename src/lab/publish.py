@@ -23,6 +23,7 @@ import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
 
+from . import origin
 from .stories import STORIES   # durable plain-language story layer (stdlib-only dict)
 from .curriculum import RUNNERS
 from .m01_quality import assess_m01_quality
@@ -56,20 +57,29 @@ ONSAGER_TC = 2.0 / math.log(1.0 + math.sqrt(2.0))   # ≈ 2.2692
 # ``REPORT_URL_BASE + "<date>-<slug>.html"``. htmlpreview renders committed HTML
 # straight from GitHub raw — so a per-run link only resolves once the nightly
 # has committed + pushed that file (same constraint latest.html already has).
-REPORT_URL_BASE = (
-    "https://htmlpreview.github.io/?"
-    "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/"
-)
-REPORT_URL = REPORT_URL_BASE + "latest.html"
+def report_url_base() -> str | None:
+    """htmlpreview prefix for this repo's committed reports, or None.
 
-# The committed archive index — the honest every-run ledger page. A sibling of
-# REPORT_URL (htmlpreview over the committed reports/index.html), so the
-# windowsill page's "see all N runs" link resolves with no extra hosting.
-ARCHIVE_URL = REPORT_URL_BASE + "index.html"
-RECEIPT_URL_BASE = (
-    "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/"
-    "reports/receipts/"
-)
+    Derived from the checkout's own git remote (see :mod:`lab.origin`), never
+    hardcoded: a fork that published links built from the upstream author's slug
+    would show its own numbers above somebody else's evidence, which is the most
+    damaging failure available to a lab whose whole claim is checkability.
+    """
+    return origin.join(origin.preview_base(), "reports/")
+
+
+def report_url() -> str | None:
+    return origin.join(report_url_base(), "latest.html")
+
+def archive_url() -> str | None:
+    """The committed every-run ledger page — a sibling of :func:`report_url`,
+    so the windowsill page's "see all N runs" link resolves with no extra
+    hosting."""
+    return origin.join(report_url_base(), "index.html")
+
+
+def receipt_url_base() -> str | None:
+    return origin.join(origin.raw_base(), "reports/receipts/")
 
 # A checklist line: "- [x] **M01** — 2D Ising verification. ..."
 # IDs are letter-prefixed by track: M=physics, C=compute/number-theory,
@@ -690,7 +700,7 @@ def latest_report() -> dict | None:
         "peak_t": peak_t,
         "onsager_tc": round(ONSAGER_TC, 4),
         "wall_s": wall,
-        "url": REPORT_URL,
+        "url": report_url(),
     }
 
 
@@ -764,7 +774,7 @@ def _run_record(path: Path, data: dict) -> dict:
     # — the same "only after a push" constraint latest.html already carries. A
     # local ~/.lab copy maps to the same canonical URL it'll have once backfilled,
     # so the record stays an http link (page link-guard + schema both want http).
-    url = REPORT_URL_BASE + f"{date}-{slug}.html"
+    url = origin.join(report_url_base(), f"{date}-{slug}.html")
     status = "null" if str(data.get("status", "")).lower() == "null" else "unscored"
     headline = data.get("headline")
     if slug == "m01":
@@ -1282,7 +1292,7 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
         # The latest field note has a real full render at latest.html. Archive
         # rows keep stable record anchors + receipt_url for older runs.
         latest = dict(latest)
-        latest["href"] = REPORT_URL
+        latest["href"] = report_url()
     snap = {
         "schema_version": SCHEMA_VERSION,
         "source": "windowsill-lab",
@@ -1292,7 +1302,7 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
         "runs": runs,
         "temp_c": temp_c,
         "latest_report": latest,
-        "archive_url": ARCHIVE_URL,
+        "archive_url": archive_url(),
         "updated": datetime.now(timezone.utc).isoformat(),
         # PUBLISHER-box provenance: the environment that built this feed, which
         # is not necessarily the environment that ran any given result. Never

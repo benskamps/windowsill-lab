@@ -642,7 +642,7 @@ def test_build_snapshot_latest_report_carries_group_fields():
     latest = snap["latest_report"]
     assert latest["group_count"] == 5
     assert latest["group_first_date"] == "2026-07-20"
-    assert latest["href"] == publish.REPORT_URL
+    assert latest["href"] == publish.report_url()
 
 
 def test_build_snapshot_back_compat_without_reports():

@@ -188,7 +188,7 @@ def test_scan_runs_committed_run_links_to_exact_archive_row(tmp_path, monkeypatc
     # Dated per-run renders are gitignored (never on GitHub), so a committed run
     # deep-links to the exact row on the committed, htmlpreview-able archive
     # index — not its own uncommitted dated render, which would 400.
-    assert r["report_href"] == publish.ARCHIVE_URL + "#run-2026-06-15-m01"
+    assert r["report_href"] == publish.archive_url() + "#run-2026-06-15-m01"
     assert "2026-06-15-m01.html" not in r["report_href"]
 
 
