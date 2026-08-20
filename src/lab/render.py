@@ -3269,7 +3269,7 @@ def render_m15(report: dict, date: str | None = None) -> Path:
     else:
         verdict = (
             f"The domain length grows as L(t) &sim; t^n with n = {n_str} (R&sup2; = {r2:.4f}), which "
-            f"does <em>not</em> sit within tolerance of the Allen-Cahn 1/2. Kept honestly as an "
+            f"does <em>not</em> sit within tolerance of the Allen-Cahn 1/2. Kept as an "
             f"open/null - a folded grey leaf - not a fake 0.500. The most likely causes at this scale "
             f"are too short a scaling window, an off-target quench temperature, or a seed frozen into "
             f"a metastable stripe; a larger lattice run to later times sharpens it."

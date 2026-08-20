@@ -52,7 +52,7 @@ lab setup   # install the scheduled job so the windowsill grows on its own
 ```
 
 **No GPU? It still runs.** Every engine takes `--device cpu`, and the smaller
-milestones are honest on a CPU in seconds — `lab m18 --quick --device cpu` proves
+milestones reproduce their targets on a CPU in seconds — `lab m18 --quick --device cpu` proves
 the whole pipeline end to end. The GPU buys lattice size and patience, not
 correctness.
 
