@@ -1274,8 +1274,8 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 7654,
-    "above_threshold": 90,
+    "targets_searched": 7853,
+    "above_threshold": 92,
     "dispositions": {
       "eclipsing-binary-secondary": 15,
       "harmonic-alias": 15,
@@ -1284,9 +1284,9 @@
       "phased-brightening": 2,
       "toi-known-fp": 2,
       "known-planet": 3,
-      "recovery-or-known": 7,
+      "recovery-or-known": 8,
       "stellar-pulsation": 11,
-      "insufficient-coverage": 2,
+      "insufficient-coverage": 3,
       "lead-awaiting-human-review": 6,
       "centroid-shift": 3
     },
