@@ -1719,10 +1719,11 @@ def main(argv=None):
               f"{result.max_abs_q_mean:.3f} · {verdict} · {result.wall_seconds:.0f}s")
         if result.swap_health:
             health = result.swap_health
+            ladder = ("ladder connected" if health["connected"]
+                      else "LADDER BROKEN at pair " + str(health["argmin_pair"]))
             print(f"  → exchange: min adjacent acceptance {health['min']:.2f}, "
                   f"mean {health['mean']:.2f}, "
-                  f"{'ladder connected' if health['connected'] else 'LADDER BROKEN at pair '
-                     + str(health['argmin_pair'])}")
+                  f"{ladder}")
         if result.comparison and not result.comparison["monotone_broadening"]:
             print(f"  → without the exchange move the same ladder turns over at "
                   f"T={result.comparison['q2_argmax_T']:.2f} (the dip, kept in the report)")

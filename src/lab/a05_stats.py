@@ -82,6 +82,29 @@ from . import a04
 #: the level B can resolve", and leaves smaller numbers to the reported tail.
 DEFAULT_B = 256
 
+#: Escalation ladder for targets that SATURATE the resolution floor.
+#:
+#: ``(1+k)/(B+1)`` is a valid finite-sample bound, and that validity is exactly
+#: why it must not be swapped for the fitted tail (see the contract split in the
+#: module docstring). But a bound pinned at its floor carries no information:
+#: on the 2026-08-20 ledger, 130 of 133 graded targets read 0.003891 — the
+#: literal value of 1/257 — so the graded FAP was a constant, not a measurement,
+#: for every target that mattered.
+#:
+#: The fix that keeps the contract is to buy resolution where it is missing:
+#: re-run the null with more permutations, but ONLY for the targets sitting on
+#: the floor. Each rung costs ~B periodograms, so the ladder is walked
+#: adaptively and stops the moment a target lifts off its floor.
+#:
+#:   B = 256   floor 3.9e-3      every target pays this
+#:   B = 2048  floor 4.9e-4      only floor-sitters
+#:   B = 16384 floor 6.1e-5      only the survivors of the rung above
+#:
+#: 16384 is the last rung because the survey-level trials factor over ~7.3e3
+#: targets is ~1 at that floor (see :func:`survey_trials`): resolving further
+#: would be measuring below the level at which the survey can claim anything.
+ESCALATION_LADDER = (2048, 16384)
+
 #: Block length for the block shuffle, in days of cadences. TESS 2-minute data
 #: carries red noise (pulsation tails, scattered-light ramps) correlated on
 #: hours; ~0.75 d ≈ 540 cadences keeps that structure inside a block so the
@@ -499,3 +522,54 @@ def uniformity_stat(p_values: np.ndarray) -> tuple[float, bool]:
     stat = float(max(np.max(i / n - ps), np.max(ps - (i - 1) / n)))
     crit = KS_CRITICAL_COEFF / (math.sqrt(n) + 0.12 + 0.11 / math.sqrt(n))
     return stat, bool(stat < crit)
+
+
+# --------------------------------------------------------------- escalation --
+
+def resolution_floor(B: int) -> float:
+    """Smallest FAP ``B`` permutations can support: ``1/(B+1)``."""
+    return 1.0 / (float(B) + 1.0)
+
+
+def saturated(fap_graded: float, B: int, *, rel_tol: float = 1e-9) -> bool:
+    """Is this graded FAP pinned at the floor — i.e. carrying no information?
+
+    A target at the floor is telling you "B permutations never once beat me",
+    which is a lower bound on its significance and an upper bound on what this
+    ensemble can say. It is not a measurement of how significant the target is.
+    """
+    try:
+        f = float(fap_graded)
+    except (TypeError, ValueError):
+        return False
+    floor = resolution_floor(B)
+    return f <= floor * (1.0 + rel_tol)
+
+
+def next_rung(B: int) -> int | None:
+    """The next permutation count above ``B``, or ``None`` at the top."""
+    for rung in ESCALATION_LADDER:
+        if rung > B:
+            return int(rung)
+    return None
+
+
+def survey_trials(n_searched: int, fap_threshold: float) -> dict:
+    """Expected false alarms across the whole survey at this threshold.
+
+    The per-target FAP already corrects for the look-elsewhere effect ACROSS
+    PERIODS within one star (it is the distribution of the null *maximum* over
+    the scan). It does not correct for the look-elsewhere effect across STARS,
+    and the survey searches thousands. A per-target 3.9e-3 over 7,346 targets
+    expects ~29 false alarms; a ledger that reports the former and not the
+    latter is quoting the wrong number for the claim it is making.
+
+    Returns the expectation and the Poisson probability that at least one of
+    the survey's leads is noise.
+    """
+    n = int(n_searched)
+    a = float(fap_threshold)
+    expected = n * a
+    return {"n_searched": n, "fap_threshold": a,
+            "expected_false_alarms": float(expected),
+            "p_at_least_one": float(-math.expm1(-expected))}

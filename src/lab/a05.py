@@ -80,8 +80,8 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-from . import (a01, a04, a05_fold, a05_physical, a05_sensitivity, a05_stats,
-               a05_vetting)
+from . import (a01, a04, a05_fold, a05_physical, a05_sensitivity, a05_shape,
+               a05_sky, a05_stats, a05_vetting)
 
 EXPERIMENT = "a05-survey-hunt"
 SCHEMA_VERSION = 1
@@ -115,6 +115,10 @@ MACHINE_DISPOSITIONS = (
     "phased-brightening", "low-significance",
     "insufficient-coverage", "period-railed", "centroid-shift",
     "companion-too-large",
+    # --- sky gates (2026-08-20): the ladder's first questions that are about
+    # the field rather than the series. See lab.a05_sky and the TIC 77044472
+    # investigation — a lead can be a real planet on the wrong star.
+    "blended-known-planet", "blend-favours-neighbour",
     "recovery-or-known", "known-planet", "toi-known-fp", "ctoi-known",
     "lead-awaiting-human-review",
 )
@@ -333,7 +337,17 @@ def process_target(item: dict) -> dict:
     if stage2:
         row["fap"] = _fap_block(t, fw, det.sde, B=int(item["B"]),
                                 seed=int(item["seed"]), n_periods=n_periods)
-        inj = a05_sensitivity.injection_grid(t, fw, n_periods=n_periods)
+        # Mask the host's own transits first (2026-08-20). Injecting on top of
+        # a strong native signal measures nothing: the blind search re-finds
+        # the host, every row grades unrecovered, and the target that most
+        # needs a depth floor is the one that ends up without one.
+        t_inj, f_inj = t, fw
+        if det.sde >= a04.SDE_THRESHOLD and det.period_days:
+            dur = a05_shape.duration_fraction(t, fw, det.period_days)
+            if dur.get("t14_frac"):
+                t_inj, f_inj = a05_sensitivity.mask_detection(
+                    t, fw, det.period_days, det.phase, dur["t14_frac"])
+        inj = a05_sensitivity.injection_grid(t_inj, f_inj, n_periods=n_periods)
         rule = "sde-threshold"
         inj_B = int(item.get("injection_fap_B") or 0)
         if inj_B > 0:
@@ -475,6 +489,53 @@ def resolve_catalog(row: dict, catalog_row: dict,
         row["disposition"] = "lead-awaiting-human-review"
 
 
+def apply_sky_gates(row: dict, neighbours, catalog_lookup) -> None:
+    """The last thing asked before a lead is minted: whose light was that?
+
+    ``resolve_catalog`` has already established that the TARGET's own TIC
+    carries no TOI, no CTOI and no confirmed planet. That is exactly the
+    condition a blended known planet produces, because a blended planet is by
+    construction filed under a different TIC. TIC 77044472 read
+    ``known_toi: null, known_planet: null, n_ctoi: 0`` — all true, all
+    irrelevant — while its neighbour 0.71 px away was TOI 228.01, HATS-16 b.
+
+    Two gates, cheapest first, both recorded either way:
+
+    * :func:`lab.a05_sky.neighbour_crosscheck` — a catalogue hit on a
+      neighbour at the detected period (alias-aware) is a REFUTATION of this
+      target, not of the signal.
+    * :func:`lab.a05_sky.flux_budget` — with no catalogue hit, ask which star
+      in the aperture can produce the dip without needing a stellar companion.
+      Refutes only on the asymmetry (target stellar, neighbour planetary).
+
+    Mutates ``row`` in place; a no-op unless the row is about to become a lead.
+    """
+    if row.get("disposition") != "lead-awaiting-human-review":
+        return
+    try:
+        near = list(neighbours(row["tic"]) or [])
+    except Exception as exc:  # noqa: BLE001 — an outage must not mint a lead
+        row["disposition_evidence"]["sky"] = {"lookup_error": type(exc).__name__}
+        row["pending_catalog"] = True
+        del row["disposition"]
+        return
+    ev: dict = {"n_neighbours": len(near)}
+    cross = a05_sky.neighbour_crosscheck(row.get("period_days"), near,
+                                         catalog_lookup)
+    ev["neighbour_crosscheck"] = cross
+    blend = row["disposition_evidence"].get("blend") or {}
+    budget = a05_sky.flux_budget(
+        row.get("depth"),
+        (blend.get("contamination") or {}).get("crowdsap"),
+        near, row.get("r_star_sun"))
+    ev["flux_budget"] = budget
+    row["disposition_evidence"]["sky"] = ev
+    if cross.get("verdict"):
+        row["disposition"] = cross["verdict"]
+    elif budget.get("verdict"):
+        row["disposition"] = budget["verdict"]
+
+
 def _downsample_spectrum(freqs: np.ndarray, amps: np.ndarray,
                          max_points: int = 2000) -> dict:
     """Max-pooled spectrum for the dossier: peaks survive, the receipt stays
@@ -557,6 +618,7 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
             max_new_targets: int | None = None,
             done_rows: list[dict] | None = None,
             on_row=None, pool_map=None,
+            neighbours=None, sky_catalog=None,
             progress=None, hunt_id: str = "") -> A05Result:
     """Run the survey pipeline; return an :class:`A05Result` for ``to_report``.
 
@@ -567,6 +629,14 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
       ``cache_file``) or ``None``; defaults to the MAST loader.
     * ``catalog(tic)`` — the report-time cross-check; defaults to
       :func:`lab.a04.catalog_crosscheck`.
+    * ``neighbours(tic)`` — catalogued stars sharing the aperture, each
+      ``{"tic", "sep_px", "flux_rel", "r_star_sun"}``. Supplied, the sky gates
+      (:func:`apply_sky_gates`) run before any lead is minted; omitted, the
+      ladder behaves exactly as it did before 2026-08-20 and every lead
+      carries the un-asked question. There is no default: resolving neighbours
+      needs the network, and a survey must be able to run without it.
+    * ``sky_catalog(tic)`` — TOI/CTOI lookup for a NEIGHBOUR's tic, returning
+      ``{"period_days", "disposition", "toi"/"name"}`` or None.
     * ``done_rows`` / ``on_row`` — resume state and the per-target checkpoint
       hook (the runner appends JSONL); a row is passed to ``on_row`` exactly
       once, when complete.
@@ -732,6 +802,10 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
             if designated or row["disposition"] == "recovery-or-known":
                 result.recoveries.append(row)
             elif row["disposition"] == "lead-awaiting-human-review":
+                if neighbours is not None:
+                    apply_sky_gates(row, neighbours, sky_catalog or (lambda _t: None))
+                if row.get("disposition") != "lead-awaiting-human-review":
+                    continue
                 curve = _curve(row["tic"])
                 if curve is not None:
                     panels, html = build_dossier(row, curve, n_periods,

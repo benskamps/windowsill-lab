@@ -65,6 +65,14 @@ EPOCH_FRACTIONS = (0.37, 0.63)
 #: only if EVERY epoch is, so a lucky alignment cannot buy sensitivity.
 N_EPOCHS = 2
 
+#: Half-widths of the host mask are padded by this factor beyond the measured
+#: duration, so ingress/egress wings do not leak into the "clean" baseline.
+MASK_PAD = 1.5
+
+#: Refuse to mask if it would leave less than this fraction of the cadences:
+#: a floor measured on a stub is not a floor.
+MASK_MIN_KEPT = 0.5
+
 #: Missing an injection this deep at ANY period flags the host ``insensitive``:
 #: photometry that cannot see a 1 % transit cannot support any null statement,
 #: so the host is excluded from every aggregate sensitivity claim.
@@ -100,6 +108,49 @@ class A05SensitivityError(RuntimeError):
 
 
 # ------------------------------------------------------------ injections ---
+
+def mask_detection(t: np.ndarray, f: np.ndarray, period_days: float,
+                   phase: float, duration_frac: float,
+                   pad: float = MASK_PAD) -> tuple[np.ndarray, np.ndarray]:
+    """Drop the host's OWN transits so an injection is searched against clean flux.
+
+    Without this, a host with a strong signal has no measurable sensitivity: a
+    blind search of ``inject_box(f)`` re-finds the *native* period rather than
+    the injected one, the row grades ``recovered = False`` for the right reason
+    and the wrong cause, and the host is flagged ``insensitive`` with
+    ``d_min = {2.3: None, 3.7: None, 5.1: None}``.
+
+    That is precisely backwards. The targets whose depth floor matters most —
+    the ones carrying a candidate — are the ones the survey currently cannot
+    measure. TIC 77044472's injections all "recovered" period 2.6857 d: the
+    host's own signal, not the 2.3 d box that was planted.
+
+    Removes rather than flattens: replacing in-transit cadences with a baseline
+    constant inserts a stretch of zero-variance data that the periodogram reads
+    as real quiet. Returns ``(t_masked, f_masked)``.
+    """
+    t = np.asarray(t, dtype=float)
+    f = np.asarray(f, dtype=float)
+    try:
+        P = float(period_days)
+        ph0 = float(phase)
+        half = 0.5 * float(duration_frac) * float(pad)
+    except (TypeError, ValueError):
+        return t, f
+    if not (P > 0) or not (half > 0):
+        return t, f
+    # a04.Detection.phase is measured as np.mod(t, period)/period — absolute,
+    # not relative to t[0]. Match that convention exactly; deriving a t0 from
+    # it by hand is how an off-by-one-fold mask gets written.
+    ph = np.mod(t, P) / P
+    keep = np.abs(((ph - ph0 + 0.5) % 1.0) - 0.5) > half
+    if int(keep.sum()) < MASK_MIN_KEPT * t.size:
+        # Masking would take too much of the series to leave a searchable
+        # baseline; better to report the host unmeasured than to measure a
+        # floor on a stub.
+        return t, f
+    return t[keep], f[keep]
+
 
 def injection_grid(t: np.ndarray, f: np.ndarray,
                    ladder: tuple = LADDER, epochs: int = N_EPOCHS,
