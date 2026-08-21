@@ -233,8 +233,44 @@ HARDWARE_GATES: dict[str, Callable[[], str | None]] = {
 }
 
 
+#: Milestones this box's campaign scheduler must NOT claim, because another
+#: lane on the same box already runs them on its own schedule. Comma-separated
+#: ids in ``LAB_NEXT_SKIP``; unset means claim everything, which is the old
+#: behaviour and stays the default.
+#:
+#: The case this exists for (2026-08-21): loam runs A05 twice over. The
+#: dedicated ``windowsill-hunt.timer`` hunts its sectors with a 100-minute
+#: budget and lands a receipt every slot, while the campaign ALSO picked A05 as
+#: the open frontier four times a day and ran it with the scheduler's slot-safe
+#: 45-minute default — which, after the 2026-08-20 search level-ups made each
+#: target dearer, stopped being enough to finish a slice. Passes 134-137 each
+#: burnt ~45 minutes, wrote no receipt ("no receipt is written for an incomplete
+#: slice"), published nothing, and left the physics ladder untouched because A05
+#: absorbed every turn. Green unit, exit 0, 26 hours of no progress.
+#:
+#: Declaring the lane is the fix, not tuning the budget: two lanes hunting the
+#: same sectors was duplicated work even when it succeeded.
+def lane_owner_reason(milestone_id: str) -> str | None:
+    """None unless another lane on this box owns ``milestone_id``."""
+    raw = os.environ.get("LAB_NEXT_SKIP", "")
+    owned = {part.strip().upper() for part in raw.split(",") if part.strip()}
+    if milestone_id.upper() not in owned:
+        return None
+    return (f"owned-elsewhere: another lane on this box runs {milestone_id} on "
+            "its own schedule (LAB_NEXT_SKIP) — this scheduler advances the rest")
+
+
 def hardware_gate_reason(milestone_id: str) -> str | None:
-    """None when the milestone's hardware gate passes (or it has no gate)."""
+    """None when the milestone may be dispatched here, else a named reason.
+
+    Two kinds of refusal, both deterministic and both disclosed by the caller:
+    lane ownership (another scheduler on this box owns it) and the milestone's
+    own hardware gate. Ownership is checked first — if we are not the lane that
+    runs it, whether our hardware could is not the question.
+    """
+    owner = lane_owner_reason(milestone_id)
+    if owner is not None:
+        return owner
     gate = HARDWARE_GATES.get(milestone_id)
     return gate() if gate is not None else None
 
@@ -380,6 +416,10 @@ REPEAT_HARD_CAP = 3
 #: ``hunt_status=None`` and it never appears.
 HUNT_CANDIDATE = "A05-HUNT"
 
+#: The milestone the hunt candidate belongs to — ownership is asked of A05
+#: itself, never of the synthetic candidate id.
+A05_MILESTONE = "A05"
+
 #: remaining_targets at (or above) which the hunt scores full OPEN_FRONTIER
 #: value; below it the hunt's value scales down linearly with what is left.
 HUNT_FULL_VALUE_TARGETS = 500
@@ -495,7 +535,17 @@ def plan_turn(
             continue
         candidates.append((mid, -2))         # exact ties: the bench wins
     if hunt_status is not None and int(hunt_status.get("remaining_targets", 0) or 0) > 0:
-        candidates.append((HUNT_CANDIDATE, -1))
+        # The hunt rides in as its own candidate rather than as A05's rotation
+        # slot, so it has to consult A05's ownership itself — the frontier
+        # branch refusing A05 upstream does not reach this list. Missing that
+        # is how the 2026-08-21 fix first failed its own dry run: the scheduler
+        # skipped A05 as owned-elsewhere and the planner immediately re-picked
+        # it here, one layer down.
+        hunt_owner = lane_owner_reason(A05_MILESTONE)
+        if hunt_owner is not None:
+            skips.append((HUNT_CANDIDATE, hunt_owner))
+        else:
+            candidates.append((HUNT_CANDIDATE, -1))
     for offset in range(len(ROTATION)):
         mid = ROTATION[(start + offset) % len(ROTATION)]
         if mid not in RUNNERS:

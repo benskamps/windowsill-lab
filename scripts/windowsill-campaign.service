@@ -22,6 +22,15 @@ Environment=TMPDIR=%h/.cache/wtmp
 Environment=LAB_CAMPAIGN_DEVICE=cuda
 Environment=LAB_CAMPAIGN_INTERVAL=21600
 Environment="LAB_CAMPAIGN_HOURS=3 9 15 21"
+# This box also runs windowsill-hunt.timer, which hunts loam's sectors every
+# slot on a 100-minute budget. Without this line the campaign ALSO picked A05
+# four times a day and ran it on the scheduler's 45-minute default — which,
+# after the 2026-08-20 search level-ups, no longer finished a slice: passes
+# 134-137 each burnt ~45 minutes, wrote no receipt, published nothing, and
+# starved the physics ladder, all at exit 0. Declaring the lane is the fix;
+# two lanes hunting the same sectors was duplicated work even when it worked.
+# A box with no dedicated hunt lane must NOT set this, or it stops hunting.
+Environment=LAB_NEXT_SKIP=A05
 # %h is expanded by systemd to the invoking user's home directory. The unit
 # calls itself a template; a hardcoded /home/<name> path made it neither a
 # template nor private.

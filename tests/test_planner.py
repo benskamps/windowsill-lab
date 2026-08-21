@@ -624,3 +624,66 @@ def test_bare_hunt_injects_the_lane_sector_and_refuses_without_one(
                             "explicit --sector must not consult the lane")))
     assert cli.main(["hunt", "--sector", "3"]) == 0
     assert calls and calls[0][calls[0].index("--sector") + 1] == "3"
+
+
+# ── Lane ownership: when another scheduler on this box owns a milestone ──────
+#
+# loam ran A05 twice over: the dedicated windowsill-hunt.timer landed a receipt
+# every slot on a 100-minute budget, while the campaign ALSO picked A05 four
+# times a day and ran it on the scheduler's 45-minute default. After the
+# 2026-08-20 search level-ups made each target dearer, that budget stopped
+# finishing a slice — so passes 134-137 each burnt ~45 minutes, wrote no
+# receipt, published nothing, and starved the physics ladder, all at exit 0.
+
+def test_lane_ownership_is_off_unless_declared(monkeypatch):
+    monkeypatch.delenv("LAB_NEXT_SKIP", raising=False)
+    assert curriculum.lane_owner_reason("A05") is None
+
+
+def test_lane_ownership_names_the_reason(monkeypatch):
+    monkeypatch.setenv("LAB_NEXT_SKIP", "A05")
+    reason = curriculum.lane_owner_reason("A05")
+    assert reason and "owned-elsewhere" in reason
+    assert curriculum.lane_owner_reason("M05") is None, "only the named ids"
+
+
+def test_lane_ownership_tolerates_spacing_and_case(monkeypatch):
+    monkeypatch.setenv("LAB_NEXT_SKIP", " a05 , i01 ")
+    assert curriculum.lane_owner_reason("A05")
+    assert curriculum.lane_owner_reason("I01")
+
+
+def test_ownership_is_asked_before_the_hardware_gate(monkeypatch):
+    """If we are not the lane that runs it, whether our hardware could is not
+    the question — and the ownership answer must not depend on lane config."""
+    monkeypatch.setenv("LAB_NEXT_SKIP", "A05")
+    monkeypatch.delenv("WINDOWSILL_HUNT_SECTORS", raising=False)
+    assert "owned-elsewhere" in curriculum.hardware_gate_reason("A05")
+
+
+def test_the_planner_does_not_re_pick_an_owned_hunt(monkeypatch):
+    """THE regression this fix first shipped with: the frontier branch skipped
+    A05 as owned-elsewhere and the planner immediately re-picked it one layer
+    down, because the hunt rides in as its own candidate and never consulted
+    A05's gate."""
+    monkeypatch.setenv("LAB_NEXT_SKIP", "A05")
+    monkeypatch.setattr(curriculum, "ROTATION", ("M03", "M04", "M05"))
+    statuses = {"M03": "verified", "M04": "verified", "M05": "verified"}
+    pick, decision = plan_turn([], statuses, now=NOW,
+                               hunt_status={"remaining_targets": 500})
+    assert pick != HUNT_CANDIDATE
+    assert HUNT_CANDIDATE not in [e["mid"] for e in decision["scoreboard"]]
+    skipped = dict(decision.get("skips") or [])
+    assert "owned-elsewhere" in skipped.get(HUNT_CANDIDATE, ""), \
+        "the refusal must be disclosed by name, not silent"
+
+
+def test_an_undeclared_box_still_hunts(monkeypatch):
+    """The default has to stay exactly what it was — win's campaign keeps
+    picking the hunt until win declares its own lane."""
+    monkeypatch.delenv("LAB_NEXT_SKIP", raising=False)
+    monkeypatch.setattr(curriculum, "ROTATION", ("M03", "M04", "M05"))
+    statuses = {"M03": "verified", "M04": "verified", "M05": "verified"}
+    pick, _decision = plan_turn([], statuses, now=NOW,
+                                hunt_status={"remaining_targets": 500})
+    assert pick == HUNT_CANDIDATE
