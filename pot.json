@@ -462,23 +462,23 @@
     }
   ],
   "total": 36,
-  "last_run": "2026-08-21T19:00:10.210306+00:00",
+  "last_run": "2026-08-22T01:00:46.739342+00:00",
   "runs": 57,
-  "temp_c": 86.5,
+  "temp_c": 77.2,
   "latest_report": {
     "date": "2026-08-21",
-    "milestone": "M06",
+    "milestone": "M08",
     "verdict": "verified",
-    "headline": "3D simple-cubic Ising (L=10): \u03c7 peaks at T_c=4.473 vs MC benchmark 4.5115 (rel. err 0.8%) \u00b7 8s on CPU",
+    "headline": "2D XY BKT (L=64): helicity \u03a5(T) crosses the (2/\u03c0)T jump line at T_BKT=0.9158 vs benchmark 0.8929 (rel. err 2.6%) \u00b7 44s on CPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-21-1500-m06.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-21-2100-m08.json",
     "machine": "linux-rocm",
-    "at": "2026-08-21T19:00:10.210306+00:00"
+    "at": "2026-08-22T01:00:46.739342+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-21T19:00:10.855842+00:00",
+  "updated": "2026-08-22T01:00:47.396915+00:00",
   "provenance": {
-    "code_sha": "ab7da55",
+    "code_sha": "15f0cf6",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -487,6 +487,16 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-21",
+      "milestone": "M08",
+      "verdict": "verified",
+      "headline": "2D XY BKT (L=64): helicity \u03a5(T) crosses the (2/\u03c0)T jump line at T_BKT=0.9158 vs benchmark 0.8929 (rel. err 2.6%) \u00b7 44s on CPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-21-2100-m08",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-21-2100-m08.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-22T01:00:46.739342+00:00"
+    },
     {
       "date": "2026-08-21",
       "milestone": "M06",
@@ -1385,11 +1395,11 @@
     }
   ],
   "turns": {
-    "count": 144,
-    "today": 2,
+    "count": 145,
+    "today": 3,
     "last_by_machine": {
       "windows-cuda": "2026-08-20T01:11:49.221742+00:00",
-      "linux-rocm": "2026-08-21T19:00:10.210306+00:00"
+      "linux-rocm": "2026-08-22T01:00:46.739342+00:00"
     },
     "expected_interval_h": 3
   },
