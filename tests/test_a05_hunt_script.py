@@ -319,3 +319,84 @@ def test_a_single_grade_failure_is_still_retried(tmp_path, monkeypatch):
     hunt_id, ckpt = mod.find_checkpoint(3)
     assert hunt_id == stuck
     assert ckpt == lab_home / f"a05-{stuck}.jsonl"
+# ------------------- (VET-F4) the sky gates must run WHERE HUNTS HAPPEN -----
+#
+# `apply_sky_gates` — the 2026-08-20 HATS-16 b fix, the gate that asks whose
+# light the dip was — is a no-op inside `run_a05` unless a `neighbours`
+# resolver is passed. The production driver called `run_a05` without it, so the
+# gate never ran anywhere a lead was actually minted. Shelf-exit contract
+# section 2: an unrun gate is not a passed gate.
+
+
+class _StubPool:
+    """Stands in for multiprocessing.Pool: no worker processes in a unit test."""
+
+    def __init__(self, *_a, **_kw):
+        pass
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_exc):
+        return False
+
+    def map(self, fn, items):
+        return list(map(fn, items))
+
+
+def _capture_run_a05(mod, monkeypatch, tmp_path):
+    """Drive `main()` far enough to record the kwargs it hands `run_a05`."""
+    seen: dict = {}
+
+    class _Incomplete:
+        complete = False
+        rows: list = []
+
+    def _fake_run_a05(*args, **kwargs):
+        seen.update(kwargs)
+        return _Incomplete()
+
+    monkeypatch.setattr(mod.a05, "run_a05", _fake_run_a05)
+    monkeypatch.setattr(mod, "Pool", _StubPool)
+    monkeypatch.setattr(mod, "prior_targets", lambda: set())
+    monkeypatch.setattr(
+        mod, "find_checkpoint",
+        lambda sector, hunt_id: ("hunt-test-s2",
+                                 tmp_path / "hunt-test-s2.jsonl"))
+    monkeypatch.setattr(
+        "sys.argv",
+        ["a05_hunt.py", "--sector", "2", "--n", "4", "--minutes", "1",
+         "--workers", "1"])
+    assert mod.main() == 0      # incomplete slice -> clean early return
+    return seen
+
+
+def test_production_hunt_wires_the_sky_gate_seams(tmp_path, monkeypatch):
+    """The driver must pass BOTH sky seams, or apply_sky_gates never runs."""
+    mod = _load_script()
+    seen = _capture_run_a05(mod, monkeypatch, tmp_path)
+    assert seen.get("neighbours") is not None, (
+        "a05_hunt calls run_a05 without `neighbours` — apply_sky_gates is a "
+        "no-op and every lead is minted without asking whose light it was")
+    assert seen.get("sky_catalog") is not None, (
+        "a05_hunt calls run_a05 without `sky_catalog` — the neighbour "
+        "cross-check has nothing to query")
+    assert callable(seen["neighbours"]) and callable(seen["sky_catalog"])
+
+
+def test_the_wired_resolvers_are_the_real_ones(tmp_path, monkeypatch):
+    """Wiring a stub would satisfy the test above and nothing else."""
+    from lab import a05_sky
+    mod = _load_script()
+    seen = _capture_run_a05(mod, monkeypatch, tmp_path)
+    # Identity of the underlying function, not behaviour: resolving a
+    # neighbour needs the network, so this box can only prove the seam reaches
+    # the real entry point.
+    assert getattr(seen["neighbours"], "func", None) is (
+        a05_sky.resolve_neighbours), (
+        "the neighbours seam is wired to something other than "
+        "a05_sky.resolve_neighbours")
+    assert getattr(seen["sky_catalog"], "func", None) is (
+        a05_sky.sky_catalog_lookup), (
+        "the sky_catalog seam is wired to something other than "
+        "a05_sky.sky_catalog_lookup")

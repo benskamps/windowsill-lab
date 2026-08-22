@@ -297,3 +297,101 @@ def test_a04_is_registered():
     from lab import curriculum
     assert checks.CHECKS["A04"] is checks.check_a04
     assert curriculum.RUNNERS["A04"] == "a04"
+
+
+# ------------------ (VET-F3) the vetting sigmas are MEDIAN sigmas ------------
+#
+# `vet_candidate` reads every depth with a MEDIAN but divided by a MEAN's
+# standard error, `noise / sqrt(n)`. The standard error of a median on Gaussian
+# noise is sqrt(pi/2) larger than a mean's, and a DIFFERENCE of two medians
+# carries that factor on each term. So the odd-even statistic ran ~sqrt(pi)
+# (1.77x) hot and the depth statistic ~sqrt(pi/2) (1.25x) hot — and `:244`,
+# the rung that mints "planet-candidate", sat at a nominal 5 sigma while
+# actually admitting true ~4 sigma dips. `a05_fold` had already fixed this for
+# its own gates (MEDIAN_SIGMA_FACTOR); the rung that mints every candidate
+# first had not.
+
+MEDIAN_SE = float(np.sqrt(np.pi / 2.0))
+VET_P, VET_DUR, VET_NOISE = 1.7, 2.5 / 24, 3e-4
+#: `inject_box` puts the epoch at t[0] + 0.37 * period, so a synthetic planted
+#: with it is folded at phase 0.37.
+VET_PHASE = 0.37
+
+
+def _planted(depth: float, seed: int = 7):
+    t, f = _flat(noise=VET_NOISE, cadence=0.005, seed=seed)
+    if depth:
+        f = a04.inject_box(t, f, VET_P, depth, duration_days=VET_DUR)
+    return t, f
+
+
+def _det(depth: float = 0.0):
+    return a04.Detection(period_days=VET_P, depth=depth, phase=VET_PHASE,
+                         sde=9.0)
+
+
+def test_odd_even_sigma_is_calibrated_on_pure_noise():
+    """On PURE NOISE the odd-even statistic must be a standard normal.
+
+    Its absolute value then has mean sqrt(2/pi) = 0.7979. Pre-fix the mean
+    came in ~1.69x hot (the sqrt(pi) difference-of-medians factor), which is
+    what let a noise-only star's parities look inconsistent — and, on the same
+    scale error, let a sub-threshold dip look significant.
+    """
+    vals = []
+    for s in range(120):
+        t, f = _planted(0.0, seed=1000 + s)
+        row = a04.vet_candidate(t, f, _det())
+        assert row["verdict"] != "period-railed", row
+        vals.append(row["odd_even_sigma"])
+    mean_abs = float(np.mean(vals))
+    expected = float(np.sqrt(2.0 / np.pi))
+    # 120 trials; the standard error on the mean of |N(0,1)| is ~0.055.
+    assert abs(mean_abs - expected) < 0.10, (
+        f"odd-even sigma is not calibrated: mean|z| = {mean_abs:.3f}, "
+        f"expected {expected:.3f} (scale is off by "
+        f"{mean_abs / expected:.3f}x)")
+
+
+def test_odd_even_sigma_matches_the_analytic_difference_of_medians():
+    """Pin the computed sigma against the closed form, on one fixed curve."""
+    t, f = _planted(0.0, seed=4242)
+    row = a04.vet_candidate(t, f, _det())
+    period, ph0 = VET_P, VET_PHASE
+    phase = np.mod(t, period) / period
+    epoch = np.floor((t - t[0]) / period).astype(int)
+    in_tr = np.abs(((phase - ph0 + 0.5) % 1.0) - 0.5) < a04.VET_WINDOW_PHASE
+    out = ~in_tr
+    noise = float(np.std(f[out]))
+    n_odd = int((in_tr & (epoch % 2 == 1)).sum())
+    n_even = int((in_tr & (epoch % 2 == 0)).sum())
+    # SE of a difference of two independent medians on Gaussian noise.
+    analytic = MEDIAN_SE * noise * np.sqrt(1.0 / n_odd + 1.0 / n_even)
+    expected = abs(row["depth_odd"] - row["depth_even"]) / analytic
+    assert row["odd_even_sigma"] == pytest.approx(expected, rel=1e-9), (
+        f"reported {row['odd_even_sigma']:.4f} vs analytic {expected:.4f} "
+        f"— ratio {row['odd_even_sigma'] / expected:.4f}")
+
+
+def test_depth_gate_does_not_mint_a_sub_five_sigma_candidate():
+    """The candidate-minting rung must sit at a REAL 5 sigma.
+
+    depth 1.7e-4 on this curve is a true 4.9-sigma dip. Pre-fix the mean's
+    error bar reported it as 6.15 sigma and `vet_candidate` returned
+    "planet-candidate" — a candidate minted below threshold, which is the
+    whole defect: every A05 lead starts as one of these.
+    """
+    t, f = _planted(1.7e-4)
+    row = a04.vet_candidate(t, f, _det(1.7e-4))
+    assert row["depth_sigma"] < a04.ODD_EVEN_SIGMA, (
+        f"depth_sigma {row['depth_sigma']:.2f} still clears the "
+        f"{a04.ODD_EVEN_SIGMA:g}-sigma bar on a true ~4.9-sigma dip")
+    assert row["verdict"] == "low-significance", row
+
+
+def test_a_genuinely_significant_dip_is_still_a_candidate():
+    """The fix tightens the bar; it must not close it. 3e-4 is a true ~9 sigma."""
+    t, f = _planted(3.0e-4)
+    row = a04.vet_candidate(t, f, _det(3.0e-4))
+    assert row["verdict"] == "planet-candidate", row
+    assert row["depth_sigma"] >= a04.ODD_EVEN_SIGMA

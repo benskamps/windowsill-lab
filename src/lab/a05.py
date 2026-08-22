@@ -103,24 +103,14 @@ N_PLACEBO = 25
 #: FP = false positive (astrophysical impostor, e.g. a blend), FA = false
 #: alarm (instrumental). Either way nothing real was re-found: the row is
 #: neither a recovery nor a lead.
-TOI_REFUTED_DISPOSITIONS = ("FP", "FA")
-
-#: The machine's ENTIRE disposition vocabulary. "planet" is not in it, and
-#: neither is bare "planet-candidate" — that is a vetting VERDICT, an
-#: intermediate rung; the ladder must resolve it to a blend gate, a catalog
-#: identification, or the terminal lead state before the receipt is written.
-MACHINE_DISPOSITIONS = (
-    "stellar-pulsation", "harmonic-alias", "eclipsing-binary-odd-even",
-    "eclipsing-binary-secondary", "eclipsing-binary-p2-alias",
-    "phased-brightening", "low-significance",
-    "insufficient-coverage", "period-railed", "centroid-shift",
-    "companion-too-large",
-    # --- sky gates (2026-08-20): the ladder's first questions that are about
-    # the field rather than the series. See lab.a05_sky and the TIC 77044472
-    # investigation — a lead can be a real planet on the wrong star.
-    "blended-known-planet", "blend-favours-neighbour",
-    "recovery-or-known", "known-planet", "toi-known-fp", "ctoi-known",
-    "lead-awaiting-human-review",
+#:
+#: Both this and :data:`MACHINE_DISPOSITIONS` are re-exported from
+#: :mod:`lab.a05_vocab`, NOT restated here: the checker grades receipts
+#: against the same objects, and a restated contract drifts (VET-F1 — the
+#: checker sat five verdicts behind the engine from 2026-08-20).
+from .a05_vocab import (  # noqa: E402  (contract import, kept beside its docs)
+    MACHINE_DISPOSITIONS,
+    TOI_REFUTED_DISPOSITIONS,
 )
 
 #: Prior false-alarm-floor measurements, appended to every receipt so the
@@ -512,16 +502,24 @@ def apply_sky_gates(row: dict, neighbours, catalog_lookup) -> None:
     """
     if row.get("disposition") != "lead-awaiting-human-review":
         return
+    # The outage guard covers the NEIGHBOUR CATALOG CALL as well as the
+    # neighbour resolution. `neighbour_crosscheck` skips a neighbour whose
+    # lookup returns nothing, so a TOI/CTOI outage that returned None would be
+    # indistinguishable from "this neighbour carries no planet" — an unasked
+    # question reading as a cleared gate, which is the exact failure mode
+    # VET-F4 is about. `a05_sky.sky_catalog_lookup` raises instead, and a raise
+    # lands here: the row loses its disposition, goes `pending_catalog`, and
+    # `run_a05` refuses to call the slice complete.
     try:
         near = list(neighbours(row["tic"]) or [])
+        ev: dict = {"n_neighbours": len(near)}
+        cross = a05_sky.neighbour_crosscheck(row.get("period_days"), near,
+                                             catalog_lookup)
     except Exception as exc:  # noqa: BLE001 — an outage must not mint a lead
         row["disposition_evidence"]["sky"] = {"lookup_error": type(exc).__name__}
         row["pending_catalog"] = True
         del row["disposition"]
         return
-    ev: dict = {"n_neighbours": len(near)}
-    cross = a05_sky.neighbour_crosscheck(row.get("period_days"), near,
-                                         catalog_lookup)
     ev["neighbour_crosscheck"] = cross
     blend = row["disposition_evidence"].get("blend") or {}
     budget = a05_sky.flux_budget(
@@ -596,6 +594,10 @@ class A05Result:
     dossiers: dict = field(default_factory=dict)      # tic -> html
     budget: dict = field(default_factory=dict)
     search_grid: dict = field(default_factory=dict)
+    #: Affirmative record of whether the sky gates RAN — see `run_a05`. Never
+    #: left empty on a completed run: a receipt has to be able to say "this
+    #: gate did not run" out loud (VET-F4 / shelf-exit contract section 2).
+    sky_gates: dict = field(default_factory=dict)
     complete: bool = False
     wall_seconds: float = 0.0
     hunt_id: str = ""
@@ -783,6 +785,19 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
                 curves_cache[tic] = None
         return curves_cache[tic]
 
+    # Positive evidence that the sky gates ran — recorded whether they did or
+    # not, because "no sky verdict on this receipt" is ambiguous between "the
+    # gate ran and cleared every lead" and "the gate was never wired", and for
+    # a day in August 2026 it silently meant the second (VET-F4). `status` is
+    # the word a human reads; the counters are what a checker re-derives.
+    sky_record: dict = {
+        "status": "ran" if neighbours is not None else "not-wired",
+        "neighbours_wired": neighbours is not None,
+        "catalog_wired": sky_catalog is not None,
+        "rows_examined": 0, "rows_refuted": 0, "lookup_errors": 0,
+        "verdicts": {},
+    }
+
     for row in result.rows:
         if row.get("outcome") != "searched":
             continue
@@ -803,7 +818,17 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
                 result.recoveries.append(row)
             elif row["disposition"] == "lead-awaiting-human-review":
                 if neighbours is not None:
-                    apply_sky_gates(row, neighbours, sky_catalog or (lambda _t: None))
+                    sky_record["rows_examined"] += 1
+                    apply_sky_gates(row, neighbours,
+                                    sky_catalog or (lambda _t: None))
+                    sky_ev = (row.get("disposition_evidence") or {}).get("sky") or {}
+                    after = row.get("disposition")
+                    if sky_ev.get("lookup_error"):
+                        sky_record["lookup_errors"] += 1
+                    elif after != "lead-awaiting-human-review":
+                        sky_record["rows_refuted"] += 1
+                        sky_record["verdicts"][after] = (
+                            sky_record["verdicts"].get(after, 0) + 1)
                 if row.get("disposition") != "lead-awaiting-human-review":
                     continue
                 curve = _curve(row["tic"])
@@ -812,6 +837,8 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
                                                  prewhiten_kwargs)
                     row["dossier"] = panels
                     result.dossiers[row["tic"]] = html
+
+    result.sky_gates = sky_record
 
     # A catalog outage that left rows unresolved makes the run INCOMPLETE:
     # the slice was searched but the ladder did not finish, and an unfinished
@@ -916,6 +943,12 @@ def to_report(result: A05Result,
         "search_grid": result.search_grid,
         "targets": rows,
         "recoveries": result.recoveries,
+        # Additive (VET-F4): the receipt states out loud whether the sky gates
+        # ran. Absence of a sky verdict is not evidence a sky gate passed.
+        "sky_gates": dict(result.sky_gates) if result.sky_gates else {
+            "status": "not-wired", "neighbours_wired": False,
+            "catalog_wired": False, "rows_examined": 0, "rows_refuted": 0,
+            "lookup_errors": 0, "verdicts": {}},
         "uniformity": result.uniformity,
         "placebo": {k: v for k, v in (result.placebo or {}).items()},
         "floor_history": [dict(p) for p in prior_floor_history] + [floor_point],

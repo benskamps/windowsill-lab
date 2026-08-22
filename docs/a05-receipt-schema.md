@@ -52,6 +52,15 @@ constants that grade it and re-derives everything from the raw stored numbers.
     }
   ],
   "recoveries": [ /* same row shape; the designated + serendipitous knowns */ ],
+  "sky_gates": {                     // did apply_sky_gates RUN? asked and answered
+    "status": "ran",                 // "ran" | "not-wired" — an unrun gate is not a passed gate
+    "neighbours_wired": true,        // was a neighbour resolver supplied to run_a05
+    "catalog_wired": true,           // was a neighbour TOI/CTOI lookup supplied
+    "rows_examined": 3,              // leads put to the gate
+    "rows_refuted": 1,               // leads the gate took away
+    "lookup_errors": 0,              // outages; each one makes the run INCOMPLETE
+    "verdicts": { "blended-known-planet": 1 }
+  },
   "uniformity": {                    // the calibration of the calibrator
     "n_control": 50,
     "p_values": [/* floats */],
@@ -107,6 +116,17 @@ Contract rules (binding on all lanes):
    the aggregator excludes superseded receipts from counters (naming them in
    `hunt.superseded`) so cumulative runs cannot double-count. Only an accepted
    receipt may supersede.
+**The `sky_gates` block exists because absence is not evidence.** A receipt
+with no sky verdict on any row is ambiguous between "the gate ran and cleared
+every lead" and "the gate was never wired" — and from 2026-08-20 until the
+2026-08-21 gauntlet it silently meant the second: `scripts/a05_hunt.py` called
+`run_a05` without `neighbours`, so `apply_sky_gates` was a no-op in the one
+place production leads are minted. The block states the answer either way, so
+the shelf-exit contract's "an unrun gate is not a passed gate" is a
+machine-checkable claim rather than a hope. A `lookup_errors` count above zero
+means some lead could not be asked the question; those rows go
+`pending_catalog` and the run is not allowed to become a receipt at all.
+
 6. **The uniformity control is chosen pre-data, on purpose.** Control
    membership is a deterministic hash of `(seed, tic)` with **no SDE filter**
    (the top-level `seed` and `control_fraction` fields pin the draw), so a

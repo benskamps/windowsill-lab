@@ -156,6 +156,16 @@ def bls_power(t: np.ndarray, f: np.ndarray, period: float,
 #: An odd-even depth difference this many sigma apart means the true period is
 #: 2P and the "transit" is alternating primary/secondary eclipses — an EB.
 ODD_EVEN_SIGMA = 5.0
+#: Standard error of a MEDIAN vs a mean on Gaussian noise: sqrt(pi/2). Every
+#: depth below is read with `np.median`, so every error bar below has to pay
+#: the median's efficiency cost instead of quietly reporting a mean's bar on a
+#: median's number. A DIFFERENCE of two medians carries the factor on each
+#: term, which is why the odd-even statistic ran sqrt(pi) = 1.77x hot until
+#: 2026-08-21 (VET-F3) and the depth statistic sqrt(pi/2) = 1.25x hot — so the
+#: nominal 5-sigma candidate-minting rung actually admitted true ~4-sigma
+#: dips. `lab.a05_fold` fixed this for its own gates first and imports this
+#: constant from here, so the repo has one convention and not two.
+MEDIAN_SIGMA_FACTOR = float(np.sqrt(np.pi / 2.0))
 VET_WINDOW_PHASE = 0.03
 
 
@@ -207,17 +217,39 @@ def vet_candidate(t: np.ndarray, f: np.ndarray, det: Detection,
     if len(odd) < 5 or len(even) < 5:
         return {"verdict": "insufficient-coverage"}
     d_odd, d_even = base - float(np.median(odd)), base - float(np.median(even))
-    sigma = noise / np.sqrt(min(len(odd), len(even)))
-    diff_sigma = abs(d_odd - d_even) / sigma if sigma > 0 else float("inf")
+    n_odd, n_even, n_out = len(odd), len(even), int(out.sum())
+
+    def _median_se(*counts: int) -> float:
+        """SE of a sum/difference of independent medians on Gaussian noise.
+
+        Each term contributes (pi/2) * noise^2 / n. `base` is itself a median
+        over the out-of-transit sample, so it is one of the terms — negligible
+        when n_out is large, but it is not zero and it is not this function's
+        job to decide that.
+        """
+        return float(MEDIAN_SIGMA_FACTOR * noise
+                     * np.sqrt(sum(1.0 / max(n, 1) for n in counts)))
+
+    # Difference of two medians: the factor lands on BOTH terms, so this bar
+    # is sqrt(pi) wider than the mean's bar that used to stand here.
+    sigma_diff = _median_se(n_odd, n_even)
+    diff_sigma = abs(d_odd - d_even) / sigma_diff if sigma_diff > 0 else float("inf")
 
     sec = np.abs(((phase - ph0 - 0.5 + 0.5) % 1.0) - 0.5) < VET_WINDOW_PHASE
     d_sec = base - float(np.median(f[sec])) if sec.sum() > 5 else float("nan")
-    sec_sigma = (d_sec / (noise / np.sqrt(max(sec.sum(), 1)))) if sec.sum() > 5 else 0.0
+    # Signed, deliberately: a significant phase-locked BRIGHTENING is its own
+    # verdict below, so this statistic must keep its sign.
+    sigma_sec = _median_se(int(sec.sum()), n_out)
+    sec_sigma = (d_sec / sigma_sec) if sec.sum() > 5 and sigma_sec > 0 else 0.0
 
     # "planet-candidate" has to be EARNED. A first pass blessed TIC 280095254 on
     # depths of ~1e-5 with the odd-epoch depth NEGATIVE — noise wearing a verdict.
     # Both parities must show a real, positive dip before anything is a candidate.
-    depth_sigma = min(d_odd, d_even) / sigma if sigma > 0 else 0.0
+    # The candidate-minting statistic: the SHALLOWER parity's depth against
+    # the baseline. Both are medians, so both pay the factor; the weaker
+    # parity's own count sets the bar, not the pair's.
+    sigma_depth = _median_se(min(n_odd, n_even), n_out)
+    depth_sigma = min(d_odd, d_even) / sigma_depth if sigma_depth > 0 else 0.0
     n_events = int(np.unique(epoch[in_transit]).size)
     alias = _subharmonic_alias(t, f, period)
     if n_events < MIN_TRANSITS:

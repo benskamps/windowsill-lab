@@ -381,8 +381,21 @@ def test_the_centred_odd_even_is_also_origin_independent():
 # ------------------------------------------------- combining across sectors ---
 
 def _fold_dict(diff, sigma, both=True):
+    """A hand-built p2_fold row.
+
+    NOTE what this is and is not: ``depth_difference`` is the MAGNITUDE the
+    producer emits (it sorts the deeper eclipse into A, so it is never
+    negative), while ``signed_difference`` is the phase-anchored quantity that
+    actually carries the sign. This helper used to set only
+    ``depth_difference`` and pass it negative numbers — a shape
+    ``p2_fold`` cannot produce, which is precisely why the sign guard looked
+    tested while being vacuous on real output (VET-F2). The producer-real
+    tests below are the ones that matter; this stays for the combination
+    arithmetic.
+    """
     half = sigma / np.sqrt(2)
-    return {"depth_difference": diff, "difference_sigma": diff / sigma,
+    return {"depth_difference": abs(diff), "difference_sigma": abs(diff) / sigma,
+            "signed_difference": diff,
             "both_eclipses_significant": both,
             "eclipse_a": {"sigma": half, "depth": 0.02, "depth_sigma": 50},
             "eclipse_b": {"sigma": half, "depth": 0.02 - diff, "depth_sigma": 50}}
@@ -431,3 +444,102 @@ def test_combining_pure_noise_across_many_sectors_stays_quiet():
         # Sign consistency across 8 zero-mean draws is rare; when it happens the
         # combined significance must still be small.
         assert out["verdict"] is None or out["difference_sigma"] < fold.P2_ALIAS_SIGMA
+
+
+# ------------- (VET-F2) the sign guard, driven through the REAL fold path ----
+#
+# `p2_fold` sorts the deeper dip into eclipse A, so `depth_difference` is a
+# magnitude and is never negative. `combine_p2_folds` then tested
+# `all(diffs > 0) or all(diffs < 0)` on those magnitudes: ALWAYS True on real
+# producer output. The guard could not fail, and combining k folded-normal
+# |noise| values biases the mean by ~0.8*sigma, so the combined significance
+# grew like sqrt(k) out of nothing. Measured at 15f0cf6 on a REAL PLANET (equal
+# depths at both 2P slots, difference is pure noise):
+#
+#     k=10 -> 3.17 sigma      k=20 -> 4.21 sigma
+#     k=40 -> 5.89 sigma, verdict eclipsing-binary-p2-alias
+#     k=60 -> 7.04 sigma, verdict eclipsing-binary-p2-alias
+#
+# CVZ targets have that many sectors. The gate built to refute EBs would have
+# refuted a real planet instead, with a 40-sector receipt behind it.
+
+
+def _planet_folds(k, depth=0.012, seed0=200):
+    """k sectors of the SAME real planet, straight off the producer."""
+    return [fold.p2_fold(*_planet(depth=depth, seed=seed0 + i))
+            for i in range(k)]
+
+
+def test_p2_fold_reports_which_eclipse_was_deeper():
+    """The sign has to survive the sort, or it carries no information."""
+    out = fold.p2_fold(*_binary(depth_primary=0.021, depth_secondary=0.0166))
+    assert out["depth_difference"] >= 0          # magnitude, as before
+    assert out["signed_difference"] is not None
+    assert out["deeper_phase"] is not None
+    # The magnitudes agree; only the sign is new information.
+    assert abs(out["signed_difference"]) == pytest.approx(
+        out["depth_difference"], rel=1e-12)
+    # The deeper eclipse sits at one of the two fold phases, not somewhere else.
+    assert out["deeper_phase"] in (
+        pytest.approx(out["phase_a"]), pytest.approx(out["phase_b"]))
+
+
+def test_the_sign_is_not_vacuous_on_producer_real_output():
+    """On a real planet the difference is noise, so the signs must SPLIT.
+
+    Pre-fix every producer row was non-negative and this could never hold —
+    which is exactly why `sign_consistent` could never be False.
+    """
+    folds = _planet_folds(24)
+    signs = {np.sign(f["signed_difference"]) for f in folds
+             if f.get("both_eclipses_significant")}
+    assert signs == {-1.0, 1.0}, (
+        "every producer-real difference carries the same sign — the sign "
+        "guard is vacuous")
+
+
+def test_forty_sectors_of_a_real_planet_are_not_refuted():
+    """The headline case, driven end to end through `p2_fold`."""
+    folds = [f for f in _planet_folds(40) if f["both_eclipses_significant"]]
+    assert len(folds) >= 35, "fixture drifted: too few usable folds"
+    out = fold.combine_p2_folds(folds)
+    assert out["verdict"] is None, (
+        f"{out['n_sectors']} sectors of a REAL PLANET were refuted as an "
+        f"eclipsing binary at {out['difference_sigma']:.2f} sigma")
+    assert abs(out["difference_sigma"]) < fold.P2_ALIAS_SIGMA
+
+
+def test_the_noise_floor_does_not_grow_with_sector_count():
+    """The bias was ~0.9*sqrt(k); a calibrated statistic is flat in k."""
+    for k in (10, 20, 40, 60):
+        folds = [f for f in _planet_folds(k, seed0=900)
+                 if f["both_eclipses_significant"]]
+        out = fold.combine_p2_folds(folds)
+        assert abs(out["difference_sigma"]) < fold.P2_ALIAS_SIGMA, (
+            f"k={k}: combined significance {out['difference_sigma']:.2f} on a "
+            "real planet — the combination still accumulates noise")
+
+
+def test_combining_producer_real_binary_folds_still_refutes():
+    """The fix must not close the gate: a REAL unequal-eclipse binary,
+    measured by the producer across sectors, is still refuted."""
+    folds = [fold.p2_fold(*_binary(depth_primary=0.021,
+                                   depth_secondary=0.0166, seed=11 + i))
+             for i in range(4)]
+    usable = [f for f in folds if f["both_eclipses_significant"]]
+    assert len(usable) == 4
+    out = fold.combine_p2_folds(usable)
+    assert out["sign_consistent"] is True
+    assert out["verdict"] == "eclipsing-binary-p2-alias"
+
+
+def test_combining_refuses_folds_that_carry_no_sign():
+    """A row without a phase-anchored sign cannot be combined — otherwise the
+    vacuous path quietly comes back the next time someone hand-builds one."""
+    unsigned = [{"depth_difference": 0.0016, "difference_sigma": 3.5,
+                 "both_eclipses_significant": True,
+                 "eclipse_a": {"sigma": 0.0003}, "eclipse_b": {"sigma": 0.0003}}
+                for _ in range(6)]
+    out = fold.combine_p2_folds(unsigned)
+    assert out["verdict"] is None
+    assert out["n_sectors"] == 0
