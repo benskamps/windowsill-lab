@@ -8,6 +8,18 @@ discarded, success inferred from the *absence* of a failure string, failed runs
 committing under messages indistinguishable from successes. Every fix here replaces
 an inference with a proof.
 
+| Finding | Verdict | Commit | Proof |
+|---|---|---|---|
+| **AUTO-F1** push gate is a log grep, exit code discarded | **CLOSED** | `eca3d44` | crash injection, 4 tests |
+| **AUTO-F6** `git commit … \|\| exit 0` conflates every failure | **CLOSED** | `a558b36` | real failing pre-commit hook, 4 tests |
+| **AUTO-F2** `git pull --rebase` exit unchecked | **CLOSED** | `616ff20` | real git conflict + real detached clone, 2 tests |
+| **AUTO-F10** MAST outage rows count as DONE | **CLOSED** | `06f72ff` | 4 regression tests, written first |
+| **AUTO-F4** quarantine-resume livelock | **CLOSED** | `b0ecf36` | livelock driven over 6 slots, 2 tests |
+
+All five were **confirmed at the base** — none refuted. The failing harness was
+committed first, at `f5435ab`, so the pre-fix state is re-runnable from git rather
+than only quoted here.
+
 ---
 
 ## Method, and what the harness does and does not simulate
@@ -156,7 +168,7 @@ $ tr -d '\r' < scripts/a05-hunt-slot.sh | shellcheck -f gcc -s bash -
 rc=0
 ```
 
-**Commit:** `<F1-SHA>`
+**Commit:** `eca3d44`
 
 ---
 
@@ -244,7 +256,7 @@ $ tr -d '\r' < scripts/a05-hunt-slot.sh | shellcheck -f gcc -s bash -
 shellcheck rc=0
 ```
 
-**Commit:** `<F6-SHA>`
+**Commit:** `a558b36`
 
 ## AUTO-F2 — `git pull --rebase --autostash` exit unchecked — **CLOSED**
 
@@ -327,7 +339,7 @@ $ tr -d '\r' < scripts/a05-hunt-slot.sh > /tmp/slot-norm.sh && shellcheck -f jso
 (no findings)
 ```
 
-**Commit:** `<F2-SHA>`
+**Commit:** `616ff20`
 
 ## AUTO-F10 — MAST outage rows count as DONE — **CLOSED**
 
@@ -394,7 +406,7 @@ pass: `test_an_errored_target_stays_eligible_for_a_later_hunt`,
 `test_an_errored_row_in_a_published_receipt_stays_eligible`,
 `test_a_resume_reattempts_the_targets_that_errored`.
 
-**Commit:** `<F10-SHA>`
+**Commit:** `06f72ff`
 
 ## AUTO-F4 — quarantine-resume livelock — **CLOSED**
 
@@ -463,4 +475,58 @@ tests\test_a05_hunt_script.py ................                           [100%]
 ============================= 16 passed in 0.34s ==============================
 ```
 
-**Commit:** `<F4-SHA>`
+**Commit:** `b0ecf36`
+
+---
+
+## Re-verification note for the manager — read before re-running
+
+`lab` is installed **editable, pointed at the live clone**
+(`C:\Users\beschipp\projects\windowsill-lab\src\lab`). Running `python -m pytest
+tests/` from *any* worktree therefore silently pairs that worktree's `tests/` with
+the **live clone's** `src/lab`. It is invisible in the output unless a warning
+happens to print a source path.
+
+```
+$ python -c "import lab; print(lab.__file__)"
+lab from: C:\Users\beschipp\projects\windowsill-lab\src\lab\__init__.py
+
+$ PYTHONPATH=src python -c "import lab; print(lab.__file__)"
+lab from: C:\Users\beschipp\projects\_workspaces\windowsill-lab-auto\src\lab\__init__.py
+```
+
+**PYTHONPATH wins**, so `PYTHONPATH=src python -m pytest tests/` is the honest
+invocation from a worktree. This lane changes nothing under `src/lab`, so the
+distinction does not move its verdict — but it will move any lane that does, and it
+is worth every lane knowing.
+
+(For the record, the worktree and the live clone differ only in `src/lab/a05_sky.py`
+and `src/lab/kpz.py` — the live clone carries `bdc36d7 a05: the sky gates` and this
+branch is based at `15f0cf6`.)
+
+---
+
+## What this lane did NOT close
+
+Named plainly, because a gate that looks closed and is not is exactly the failure
+mode this lane exists to end.
+
+1. **AUTO-F6's root cause.** Two lanes (`campaign.sh` and `a05-hunt-slot.sh`), one
+   clone, **no shared git-level lock**. The fix converts a silent lane-halt into a
+   loud skipped slot and retries transient contention, but the race is still there. A
+   real fix is one `flock` on `$LAB/clone.lock` held across the stage-commit-push
+   window in *both* scripts — and `campaign.sh` belongs to another lane of this
+   gauntlet (AUTO-F3/F5), so editing it here would collide.
+2. **AUTO-F2's stall.** `safe_pull_rebase` here is the strict half of
+   `campaign.sh`'s: it does not attempt `resolve_by_regeneration`, so an unresolved
+   `pot.json` conflict stalls the sector lane rather than corrupting it. That is the
+   right trade — a stall is recoverable, a stranded receipt on a detached HEAD is
+   not — but it is a stall. Follow-up: lift `resolve_by_regeneration` into a helper
+   both scripts source.
+3. **The `flock` line itself is unproven on this box.** Git Bash ships no `flock`;
+   the harness shims it so the rest of the script runs. Nothing here tests that two
+   concurrent slots actually exclude each other. That needs loam.
+4. **Not touched, by constraint:** no systemd unit, timer, or Task Scheduler job was
+   started, stopped, modified, or reloaded (Tier C — Ben's click). Unit files were
+   read only. `scripts/campaign.sh` and `scripts/nightly.ps1` were read for
+   pattern-matching and not edited.
