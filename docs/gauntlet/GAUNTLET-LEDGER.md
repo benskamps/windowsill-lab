@@ -182,8 +182,10 @@ the pipeline or the check, never retro-edited into the evidence):
   RULING, not just a build: should a pathological target permanently redden its slot's
   receipt (current, honest, unrecoverable) or be cooperatively abandoned mid-grade with an
   `over-budget` outcome row (recoverable, but an abandoned grade is a new kind of
-  ungraded)? Done-when: the ruling recorded here, then a mutation test for whichever
-  behavior it names.
+  ungraded)? **RULED by Ben 2026-08-22: KEEP the post-hoc refusal — working as intended,
+  closed without code.** The two `False` receipts stand as honest history; the withhold
+  gate (AUTO-F7 fix) now surfaces a bad slot same-day, so recurrence is loud. Revisit only
+  if it recurs at frequency.
 - **Three receipts carry a FAILED uniformity control** (`08-14-s3` D=0.336, `08-17-s2-0026`
   D=0.360, `08-18-s2-1000` D=0.265): by the check's own contract every graded FAP in them
   is *uninterpretable, not negative*. `08-18-s2-1000` is the receipt that minted
