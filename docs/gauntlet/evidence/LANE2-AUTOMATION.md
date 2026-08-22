@@ -478,6 +478,10 @@ Three properties worth naming:
   `prior_targets()` still globs it and its `searched` rows stay excluded. Setting
   aside costs the lane the ungradeable *receipt*, not the coverage.
 
+The tally lives at `LAB_HOME/ungraded/<hunt-id>.grade-failures`, beside the receipt
+it filed. Deleting it makes the checkpoint resumable again — the manual escape hatch
+for a human who has fixed whatever the grade was catching.
+
 ### AFTER — the lane advances
 
 ```
