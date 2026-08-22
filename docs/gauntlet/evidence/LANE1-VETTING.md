@@ -525,3 +525,55 @@ restating it: VET-F3's depth-gate inflation is `sqrt(pi/2)` (admitting true
 unwired call: **no production neighbour resolver existed in the repo at all**,
 so the fix had to build one, whose live network behaviour is not verified from
 this box.
+
+
+---
+
+## Addendum — VET-F3 cross-checked against the manager's independent reviewer
+
+The manager relayed a fresh-context audit of the ledger against the pinned
+base, asking me to verify its numbers independently rather than build to them
+on trust. I had already derived and shipped the same corrections before the
+message arrived; this section is the working, so the agreement is checkable
+rather than asserted.
+
+Measured on one fixed synthetic (seed 4242, 27 d at 0.005 d cadence,
+`n_odd=161`, `n_even=160`, `n_out=5079`) by running the same curve through the
+removed formula and the shipped one:
+
+```
+diff_sigma  bar widened by 1.7697   (asymptotic sqrt(pi)   = 1.7725)
+depth_sigma bar widened by 1.2729   (asymptotic sqrt(pi/2) = 1.2533)
+true significance the :244/:247 gate used to admit: 3.928 sigma
+```
+
+| Claim | Reviewer | My independent measurement | Agree? |
+|---|---|---|---|
+| `diff_sigma` factor | 1.772x | 1.7697x measured; `sqrt(pi)` = 1.7725 asymptotic | yes |
+| `depth_sigma` factor | 1.2533x | 1.2729x measured; `sqrt(pi/2)` = 1.2533 asymptotic | yes |
+| Two distinct factors, not one blanket 1.77x | yes | yes — applying 1.77x to the depth term would over-correct it by 1.41x | yes |
+| Gate admitted a true ~4.0 sigma dip, not ~2.8 | ~4.0 | 3.928 | yes |
+
+The small excess in the measured `depth_sigma` factor (1.2729 vs 1.2533) is
+real and expected, not noise: the shipped bar includes the `1/n_out` term for
+the out-of-transit baseline median, and uses `min(n_odd, n_even)` where the old
+bar used the same `n_min` — so the ratio is
+`sqrt(pi/2) * sqrt(1 + n_min/n_out)` = `1.2533 * sqrt(1 + 160/5079)` =
+**1.2729**. The asymptotic figure is what you get as `n_out` grows.
+
+**On the `:247` anchor.** The reviewer names `:244`/`:247` as if there were two
+gate sites. There is one: at `15f0cf6`, `:244` is
+`elif depth_sigma < ODD_EVEN_SIGMA:` -> `low-significance` and `:247` is the
+`else:` -> `planet-candidate` arm of that same comparison. There is exactly one
+`depth_sigma` comparison in `vet_candidate`, and the fix covers it. The other
+`ODD_EVEN_SIGMA` comparisons in the ladder (`:234` odd-even, `:236`/`:238`
+secondary and brightening) are the `diff_sigma` and `sec_sigma` statistics,
+which get their own corrected bars.
+
+**Net effect on this lane: none.** The shipped fix already gives each site the
+factor that belongs to it (`_median_se(n_odd, n_even)` for the difference,
+`_median_se(min(n_odd, n_even), n_out)` for the depth,
+`_median_se(n_sec, n_out)` for the secondary), and the gate test in
+`test_depth_gate_does_not_mint_a_sub_five_sigma_candidate` already uses the
+corrected threshold example — a true 4.91-sigma dip that the old bar reported
+as 6.15 sigma and minted as a `planet-candidate`. No rework was needed.
