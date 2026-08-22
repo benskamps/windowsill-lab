@@ -35,6 +35,7 @@ Usage:  python scripts/a05_hunt.py [--n 500] [--sector 2] [--minutes 50]
 from __future__ import annotations
 
 import argparse
+import functools
 import json
 import os
 import platform
@@ -45,10 +46,14 @@ from datetime import date
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 
-from lab import a05, checks
+from lab import a05, a05_sky, checks
 from lab.labhome import LAB_HOME
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
+
+#: Extra wall clock the post-search sky lookups may use. They run in the wrap,
+#: once per lead only, so this is a handful of queries — not a second survey.
+SKY_LOOKUP_GRACE_SECONDS = 300.0
 
 #: Hard cap on worker processes for the permutation stage. Each worker is
 #: single-target numpy; 12 saturates the 16-core box while leaving headroom
@@ -377,6 +382,11 @@ def main() -> int:
         extra = f" -> {row['disposition']}" if row.get("disposition") else ""
         print(f"  TIC {row['tic']}: {note}{extra}")
 
+    # The sky lookups happen in the WRAP, after the search budget is spent, so
+    # they get their own deadline past the hunt's soft wall rather than
+    # inheriting an already-expired one.
+    sky_deadline = t0 + args.minutes * 60.0 + SKY_LOOKUP_GRACE_SECONDS
+
     n_workers = max(1, min(args.workers, MAX_WORKERS, cpu_count()))
     with Pool(n_workers) as pool:
         result = a05.run_a05(
@@ -384,6 +394,15 @@ def main() -> int:
             already=already, done_rows=done_rows,
             B=args.B, deadline=t0 + args.minutes * 60.0,
             soft_budget_seconds=args.minutes * 60.0,
+            # The sky gates (a05.apply_sky_gates, the 2026-08-20 HATS-16 b
+            # fix) are a no-op inside run_a05 unless these two seams are
+            # passed, and this driver is where every production lead is
+            # minted. They went unwired for a day; the receipt's `sky_gates`
+            # block now states out loud whether they ran (VET-F4).
+            neighbours=functools.partial(a05_sky.resolve_neighbours,
+                                         deadline=sky_deadline),
+            sky_catalog=functools.partial(a05_sky.sky_catalog_lookup,
+                                          deadline=sky_deadline),
             on_row=on_row, pool_map=pool.map, hunt_id=hunt_id)
     out.close()
 

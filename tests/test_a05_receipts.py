@@ -751,3 +751,109 @@ def test_new_engine_verdict_clears_gate_4(hunt, verdict):
                                   cache_dir=hunt["cache"])
     assert "machine vocabulary" not in detail, detail
     assert ok is not False, detail
+
+
+# ---------------- (VET-F4) the receipt says whether the sky gates RAN --------
+#
+# `apply_sky_gates` is a no-op unless `run_a05` is given a `neighbours`
+# resolver, and the production driver never passed one. The tell was
+# invisible: a receipt with no sky verdict looks identical whether the gate
+# ran and cleared every lead or was never wired at all. The receipt now
+# carries positive evidence either way.
+
+
+def test_receipt_declares_the_sky_gate_did_not_run(hunt):
+    """The module fixture wires no `neighbours` — the receipt must SAY so."""
+    sky = hunt["report"]["sky_gates"]
+    assert sky["status"] == "not-wired", sky
+    assert sky["neighbours_wired"] is False
+    assert sky["rows_examined"] == 0
+
+
+#: A neighbour with the HATS-16 b geometry: 0.71 px away and 10.5x brighter,
+#: which is what fooled the ladder on TIC 77044472.
+SKY_NEIGHBOUR = {"tic": "77044471", "sep_px": 0.71, "flux_rel": 10.5,
+                 "r_star_sun": 1.2}
+
+
+@pytest.fixture(scope="module")
+def sky_hunt(tmp_path_factory):
+    """The same survey, with the sky seams wired — as production now runs it."""
+    cache = tmp_path_factory.mktemp("a01-cache-sky")
+    _write_cache(cache, TICS)
+    asked: list[str] = []
+
+    def neighbours(tic: str):
+        asked.append(str(tic))
+        return [dict(SKY_NEIGHBOUR)]
+
+    result = a05.run_a05(
+        sector=2, targets=TICS, curve_loader=_loader(cache),
+        catalog=_catalog, B=B, n_periods=N_PERIODS,
+        control_fraction=1.0, n_placebo=2,
+        prewhiten_kwargs={"f_hi": 45.0},
+        soft_budget_seconds=1200.0, per_target_share=0.2,
+        neighbours=neighbours, sky_catalog=lambda _t: None,
+        hunt_id="hunt-test-sky-s2")
+    return {"result": result, "report": a05.to_report(result),
+            "cache": cache, "asked": asked}
+
+
+def test_a_wired_run_actually_reaches_apply_sky_gates(sky_hunt):
+    """The witness is the resolver itself: apply_sky_gates calls it first."""
+    assert sky_hunt["asked"], (
+        "no lead was put to the sky gates — apply_sky_gates never ran")
+    sky = sky_hunt["report"]["sky_gates"]
+    assert sky["status"] == "ran", sky
+    assert sky["neighbours_wired"] is True and sky["catalog_wired"] is True
+    assert sky["rows_examined"] == len(sky_hunt["asked"]) >= 1
+
+
+def test_the_examined_row_carries_its_sky_evidence(sky_hunt):
+    """Per-row evidence, not just a run-level counter."""
+    examined = [r for r in sky_hunt["report"]["targets"]
+                if (r.get("disposition_evidence") or {}).get("sky")]
+    assert len(examined) == sky_hunt["report"]["sky_gates"]["rows_examined"]
+    ev = (examined[0]["disposition_evidence"])["sky"]
+    assert ev["n_neighbours"] == 1
+    assert "neighbour_crosscheck" in ev and "flux_budget" in ev
+
+
+def test_a_wired_run_still_passes_check_a05(sky_hunt):
+    """Wiring the gate must not make the receipt unreadable."""
+    ok, detail = checks.check_a05(sky_hunt["report"], cache_dir=sky_hunt["cache"])
+    assert ok is True, detail
+
+
+def test_a_sky_lookup_outage_does_not_mint_a_lead():
+    """An unrun gate is not a passed gate: a raising resolver must strip the
+    disposition and mark the row pending, never leave it a lead."""
+    row = {"tic": "77044472", "disposition": "lead-awaiting-human-review",
+           "disposition_evidence": {}, "period_days": 2.8, "depth": 0.01,
+           "r_star_sun": 1.0}
+
+    def boom(_tic):
+        raise a05.a05_sky.SkyLookupError("MAST down")
+
+    a05.apply_sky_gates(row, boom, lambda _t: None)
+    assert "disposition" not in row
+    assert row["pending_catalog"] is True
+    assert row["disposition_evidence"]["sky"]["lookup_error"] == "SkyLookupError"
+
+
+def test_a_neighbour_catalog_outage_does_not_read_as_a_clean_neighbour():
+    """The catalog call is inside the outage guard too — a TOI lookup that
+    raises must not be indistinguishable from 'this neighbour carries
+    nothing'."""
+    row = {"tic": "77044472", "disposition": "lead-awaiting-human-review",
+           "disposition_evidence": {}, "period_days": 2.8, "depth": 0.01,
+           "r_star_sun": 1.0}
+
+    def catalog_boom(_tic):
+        raise a05.a05_sky.SkyLookupError("ExoFOP down")
+
+    a05.apply_sky_gates(row, lambda _t: [dict(SKY_NEIGHBOUR)], catalog_boom)
+    assert "disposition" not in row, (
+        "a neighbour-catalog outage left the row a lead — the unasked "
+        "question read as a cleared gate")
+    assert row["pending_catalog"] is True

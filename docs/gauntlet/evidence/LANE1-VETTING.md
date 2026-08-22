@@ -225,4 +225,134 @@ $ PYTHONPATH="$PWD/src" python -m pytest tests/test_a04_maturity.py tests/test_a
 ============================= 97 passed in 33.93s =============================
 ```
 
-**Commit:** VETF3_SHA
+**Commit:** `c153034` — fix(vet-f3): give the A04 vetting rung a median error bar
+
+
+---
+
+## VET-F4 — sky gates dead in production — **CLOSED**
+
+**Defect (confirmed, and worse than the anchor says).** `scripts/a05_hunt.py`
+called `run_a05` without `neighbours` / `sky_catalog`, so `apply_sky_gates`
+(`a05.py:492-536` — the 2026-08-20 HATS-16 b fix) was a no-op in the one place
+production leads are minted. Investigating it surfaced a second fact the
+ledger does not record: **no production neighbour resolver existed anywhere in
+the repo.** `grep` for `neighbours` across `src/` and `scripts/` at `15f0cf6`
+returns only `a05_sky`'s own consumers and `a05.py`'s parameter. The gate was
+not merely unwired — there was nothing to wire it to. So this fix is bigger
+than "pass two kwargs", and that is stated here rather than buried.
+
+**Fix, in four parts.**
+
+1. **The resolvers** (`src/lab/a05_sky.py`): `resolve_neighbours(tic)` does a
+   MAST TIC cone search of `NEIGHBOUR_MAX_PX` (4 px) and returns the row shape
+   `aperture_shares` / `neighbour_crosscheck` already consume — `tic`,
+   `sep_px` (via the module's own `separation_px`), `flux_rel` from the Tmag
+   difference, `r_star_sun`. `sky_catalog_lookup(tic)` routes a NEIGHBOUR's
+   TIC through `a04.catalog_crosscheck` and then `exofop.ctoi_crosscheck`.
+   Both use `a01._mast` — the same query path `scripts/survey_census.py`
+   already uses for `Mast.Catalogs.Filtered.Tic`.
+
+2. **The wiring** (`scripts/a05_hunt.py`): both seams passed as
+   `functools.partial`s with their own `sky_deadline` (the hunt's soft wall
+   plus a 300 s grace), because the sky lookups run in the wrap, *after* the
+   search budget is spent, and would otherwise inherit an already-expired
+   deadline.
+
+3. **Positive evidence** (`a05.py`): a `sky_gates` block on every receipt —
+   `status` (`"ran"` / `"not-wired"`), `neighbours_wired`, `catalog_wired`,
+   `rows_examined`, `rows_refuted`, `lookup_errors`, `verdicts`. This is the
+   part the brief insisted on: absence of a sky verdict is ambiguous between
+   "ran and cleared every lead" and "never wired", and for a day in August it
+   silently meant the second. The block is emitted whether or not the gate
+   ran, so a receipt can say *"this gate did not run"* out loud. It is the
+   only shape change to committed receipts, and it is additive.
+
+4. **The outage guard widened** (`a05.py`, `apply_sky_gates`). The existing
+   `try` covered only `neighbours(...)`. `neighbour_crosscheck` *skips* a
+   neighbour whose `catalog_lookup` returns nothing, so a TOI/CTOI outage
+   returning `None` was indistinguishable from "this neighbour carries no
+   planet" — the same unasked-question-reads-as-cleared-gate failure the
+   finding is about, one level down. `sky_catalog_lookup` now raises
+   `a05_sky.SkyLookupError` instead of returning `None` on a failed lookup,
+   and the guard covers the cross-check, so an outage strips the disposition,
+   marks the row `pending_catalog`, and `run_a05` refuses to call the slice
+   complete.
+
+**Honest limit.** `resolve_neighbours` and `sky_catalog_lookup` make live MAST
+and ExoFOP calls, and **their live behaviour is not verified from this box** —
+no test here hits the network. What is tested is the wiring (the driver
+reaches the real entry points), the execution record, the per-row evidence,
+and the outage path. A first production hunt should have its receipt's
+`sky_gates` block read before its leads are trusted.
+
+**Test command**
+
+```
+python -m pytest tests/test_a05_hunt_script.py tests/test_a05_receipts.py \
+  -k "sky_gate_seams or wired_resolvers or declares_the_sky_gate or wired_run \
+      or examined_row or sky_lookup_outage or neighbour_catalog_outage" \
+  -p no:randomly -q
+```
+
+**FAIL-BEFORE** (base source at `15f0cf6`)
+
+```
+E   KeyError: 'sky_gates'
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a05_receipts.py:767: KeyError: 'sky_gates'
+E   KeyError: 'sky_gates'
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a05_receipts.py:806: KeyError: 'sky_gates'
+E   KeyError: 'sky_gates'
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a05_receipts.py:816: KeyError: 'sky_gates'
+E   AssertionError: assert 'AttributeError' == 'SkyLookupError'
+
+      - SkyLookupError
+      + AttributeError
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a05_receipts.py:841: AssertionError: assert 'AttributeError' == 'SkyLookupError'
+E   AttributeError: module 'lab.a05_sky' has no attribute 'SkyLookupError'
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a05_receipts.py:853: AttributeError: module 'lab.a05_sky' has no attribute 'SkyLookupError'
+=========================== short test summary info ===========================
+FAILED tests/test_a05_hunt_script.py::test_production_hunt_wires_the_sky_gate_seams
+FAILED tests/test_a05_hunt_script.py::test_the_wired_resolvers_are_the_real_ones
+FAILED tests/test_a05_receipts.py::test_receipt_declares_the_sky_gate_did_not_run
+FAILED tests/test_a05_receipts.py::test_a_wired_run_actually_reaches_apply_sky_gates
+FAILED tests/test_a05_receipts.py::test_the_examined_row_carries_its_sky_evidence
+FAILED tests/test_a05_receipts.py::test_a_sky_lookup_outage_does_not_mint_a_lead
+FAILED tests/test_a05_receipts.py::test_a_neighbour_catalog_outage_does_not_read_as_a_clean_neighbour
+=========== 7 failed, 1 passed, 58 deselected in 200.54s (0:03:20) ============
+```
+
+The one pass at base is `test_a_wired_run_still_passes_check_a05` — the guard
+that wiring the gate does not make the receipt unreadable. It is expected to
+pass on both sides.
+
+The headline failure is the first line of the summary:
+`test_production_hunt_wires_the_sky_gate_seams`, whose message at base reads
+
+```
+AssertionError: a05_hunt calls run_a05 without `neighbours` - apply_sky_gates
+is a no-op and every lead is minted without asking whose light it was
+```
+
+**PASS-AFTER**
+
+```
+collected 66 items / 58 deselected / 8 selected
+
+tests\test_a05_hunt_script.py ..                                         [ 25%]
+tests\test_a05_receipts.py ......                                        [100%]
+
+================ 8 passed, 58 deselected in 197.55s (0:03:17) =================
+```
+
+**No collateral damage** — the whole receipt suite, including every
+adversarial hand-edit test, is green with the additive block:
+
+```
+$ PYTHONPATH="$PWD/src" python -m pytest tests/test_a05_receipts.py -p no:randomly -q
+======================= 54 passed in 201.43s (0:03:21) ========================
+$ PYTHONPATH="$PWD/src" python -m pytest tests/test_a05_hunt_script.py -p no:randomly -q
+============================= 12 passed in 0.26s ==============================
+```
+
+**Commit:** VETF4_SHA

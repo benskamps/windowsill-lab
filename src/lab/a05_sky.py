@@ -54,7 +54,7 @@ import math
 
 import numpy as np
 
-from . import a05_physical
+from . import a01, a04, a05_physical, exofop
 
 #: Pixel scale. TESS is 21 arcsec per pixel; separations are reported in both.
 ARCSEC_PER_PIXEL = 21.0
@@ -328,3 +328,128 @@ def separation_px(ra1, dec1, ra2, dec2) -> float:
     ddec = d2 - d1
     arcsec = math.degrees(math.hypot(dra, ddec)) * 3600.0
     return arcsec / ARCSEC_PER_PIXEL
+
+
+# ------------------------------------------------------------ the resolvers --
+#
+# The two gates above are pure functions over data someone else fetched, which
+# is what made them testable — and what let them sit UNWIRED in production for
+# a day: `scripts/a05_hunt.py` called `run_a05` without a `neighbours`
+# resolver, so `apply_sky_gates` was a no-op exactly where leads are minted
+# (VET-F4). These are the production seams the hunt driver passes. They need
+# the network, which is why they are not defaults inside `run_a05`: a survey
+# must still be able to run offline, and it must SAY SO in its receipt rather
+# than let an unrun gate read as a passed one.
+
+
+class SkyLookupError(RuntimeError):
+    """A sky lookup could not be completed.
+
+    Raised rather than returning "nothing found", because the two are
+    opposite facts: "no catalogued neighbour carries this period" clears the
+    gate, "we could not ask" must not. `apply_sky_gates` catches this and
+    marks the row ``pending_catalog``, which makes the whole run incomplete —
+    an unrun gate is not a passed gate.
+    """
+
+
+#: TIC columns the sky gates need: position for the separation, Tmag for the
+#: flux share, rad for the implied-companion physics.
+TIC_COLUMNS = "ID,ra,dec,Tmag,rad"
+
+
+def _tic_row(tic: str, deadline: float | None = None) -> dict:
+    rows = a01._mast("Mast.Catalogs.Filtered.Tic", {
+        "columns": TIC_COLUMNS,
+        "filters": [{"paramName": "ID", "values": [str(tic)]}],
+    }, deadline=deadline)
+    if not rows:
+        raise SkyLookupError(f"TIC {tic} not in the TIC catalog")
+    return rows[0]
+
+
+def resolve_neighbours(tic: str, deadline: float | None = None) -> list[dict]:
+    """Catalogued stars sharing the target's aperture, nearest first.
+
+    Returns the row shape :func:`aperture_shares` and
+    :func:`neighbour_crosscheck` consume: ``tic``, ``sep_px``, ``flux_rel``
+    (flux relative to the TARGET, from the Tmag difference) and
+    ``r_star_sun``. An empty list is a real answer — "nothing catalogued
+    within :data:`NEIGHBOUR_MAX_PX`" — and clears the gate; a failure to ask
+    raises :class:`SkyLookupError` instead.
+    """
+    target = _tic_row(tic, deadline=deadline)
+    try:
+        ra, dec = float(target["ra"]), float(target["dec"])
+        t_mag = float(target["Tmag"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise SkyLookupError(
+            f"TIC {tic} carries no usable ra/dec/Tmag") from exc
+    radius_deg = NEIGHBOUR_MAX_PX * ARCSEC_PER_PIXEL / 3600.0
+    rows = a01._mast("Mast.Catalogs.Filtered.Tic.Position", {
+        "columns": TIC_COLUMNS,
+        "filters": [],
+        "ra": ra, "dec": dec, "radius": radius_deg,
+    }, deadline=deadline)
+    out: list[dict] = []
+    for r in rows:
+        rid = str(r.get("ID"))
+        if rid == str(tic):
+            continue
+        try:
+            sep = separation_px(ra, dec, r["ra"], r["dec"])
+            mag = float(r["Tmag"])
+        except (KeyError, TypeError, ValueError):
+            # A neighbour with no position or no magnitude cannot be given a
+            # flux share; it is dropped from the budget, not guessed at.
+            continue
+        if not (0.0 < sep <= NEIGHBOUR_MAX_PX):
+            continue
+        rad = r.get("rad")
+        out.append({
+            "tic": rid,
+            "sep_px": float(sep),
+            # Flux relative to the target: >1 means BRIGHTER than the target,
+            # which is the HATS-16 b geometry (10.5x, 0.71 px).
+            "flux_rel": float(10.0 ** (-0.4 * (mag - t_mag))),
+            "r_star_sun": float(rad) if isinstance(rad, (int, float)) else None,
+        })
+    out.sort(key=lambda n: n["sep_px"])
+    return out
+
+
+def sky_catalog_lookup(tic: str, deadline: float | None = None) -> dict | None:
+    """TOI / confirmed-planet / CTOI lookup for a NEIGHBOUR's TIC.
+
+    Returns the record :func:`neighbour_crosscheck` consumes — ``period_days``
+    plus whatever names the hit — or ``None`` when the neighbour carries
+    nothing. Raises :class:`SkyLookupError` when the question could not be
+    asked, so an outage cannot read as a clean neighbour.
+    """
+    try:
+        cat = a04.catalog_crosscheck(str(tic), deadline=deadline)
+    except Exception as exc:  # noqa: BLE001 - re-raised as the typed error
+        raise SkyLookupError(f"TOI lookup failed for TIC {tic}") from exc
+    if cat.get("lookup_error"):
+        raise SkyLookupError(
+            f"TOI lookup failed for TIC {tic}: {cat['lookup_error']}")
+    period = cat.get("published_period_days")
+    if isinstance(period, (int, float)) and not isinstance(period, bool):
+        return {"period_days": float(period),
+                "disposition": cat.get("disposition"),
+                "toi": cat.get("known_toi"),
+                "name": cat.get("known_planet")}
+    try:
+        ct = exofop.ctoi_crosscheck(str(tic), deadline=deadline)
+    except Exception as exc:  # noqa: BLE001 - re-raised as the typed error
+        raise SkyLookupError(f"CTOI lookup failed for TIC {tic}") from exc
+    if ct.get("lookup_error"):
+        raise SkyLookupError(
+            f"CTOI lookup failed for TIC {tic}: {ct['lookup_error']}")
+    ct_period = ct.get("ctoi_period_days")
+    if isinstance(ct_period, (int, float)) and not isinstance(ct_period, bool):
+        return {"period_days": float(ct_period),
+                "disposition": "CTOI",
+                "toi": ct.get("known_ctoi"),
+                "name": None}
+    return None
