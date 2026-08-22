@@ -20,141 +20,20 @@ aggregator globs that directory and would otherwise count a run whose control fa
 
 Neither is visible to a static text pin, so these drive the real script against
 throwaway clones with a stub runner standing in for ``scripts/a05_hunt.py``.
-"""
-import os
-import shutil
-import subprocess
-import sys
-from pathlib import Path
 
+The rig lives in ``tests/slot_harness.py``, shared with ``test_hunt_slot_gates.py``.
+These eight used to skip wholesale on Windows for want of ``flock``, which meant the
+box that edits the script never ran its regressions; the harness supplies a no-op
+flock shim where the real binary is missing, so the rest of the script runs for real.
+"""
 import pytest
 
-
-ROOT = Path(__file__).resolve().parents[1]
-SLOT_SH = ROOT / "scripts" / "a05-hunt-slot.sh"
-
-#: Stands in for the hunt driver: writes the receipt (and optionally a lead's
-#: dossier), refreshes pot.json in place the way the real runner does, and prints
-#: the two lines the wrapper reads back — the receipt path and the grade.
-STUB_RUNNER = '''\
-import json
-import os
-import sys
-from pathlib import Path
-
-root = Path.cwd()
-receipt = root / "reports" / "hunts" / os.environ["STUB_RECEIPT"]
-receipt.parent.mkdir(parents=True, exist_ok=True)
-receipt.write_text(json.dumps({"experiment": "a05-survey-hunt", "schema": 1}), encoding="utf-8")
-
-dossier = os.environ.get("STUB_DOSSIER")
-if dossier:
-    path = root / "reports" / "hunts" / "dossiers" / dossier
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("<html>lead</html>", encoding="utf-8")
-
-# The real runner rewrites pot.json's hunt block on every run, graded or not.
-pot = root / "pot.json"
-pot.write_text(json.dumps({"hunt": {"targets_searched": 4686}}), encoding="utf-8")
-
-print(f"receipt -> {receipt}")
-print(f"check_a05: {os.environ['STUB_GRADE']} — stub detail")
-'''
-
-
-def _git(repo, *args):
-    proc = subprocess.run(
-        ["git", *args], cwd=str(repo), capture_output=True, text=True, timeout=120
-    )
-    assert proc.returncode == 0, f"git {' '.join(args)} failed: {proc.stderr}"
-    return proc.stdout.strip()
-
-
-def _bash() -> str | None:
-    """A POSIX bash that can actually run the slot script.
-
-    On Windows, ``shutil.which("bash")`` resolves to System32's WSL stub, which
-    answers with an RPC error unless a WSL distro is installed — prefer the bash
-    that ships with Git, and skip rather than run the stub.
-    """
-    if os.name == "nt":
-        program_files = Path(os.environ.get("ProgramFiles", r"C:\Program Files"))
-        for candidate in (program_files / "Git" / "bin" / "bash.exe",
-                          program_files / "Git" / "usr" / "bin" / "bash.exe"):
-            if candidate.exists():
-                return str(candidate)
-        return None
-    return shutil.which("bash")
+from tests.slot_harness import git as _git, make_slot
 
 
 @pytest.fixture
 def slot(tmp_path):
-    """A bare origin, a clone wired to the stub runner, and a runnable slot script."""
-    bash = _bash()
-    if bash is None or shutil.which("git") is None:
-        pytest.skip("needs bash and git on PATH")
-    # Without flock the script's own lock line (`flock -n 9 || exit 0`) exits 0
-    # having done NOTHING — every "nothing was pushed" assertion then passes
-    # vacuously. Git Bash on Windows ships no flock; the slot only runs on loam.
-    if subprocess.run([bash, "-c", "command -v flock"],
-                      capture_output=True).returncode != 0:
-        pytest.skip("the slot script needs flock (absent on Windows Git Bash; "
-                    "the slot itself only ever runs on loam)")
-
-    origin = tmp_path / "origin.git"
-    origin.mkdir()
-    _git(origin, "init", "--bare", "--initial-branch=main")
-
-    repo = tmp_path / "loam"
-    _git(tmp_path, "clone", str(origin), "loam")
-    _git(repo, "config", "user.email", "loam@windowsill.test")
-    _git(repo, "config", "user.name", "loam-box")
-    (repo / "pot.json").write_text('{"hunt": {"targets_searched": 3882}}', encoding="utf-8")
-    (repo / "reports" / "hunts").mkdir(parents=True)
-    (repo / "reports" / "hunts" / ".keep").write_text("", encoding="utf-8")
-    (repo / "scripts").mkdir()
-    (repo / "scripts" / "a05_hunt.py").write_text(STUB_RUNNER, encoding="utf-8")
-    _git(repo, "add", "-A")
-    _git(repo, "commit", "-m", "seed")
-    _git(repo, "push", "-q", "origin", "main")
-
-    lab = tmp_path / "lab"
-    lab.mkdir()
-    (lab / "hunt.sector").write_text("3\n", encoding="utf-8")
-
-    class Slot:
-        def __init__(self):
-            self.repo = repo
-            self.origin = origin
-            self.lab = lab
-
-        def run(self, receipt, grade="True", dossier=None):
-            env = {
-                "PATH": os.environ["PATH"],
-                "HOME": str(tmp_path),
-                "LAB_HUNT_LAB": str(lab),
-                "LAB_HUNT_REPO": str(repo),
-                "LAB_HUNT_PY": sys.executable,
-                "STUB_RECEIPT": receipt,
-                "STUB_GRADE": grade,
-            }
-            if dossier:
-                env["STUB_DOSSIER"] = dossier
-            return subprocess.run(
-                [bash, str(SLOT_SH)], env=env, capture_output=True, text=True, timeout=300
-            )
-
-        def pushed_files(self):
-            return set(_git(repo, "ls-tree", "-r", "--name-only", "origin/main").splitlines())
-
-        def is_clean(self):
-            """The three conditions campaign.sh checks before it will run a pass."""
-            staged = subprocess.run(["git", "diff", "--cached", "--quiet", "--"], cwd=repo)
-            worktree = subprocess.run(["git", "diff", "--quiet", "--"], cwd=repo)
-            branch = _git(repo, "rev-parse", "--abbrev-ref", "HEAD")
-            return staged.returncode == 0 and worktree.returncode == 0 and branch == "main"
-
-    return Slot()
+    return make_slot(tmp_path)
 
 
 def test_a_suffixed_receipt_is_staged_and_pushed(slot):

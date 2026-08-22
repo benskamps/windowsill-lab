@@ -55,6 +55,16 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 #: for the main process's downloads and the OS.
 MAX_WORKERS = 12
 
+#: How many times one checkpoint may fail grading before the lane sets it aside.
+#: ``find_checkpoint`` resumes what is OPEN, and an ungraded receipt is filed in
+#: ``LAB_HOME/ungraded`` rather than committed — so a checkpoint whose grade fails
+#: DETERMINISTICALLY never acquires the thing that would retire it. Without a bound
+#: the sector lane rebuilds the same rows, writes the same receipt, fails the same
+#: grade and requarantines it every slot, forever, under two green units: no new sky
+#: is searched and nothing alarms. Bounded, not zero: a grade can fail for a reason
+#: that clears, and a 100-minute slice is worth a second attempt.
+GRADE_RETRY_LIMIT = 2
+
 
 def _lab_roots() -> tuple[Path, ...]:
     """Where checkpoints and summaries actually land: LAB_HOME and its
@@ -64,8 +74,45 @@ def _lab_roots() -> tuple[Path, ...]:
     return (LAB_HOME, LAB_HOME / "cache")
 
 
+def was_attempted_but_never_searched(row: dict) -> bool:
+    """An outage is not a search.
+
+    The row vocabulary is closed (``checks.check_a05``): ``searched``,
+    ``skipped-no-product``, ``error:<Exc>``. Only the last one is TRANSIENT — the
+    target was attempted, MAST refused to serve it, and no sky was covered. It is
+    written to the checkpoint and counted into ``result.rows`` exactly like a real
+    search (``a05.run_a05``), so a full-outage slot "completes" with 200 error rows
+    and this function used to read every one of those TICs as done. Nothing alarmed
+    and nothing retried: that sky left the survey permanently. The partial case is
+    worse, because it grades and publishes.
+
+    ``skipped-no-product`` is permanent (there is genuinely no 2-minute product to
+    search) and stays excluded. A row with no readable outcome keeps the old
+    behaviour — A04's graded receipt lists bare ``searched`` rows with no outcome
+    key at all, and the conservative reading of an unlabelled row is that it ran.
+    """
+    return str(row.get("outcome", "")).startswith("error:")
+
+
+def split_resumable(done_rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    """(inherit, retry) — what a resume keeps, and what it re-attempts.
+
+    An errored row is an attempt, not a result, and the outage that produced it has
+    had the whole slot to clear. Inheriting it as done would freeze the outage into
+    this slice's receipt. Re-erroring costs one more row in the checkpoint;
+    ``run_a05`` keys rows by TIC, so the last one per target wins.
+    """
+    inherit = [r for r in done_rows if not was_attempted_but_never_searched(r)]
+    retry = [r for r in done_rows if was_attempted_but_never_searched(r)]
+    return inherit, retry
+
+
 def prior_targets() -> set[str]:
-    """Every TIC any earlier graded run, pilot, or hunt already touched."""
+    """Every TIC any earlier graded run, pilot, or hunt already SEARCHED.
+
+    Attempted-and-errored is not searched — see
+    :func:`was_attempted_but_never_searched`.
+    """
     already: set[str] = set()
     graded = REPO_ROOT / "reports/receipts/run-2026-08-08-2338-a04.json"
     if graded.exists():
@@ -78,9 +125,12 @@ def prior_targets() -> set[str]:
                 for line in path.read_text(encoding="utf-8").splitlines():
                     if line.strip():
                         try:
-                            already.add(json.loads(line)["tic"])
-                        except (ValueError, KeyError):
+                            row = json.loads(line)
+                            tic = row["tic"]
+                        except (ValueError, KeyError, TypeError):
                             continue
+                        if not was_attempted_but_never_searched(row):
+                            already.add(tic)
     hunts_dir = REPO_ROOT / "reports/hunts"
     if hunts_dir.exists():
         for path in hunts_dir.glob("hunt-*.json"):
@@ -89,7 +139,8 @@ def prior_targets() -> set[str]:
             except (OSError, ValueError):
                 continue
             already |= {row.get("tic") for row in rep.get("targets", [])
-                        if row.get("tic")}
+                        if row.get("tic")
+                        and not was_attempted_but_never_searched(row)}
     return already
 
 
@@ -136,6 +187,47 @@ def floor_history() -> list[dict]:
     return points
 
 
+def _grade_failure_ledger(hunt_id: str) -> Path:
+    """Where a hunt id's failed-grade tally lives — beside the receipt it filed."""
+    return LAB_HOME / "ungraded" / f"{hunt_id}.grade-failures"
+
+
+def grade_failures(hunt_id: str) -> int:
+    try:
+        return int(_grade_failure_ledger(hunt_id).read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return 0
+
+
+def record_grade_failure(hunt_id: str) -> int:
+    """Count one failed grade for this hunt id and return the running total."""
+    ledger = _grade_failure_ledger(hunt_id)
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    total = grade_failures(hunt_id) + 1
+    ledger.write_text(f"{total}\n", encoding="utf-8")
+    return total
+
+
+def is_retired(hunt_id: str, hunts_dir: Path) -> bool:
+    """Is this hunt id finished — by EITHER of the two ways a hunt can finish?
+
+    A committed receipt in ``reports/hunts/`` is one. Being SET ASIDE after
+    ``GRADE_RETRY_LIMIT`` failed grades is the other, and its receipt lives in
+    ``LAB_HOME/ungraded/`` where the first test cannot see it.
+
+    Both branches of ``find_checkpoint`` must ask this same question. The first
+    version of the AUTO-F4 fix asked it only in the resume loop and then built a
+    fresh id from ``date.today()`` — which, for a checkpoint any of today's four
+    slots created, is BYTE-IDENTICAL to the id just set aside. ``find_checkpoint``
+    handed back the very file it had refused, the run resumed it, and the livelock
+    survived for the only case that happens in production. One predicate, both
+    branches, so the two can never drift apart again.
+    """
+    if (hunts_dir / f"{hunt_id}.json").exists():
+        return True
+    return grade_failures(hunt_id) >= GRADE_RETRY_LIMIT
+
+
 def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]:
     """(hunt_id, checkpoint path): resume what is OPEN, not what is dated today.
 
@@ -143,8 +235,9 @@ def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]
     old date-stamped naming made the post-midnight rerun open a FRESH file and
     re-search the slice. The rule now: resume the NEWEST ``a05-hunt-*-s{sector}``
     checkpoint that has no committed receipt, whatever its date; ``--hunt-id``
-    overrides for surgical resumes. Only when every checkpoint is receipted
-    does a fresh dated id start.
+    overrides for surgical resumes. Only when every checkpoint is receipted — or
+    SET ASIDE after ``GRADE_RETRY_LIMIT`` failed grades — does a fresh dated id
+    start.
     """
     if hunt_id:
         return hunt_id, LAB_HOME / f"a05-{hunt_id}.jsonl"
@@ -153,20 +246,34 @@ def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]
                         key=lambda p: p.stat().st_mtime, reverse=True)
     for ckpt in candidates:
         hid = ckpt.stem[len("a05-"):]
-        if not (hunts_dir / f"{hid}.json").exists():
-            return hid, ckpt
-    # Fresh id — but NEVER one whose receipt is already committed. The bare
+        # A committed receipt is not the only way a checkpoint finishes. One whose
+        # grade has failed GRADE_RETRY_LIMIT times is set aside so the lane advances
+        # — its rows and its quarantined receipt stay on disk as evidence, and its
+        # searched targets stay excluded by prior_targets(), so no sky is re-covered.
+        if is_retired(hid, hunts_dir):
+            failures = grade_failures(hid)
+            if failures >= GRADE_RETRY_LIMIT:
+                print(f"setting aside {hid}: failed grading {failures} times "
+                      "— the sector lane moves on")
+            continue
+        return hid, ckpt
+    # Fresh id — but NEVER one that is already RETIRED, by either route. The bare
     # dated id collides the moment a second producer (or a second same-day
     # slot) hunts the same sector: on 2026-08-15 loam's bare survey-slot hunt
     # defaulted to sector 2 and silently overwrote win's committed s2 receipt,
     # taking a lead-awaiting-human-review row with it. Same-day second slices
     # get a UTC time stamp — a NEW receipt beside the old one, never an
     # overwrite (the #79 turn-stamp lesson, re-learned the hard way).
+    #
+    # A SET-ASIDE checkpoint collides here exactly as hard, and this is where the
+    # first AUTO-F4 fix leaked: the loop above refused the stuck checkpoint, this
+    # branch rebuilt its id verbatim from today's date, and the caller resumed the
+    # same file. Same predicate here as there.
     hid = f"hunt-{date.today().isoformat()}-s{sector}"
-    if (hunts_dir / f"{hid}.json").exists():
+    if is_retired(hid, hunts_dir):
         stamp = time.strftime("%H%M", time.gmtime())
         hid = f"{hid}-{stamp}"
-        if (hunts_dir / f"{hid}.json").exists():
+        if is_retired(hid, hunts_dir):
             stamp = time.strftime("%H%M%S", time.gmtime())
             hid = f"hunt-{date.today().isoformat()}-s{sector}-{stamp}"
     return hid, LAB_HOME / f"a05-{hid}.jsonl"
@@ -209,6 +316,11 @@ def settle_receipt(receipt_path: Path, ok: bool | None,
         return receipt_path
     dest_dir = LAB_HOME / "ungraded"
     dest_dir.mkdir(parents=True, exist_ok=True)
+    # Tally it. Quarantining alone leaves no trace that survives to the NEXT slot's
+    # find_checkpoint, which is why a deterministic grade failure used to livelock
+    # the sector lane (see GRADE_RETRY_LIMIT).
+    total = record_grade_failure(receipt_path.stem)
+    print(f"grade failure {total}/{GRADE_RETRY_LIMIT} for {receipt_path.stem}")
     for tic in (dossiers or {}):
         rendered = receipt_path.parent / "dossiers" / f"{receipt_path.stem}-tic{tic}.html"
         if rendered.exists():
@@ -246,6 +358,11 @@ def main() -> int:
                     print(f"warning: skipping malformed checkpoint line in {ckpt.name}")
                     continue
         print(f"resuming: {len(done_rows)} targets already checkpointed")
+
+    done_rows, retry_rows = split_resumable(done_rows)
+    if retry_rows:
+        print(f"retrying {len(retry_rows)} targets that errored on an earlier "
+              "pass — an outage is not a search")
 
     already = prior_targets() - {r["tic"] for r in done_rows}
     print(f"excluding {len(already)} previously searched targets")
