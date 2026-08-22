@@ -16,6 +16,7 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Any
+from .atomic import atomic_write_text
 
 
 RECEIPT_SCHEMA = "windowsill.measurement-receipt.v1"
@@ -129,5 +130,5 @@ def write_public_receipt(report: dict, destination: Path,
                          source_bytes: bytes | None = None) -> Path:
     """Write one compact receipt and return its path."""
     destination.parent.mkdir(parents=True, exist_ok=True)
-    destination.write_text(receipt_text(report, source_bytes), encoding="utf-8")
+    atomic_write_text(destination, receipt_text(report, source_bytes), encoding="utf-8")
     return destination

@@ -34,6 +34,7 @@ import re
 from pathlib import Path
 
 from . import origin
+from .atomic import atomic_write_text
 from .publish import (
     CADENCE, LAB_HOME, RECEIPTS_DIR, REPORTS_DIR,
     archive_url, receipt_url_base,
@@ -1071,5 +1072,5 @@ def write_index() -> Path:
     """
     REPORTS_DIR.mkdir(parents=True, exist_ok=True)
     out = REPORTS_DIR / "index.html"
-    out.write_text(render_index(), encoding="utf-8")
+    atomic_write_text(out, render_index(), encoding="utf-8")
     return out
