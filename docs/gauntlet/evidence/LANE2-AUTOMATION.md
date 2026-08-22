@@ -710,3 +710,157 @@ scope calls rather than defects:
    Bounded eligibility (an attempt counter per TIC, the way `GRADE_RETRY_LIMIT`
    bounds grades) is the follow-up. The current behaviour errs toward re-attempting,
    which is the safe direction for coverage and the wasteful one for budget.
+
+---
+
+# AUTO-F3 — campaign.sh failure-masquerade — **CLOSED**
+
+Second assignment, same branch. `scripts/campaign.sh:287-301` and `:305`.
+
+**Confirmed at the base, and worse than the dossier stated.** The dossier named three
+faults; the harness found a fourth.
+
+```bash
+publishable=1
+if ! "$PY" -m lab.cli next --seed "$seed" --device "$DEVICE" >> "$LOG" 2>&1; then
+  log "campaign: pass $iter — experiment failed; refreshing existing feed only"
+  "$PY" -m lab.cli publish >> "$LOG" 2>&1 \
+    || log "campaign: pass $iter — feed refresh also failed"
+elif ! "$PY" -m lab.cli verify >> "$LOG" 2>&1; then
+```
+
+A failed `lab next` leaves `publishable=1` and falls through to the staging block.
+
+1. **It commits under a success's message.** `campaign: pass N <date> seed=S`.
+2. **`verify` never runs on it** — the re-grade is on the `elif`, i.e. the SUCCEEDED
+   path only. Nothing re-checks what ships.
+3. **`git add -A -- reports/` sweeps the torn artifacts.** A real `lab next` does not
+   fail atomically; it fails part way through with output already on disk.
+4. **NOT in the dossier:** the commit is *pushed*, and `campaign.published` — the
+   heartbeat `groundskeeper/checks/freshness.py` reads — **is touched**. The estate
+   watcher therefore scores a failing lane as healthy. That heartbeat was added
+   precisely because everything else moves on a refused pass; a failed pass reaching
+   it defeats its whole purpose.
+
+And because the pass counter is *recovered by reading these subjects back out of the
+ledger*, the masquerade corrupts the ledger, not only the feed.
+
+### The harness
+
+`tests/test_campaign_pass_gate.py` drives the **loop** (`LAB_CAMPAIGN_MAX_ITERS=1`,
+which exits before any sleep), not library mode — the masquerade lives in the loop
+body, not in a function. `tests/test_campaign_conflict.py`'s stub-package approach is
+reused: a throwaway origin + clone, a stub `lab.cli` on `PYTHONPATH` whose `next`,
+`publish` and `verify` return codes are env knobs. Its `next` failure writes a torn
+receipt and a scratch file *before* returning nonzero, because that is what the real
+one does. **No real remote, no real `lab`, no systemd unit.**
+
+### BEFORE — the gate passes wrongly
+
+```
+$ PYTHONPATH=src python -m pytest tests/test_campaign_pass_gate.py -q --no-header
+
+>       assert campaign.commit_count() == before, (
+E       AssertionError: a failed pass committed: 'campaign: pass 1 2026-08-22 seed=1001'
+E       assert 2 == 1
+
+E       AssertionError: assert 'reports/receipts/run-partial.json' not in
+      {'physics-latest.json', 'pot.json', 'reports/receipts/.keep',
+       'reports/receipts/run-partial.json', 'reports/scratch-from-the-failed-run.txt'}
+
+>       assert not campaign.heartbeat()
+E       assert not True
+
+FAILED test_a_failed_experiment_produces_no_commit
+FAILED test_a_failed_experiment_never_writes_a_success_shaped_message
+FAILED test_a_failed_experiment_does_not_sweep_its_partial_artifacts
+FAILED test_a_failed_experiment_does_not_touch_the_published_heartbeat
+======================== 4 failed, 3 passed in 11.12s =========================
+```
+
+`'campaign: pass 1 2026-08-22 seed=1001'` is the whole finding in one string: that is
+a *failed* pass, and nothing about the subject says so.
+
+Committed failing at `0893ea2` before the fix landed.
+
+### The fix
+
+`withhold_pass()` is now the **single** way a pass declines to publish, and both
+branches call it. Two inlined copies is precisely how the branches drifted apart — a
+failed `verify` restored and withheld, a failed `lab next` did neither — so the repo
+ends with one convention rather than two.
+
+It restores the campaign-owned **tracked** paths (or the dirty-worktree guard refuses
+every later pass) *and* `git clean -qfd -- reports/` clears **untracked** wreckage,
+so the next pass's own `git add -A` cannot sweep what this one left behind.
+`git checkout` alone would not have done that.
+
+The "refresh the existing feed on the way past" publish is **removed**: its output was
+restored by the very same pass, and the next successful pass rebuilds the feed from
+the committed receipts anyway. Keeping it would have been work whose only effect was
+to make a failure look like a pass.
+
+### AFTER — the gate refuses
+
+```
+$ PYTHONPATH=src python -m pytest tests/test_campaign_pass_gate.py \
+      tests/test_campaign_conflict.py tests/test_campaign_maturity.py -q --no-header
+tests\test_campaign_pass_gate.py .......                                 [ 23%]
+tests\test_campaign_conflict.py ......                                   [ 43%]
+tests\test_campaign_maturity.py .................                        [100%]
+============================= 30 passed in 18.65s =============================
+```
+
+Three of the seven pass at the base **by design** — they fence the over-correction
+side: `test_a_successful_pass_still_commits_and_publishes` (a good pass still commits,
+pushes and beats the heartbeat) and `test_a_failed_verify_still_withholds_the_commit`
+(pre-existing behaviour undisturbed).
+
+**Two static pins in `tests/test_campaign_maturity.py` were updated, not deleted.**
+`test_campaign_withheld_pass_restores_owned_paths_for_the_next_pass` pinned the
+restore's *position inside the loop body*, which the helper extraction moved; it now
+asserts both branches reach `withhold_pass` before staging and that the restore has
+exactly one home. A new pin,
+`test_campaign_experiment_failure_never_reaches_the_publishing_path`, asserts
+`"refreshing existing feed only"` is gone, so the masquerade cannot return by edit.
+Both fail at `15f0cf6` and pass on the branch:
+
+```
+$ git checkout 15f0cf6 -- scripts/campaign.sh && PYTHONPATH=src python -m pytest \
+      tests/test_campaign_maturity.py -q --no-header \
+      -k "withheld_pass_restores or never_reaches_the_publishing"
+FAILED tests/test_campaign_maturity.py::test_campaign_withheld_pass_restores_owned_paths_for_the_next_pass
+FAILED tests/test_campaign_maturity.py::test_campaign_experiment_failure_never_reaches_the_publishing_path
+====================== 2 failed, 15 deselected in 0.23s =======================
+```
+
+### shellcheck
+
+`campaign.sh` was **not** clean at the base — two findings, both pre-existing:
+
+```
+$ git show 15f0cf6:scripts/campaign.sh | shellcheck -f gcc -s bash -
+-:262:27: note: Command appears to be unreachable ... [SC2317]
+-:325:9: warning: a appears unused ... [SC2034]
+rc=1
+```
+
+Both are closed here (`for _ in 1 2 3 4` for the unused retry counter; a targeted,
+commented `disable=SC2317` on the documented library-mode seam), so campaign.sh now
+matches its sibling:
+
+```
+$ tr -d '\r' < scripts/campaign.sh > /tmp/camp.sh && shellcheck -f gcc -s bash /tmp/camp.sh
+shellcheck rc=0
+```
+
+### Not closed by AUTO-F3
+
+`git add -A -- reports/` still stages indiscriminately on the SUCCESS path. It is
+safe there only because a successful `lab next` is assumed to leave no torn output —
+an assumption nothing enforces. Narrowing it to the paths the run declares it wrote
+is the real close, and it needs a producer-side change (`lab next` printing its
+artifact list, the way `a05_hunt.py` prints `receipt -> PATH` for the slot). Out of
+scope here; worth a finding of its own.
+
+**Commit:** `32b2185` · **failing harness:** `0893ea2`
