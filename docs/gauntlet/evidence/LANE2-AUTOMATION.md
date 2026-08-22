@@ -545,3 +545,36 @@ mode this lane exists to end.
    started, stopped, modified, or reloaded (Tier C — Ben's click). Unit files were
    read only. `scripts/campaign.sh` and `scripts/nightly.ps1` were read for
    pattern-matching and not edited.
+
+---
+
+## Full suite
+
+```
+$ python -m pytest tests/ -q --no-header
+=========== 1610 passed, 8 skipped, 1 warning in 692.14s (0:11:32) ============
+[exited with code 0]
+```
+
+Exit code **0**, **1610 passed / 0 failed**, 8 skipped.
+
+That is the literal command in the return contract, and it is the run that carries
+the caveat above: it paired this worktree's `tests/` with the **live clone's**
+`src/lab`. This lane changes nothing under `src/lab` (its diff is
+`scripts/a05-hunt-slot.sh`, `scripts/a05_hunt.py`, `tests/`, `docs/`), so the verdict
+does not move — but the honest invocation from a worktree is
+`PYTHONPATH=src python -m pytest tests/`, and that re-run is recorded below.
+
+### Lane tests, pinned to this worktree's `src/lab`
+
+```
+$ PYTHONPATH=src python -m pytest tests/test_hunt_slot_gates.py \
+      tests/test_hunt_slot_script.py tests/test_a05_hunt_script.py -q --no-header
+tests\test_hunt_slot_gates.py .............                              [ 35%]
+tests\test_hunt_slot_script.py ........                                  [ 56%]
+tests\test_a05_hunt_script.py ................                           [100%]
+============================= 37 passed in 44.05s =============================
+```
+
+13 gate tests (crash injection), 8 pre-existing slot regressions (previously skipped
+on Windows), 16 driver tests. All green.
