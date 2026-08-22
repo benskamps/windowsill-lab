@@ -6,7 +6,7 @@ unclaimed row in its tier, work it, tick it. Re-read before every wave.
 **Supersedes** the Desktop dossier as the *execution* surface (the dossier stays the
 narrative record; this file is the machine-checkable one).
 
-**35 findings — 15 P1, 20 P2.** Every row has an ID, a tier, a file:line anchor, and a
+**36 findings — 16 P1, 20 P2.** (35 from the gauntlet; AUTO-F11 found during remediation.) Every row has an ID, a tier, a file:line anchor, and a
 **done-when** line that a machine can check. A row is CLOSED only when its done-when
 command has been shown FAILING at the pre-fix base and PASSING on the fix branch.
 
@@ -17,7 +17,7 @@ command has been shown FAILING at the pre-fix base and PASSING on the fix branch
 
 | Metric | Baseline (21:00) | Now |
 |---|---|---|
-| P1 closed (open PR + fail-before/pass-after shown) | 0 / 15 | 0 / 15 |
+| P1 closed (open PR + fail-before/pass-after shown) | 0 / 15 | **AUTO-F1, AUTO-F11 closed** |
 | P2 closed | 0 / 20 | 0 / 20 |
 
 ## Tier definitions
@@ -75,6 +75,7 @@ torn tails; both committed feeds validate today.
 | AUTO-F8 | P2 | `task.xml:38` | `InteractiveToken`: logged out means the Windows half silently stops. `StartWhenAvailable` catch-up can fire inside loam's slot hours, while loam's `Persistent=false` drops missed slots — opposite semantics per box. | Token type and catch-up semantics reconciled across boxes, or the divergence documented as intent. **Tier C: touching Task Scheduler is Ben's click.** |
 | AUTO-F9 | P2 | `scripts/campaign.sh`; `~/.lab/campaign.iter` | No instance lock: a manual run beside the unit races the iter file and duplicate seeds get committed as independent samples. Ledger recovery scans only the last 4000 commits (~16 months). | An instance lock exists; a second concurrent invocation refuses. |
 | **AUTO-F10** | P1 | `scripts/a05_hunt.py:76-82`; `src/lab/a05.py:723-739` | MAST outage rows count as DONE: a full-outage slot "completes" with 200 error rows, and `prior_targets()` then excludes those errored TICs from all future hunts as if they had been searched. Silent permanent coverage loss. | `error:` rows do not count toward done coverage; `prior_targets()` does not exclude transiently-errored TICs; test fails pre-fix. |
+| **AUTO-F11** | P1 | `tests/test_hunt_slot_script.py` (skip guard) | **Found 2026-08-21 during remediation, not in the original gauntlet.** All 8 slot-script regression tests `skip` wholesale on Windows for want of `flock` (skip reason: "the slot itself only ever runs on loam"). The reasoning is backwards: the slot RUNS on loam but is EDITED on win, so the box that changes the script never runs its regressions. Same family as the gauntlet's central theme — a gate that cannot fail. | On Windows the file reports 8 passed, not 8 skipped; a no-op `flock` shim stands in where the binary is absent so the rest of the script runs for real. |
 
 ## LANE 4 — STRUCTURE / TESTS
 
