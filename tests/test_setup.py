@@ -14,8 +14,12 @@ def test_nightly_script_is_runnable_and_self_contained():
     assert sh.startswith("#!/usr/bin/env bash")
     assert str(REPO_ROOT) in sh                    # cd's into the repo
     # The nightly advances the frontier via the milestone-aware scheduler `lab next`
-    # (swapped from `lab run` 2026-07-05), falling back to `lab publish` on failure.
-    assert "lab.cli next" in sh and "lab.cli publish" in sh
+    # (swapped from `lab run` 2026-07-05), then RE-GRADES with `lab verify` before
+    # publishing. The `lab publish` fallback on failure was removed 2026-08-22
+    # (AUTO-F7): it refreshed the feed and let the block below commit a "nightly:"
+    # receipt for an experiment that had just failed.
+    assert "lab.cli next" in sh and "lab.cli verify" in sh
+    assert "lab.cli publish" not in sh
     assert "git push" in sh                        # it pushes the feed
     assert "git diff --cached --quiet" in sh       # commits only on change
     # The whole reports/ tree is staged so every permanent per-run report lands.
@@ -64,9 +68,10 @@ def test_dry_run_writes_nothing(tmp_path, monkeypatch):
 def test_nightly_ps1_is_runnable_and_self_contained():
     ps = setup.nightly_ps1()
     assert str(REPO_ROOT) in ps                        # cd's into the repo
-    # The nightly advances the frontier via `lab next` (swapped from `lab run`
-    # 2026-07-05), falling back to `lab publish` on failure.
-    assert "lab.cli next" in ps and "lab.cli publish" in ps
+    # As above: `lab next`, then the `lab verify` re-grade. The publish-on-failure
+    # fallback is gone (AUTO-F7, 2026-08-22).
+    assert "lab.cli next" in ps and "lab.cli verify" in ps
+    assert "lab.cli publish" not in ps
     assert "git push" in ps                            # it pushes the feed
     assert "git diff --cached --quiet" in ps           # commits only on change
     assert "reports/" in ps                            # stages the whole reports/ tree
