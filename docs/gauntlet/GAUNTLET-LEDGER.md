@@ -18,7 +18,7 @@ command has been shown FAILING at the pre-fix base and PASSING on the fix branch
 
 | Metric | Baseline (21:00) | Now |
 |---|---|---|
-| P1 closed (open PR + fail-before/pass-after shown) | 0 / 15 | **8 / 15** — VET-F1, VET-F3 (#114); AUTO-F1/F2/F6/F10/F4 (#113, lane complete); DET-1 (lane 3, unpushed). DET-2 NOT closed — 4 tests still red on branch, incl. one REGRESSION vs base. |
+| P1 closed (open PR + fail-before/pass-after shown) | 0 / 15 | **9 / 15** — VET-F1, VET-F3 (#114); AUTO-F1/F2/F6/F10/F4 (#113); DET-1, DET-2 (#115). DET-3 (P2) also closed. |
 | Bonus P1 closed (found during remediation, outside the 15) | — | AUTO-F11 (#113) |
 | P2 closed | 0 / 20 | 0 / 20 |
 
