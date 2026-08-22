@@ -473,3 +473,55 @@ tests\test_a05_fold.py ....................................              [100%]
 ```
 
 **Commit:** `00affd1` — fix(vet-f2): combine the phase-anchored signed difference
+
+
+---
+
+## Full suite
+
+```
+$ PYTHONPATH="$PWD/src" python -m pytest tests/ -p no:randomly -q
+=========== 1609 passed, 16 skipped, 1 warning in 614.41s (0:10:14) ===========
+EXIT=0
+```
+
+The one warning (`RankWarning` from `fss.py:81`) is pre-existing and unrelated
+to this lane. The 16 skips are pre-existing.
+
+**A trap worth recording for whoever runs this next.** An earlier full-suite
+run of this same tree reported `1 failed, 36 errors`, and every error was
+
+```
+E   numpy._core._exceptions._ArrayMemoryError: Unable to allocate 2.64 MiB for an array with shape (64, 5400) and data type float64
+```
+
+That was **my own fault, not the code's**: I had two other pytest processes
+running concurrently against the same tree, and the A05 receipt fixtures build
+real light curves. The run above was taken with nothing else in flight. The
+module-prefix run that isolates it is also green:
+
+```
+$ PYTHONPATH="$PWD/src" python -m pytest tests/test_a01_maturity.py tests/test_a03_maturity.py \
+    tests/test_a04_maturity.py tests/test_a05_fold.py tests/test_a05_hunt_script.py \
+    tests/test_a05_mono.py tests/test_a05_physical.py tests/test_a05_receipts.py -p no:randomly -q
+======================= 169 passed in 216.43s (0:03:36) =======================
+```
+
+Do not run this suite concurrently with another copy of itself.
+
+## Summary
+
+| ID | Verdict | What changed |
+|---|---|---|
+| VET-F1 | CLOSED | `lab.a05_vocab` is the one definition; checker derives, lockstep tripwire + per-verdict gate-4 fixtures |
+| VET-F2 | CLOSED | `p2_fold` emits a phase-anchored `signed_difference`; `combine_p2_folds` combines it, unsigned rows refused |
+| VET-F3 | CLOSED | `MEDIAN_SIGMA_FACTOR` shared from `a04`; three statistics get their own median SEs |
+| VET-F4 | CLOSED | Real neighbour/catalog resolvers built and wired; additive `sky_gates` receipt block; outage guard widened |
+
+Two places where I recorded something the ledger did not say, rather than
+restating it: VET-F3's depth-gate inflation is `sqrt(pi/2)` (admitting true
+~3.99 sigma), not the `sqrt(pi)` that gives the ledger's "2.8 sigma" — the
+`sqrt(pi)` figure belongs to the odd-even statistic. And VET-F4 was not just an
+unwired call: **no production neighbour resolver existed in the repo at all**,
+so the fix had to build one, whose live network behaviour is not verified from
+this box.
