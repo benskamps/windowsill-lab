@@ -411,6 +411,20 @@
       "venue": "ExoFOP"
     },
     {
+      "id": "A07",
+      "title": "Galilean clockwork: Kepler's third law and the Laplace resonance from JPL Horizons.",
+      "status": "review",
+      "track": "astronomy",
+      "growth_form": "creeper",
+      "runner_available": true,
+      "result": "machine gate PASSED, awaiting human review \u2014 all four sidereal periods recovered: Io 1.769138 d vs published 1.769137786 (rel 1.2e-7), Europa 3.551206 vs 3.551181, Ganymede 7.154529 vs 7.154553, Callisto 16.688573 vs 16.689018, all within the 5e-4 bar; T\u00b2/a\u00b3 constant to 2.08e-4 across the four moons; GM_Jupiter from the fit within 5.33e-4 of the JPL 126686531.9 km\u00b3/s\u00b2; Laplace relation closes at 1.2e-5 of n_Io while the Callisto-substituted control stays open at 0.28 \u2014 the resonance is the trio's, not the arithmetic's. Receipt `reports/2026-08-22-a07.json`; rerun `lab a07` \u2014 the fixed window makes the rerun a cache hit and byte-comparable.",
+      "short_label": "Jupiter's clockwork",
+      "question_plain": "If you watch Jupiter's four big moons for four months, do they keep the exact mathematical rhythm Kepler and Laplace wrote down centuries ago?",
+      "why_it_matters": "Three of the moons are locked in a gravitational waltz so precise it has held for billions of years \u2014 recovering it from public ephemerides proves this lab can measure celestial clockwork end to end.",
+      "result_plain": "Yes \u2014 all four moons land on Kepler's line, Jupiter's mass falls out of the fit, and Io, Europa and Ganymede keep the Laplace rhythm while Callisto, the outsider, proves the rhythm is real by breaking it.",
+      "venue": "JPL-Horizons"
+    },
+    {
       "id": "I01",
       "title": "Calibrate the CMOS as a particle detector",
       "status": "null",
