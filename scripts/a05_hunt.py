@@ -64,8 +64,45 @@ def _lab_roots() -> tuple[Path, ...]:
     return (LAB_HOME, LAB_HOME / "cache")
 
 
+def was_attempted_but_never_searched(row: dict) -> bool:
+    """An outage is not a search.
+
+    The row vocabulary is closed (``checks.check_a05``): ``searched``,
+    ``skipped-no-product``, ``error:<Exc>``. Only the last one is TRANSIENT — the
+    target was attempted, MAST refused to serve it, and no sky was covered. It is
+    written to the checkpoint and counted into ``result.rows`` exactly like a real
+    search (``a05.run_a05``), so a full-outage slot "completes" with 200 error rows
+    and this function used to read every one of those TICs as done. Nothing alarmed
+    and nothing retried: that sky left the survey permanently. The partial case is
+    worse, because it grades and publishes.
+
+    ``skipped-no-product`` is permanent (there is genuinely no 2-minute product to
+    search) and stays excluded. A row with no readable outcome keeps the old
+    behaviour — A04's graded receipt lists bare ``searched`` rows with no outcome
+    key at all, and the conservative reading of an unlabelled row is that it ran.
+    """
+    return str(row.get("outcome", "")).startswith("error:")
+
+
+def split_resumable(done_rows: list[dict]) -> tuple[list[dict], list[dict]]:
+    """(inherit, retry) — what a resume keeps, and what it re-attempts.
+
+    An errored row is an attempt, not a result, and the outage that produced it has
+    had the whole slot to clear. Inheriting it as done would freeze the outage into
+    this slice's receipt. Re-erroring costs one more row in the checkpoint;
+    ``run_a05`` keys rows by TIC, so the last one per target wins.
+    """
+    inherit = [r for r in done_rows if not was_attempted_but_never_searched(r)]
+    retry = [r for r in done_rows if was_attempted_but_never_searched(r)]
+    return inherit, retry
+
+
 def prior_targets() -> set[str]:
-    """Every TIC any earlier graded run, pilot, or hunt already touched."""
+    """Every TIC any earlier graded run, pilot, or hunt already SEARCHED.
+
+    Attempted-and-errored is not searched — see
+    :func:`was_attempted_but_never_searched`.
+    """
     already: set[str] = set()
     graded = REPO_ROOT / "reports/receipts/run-2026-08-08-2338-a04.json"
     if graded.exists():
@@ -78,9 +115,12 @@ def prior_targets() -> set[str]:
                 for line in path.read_text(encoding="utf-8").splitlines():
                     if line.strip():
                         try:
-                            already.add(json.loads(line)["tic"])
-                        except (ValueError, KeyError):
+                            row = json.loads(line)
+                            tic = row["tic"]
+                        except (ValueError, KeyError, TypeError):
                             continue
+                        if not was_attempted_but_never_searched(row):
+                            already.add(tic)
     hunts_dir = REPO_ROOT / "reports/hunts"
     if hunts_dir.exists():
         for path in hunts_dir.glob("hunt-*.json"):
@@ -89,7 +129,8 @@ def prior_targets() -> set[str]:
             except (OSError, ValueError):
                 continue
             already |= {row.get("tic") for row in rep.get("targets", [])
-                        if row.get("tic")}
+                        if row.get("tic")
+                        and not was_attempted_but_never_searched(row)}
     return already
 
 
@@ -246,6 +287,11 @@ def main() -> int:
                     print(f"warning: skipping malformed checkpoint line in {ckpt.name}")
                     continue
         print(f"resuming: {len(done_rows)} targets already checkpointed")
+
+    done_rows, retry_rows = split_resumable(done_rows)
+    if retry_rows:
+        print(f"retrying {len(retry_rows)} targets that errored on an earlier "
+              "pass — an outage is not a search")
 
     already = prior_targets() - {r["tic"] for r in done_rows}
     print(f"excluding {len(already)} previously searched targets")

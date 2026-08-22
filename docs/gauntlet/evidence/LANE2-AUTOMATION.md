@@ -329,9 +329,72 @@ $ tr -d '\r' < scripts/a05-hunt-slot.sh > /tmp/slot-norm.sh && shellcheck -f jso
 
 **Commit:** `<F2-SHA>`
 
-## AUTO-F10 — MAST outage rows count as DONE
+## AUTO-F10 — MAST outage rows count as DONE — **CLOSED**
 
-_pending_
+**Confirmed at the base.** The row vocabulary is closed (`src/lab/checks.py:2750`):
+`searched` / `skipped-no-product` / `error:<Exc>`. `src/lab/a05.py:723-732` writes an
+`error:` row when the loader raises, appends it to the checkpoint, and counts it into
+`result.rows` exactly like a real search — so `result.complete` is satisfied by an
+outage. `scripts/a05_hunt.py:76-83` and `:91-92` then read the `tic` key and **never
+the outcome**, so every errored TIC was excluded from every future hunt.
+
+This is the one finding in the lane that destroys science rather than uptime: the sky
+those targets cover leaves the survey **permanently**, with nothing alarming and
+nothing retrying. The partial-outage case is worse than the full one, because it
+grades and publishes: 40 errored TICs out of 200 vanish under a green receipt.
+
+### BEFORE — the regression tests fail (written first, unmodified tree)
+
+```
+$ python -m pytest tests/test_a05_hunt_script.py -q --no-header -k errored
+
+>       assert "222" not in already and "333" not in already, (
+E       AssertionError: an outage was recorded as coverage — that sky is now permanently unsearched
+E       assert ('222' not in {'111', '222', '333', '444'})
+
+>       assert "888" not in already
+E       AssertionError: assert '888' not in {'777', '888'}
+
+FAILED test_an_errored_target_stays_eligible_for_a_later_hunt
+FAILED test_an_errored_row_in_a_published_receipt_stays_eligible
+====================== 2 failed, 13 deselected in 0.42s =======================
+```
+
+### The fix
+
+`was_attempted_but_never_searched(row)` names the distinction once, and both globs in
+`prior_targets()` consult it:
+
+* **`error:*` is transient** — attempted, MAST refused, no sky covered. Stays
+  eligible for a later hunt.
+* **`skipped-no-product` is permanent** — there is genuinely no 2-minute product to
+  search. Stays excluded, so the budget is not burned re-attempting it.
+* **No readable outcome keeps the old behaviour.** A04's graded receipt lists bare
+  `searched` rows with no `outcome` key at all; the conservative reading of an
+  unlabelled row is that it ran. The change is strictly narrower than "retry
+  everything unfamiliar".
+
+`split_resumable()` applies the same rule one slice inward: a resume re-attempts the
+targets that errored on the earlier pass instead of inheriting them as done. The
+outage has had the whole slot to clear, and inheriting would freeze it into *this*
+slice's receipt. Re-erroring costs one extra checkpoint row; `run_a05` keys rows by
+TIC, so the last one per target wins.
+
+### AFTER — the regression tests pass
+
+```
+$ python -m pytest tests/test_a05_hunt_script.py -q --no-header
+tests\test_a05_hunt_script.py ...............F                           [100%]
+======================== 1 failed, 15 passed in 0.51s =========================
+```
+
+The one remaining failure is AUTO-F4's livelock test, fixed next. All four F10 tests
+pass: `test_an_errored_target_stays_eligible_for_a_later_hunt`,
+`test_searched_and_no_product_targets_stay_excluded`,
+`test_an_errored_row_in_a_published_receipt_stays_eligible`,
+`test_a_resume_reattempts_the_targets_that_errored`.
+
+**Commit:** `<F10-SHA>`
 
 ## AUTO-F4 — quarantine-resume livelock
 

@@ -176,3 +176,132 @@ def test_the_gate_runs_before_the_pot_is_refreshed():
     receipt was pulled out from under it."""
     src = (ROOT / "scripts" / "a05_hunt.py").read_text(encoding="utf-8")
     assert src.index("settle_receipt(receipt_path") < src.index("pot[\"hunt\"] = hunt_block()")
+
+
+# -- AUTO-F10: an outage is not a search -------------------------------------
+#
+# A target that MAST refused to serve produces an ``error:<Exc>`` row, and that row
+# is written to the checkpoint and counted into ``result.rows`` exactly like a real
+# search (src/lab/a05.py:723-732). A full-outage slot therefore "completes" with 200
+# error rows — and ``prior_targets()`` then excluded every one of those TICs from
+# every FUTURE hunt, because it read the ``tic`` key and never the ``outcome``.
+# Nothing alarms and nothing retries: the sky those targets cover is silently and
+# PERMANENTLY dropped from the survey. The partial case is worse, because it grades
+# and publishes: 40 errored TICs out of 200 vanish under a green receipt.
+#
+# The vocabulary is closed (checks.py:2750): searched / skipped-no-product / error:*.
+# ``skipped-no-product`` is permanent — there is genuinely no 2-minute product to
+# search — so it stays excluded. ``error:*`` is transient by construction, so it must
+# stay eligible. Anything without a readable outcome keeps the old behaviour: A04's
+# graded receipt lists bare ``searched`` rows with no outcome key at all, and the
+# conservative reading of an unlabelled row is that it was searched.
+
+def _checkpoint(lab_home: Path, name: str, rows: list[dict]) -> Path:
+    path = lab_home / name
+    path.write_text("".join(json.dumps(r) + "\n" for r in rows), encoding="utf-8")
+    return path
+
+
+def test_an_errored_target_stays_eligible_for_a_later_hunt(tmp_path, monkeypatch):
+    """The MAST outage case. These TICs were never searched — only attempted."""
+    mod = _load_script()
+    lab_home = _isolated(mod, tmp_path, monkeypatch)
+    _checkpoint(lab_home, "a05-hunt-2026-08-20-s3.jsonl", [
+        {"tic": "111", "outcome": "searched"},
+        {"tic": "222", "outcome": "error:HTTPError"},
+        {"tic": "333", "outcome": "error:TimeoutError"},
+        {"tic": "444", "outcome": "skipped-no-product"},
+    ])
+    already = mod.prior_targets()
+    assert "222" not in already and "333" not in already, (
+        "an outage was recorded as coverage — that sky is now permanently unsearched")
+
+
+def test_searched_and_no_product_targets_stay_excluded(tmp_path, monkeypatch):
+    """The other half. A search that ran, and a target with genuinely no product,
+    are both DONE — re-searching them would burn the budget for nothing."""
+    mod = _load_script()
+    lab_home = _isolated(mod, tmp_path, monkeypatch)
+    _checkpoint(lab_home, "a05-hunt-2026-08-20-s3.jsonl", [
+        {"tic": "111", "outcome": "searched"},
+        {"tic": "444", "outcome": "skipped-no-product"},
+        {"tic": "555"},  # A04-era row with no outcome key: read as searched
+    ])
+    already = mod.prior_targets()
+    assert {"111", "444", "555"} <= already
+
+
+def test_an_errored_row_in_a_published_receipt_stays_eligible(tmp_path, monkeypatch):
+    """The partial-outage case, which GRADES and PUBLISHES: the receipt is real,
+    its errored rows are not coverage, and the receipt glob has to say so too."""
+    mod = _load_script()
+    _isolated(mod, tmp_path, monkeypatch)
+    hunts = tmp_path / "reports" / "hunts"
+    hunts.mkdir(parents=True, exist_ok=True)
+    (hunts / "hunt-2026-08-19-s3.json").write_text(json.dumps({
+        "experiment": "a05-survey-hunt", "schema": 1,
+        "targets": [{"tic": "777", "outcome": "searched"},
+                    {"tic": "888", "outcome": "error:ConnectionError"}],
+    }), encoding="utf-8")
+    already = mod.prior_targets()
+    assert "777" in already
+    assert "888" not in already
+
+
+def test_a_resume_reattempts_the_targets_that_errored(tmp_path, monkeypatch):
+    """The same rule one slice inward. Inheriting an errored row as done freezes
+    the outage into this slice's receipt; the outage has had 100 minutes to clear."""
+    mod = _load_script()
+    inherit, retry = mod.split_resumable([
+        {"tic": "111", "outcome": "searched"},
+        {"tic": "222", "outcome": "error:HTTPError"},
+        {"tic": "444", "outcome": "skipped-no-product"},
+    ])
+    assert [r["tic"] for r in inherit] == ["111", "444"]
+    assert [r["tic"] for r in retry] == ["222"]
+
+
+# -- AUTO-F4: a checkpoint that cannot be graded must not be resumed forever ---
+#
+# ``find_checkpoint`` resumes the newest checkpoint that has no COMMITTED receipt,
+# and ``settle_receipt`` files an ungraded receipt in LAB_HOME/ungraded — so a
+# checkpoint whose grade fails deterministically never acquires the thing that would
+# retire it. The sector lane then rebuilds the same rows, writes the same receipt,
+# fails the same grade and requarantines it, every slot, forever: no new sky is
+# searched and both units stay green. Bound the retries, then set it aside.
+
+def test_a_deterministically_ungradeable_checkpoint_stops_being_resumed(
+        tmp_path, monkeypatch):
+    mod = _load_script()
+    lab_home = _isolated(mod, tmp_path, monkeypatch)
+    stuck = "hunt-2026-08-20-s3"
+    _checkpoint(lab_home, f"a05-{stuck}.jsonl",
+                [{"tic": "111", "outcome": "searched"}])
+
+    seen = []
+    for _ in range(6):  # six slots — a day and a half of the sector lane
+        hunt_id, _ckpt = mod.find_checkpoint(3)
+        seen.append(hunt_id)
+        if hunt_id != stuck:
+            break
+        # The slot reruns, rebuilds identical rows, and grading fails identically.
+        mod.settle_receipt(_receipt(tmp_path, f"{hunt_id}.json"), None)
+
+    assert seen[-1] != stuck, f"the sector lane never advanced: {seen}"
+    assert seen.count(stuck) <= mod.GRADE_RETRY_LIMIT
+    assert (lab_home / "ungraded" / f"{stuck}.json").exists(), (
+        "the evidence must survive being set aside")
+
+
+def test_a_single_grade_failure_is_still_retried(tmp_path, monkeypatch):
+    """Bounded, not zero. A grade can fail for a reason that clears — the fix must
+    not throw away a 100-minute slice on its first bad run."""
+    mod = _load_script()
+    lab_home = _isolated(mod, tmp_path, monkeypatch)
+    stuck = "hunt-2026-08-20-s3"
+    _checkpoint(lab_home, f"a05-{stuck}.jsonl",
+                [{"tic": "111", "outcome": "searched"}])
+    mod.settle_receipt(_receipt(tmp_path, f"{stuck}.json"), None)
+    hunt_id, ckpt = mod.find_checkpoint(3)
+    assert hunt_id == stuck
+    assert ckpt == lab_home / f"a05-{stuck}.jsonl"
