@@ -308,3 +308,54 @@ def test_m05_hex_is_advertised_in_the_help_text():
 
     assert "lab m05-hex" in HELP
     assert "2/ln(2+" in HELP
+
+
+def test_bare_hunt_dispatch_pins_a_slice_the_slot_can_actually_finish(monkeypatch):
+    """The scheduled (bare) hunt's --n default must be completable inside its
+    own --minutes default, or no receipt is ever written and the box's turn
+    freezes: an incomplete slice writes nothing BY DESIGN (a05_hunt refuses
+    to let a partial slice masquerade as a survey), so a default slice sized
+    beyond the budget is a contract that can never be met. Measured on win
+    2026-08-22 after the 08-20 search level-ups: --n 150 against 45 minutes
+    advanced ~2 targets per slot — a receipt in weeks. Ruled by Ben
+    2026-08-22: shrink the bare slice (loam's committed receipts are n=5-25,
+    so small slices are established survey practice); explicit flags still
+    override for attended runs.
+    """
+    import subprocess
+
+    captured = {}
+
+    def fake_call(argv, **kwargs):
+        captured["argv"] = argv
+        return 0
+
+    monkeypatch.setattr(subprocess, "call", fake_call)
+    monkeypatch.setattr(cli, "_hunt_status_for_dispatch",
+                        lambda: {"per_sector": {2: 100}})
+    rc = cli.main(["hunt"])
+    assert rc == 0
+    argv = captured["argv"]
+    n = int(argv[argv.index("--n") + 1])
+    minutes = float(argv[argv.index("--minutes") + 1])
+    assert n <= 15, (
+        f"bare slice --n {n} is not completable in a {minutes}-minute slot "
+        "at post-2026-08-20 per-target cost")
+    assert minutes == 45.0, "the slot budget itself is unchanged"
+    assert argv[argv.index("--sector") + 1] == "2"
+
+
+def test_explicit_hunt_flags_still_override_the_bare_defaults(monkeypatch):
+    import subprocess
+
+    captured = {}
+    monkeypatch.setattr(subprocess, "call",
+                        lambda argv, **kw: captured.update(argv=argv) or 0)
+    monkeypatch.setattr(cli, "_hunt_status_for_dispatch",
+                        lambda: {"per_sector": {2: 100}})
+    assert cli.main(["hunt", "--n", "200", "--minutes", "100",
+                     "--sector", "3"]) == 0
+    argv = captured["argv"]
+    assert argv[argv.index("--n") + 1] == "200"
+    assert argv[argv.index("--minutes") + 1] == "100"
+    assert argv[argv.index("--sector") + 1] == "3"

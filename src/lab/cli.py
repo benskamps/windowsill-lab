@@ -1287,7 +1287,17 @@ def main(argv=None):
         extra = list(args[1:])
         defaults = []
         if not any(a == "--n" for a in extra):
-            defaults += ["--n", "150"]
+            # The bare slice must be COMPLETABLE inside the bare budget, or no
+            # receipt is ever written (an incomplete slice writes nothing by
+            # design) and the box's turn freezes. 150 was sized before the
+            # 2026-08-20 search level-ups made each target minutes-dear;
+            # measured on win 2026-08-22 it advanced ~2 targets per 45-minute
+            # slot — a receipt in weeks. Ruled by Ben 2026-08-22: shrink the
+            # bare slice. Loam's committed receipts are n=5-25, so small
+            # slices are established practice; the false-alarm-floor statistic
+            # is simply computed over fewer stars per receipt and keeps
+            # accruing across the floor history. Attended runs override.
+            defaults += ["--n", "12"]
         if not any(a == "--minutes" for a in extra):
             defaults += ["--minutes", "45"]
         if not any(a == "--sector" for a in extra):
