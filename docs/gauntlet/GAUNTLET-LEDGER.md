@@ -18,7 +18,7 @@ command has been shown FAILING at the pre-fix base and PASSING on the fix branch
 
 | Metric | Baseline (21:00) | Now |
 |---|---|---|
-| P1 closed (open PR + fail-before/pass-after shown) | 0 / 15 | **8 / 15** — VET-F1, VET-F3 (#114); AUTO-F1/F2/F6/F10 (#113); DET-1, DET-2 (#115). DET-3 (P2) also closed. |
+| P1 closed (open PR + fail-before/pass-after shown) | 0 / 15 | **10 / 15** — VET-F1/F2/F3/F4 (#114, **lane complete**); AUTO-F1/F2/F6/F10 (#113); DET-1, DET-2 (#115, **lane complete**). DET-3 (P2) also closed. |
 | **AUTO-F4 — REOPENED** | — | Closure **REFUTED** by adversarial review: set-aside is bypassed by the fresh-id fallback for a **same-day** checkpoint; the test passed only because its fixture was dated *yesterday*. Livelock survives for the case that actually occurs. |
 | Bonus P1 closed (found during remediation, outside the 15) | — | AUTO-F11 (#113) |
 | P2 closed | 0 / 20 | 0 / 20 |
