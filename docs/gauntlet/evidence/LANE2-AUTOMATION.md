@@ -550,6 +550,8 @@ mode this lane exists to end.
 
 ## Full suite
 
+### As the return contract asks it
+
 ```
 $ python -m pytest tests/ -q --no-header
 =========== 1610 passed, 8 skipped, 1 warning in 692.14s (0:11:32) ============
@@ -558,21 +560,57 @@ $ python -m pytest tests/ -q --no-header
 
 Exit code **0**, **1610 passed / 0 failed**, 8 skipped.
 
-That is the literal command in the return contract, and it is the run that carries
-the caveat above: it paired this worktree's `tests/` with the **live clone's**
-`src/lab`. This lane changes nothing under `src/lab` (its diff is
+That run carries the caveat above: it paired this worktree's `tests/` with the
+**live clone's** `src/lab`. This lane changes nothing under `src/lab` (its diff is
 `scripts/a05-hunt-slot.sh`, `scripts/a05_hunt.py`, `tests/`, `docs/`), so the verdict
-does not move — but the honest invocation from a worktree is
-`PYTHONPATH=src python -m pytest tests/`, and that re-run is recorded below.
+does not move — but the honest invocation from a worktree pins the package.
 
-### Lane tests, pinned to this worktree's `src/lab`
+### Pinned to this worktree's `src/lab` — 4 failures, NOT this lane's
 
 ```
-$ PYTHONPATH=src python -m pytest tests/test_hunt_slot_gates.py \
-      tests/test_hunt_slot_script.py tests/test_a05_hunt_script.py -q --no-header
-tests\test_hunt_slot_gates.py .............                              [ 35%]
-tests\test_hunt_slot_script.py ........                                  [ 56%]
-tests\test_a05_hunt_script.py ................                           [100%]
+$ PYTHONPATH=src python -m pytest tests/ -q --no-header
+FAILED tests/test_i01_maturity.py::test_progress_callback_failure_cannot_strand_camera_child
+FAILED tests/test_i01_maturity.py::test_capture_never_overwrites_or_deletes_racing_output
+FAILED tests/test_i01_maturity.py::test_capture_never_overwrites_racing_metadata_and_removes_only_owned_output
+FAILED tests/test_i01_maturity.py::test_worker_error_preserves_specific_machine_readable_code
+====== 4 failed, 1606 passed, 8 skipped, 1 warning in 1040.59s (0:17:20) ======
+```
+
+All four are `test_i01_maturity.py` — the camera experiment. This lane touches no
+i01 code, no `src/lab` file, and nothing either imports.
+
+**They are pre-existing, and here is the proof.** The base tree was extracted clean
+from git (no working-copy state, none of this lane's commits) and run the same way:
+
+```
+$ git archive 15f0cf6 | tar -x -C <tmp>/base-15f0cf6
+$ cd <tmp>/base-15f0cf6 && PYTHONPATH=src python -m pytest tests/test_i01_maturity.py -q --no-header
+FAILED tests/test_i01_maturity.py::test_progress_callback_failure_cannot_strand_camera_child
+FAILED tests/test_i01_maturity.py::test_capture_saves_grayscale_stack_metadata_hash_and_progress
+FAILED tests/test_i01_maturity.py::test_capture_never_overwrites_or_deletes_racing_output
+FAILED tests/test_i01_maturity.py::test_capture_never_overwrites_racing_metadata_and_removes_only_owned_output
+FAILED tests/test_i01_maturity.py::test_worker_error_preserves_specific_machine_readable_code
+======================== 5 failed, 25 passed in 3.01s =========================
+```
+
+Identical set at the base (plus one more that the loaded full run happened to pass).
+
+**Likely cause: the box, not the code.** The captured stderr is
+`OpenBLAS error: Memory allocation still failed after 10 retries, giving up.`, and
+the typed failure the test asserts on degrades to a generic one when the camera
+worker subprocess dies. At the time of these runs there were **10 orphaned python
+workers** (~200 MB each, all started 00:00:07) left behind by a concurrent lane, and
+free memory was 8.5 GB of 32 GB. Worth flagging to whoever owns them — they are
+slowing and reddening every lane's suite, not just this one. Not killed here: they
+are not this lane's processes.
+
+### Lane tests, pinned
+
+```
+$ PYTHONPATH=src python -m pytest tests/test_hunt_slot_gates.py       tests/test_hunt_slot_script.py tests/test_a05_hunt_script.py -q --no-header
+tests	est_hunt_slot_gates.py .............                              [ 35%]
+tests	est_hunt_slot_script.py ........                                  [ 56%]
+tests	est_a05_hunt_script.py ................                           [100%]
 ============================= 37 passed in 44.05s =============================
 ```
 
