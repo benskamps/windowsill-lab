@@ -155,3 +155,139 @@ release a lock it never took), and `..._gives_up_and_raises_rather_than_hanging`
 pins that the wait is a budget rather than a hang.
 
 **Commit:** see `fix(str-1)` below.
+
+---
+
+## AUTO-F5 (P1) — CLOSED (still open at the base; `276c7b6` does not cover it)
+
+### Is it already fixed?
+
+**No.** The brief asked this first, so it is answered with file:line rather than
+opinion.
+
+`276c7b6` ("quarantine the receipt when staging itself fails") adds
+`quarantine_receipt` to the `git add` failure branch —
+`scripts/a05-hunt-slot.sh:173-181` on the base. That is a branch the shell
+**executes**: `git add` returns non-zero, the `if` is taken, the function runs.
+
+AUTO-F5 is process death. `scripts/windowsill-hunt.service:7` sets
+`TimeoutStartSec=2h`; when it expires systemd kills the unit's whole cgroup, and
+no exit path runs at all. Proof that nothing catches it:
+
+```
+$ grep -n "trap" scripts/a05-hunt-slot.sh
+(none)
+$ grep -n "trap" scripts/campaign.sh
+209:trap 'log "campaign: signal - stopping after pass $iter"; exit 0' INT TERM
+$ grep -n "ls-files|untracked|orphan" scripts/a05-hunt-slot.sh
+172:# (TIC 287328866) pushed its receipt and left its dossier sitting untracked.   <- a comment
+```
+
+The sibling script has the trap; this one never grew one — and a trap would not
+cover SIGKILL regardless. Nothing anywhere in the slot looks for debris at
+start. **AUTO-F5 was open at `94c3ffa`.**
+
+### The two shapes of debris
+
+* **An untracked receipt in `reports/hunts/`.** The pot aggregator globs that
+  DIRECTORY (`src/lab/publish.py`, `hunt_block`) while CI recomputes
+  `pot == hunt_block()` from the COMMITTED set. The next successful publish
+  therefore ships a pot counting a receipt CI cannot see, and main goes red in
+  that run's own commit — the 2026-08-15 class by a different road.
+* **A `pot.json` refreshed but never committed.** `scripts/campaign.sh:281`
+  refuses a pass against pre-existing tracked worktree changes, so every later
+  campaign pass is declined: passes 119-124, ~33h, under two green units.
+
+The tests inject that aftermath, which is the only thing there is to reproduce —
+the kill leaves no code running to observe. What is under test is the one thing
+still fixable: whether the NEXT run notices.
+
+### FAIL-BEFORE at `94c3ffa` (verbatim)
+
+```
+PYTHONPATH=src python -m pytest tests/test_hunt_slot_orphan.py -p no:randomly -q
+
+E       AssertionError: a receipt the pot aggregator globs is not in the committed set - the next publish ships a pot CI cannot reproduce
+E       assert {'hunt-2026-0...8-22-s3.json'} == {'hunt-2026-08-22-s3.json'}
+E         Extra items in the left set:
+E         'hunt-2026-08-21-s3.json'
+
+E       AssertionError: set()
+E       assert 'hunt-2026-08-21-s3-tic999.html' in set()
+
+E       AssertionError: pot.json is still dirty after a slot that refused to run - campaign.sh declines every pass behind it (the 33h stall)
+E       assert False
+E        +  where False = is_clean()
+
+=========================== short test summary info ===========================
+FAILED tests/test_hunt_slot_orphan.py::test_an_orphan_receipt_from_a_killed_run_is_not_left_to_redden_main
+FAILED tests/test_hunt_slot_orphan.py::test_a_killed_runs_dossier_travels_into_quarantine_with_its_receipt
+FAILED tests/test_hunt_slot_orphan.py::test_the_dirty_pot_a_killed_run_left_stops_stalling_the_campaign_lane
+========================= 3 failed, 2 passed in 7.53s =========================
+```
+
+**FAIL-BEFORE KIND: behavioural.** No new symbol is called; the tests drive the
+shipped `scripts/a05-hunt-slot.sh` through the existing `slot_harness` rig, and
+it fails because it leaves the orphan on disk, leaves its dossier, and leaves the
+pot dirty. The two that pass at the base are the restraint guards described
+below.
+
+### The fix
+
+`reconcile_dead_run()` in `scripts/a05-hunt-slot.sh`, called **before**
+`safe_pull_rebase`. Any `reports/hunts/*.json` that `git ls-files` does not know
+is debris from a process that never lived to stage it: it is filed into
+`$LAB/ungraded/` with its dossier, on the same rule as every other refusal.
+
+Three deliberate constraints, each with a test:
+
+1. **Before the pull, not after.** The pull is one of the things that can fail,
+   and the fix for a stalled lane must not be gated on the step that just
+   failed. `..._stops_stalling_the_campaign_lane` breaks the remote so the slot
+   refuses to hunt, and still requires a clean worktree afterwards.
+2. **`pot.json` is reverted only when an orphan receipt is ALSO present.**
+   `campaign.sh` writes `pot.json` too, in this clone, with no git-level lock
+   between the lanes (LANE2-AUTOMATION.md). A dirty pot alone is as likely to be
+   a campaign pass mid-flight, and reverting it would be this lane destroying the
+   other lane's work — the exact class STR-1 is about. A dirty pot *plus* an
+   untracked hunt receipt is unambiguous.
+   `..._a_dirty_pot_with_no_orphan_receipt_is_left_alone` pins the restraint.
+3. **The index is never touched.** A `git reset` here, even path-restricted,
+   could break a `campaign.sh` pass caught between its `git add` and its
+   `git commit`. The staged-at-death case stays with LANE 2, where the shared
+   lock belongs — see "not closed here" below.
+
+Safe against the other lane by construction: `campaign.sh` never writes
+`reports/hunts/`, and the `flock` at the top of the slot means no second hunt on
+this box.
+
+### PASS-AFTER (verbatim)
+
+```
+collected 5 items
+
+tests\test_hunt_slot_orphan.py .....                                     [100%]
+
+============================== 5 passed in 6.37s ==============================
+```
+
+Neighbouring suites, unchanged by the edit:
+
+```
+PYTHONPATH=src python -m pytest tests/test_hunt_slot_script.py tests/test_hunt_slot_gates.py \
+    tests/test_hunt_block.py tests/test_campaign_conflict.py tests/test_campaign_pass_gate.py -p no:randomly -q
+============================= 65 passed in 48.91s =============================
+```
+
+### Not closed here, named
+
+A run killed between `git add` and `git commit` leaves the index staged, which
+campaign.sh also refuses. Reconciling that means resetting an index the other
+lane may be using in the same instant — the real root cause is still "two lanes,
+one clone, no shared lock", already recorded as open in LANE2-AUTOMATION.md. It
+is not papered over here.
+
+No systemd unit, timer, or Task Scheduler entry was modified. The unit file was
+read only.
+
+**Commit:** the `fix(auto-f5)` commit on this branch.

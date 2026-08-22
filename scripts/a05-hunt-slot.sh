@@ -103,6 +103,58 @@ safe_pull_rebase(){
   return 1
 }
 
+# THE ORPHAN RULE. Every refusal above is a branch the shell EXECUTES. Process
+# death executes nothing: `windowsill-hunt.service` sets TimeoutStartSec=2h, and
+# when that expires systemd kills this unit's whole cgroup — no quarantine, no
+# restore_pot, and no trap (campaign.sh:209 has one; this script never grew one,
+# and a trap would not cover SIGKILL anyway). So the run that died cannot clean
+# up after itself, and the only place left to do it is HERE, in the next run.
+#
+# It leaves two shapes of debris, each breaking a different lane:
+#   * an untracked receipt in reports/hunts/ — the pot aggregator globs that
+#     DIRECTORY (src/lab/publish.py) while CI recomputes pot == hunt_block() from
+#     the COMMITTED set, so the next successful publish ships a pot CI cannot
+#     reproduce and main goes red in that run's own commit;
+#   * a pot.json refreshed but never committed — campaign.sh refuses to run a
+#     pass against pre-existing tracked worktree changes, which is passes
+#     119-124, ~33h, under two green units.
+#
+# Before the pull, not after: the pull is one of the things that can fail, and
+# the fix for a stalled lane must not be gated on the step that just failed.
+# Safe against the OTHER lane by construction — campaign.sh never writes
+# reports/hunts/, and the flock above means no second hunt on this box.
+#
+# RESTRAINT, deliberately: pot.json is reverted only when an orphan receipt is
+# also present. campaign.sh writes pot.json too, in this clone, with no git-level
+# lock between the lanes (docs/gauntlet/evidence/LANE2-AUTOMATION.md). A dirty pot
+# ALONE is as likely to be a campaign pass mid-flight, and reverting it would be
+# this lane destroying the other lane's work — the very class STR-1 is about. A
+# dirty pot PLUS an untracked hunt receipt is unambiguous. The index is likewise
+# never touched here for the same reason.
+reconcile_dead_run(){
+  local found=0 orphan stem_name
+  for orphan in reports/hunts/*.json; do
+    # Tracked (committed or staged) means some path DID publish it. Untracked
+    # means the process that wrote it never lived to stage it.
+    git ls-files --error-unmatch -- "$orphan" >/dev/null 2>&1 && continue
+    found=1
+    mkdir -p "$LAB/ungraded" || return 0
+    stem_name="$(basename "$orphan" .json)"
+    # A lead's dossier is cited by the receipt that ships it — together or not
+    # at all, in quarantine exactly as in git.
+    for rendered in "reports/hunts/dossiers/$stem_name"-tic*.html; do
+      mv -f "$rendered" "$LAB/ungraded/" 2>>"$log"
+    done
+    mv -f "$orphan" "$LAB/ungraded/" \
+      && echo "$(date -Is) orphan receipt from a killed run filed with the log -> $LAB/ungraded/$(basename "$orphan")" >>"$log"
+  done
+  [ "$found" -eq 1 ] || return 0
+  git diff --quiet -- pot.json 2>/dev/null && return 0
+  git checkout -- pot.json 2>>"$log" \
+    && echo "$(date -Is) pot.json restored — it was left dirty by a run that never committed" >>"$log"
+}
+reconcile_dead_run
+
 if ! safe_pull_rebase; then
   echo "$(date -Is) slot SKIPPED — refusing to hunt against an unsynced clone" >>"$log"
   exit 1
