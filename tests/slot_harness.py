@@ -132,6 +132,8 @@ class Slot:
             "STUB_RAN_MARKER": str(self.ran_marker),
             "STUB_TRAILING_LINES": str(trailing_lines),
             "STUB_EXIT": str(exit_code),
+            # The slot backs off between index.lock retries; tests do not wait.
+            "LAB_HUNT_COMMIT_SLEEP": "0",
         }
         if dossier:
             env["STUB_DOSSIER"] = dossier
@@ -164,17 +166,31 @@ class Slot:
         return "\n".join(p.read_text(encoding="utf-8")
                          for p in sorted(self.lab.glob("hunt-s*.log")))
 
-    def break_commit(self):
+    def break_commit(self, fail_times=None):
         """A real ``git commit`` failure that leaves the index staged - the shape
-        of losing the index.lock race to campaign.sh, with no git stubbing."""
+        of losing the index.lock race to campaign.sh, with no git stubbing.
+
+        ``fail_times`` makes the contention TRANSIENT: the hook refuses that many
+        commits and then lets one through, which is what losing the race to a
+        campaign pass actually looks like. Omit it for permanent failure.
+        """
         hooks = self.repo / ".git" / "hooks"
         hooks.mkdir(parents=True, exist_ok=True)
         hook = hooks / "pre-commit"
+        limit = "" if fail_times is None else str(fail_times)
         hook.write_text(
             "#!/usr/bin/env bash\n"
+            f'limit="{limit}"\n'
+            'n=$(cat .git/pre-commit-calls 2>/dev/null || echo 0); n=$((n + 1))\n'
+            'echo "$n" > .git/pre-commit-calls\n'
+            '[ -n "$limit" ] && [ "$n" -gt "$limit" ] && exit 0\n'
             "echo \"fatal: Unable to create '$PWD/.git/index.lock': File exists.\" >&2\n"
             "exit 1\n", encoding="utf-8")
         hook.chmod(0o755)
+
+    def commit_attempts(self) -> int:
+        path = self.repo / ".git" / "pre-commit-calls"
+        return int(path.read_text(encoding="utf-8").strip()) if path.exists() else 0
 
     def diverge_with_conflict(self):
         """Give origin and this clone conflicting committed pot.json edits, so

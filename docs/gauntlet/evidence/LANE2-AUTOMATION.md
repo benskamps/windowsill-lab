@@ -160,9 +160,91 @@ rc=0
 
 ---
 
-## AUTO-F6 — `git commit … || exit 0` conflates every failure with "nothing to commit"
+## AUTO-F6 — `git commit … || exit 0` conflates every failure with "nothing to commit" — **CLOSED**
 
-_pending_
+**Confirmed at the base.** `scripts/a05-hunt-slot.sh:103-105`:
+
+```bash
+git commit -q -m "a05: hunt receipt sector ${sector} $(date +%F) (loam slot)
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" || exit 0  # nothing new to commit
+```
+
+One branch for two failures, only one of which is benign. `campaign.sh` runs in
+this same clone in these same hours; lose the `.git/index.lock` race to it and the
+commit fails with the receipt **staged** — and a staged index is one of the three
+conditions `campaign.sh` itself refuses to run against. One lost race silently halts
+the *other* lane, under a green unit, until a human notices.
+
+### BEFORE — the gate passes wrongly
+
+```
+$ python -m pytest tests/test_hunt_slot_gates.py -q --no-header -k commit
+
+E   assert 0 != 0
+     +  where 0 = CompletedProcess(args=[…'a05-hunt-slot.sh'],
+          …stderr="…Unable to create '…/loam/.git/index.lock': File exists.\n").returncode
+tests\test_hunt_slot_gates.py:88
+
+E   AssertionError: campaign.sh would refuse to run against this clone
+    assert False
+     +  where False = is_clean()
+tests\test_hunt_slot_gates.py:96
+
+E   AssertionError: assert not True
+     +  where True = (…/'loam'/'reports'/'hunts'/'hunt-2026-08-21-s3.json').exists
+tests\test_hunt_slot_gates.py:104
+
+FAILED test_a_failed_commit_does_not_exit_green
+FAILED test_a_failed_commit_does_not_leave_the_receipt_staged
+FAILED test_a_failed_commit_does_not_strand_its_receipt_in_the_ledger
+```
+
+Note the first: **exit code 0**, with the commit having failed. That is what the
+systemd unit sees — green — while the receipt sits staged and the physics lane is
+blocked.
+
+### The fix
+
+* **Discriminate by asking the index.** `git diff --cached --quiet --` after a failed
+  commit: nothing staged → the receipt was already published, quiet `exit 0` (the
+  case the old `|| exit 0` was actually written for). Anything staged → the commit
+  really failed: log it, `git reset` the pathspec so the campaign lane is not
+  blocked, quarantine the receipt out of the aggregator's glob, `exit 1`.
+* **Bounded retry on the named root cause.** Contention with `campaign.sh` is
+  transient by construction, so the commit is retried while the failure output names
+  `index.lock`, `LAB_HUNT_COMMIT_TRIES` (4) times with `LAB_HUNT_COMMIT_SLEEP` (5s)
+  between. Deadlock-free: it acquires nothing and waits on nothing.
+* `quarantine_receipt` now takes a lead's dossier with it, matching what
+  `a05_hunt.py:settle_receipt` does — a receipt cites its dossier, so they move
+  together or not at all.
+
+**The root cause is NOT closed.** Two lanes, one clone, no git-level lock between
+them. A real shared lock needs `campaign.sh` to take the same one, and `campaign.sh`
+belongs to another lane of this gauntlet (AUTO-F3/F5) — touching it here would
+collide. **Recommended follow-up:** one `flock` on `$LAB/clone.lock` held across the
+stage-commit-push window in *both* scripts. Until then the retry converts a silent
+lane-halt into, at worst, a loud skipped slot.
+
+### AFTER — the gate refuses
+
+```
+$ python -m pytest tests/test_hunt_slot_gates.py -q --no-header -k commit
+tests\test_hunt_slot_gates.py ....                                       [100%]
+======================= 4 passed, 8 deselected in 9.59s =======================
+```
+
+Four, not three: `test_transient_index_lock_contention_is_retried_not_abandoned`
+asserts the retry actually publishes on the third attempt, and
+`test_genuinely_nothing_to_commit_is_still_a_quiet_success` pins the benign branch
+so the fix did not turn a re-run into an alarm.
+
+```
+$ tr -d '\r' < scripts/a05-hunt-slot.sh | shellcheck -f gcc -s bash -
+shellcheck rc=0
+```
+
+**Commit:** `<F6-SHA>`
 
 ## AUTO-F2 — `git pull --rebase --autostash` exit unchecked
 

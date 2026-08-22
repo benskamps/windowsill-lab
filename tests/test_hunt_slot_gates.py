@@ -105,6 +105,16 @@ def test_a_failed_commit_does_not_strand_its_receipt_in_the_ledger(slot):
     assert (slot.lab / "ungraded" / "hunt-2026-08-21-s3.json").exists()
 
 
+def test_transient_index_lock_contention_is_retried_not_abandoned(slot):
+    """Losing the race to a campaign pass is transient by construction — the other
+    lane finishes its own commit in seconds. Bounded retry, then publish."""
+    slot.break_commit(fail_times=2)
+    proc = slot.run("hunt-2026-08-21-s3.json")
+    assert proc.returncode == 0
+    assert slot.commit_attempts() == 3, "the slot gave up on transient contention"
+    assert "reports/hunts/hunt-2026-08-21-s3.json" in slot.pushed_files()
+
+
 def test_genuinely_nothing_to_commit_is_still_a_quiet_success(slot):
     """The branch ``|| exit 0`` was actually there for. Re-running a slot whose
     receipt is already published stages nothing and must exit 0, not alarm."""

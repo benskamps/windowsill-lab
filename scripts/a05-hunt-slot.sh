@@ -61,7 +61,16 @@ quarantine_receipt(){
   # so the path read back may already be the filed one — never move a file onto
   # itself.
   case "$receipt" in "$LAB/ungraded/"*) return 0 ;; esac
-  mkdir -p "$LAB/ungraded" && mv -f "$receipt" "$LAB/ungraded/" \
+  mkdir -p "$LAB/ungraded" || return 1
+  # A lead's dossier is cited by the receipt that ships it, so it travels into
+  # quarantine for the same reason it travels into git — together or not at all.
+  local dossiers stem_name
+  stem_name="$(basename "$receipt" .json)"
+  dossiers="$(dirname "$receipt")/dossiers"
+  for rendered in "$dossiers/$stem_name"-tic*.html; do
+    mv -f "$rendered" "$LAB/ungraded/" 2>>"$log"
+  done
+  mv -f "$receipt" "$LAB/ungraded/" \
     && echo "$(date -Is) ungraded receipt filed with the log -> $LAB/ungraded/$(basename "$receipt")" >>"$log"
 }
 
@@ -133,8 +142,51 @@ if ! git add -- pot.json "$receipt" "reports/hunts/dossiers/${stem}"-tic*.html 2
   restore_pot
   exit 1
 fi
-git commit -q -m "a05: hunt receipt sector ${sector} $(date +%F) (loam slot)
+# THE COMMIT RULE. This was `git commit … || exit 0  # nothing new to commit`, which
+# read EVERY commit failure as the benign one. Only one of them is benign.
+# campaign.sh runs in this same clone in these same hours with no git-level lock
+# between the two lanes; lose the .git/index.lock race to it and the commit fails
+# with the receipt STAGED — and a staged index is one of the three conditions
+# campaign.sh itself refuses to run against, so one lost race silently halts the
+# OTHER lane until a human notices. Two failures, two branches, two exit codes.
+#
+# Contention is transient by construction (the other lane finishes its own commit
+# in seconds), so retry a bounded number of times first. Bounded and lock-free:
+# this waits on nothing it could deadlock against. The real root cause — two lanes,
+# one clone, no shared lock — needs campaign.sh to take the same lock and is not
+# closed here; see docs/gauntlet/evidence/LANE2-AUTOMATION.md.
+commit_msg="a05: hunt receipt sector ${sector} $(date +%F) (loam slot)
 
-Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>" || exit 0  # nothing new to commit
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
+tries="${LAB_HUNT_COMMIT_TRIES:-4}"
+retry_sleep="${LAB_HUNT_COMMIT_SLEEP:-5}"
+while : ; do
+  commit_mark=$(wc -l <"$log" 2>/dev/null || echo 0)
+  git commit -q -m "$commit_msg" >>"$log" 2>&1
+  crc=$?
+  [ "$crc" -eq 0 ] && break
+  tries=$((tries - 1))
+  [ "$tries" -le 0 ] && break
+  tail -n +$((commit_mark + 1)) "$log" | grep -q 'index\.lock' || break
+  echo "$(date -Is) commit blocked by index.lock — retrying in ${retry_sleep}s ($tries left)" >>"$log"
+  sleep "$retry_sleep"
+done
+
+if [ "$crc" -ne 0 ]; then
+  # Ask the index which failure this was. Nothing staged means the receipt was
+  # already published (a re-run of a finished slot) — quiet success, the case the
+  # old `|| exit 0` was written for. Anything staged means the commit really failed.
+  if git diff --cached --quiet --; then
+    echo "$(date -Is) nothing new to commit — this receipt is already published" >>"$log"
+    restore_pot
+    exit 0
+  fi
+  echo "$(date -Is) commit FAILED rc=$crc with changes staged — unstaging so the campaign lane is not blocked" >>"$log"
+  git reset -q -- pot.json "$receipt" "reports/hunts/dossiers/${stem}"-tic*.html >>"$log" 2>&1
+  quarantine_receipt
+  restore_pot
+  exit 1
+fi
+
 git pull --rebase --autostash -q >>"$log" 2>&1
 git push -q >>"$log" 2>&1 && echo "$(date -Is) receipt pushed" >>"$log"
