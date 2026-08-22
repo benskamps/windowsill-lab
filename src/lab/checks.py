@@ -4106,9 +4106,8 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
           "M16": check_m16, "M17": check_m17, "M18": check_m18,
           "K01": check_k01, "K02": check_k02, "K03": check_k03,
-          "C01": check_c01, "C05": check_c05, "A01": check_a01, "A03": check_a03, "A04": check_a04,
-          "A05": check_a05, "I01": check_i01, "CTRL": check_controls}
-          "C01": check_c01, "A01": check_a01, "A03": check_a03, "A04": check_a04,
+          "C01": check_c01, "C05": check_c05,
+          "A01": check_a01, "A03": check_a03, "A04": check_a04,
           "A05": check_a05, "A07": check_a07,
           "I01": check_i01, "CTRL": check_controls}
 
