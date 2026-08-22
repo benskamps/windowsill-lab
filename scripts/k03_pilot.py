@@ -18,7 +18,10 @@ transient. Each point reports the drift between the halves of its own measuremen
 window; a point still settling is reported, not silently fitted.
 """
 import sys, json, time
-sys.path.insert(0, 'src')
+from pathlib import Path
+# STR-7: anchored to this file, not the caller's cwd — a relative 'src'
+# imported the WRONG lab (or nothing) from anywhere but the repo root.
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'src'))
 import numpy as np
 from lab import kuramoto as ku
 

@@ -1092,7 +1092,14 @@ def _hunt_receipt_counters(receipt: dict) -> dict:
         n_searched = len(searched)
     dispositions: dict[str, int] = {}
     for row in above:
-        d = row["disposition"]
+        # STR-2: a bare row["disposition"] here meant ONE malformed hunt row
+        # raised KeyError through cli._hunt_status() into both the planner
+        # and the rotation fallback — every physics turn collapsed to the
+        # M01 heartbeat. Malformation is counted BY NAME (loud in the
+        # numbers, visible to every consumer of the counters), never dropped
+        # and never classified as a real disposition, and it cannot stall
+        # the physics ladder.
+        d = row.get("disposition") or "malformed-row"
         dispositions[d] = dispositions.get(d, 0) + 1
     # Deduped by TIC: a designated recovery appears BOTH as a target row and
     # in the receipt's ``recoveries`` list (same star, two mentions), and a

@@ -43,7 +43,9 @@ def test_git_metadata_read_is_utf8_and_survives_an_empty_capture(monkeypatch):
 def test_commit_report_writes_permanent_pair(tmp_path, monkeypatch):
     reports, _ = _patch_dirs(tmp_path, monkeypatch)
     dump = json.dumps({"experiment": "M02-finite-size-scaling", "headline": "hi"})
-    path = _commit_report("2026-06-15", "m02", "<html>m02</html>", dump)
+    # The html embeds the exact dump, as every real template does (STR-5:
+    # a non-embedding html now raises rather than diverging silently).
+    path = _commit_report("2026-06-15", "m02", f"<html>m02<pre>{dump}</pre></html>", dump)
 
     html_file = reports / "2026-06-15-m02.html"
     json_file = reports / "2026-06-15-m02.json"
@@ -55,7 +57,10 @@ def test_commit_report_writes_permanent_pair(tmp_path, monkeypatch):
     receipt_file = receipts[0]
     assert re.fullmatch(r"run-2026-06-15-\d{4}-m02\.json", receipt_file.name)
     assert path == html_file
-    assert html_file.read_text(encoding="utf-8") == "<html>m02</html>"
+    html_text = html_file.read_text(encoding="utf-8")
+    assert html_text.startswith("<html>m02")
+    # The embedded dump was stamped in place — html and receipt agree.
+    assert "source_tree_sha256" in html_text
     # JSON round-trips back to the same object.
     assert json.loads(json_file.read_text(encoding="utf-8"))["experiment"] == "M02-finite-size-scaling"
     receipt = json.loads(receipt_file.read_text(encoding="utf-8"))
@@ -124,18 +129,21 @@ def test_reports_without_an_override_rerun_under_their_own_slug():
 def test_second_render_does_not_clobber_first(tmp_path, monkeypatch):
     """The core bug: two distinct runs must both survive on disk."""
     reports, _ = _patch_dirs(tmp_path, monkeypatch)
-    _commit_report("2026-06-14", "m01", "<html>first</html>", json.dumps({"a": 1}))
-    _commit_report("2026-06-15", "m02", "<html>second</html>", json.dumps({"b": 2}))
+    dump_a, dump_b = json.dumps({"a": 1}), json.dumps({"b": 2})
+    _commit_report("2026-06-14", "m01", f"<html>first<pre>{dump_a}</pre></html>", dump_a)
+    _commit_report("2026-06-15", "m02", f"<html>second<pre>{dump_b}</pre></html>", dump_b)
 
-    assert (reports / "2026-06-14-m01.html").read_text(encoding="utf-8") == "<html>first</html>"
-    assert (reports / "2026-06-15-m02.html").read_text(encoding="utf-8") == "<html>second</html>"
+    assert "first" in (reports / "2026-06-14-m01.html").read_text(encoding="utf-8")
+    assert "second" in (reports / "2026-06-15-m02.html").read_text(encoding="utf-8")
     # latest.html is a COPY of the most recently committed report, never an archive.
-    assert (reports / "latest.html").read_text(encoding="utf-8") == "<html>second</html>"
+    assert ((reports / "latest.html").read_text(encoding="utf-8")
+            == (reports / "2026-06-15-m02.html").read_text(encoding="utf-8"))
 
 
 def test_latest_html_is_a_copy_not_the_archive(tmp_path, monkeypatch):
     reports, _ = _patch_dirs(tmp_path, monkeypatch)
-    _commit_report("2026-06-15", "m02", "<html>newest</html>", json.dumps({}))
+    dump = json.dumps({})
+    _commit_report("2026-06-15", "m02", f"<html>newest<pre>{dump}</pre></html>", dump)
     latest = reports / "latest.html"
     permanent = reports / "2026-06-15-m02.html"
     assert latest.exists() and permanent.exists()
@@ -748,3 +756,17 @@ def test_m05_lattice_dispatch_defaults_to_triangular_and_never_guesses_honeycomb
         assert name == "triangular", report
         assert form == "4/ln3" and tol == 0.15
         assert abs(exact - TC_TRI_EXACT) < 1e-12
+
+
+def test_a_report_that_does_not_embed_its_own_json_is_refused(tmp_path, monkeypatch):
+    """STR-5: when stamping changes the dump and the html does not embed it,
+    the html would silently keep an UNSTAMPED copy while the committed receipt
+    is stamped — the human report and the evidence diverging in provenance
+    with no error, stale side facing the human. That is now a refusal, not a
+    quiet divergence.
+    """
+    import pytest
+    _patch_dirs(tmp_path, monkeypatch)
+    dump = json.dumps({"experiment": "M02-finite-size-scaling"})
+    with pytest.raises(RuntimeError, match="provenance mismatch"):
+        _commit_report("2026-06-15", "m02", "<html>no embed here</html>", dump)
