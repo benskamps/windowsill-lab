@@ -141,14 +141,27 @@ def test_classify_unscored_run_is_kept_not_dropped():
 
 # ── scan_runs: every run, newest-first, honest about gaps ────────────────────
 
-def test_scan_runs_newest_first_by_mtime_not_date_string(tmp_path, monkeypatch):
-    """A stale FUTURE-dated file written earlier must NOT lead (the test_publish
-    trap): newest-first is keyed on (mtime, date_stem)."""
+def test_scan_runs_newest_first_by_date_not_mtime(tmp_path, monkeypatch):
+    """Newest-first is keyed on the run's own DATE, never on the file's mtime.
+
+    This test used to assert the opposite — that the more recently *written*
+    file leads — to stop a stale future-dated report masquerading as the latest.
+    That guard bought one narrow case at the cost of the ledger's determinism:
+    mtimes are not repo content, so a clone or a ``git pull`` re-stamped them
+    and two boxes published different feeds from the same commit (DET-2). The
+    run's date is what the run says about itself and it is identical in every
+    clone, so it leads — and the same fixture must produce the same order no
+    matter which file was touched last.
+    """
     reports, lab_home = _patch(tmp_path, monkeypatch)
     _write_report(lab_home, "2026-06-16", mtime=1000)   # higher date, OLDER write
     _write_report(lab_home, "2026-06-15", mtime=2000)   # lower date, NEWER write
-    runs = scan_runs()
-    assert runs[0]["date"] == "2026-06-15"              # the truly-newest run leads
+    assert [r["date"] for r in scan_runs()] == ["2026-06-16", "2026-06-15"]
+
+    # Swap which file is "newest on disk": the order must not move.
+    os.utime(lab_home / "2026-06-16.json", (2000, 2000))
+    os.utime(lab_home / "2026-06-15.json", (1000, 1000))
+    assert [r["date"] for r in scan_runs()] == ["2026-06-16", "2026-06-15"]
 
 
 def test_scan_runs_prefers_committed_copy_and_flags_local_only(tmp_path, monkeypatch):

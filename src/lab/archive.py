@@ -358,6 +358,19 @@ def _receipts_by_run() -> dict[tuple[str, str, str], tuple[str | None, Path]]:
     return index
 
 
+def _pick_rank(path: Path, stamp: str | None) -> tuple:
+    """How two files claiming ONE ``(date, slug, turn)`` are ranked. Higher wins.
+
+    Content only, and deliberately so. This used to be the file's mtime, which
+    means the row's CONTENT — not merely its position — changed depending on
+    which box last touched which file. The order here is: the run's own
+    ``generated_at`` (a later run of the same turn is the one that produced the
+    record), then the per-run ``<date>-<slug>.json`` over the legacy bare
+    ``<date>.json`` dump, then the filename as a guaranteed total order.
+    """
+    return (stamp or "", path.stem != _date_of(path), path.name)
+
+
 def scan_runs() -> list[dict]:
     """Every run on record across the repo ``reports/`` and ``~/.lab``.
 
@@ -365,9 +378,17 @@ def scan_runs() -> list[dict]:
     dedupes by ``(date, slug, turn)`` PREFERRING the committed ``reports/`` copy
     (and flagging ``local_only`` for runs that exist only in ``~/.lab``), keeps a
     corrupt report JSON as an honest ``unreadable`` gap row, and sorts
-    newest-first by ``(mtime, date_stem, turn)`` so a stale future-dated file
-    can't masquerade as the latest and two turns of one day keep their real
-    order in a fresh clone (which flattens every mtime). Each row carries
+    newest-first by ``(date, turn, generated_at, slug)`` — the run's own
+    content, with NO mtime term anywhere in the key.
+
+    That last part is the whole point. mtimes are not repo content: a clone
+    stamps every file with the checkout time and ``git pull`` re-stamps what it
+    touched, so an mtime-keyed ledger made two boxes regenerate DIFFERENT
+    ``pot.json`` files from identical commits, each seeing the other's feed as
+    changed. Keyed on content the ledger is a pure function of the repo, and
+    every clone derives the same one. ``generated_at`` orders two milestones
+    that share a ``(date, turn)``, and the slug closes the key so no two rows
+    can tie and fall back on dict order. Each row carries
     ``has_dated_html`` + ``report_href`` for deep-linking, and — when the run
     recorded its provenance — ``machine`` (which box took the turn) and ``at``
     (the run's own timestamp).
@@ -378,8 +399,8 @@ def scan_runs() -> list[dict]:
     exactly as they always have.
     """
     # Per (date, slug, turn): keep the best file. Repo beats ~/.lab; within the
-    # same priority, the newest mtime wins. Value = (mtime, row).
-    by_key: dict[tuple[str, str, str | None], tuple[float, dict]] = {}
+    # same priority, ``_pick_rank`` decides from content. Value = (rank, row).
+    by_key: dict[tuple[str, str, str | None], tuple[tuple, dict]] = {}
     receipts_by_run = _receipts_by_run()
 
     for directory in (REPORTS_DIR, LAB_HOME):
@@ -388,7 +409,6 @@ def scan_runs() -> list[dict]:
         is_repo = directory.resolve() == REPORTS_DIR.resolve()
         for p in directory.glob(f"{_DATE_GLOB}*.json"):
             date = _date_of(p)
-            mtime = p.stat().st_mtime
             try:
                 data = json.loads(p.read_text(encoding="utf-8"))
             except (OSError, ValueError):
@@ -404,9 +424,10 @@ def scan_runs() -> list[dict]:
                     "receipt_href": None,
                     "report_href": (p.as_uri() if p.exists() else str(p)),
                 }
+                rank = _pick_rank(p, None)
                 cur = by_key.get(key)
-                if cur is None or mtime > cur[0]:
-                    by_key[key] = (mtime, row)
+                if cur is None or rank > cur[0]:
+                    by_key[key] = (rank, row)
                 continue
 
             slug = _slug_for(data)
@@ -435,11 +456,12 @@ def scan_runs() -> list[dict]:
             )
             _stamp_provenance(row, data)
 
+            rank = _pick_rank(p, stamp if isinstance(stamp, str) else None)
             cur = by_key.get(key)
             cur_is_repo = (not cur[1]["local_only"]) if cur else False
             if cur is None or (is_repo and not cur_is_repo) or \
-               (is_repo == cur_is_repo and mtime > cur[0]):
-                by_key[key] = (mtime, row)
+               (is_repo == cur_is_repo and rank > cur[0]):
+                by_key[key] = (rank, row)
 
     # Receipts fallback — the multi-box safety net (2026-07-19). Dated report
     # JSONs are gitignored by design (heavy) and mostly live on the box that
@@ -461,12 +483,11 @@ def scan_runs() -> list[dict]:
             # been occupied; replace that local shadow here at the source.
             if current is not None and not current[1].get("local_only"):
                 continue
-            mtime = p.stat().st_mtime
             try:
                 data = json.loads(p.read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 # Same honesty as a corrupt dated report: a kept gap row.
-                by_key[key] = (mtime, {
+                by_key[key] = (_pick_rank(p, None), {
                     "date": date, "milestone": None, "kind": "unreadable",
                     "slug": slug, "turn": turn,
                     "experiment": None, "headline": None,
@@ -487,15 +508,17 @@ def scan_runs() -> list[dict]:
             row["report_href"] = _archive_anchor(date, slug, turn)
             row["receipt_href"] = origin.join(receipt_url_base(), p.name)
             _stamp_provenance(row, data)
-            by_key[key] = (mtime, row)
+            by_key[key] = (_pick_rank(p, data.get("generated_at")), row)
 
-    # Newest-first by (mtime, date_stem, turn): the date breaks an mtime tie so a
-    # fresh git clone (which loses mtimes) still orders by the run's own date,
-    # and the turn stamp breaks the remaining tie between two passes of the same
-    # day — otherwise a clone orders same-day turns arbitrarily.
+    # Newest-first by (date, turn, generated_at, slug) — every term is the run's
+    # own content, and there is no mtime term. A clone, a pull, a backfill and a
+    # rebuild all rewrite mtimes; none of them rewrite a run's date, its turn
+    # stamp, when it says it ran, or which milestone it was. The slug closes the
+    # key so two rows can never tie and fall back on dict order.
     ordered = sorted(
         by_key.items(),
-        key=lambda kv: (kv[1][0], kv[0][0], kv[0][2] or ""),
+        key=lambda kv: (kv[0][0], kv[0][2] or "",
+                        kv[1][1].get("at") or "", kv[0][1]),
         reverse=True,
     )
     return [row for _, (_, row) in ordered]
