@@ -13,8 +13,10 @@ from __future__ import annotations
 import importlib.util
 import json
 import os
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
+
+import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -270,11 +272,23 @@ def test_a_resume_reattempts_the_targets_that_errored(tmp_path, monkeypatch):
 # fails the same grade and requarantines it, every slot, forever: no new sky is
 # searched and both units stay green. Bound the retries, then set it aside.
 
+@pytest.mark.parametrize("age", ["same-day", "prior-day"])
 def test_a_deterministically_ungradeable_checkpoint_stops_being_resumed(
-        tmp_path, monkeypatch):
+        age, tmp_path, monkeypatch):
+    """Both ages, because ONLY the same-day one is the production case.
+
+    The first version of this fix set the checkpoint aside in the candidate loop
+    and then fell through to a fresh id built from ``date.today()`` — which, for a
+    checkpoint created by any of today's four slots, is BYTE-IDENTICAL to the id it
+    had just refused. The existing checkpoint file came straight back and the lane
+    resumed exactly what it had set aside. A prior-day fixture hid that completely,
+    which is why the test is parametrised now: the retirement test has to cover the
+    fresh-id branch, not only the resume branch.
+    """
     mod = _load_script()
     lab_home = _isolated(mod, tmp_path, monkeypatch)
-    stuck = "hunt-2026-08-20-s3"
+    stamp = date.today() if age == "same-day" else date.today() - timedelta(days=1)
+    stuck = f"hunt-{stamp.isoformat()}-s3"
     _checkpoint(lab_home, f"a05-{stuck}.jsonl",
                 [{"tic": "111", "outcome": "searched"}])
 

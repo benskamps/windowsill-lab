@@ -14,7 +14,7 @@ an inference with a proof.
 | **AUTO-F6** `git commit … \|\| exit 0` conflates every failure | **CLOSED** | `a558b36` | real failing pre-commit hook, 4 tests |
 | **AUTO-F2** `git pull --rebase` exit unchecked | **CLOSED** | `616ff20` | real git conflict + real detached clone, 2 tests |
 | **AUTO-F10** MAST outage rows count as DONE | **CLOSED** | `06f72ff` | 4 regression tests, written first |
-| **AUTO-F4** quarantine-resume livelock | **CLOSED** | `b0ecf36` | livelock driven over 6 slots, 2 tests |
+| **AUTO-F4** quarantine-resume livelock | **CLOSED** (refuted once, repaired) | `b0ecf36` + `<F4B-SHA>` | livelock driven over 6 slots, parametrised same-day/prior-day |
 
 All five were **confirmed at the base** — none refuted. The failing harness was
 committed first, at `f5435ab`, so the pre-fix state is re-runnable from git rather
@@ -419,7 +419,7 @@ pass: `test_an_errored_target_stays_eligible_for_a_later_hunt`,
 
 **Commit:** `06f72ff`
 
-## AUTO-F4 — quarantine-resume livelock — **CLOSED**
+## AUTO-F4 — quarantine-resume livelock — **CLOSED (repaired after refutation)**
 
 **Confirmed at the base.** Two correct-looking rules that compose into a trap:
 
@@ -490,7 +490,83 @@ tests\test_a05_hunt_script.py ................                           [100%]
 ============================= 16 passed in 0.34s ==============================
 ```
 
-**Commit:** `b0ecf36`
+**First commit (INCOMPLETE):** `b0ecf36`
+
+### The first fix was REFUTED — and the refutation was right
+
+An independent reviewer broke `b0ecf36` and the manager confirmed it. The set-aside
+was applied in the resume loop only; the code then fell through to a fresh id built
+from `date.today()`:
+
+```python
+hid = f"hunt-{date.today().isoformat()}-s{sector}"
+if (hunts_dir / f"{hid}.json").exists():   # COMMITTED receipts only
+```
+
+A set-aside checkpoint's receipt lives in `LAB_HOME/ungraded/`, not in
+`reports/hunts/`, so that test cannot see it. When the stuck checkpoint carries
+**today's** date — which every checkpoint any of today's four slots creates does —
+the "fresh" id came back byte-identical to the one just refused, the existing
+checkpoint file was handed straight back, and **the livelock survived for the only
+case that occurs in production.**
+
+My test went green because its fixture was dated `2026-08-20` — yesterday. That, and
+only that, is why it passed. A prior-day checkpoint takes a genuinely different fresh
+id; a same-day one does not. The test proved the branch that does not matter.
+
+**Recorded as a lesson, not just a bug:** a fix guarded by one predicate evaluated in
+two places will drift, and a fixture whose date is incidental to the author is load-
+bearing to the test. Both are now closed by construction — one predicate, and a
+parametrised fixture that cannot go green for the wrong reason.
+
+### The repair
+
+`is_retired(hunt_id, hunts_dir)` names the question once — *is this hunt id finished,
+by EITHER route?* — and **both** branches of `find_checkpoint` call it: the resume
+loop and the fresh-id collision check (including its `-HHMM` and `-HHMMSS`
+escalations). The two can no longer disagree.
+
+The regression test is parametrised over `same-day` and `prior-day`, with the fixture
+date derived from `date.today()` rather than hardcoded.
+
+### The three-way proof
+
+```
+$ PYTHONPATH=src python -m pytest tests/test_a05_hunt_script.py -q --no-header -k ungradeable
+
+# base 15f0cf6 — no set-aside at all
+FAILED ...test_a_deterministically_ungradeable_checkpoint_stops_being_resumed[same-day]
+FAILED ...test_a_deterministically_ungradeable_checkpoint_stops_being_resumed[prior-day]
+====================== 2 failed, 15 deselected in 0.44s =======================
+
+# b0ecf36 — the incomplete fix: prior-day green, same-day still livelocked
+FAILED ...test_a_deterministically_ungradeable_checkpoint_stops_being_resumed[same-day]
+================= 1 failed, 1 passed, 15 deselected in 0.50s ==================
+
+# repaired
+tests	est_a05_hunt_script.py ..                                         [100%]
+====================== 2 passed, 15 deselected in 0.19s =======================
+```
+
+The captured stdout from the `b0ecf36` run is the clearest statement of the defect —
+the lane announcing four times that it is moving on while it does not:
+
+```
+grade failure 1/2 for hunt-2026-08-22-s3
+grade failure 2/2 for hunt-2026-08-22-s3
+setting aside hunt-2026-08-22-s3: failed grading 2 times — the sector lane moves on
+grade failure 3/2 for hunt-2026-08-22-s3
+setting aside hunt-2026-08-22-s3: failed grading 3 times — the sector lane moves on
+...
+AssertionError: the sector lane never advanced:
+  ['hunt-2026-08-22-s3', 'hunt-2026-08-22-s3', 'hunt-2026-08-22-s3',
+   'hunt-2026-08-22-s3', 'hunt-2026-08-22-s3', 'hunt-2026-08-22-s3']
+```
+
+`test_a_single_grade_failure_is_still_retried` is unchanged and still green: the
+bound is 2, not 0. This was under-correction, and the over-correction fence held.
+
+**Repair commit:** `<F4B-SHA>`
 
 ---
 
@@ -616,3 +692,21 @@ tests	est_a05_hunt_script.py ................                           [100%]
 
 13 gate tests (crash injection), 8 pre-existing slot regressions (previously skipped
 on Windows), 16 driver tests. All green.
+
+---
+
+## Reviewer notes folded in (not acted on)
+
+Two live limits the reviewer named. Recorded here rather than fixed, because both are
+scope calls rather than defects:
+
+1. **AUTO-F2 has no retry.** Any pull failure costs a whole slot, and the DET lane's
+   `pot.json` conflict recurs by construction — so the hunt lane can halt. It halts
+   **loudly** (nonzero exit, a named reason in the log) rather than burning 100
+   minutes against a detached clone, which is the trade this lane chose on purpose.
+   The real close is the shared `resolve_by_regeneration`.
+2. **AUTO-F10 has no permanent-error cap.** A TIC that is genuinely dead — as opposed
+   to behind a transient outage — is now retried on every future hunt, forever.
+   Bounded eligibility (an attempt counter per TIC, the way `GRADE_RETRY_LIMIT`
+   bounds grades) is the follow-up. The current behaviour errs toward re-attempting,
+   which is the safe direction for coverage and the wasteful one for budget.

@@ -208,6 +208,26 @@ def record_grade_failure(hunt_id: str) -> int:
     return total
 
 
+def is_retired(hunt_id: str, hunts_dir: Path) -> bool:
+    """Is this hunt id finished — by EITHER of the two ways a hunt can finish?
+
+    A committed receipt in ``reports/hunts/`` is one. Being SET ASIDE after
+    ``GRADE_RETRY_LIMIT`` failed grades is the other, and its receipt lives in
+    ``LAB_HOME/ungraded/`` where the first test cannot see it.
+
+    Both branches of ``find_checkpoint`` must ask this same question. The first
+    version of the AUTO-F4 fix asked it only in the resume loop and then built a
+    fresh id from ``date.today()`` — which, for a checkpoint any of today's four
+    slots created, is BYTE-IDENTICAL to the id just set aside. ``find_checkpoint``
+    handed back the very file it had refused, the run resumed it, and the livelock
+    survived for the only case that happens in production. One predicate, both
+    branches, so the two can never drift apart again.
+    """
+    if (hunts_dir / f"{hunt_id}.json").exists():
+        return True
+    return grade_failures(hunt_id) >= GRADE_RETRY_LIMIT
+
+
 def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]:
     """(hunt_id, checkpoint path): resume what is OPEN, not what is dated today.
 
@@ -226,30 +246,34 @@ def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]
                         key=lambda p: p.stat().st_mtime, reverse=True)
     for ckpt in candidates:
         hid = ckpt.stem[len("a05-"):]
-        if (hunts_dir / f"{hid}.json").exists():
-            continue
         # A committed receipt is not the only way a checkpoint finishes. One whose
         # grade has failed GRADE_RETRY_LIMIT times is set aside so the lane advances
         # — its rows and its quarantined receipt stay on disk as evidence, and its
         # searched targets stay excluded by prior_targets(), so no sky is re-covered.
-        failures = grade_failures(hid)
-        if failures >= GRADE_RETRY_LIMIT:
-            print(f"setting aside {hid}: failed grading {failures} times "
-                  "— the sector lane moves on")
+        if is_retired(hid, hunts_dir):
+            failures = grade_failures(hid)
+            if failures >= GRADE_RETRY_LIMIT:
+                print(f"setting aside {hid}: failed grading {failures} times "
+                      "— the sector lane moves on")
             continue
         return hid, ckpt
-    # Fresh id — but NEVER one whose receipt is already committed. The bare
+    # Fresh id — but NEVER one that is already RETIRED, by either route. The bare
     # dated id collides the moment a second producer (or a second same-day
     # slot) hunts the same sector: on 2026-08-15 loam's bare survey-slot hunt
     # defaulted to sector 2 and silently overwrote win's committed s2 receipt,
     # taking a lead-awaiting-human-review row with it. Same-day second slices
     # get a UTC time stamp — a NEW receipt beside the old one, never an
     # overwrite (the #79 turn-stamp lesson, re-learned the hard way).
+    #
+    # A SET-ASIDE checkpoint collides here exactly as hard, and this is where the
+    # first AUTO-F4 fix leaked: the loop above refused the stuck checkpoint, this
+    # branch rebuilt its id verbatim from today's date, and the caller resumed the
+    # same file. Same predicate here as there.
     hid = f"hunt-{date.today().isoformat()}-s{sector}"
-    if (hunts_dir / f"{hid}.json").exists():
+    if is_retired(hid, hunts_dir):
         stamp = time.strftime("%H%M", time.gmtime())
         hid = f"{hid}-{stamp}"
-        if (hunts_dir / f"{hid}.json").exists():
+        if is_retired(hid, hunts_dir):
             stamp = time.strftime("%H%M%S", time.gmtime())
             hid = f"hunt-{date.today().isoformat()}-s{sector}-{stamp}"
     return hid, LAB_HOME / f"a05-{hid}.jsonl"
