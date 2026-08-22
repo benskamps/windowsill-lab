@@ -40,6 +40,7 @@ RUNNERS = {
     # specified. ~45-60 min of NumPy CPU — K02's wall-clock class.
     "K03": "k03",
     "C01": "c01",
+    "C05": "c05",
     "A01": "a01",
     "A03": "a03",
     "A04": "a04",
