@@ -164,3 +164,26 @@ the gauntlet is about.
 **What the refutation did NOT find:** no missing findings, no tier drift, no invented
 findings, no internal contradiction, and no instance of the ledger asking anyone to
 violate the standing `sort_keys` constraint.
+
+### Post-closure findings (2026-08-22 check_a05 full sweep, win)
+
+Recorded from a sweep of every committed receipt after the merge train — three classes,
+none of them receipt edits (a committed receipt is an honest record; the defect lives in
+the pipeline or the check, never retro-edited into the evidence):
+
+- **AUTO-F12 (P2, new): nothing enforces a target's declared time share at runtime.**
+  `hunt-2026-08-16-s2` and `hunt-2026-08-17-s2` grade **False** — a single target consumed
+  446s / 451s against the declared 0.100 share of a 2700s slot. The receipt records it and
+  `check_a05` catches it post-hoc, but nothing in `scripts/a05_hunt.py` stops a slow
+  target from eating a slot while it happens (same family as AUTO-F10's no-attempt-cap
+  residual). Done-when: a mutation test drives one over-share target and shows the slot
+  moving on with the overage recorded.
+- **Three receipts carry a FAILED uniformity control** (`08-14-s3` D=0.336, `08-17-s2-0026`
+  D=0.360, `08-18-s2-1000` D=0.265): by the check's own contract every graded FAP in them
+  is *uninterpretable, not negative*. `08-18-s2-1000` is the receipt that minted
+  TIC 77044472's lead. Consequence being wired into `lab shelf`'s significance criterion
+  (an uninterpretable FAP parks a lead, on a named reason) — star/grade-the-star branch.
+- **Cross-box limit, stated:** ~28 loam-lane receipts (s3/s30) grade **None** on win only
+  because the spot-check FITS cache lives on loam — "cannot re-derive the physics" is a
+  property of which box runs the check, not of the receipt. A full-estate sweep therefore
+  needs running per-box, each box grading its own lane, before reading a None as debt.
