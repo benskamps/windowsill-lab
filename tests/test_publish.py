@@ -831,3 +831,32 @@ def test_backfill_preserves_source_mtime(tmp_path, monkeypatch):
     written = publish.backfill()
     dest = next(p for p in written if p.suffix == ".json")
     assert abs(dest.stat().st_mtime - old) < 2
+
+
+def test_a_malformed_hunt_row_cannot_take_down_the_physics_rotation():
+    """STR-2: `_hunt_receipt_counters` bare-indexed `row["disposition"]`, so
+    ONE malformed row in ONE committed hunt receipt raised KeyError through
+    `cli._hunt_status()` into both the planner and the rotation fallback —
+    every physics turn collapsed to the M01 heartbeat because an exoplanet
+    artifact was missing a key. The counters must count the malformation by
+    name (loud in the numbers, visible to any reader) and keep going; garbage
+    is never classified as a real disposition, and it never stalls physics.
+    """
+    from lab.publish import _hunt_receipt_counters
+
+    receipt = {
+        "schema": 1,
+        "sector": 2,
+        "targets": [
+            {"tic": 1, "outcome": "searched", "sde": 9.0,
+             "disposition": "low-significance"},
+            # the malformed row: searched, above threshold, no disposition
+            {"tic": 2, "outcome": "searched", "sde": 9.0},
+        ],
+    }
+    counters = _hunt_receipt_counters(receipt)   # must not raise
+    dispositions = counters.get("dispositions", counters)
+    assert dispositions.get("low-significance") == 1
+    assert dispositions.get("malformed-row") == 1, (
+        "a row with no disposition is counted as malformed-row, "
+        "never dropped and never given a real disposition")

@@ -177,8 +177,22 @@ def _commit_report(date: str, slug: str, html: str, json_dump: str) -> Path:
     and the receipts ledger is the complete one.
     """
     stamped_dump = _stamp_report_json(json_dump, slug)
-    if stamped_dump != json_dump and json_dump in html:
-        html = html.replace(json_dump, stamped_dump)
+    if stamped_dump != json_dump:
+        if json_dump in html:
+            html = html.replace(json_dump, stamped_dump)
+        else:
+            # STR-5: the embed seam must not fail silently. Every report
+            # template embeds the exact dump it was rendered from; if this
+            # dump is not in the html, the human report and the committed
+            # receipt would diverge in provenance with no error — and the
+            # STALE side is the human report. That divergence is a bug in
+            # the caller, and it surfaces here, loudly, not in a reader's
+            # confusion months later.
+            raise RuntimeError(
+                f"provenance mismatch for {date}-{slug}: the report html "
+                "does not embed the json it was rendered from, so the html "
+                "would keep an UNSTAMPED copy while the committed receipt "
+                "is stamped — refusing to write divergent evidence")
     json_dump = stamped_dump
 
     REPO_REPORTS.mkdir(parents=True, exist_ok=True)

@@ -359,3 +359,25 @@ def test_explicit_hunt_flags_still_override_the_bare_defaults(monkeypatch):
     assert argv[argv.index("--n") + 1] == "200"
     assert argv[argv.index("--minutes") + 1] == "100"
     assert argv[argv.index("--sector") + 1] == "3"
+
+
+def test_every_runners_entry_resolves_to_a_real_dispatch_branch():
+    """STR-4: the RUNNERS→cli seam is an unpinned string — dispatch happens by
+    recursive ``main([subcmd])`` against literal ``if cmd == "..."`` branches,
+    so a typo'd runner ships green and its rotation slot is permanently dead,
+    visible only in task logs. This pins the seam by introspection: every
+    subcommand the curriculum can dispatch must appear as a literal branch in
+    ``cli.main``. No milestone is executed.
+    """
+    import inspect
+    import re
+    from lab.curriculum import RUNNERS
+
+    source = inspect.getsource(cli.main)
+    branches = set(re.findall(r'cmd\s*(?:==|in\s*\()\s*\(?["\']([\w-]+)["\']', source))
+    branches |= set(re.findall(r'["\']([\w-]+)["\']', " ".join(
+        m.group(1) for m in re.finditer(r'cmd\s+in\s+\(([^)]*)\)', source))))
+    missing = {mid: sub for mid, sub in RUNNERS.items() if sub not in branches}
+    assert not missing, (
+        f"RUNNERS entries with no dispatch branch in cli.main: {missing} — "
+        "each of these rotation slots would be silently dead")

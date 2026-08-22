@@ -76,11 +76,15 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.11"
-      - name: Install project with CPU torch
+      - name: Install project with CPU torch (pinned — STR-6)
+        # The golden-grading env installs against constraints/golden-cpu.txt,
+        # the transcribed last-green set, so a dependency bump can never
+        # silently re-grade the golden: when it reds, that file is the bisect
+        # baseline. Floors in pyproject stay floors for the estate's boxes.
         run: |
           python -m pip install --upgrade pip
-          pip install "torch>=2.4" --index-url https://download.pytorch.org/whl/cpu
-          pip install -e ".[dev]"
+          pip install "torch>=2.4" --index-url https://download.pytorch.org/whl/cpu -c constraints/golden-cpu.txt
+          pip install -e ".[dev]" -c constraints/golden-cpu.txt
       - name: Full CPU test suite
         run: PYTHONPATH=src pytest -q
       # Determinism gate: re-run the pinned L=16 seed=42 CPU smoke config and prove

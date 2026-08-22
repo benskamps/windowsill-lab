@@ -169,7 +169,7 @@ echo "$(date -Is) slot start — sector $sector" >>"$log"
 # and this run's grade line is invisible the moment anything prints after it.
 # Remember where this run starts and read only from there.
 log_mark=$(wc -l <"$log" 2>/dev/null || echo 0)
-PYTHONPATH=src "$PY" scripts/a05_hunt.py \
+PYTHONPATH="$REPO/src" "$PY" "$REPO/scripts/a05_hunt.py" \
   --sector "$sector" --n 200 --minutes 100 >>"$log" 2>&1
 rc=$?
 echo "$(date -Is) runner exit $rc" >>"$log"
