@@ -194,12 +194,30 @@ mkdir -p "$(dirname "$LOG")"
   sync_main || echo "   pull did not land — continuing from local state (clone left clean)"
   # Advance the portfolio: `lab next` runs the open milestone's experiment when it
   # has a runner, otherwise the committed portfolio rotation past the receipts-ledger
-  # pointer (M01 heartbeat only when the rotation is empty). Best-effort; always
-  # leave the feed fresh. (Frontier scheduler 2026-07-05 PR #49; rotation 2026-08-01.)
+  # pointer (M01 heartbeat only when the rotation is empty). NOT best-effort since
+  # 2026-08-22: the feed is refreshed only by a run that graded clean — see the
+  # block below. (Frontier scheduler 2026-07-05 PR #49; rotation 2026-08-01.)
   # The UTC date+HOUR --seed makes each nightly run an independent sample; a retry
   # within the same hour repeats deterministically. This retires the documented
   # "same-day rerun repeats" property of the old date-only seed.
-  "{PY}" -m lab.cli next --seed "$(date -u +%Y%m%d%H)" || "{PY}" -m lab.cli publish
+  # Publish ONLY what a graded run produced — the bash twin of the PS1 block
+  # (and of campaign.sh:291). A failed run writes no receipt, and an ungraded
+  # one is withheld; both leave the clone clean for the next run.
+  restore_campaign_paths() {{
+    git checkout -q -- pot.json physics-latest.json reports/ 2>/dev/null || echo "   restore failed — the next run may refuse a dirty worktree"
+  }}
+  if ! "{PY}" -m lab.cli next --seed "$(date -u +%Y%m%d%H)"; then
+    echo "FAILED: 'lab next' failed — no receipt is written for a run that did not happen."
+    restore_campaign_paths
+    echo "── done (FAILED: experiment failed)"
+    exit 1
+  fi
+  if ! "{PY}" -m lab.cli verify; then
+    echo "WITHHELD: 'lab verify' failed — publishing withheld (the grades are in the log above)."
+    restore_campaign_paths
+    echo "── done (FAILED: verify failed)"
+    exit 1
+  fi
   # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
   # per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.
   git add pot.json physics-latest.json 2>/dev/null || true
@@ -232,6 +250,10 @@ mkdir -p "$(dirname "$LOG")"
       echo "ERROR: push failed after 4 attempts (clone left clean on main)"
       exit 1
     fi
+    # Heartbeat, touched ONLY here — see campaign.sh:330 and the PS1 twin.
+    mkdir -p "${{LAB_STATE_DIR:-$HOME/.lab}}"
+    : > "${{LAB_STATE_DIR:-$HOME/.lab}}/nightly.published" 2>/dev/null || true
+    echo "── published"
   fi
   echo "── done"
 }} >>"$LOG" 2>&1
@@ -279,12 +301,25 @@ $ErrorActionPreference = 'Continue'
 Set-Location '__REPO_ROOT__'
 $log = if ($env:LAB_NIGHTLY_LOG) { $env:LAB_NIGHTLY_LOG } else { Join-Path $HOME '.lab\nightly.log' }
 New-Item -ItemType Directory -Force -Path (Split-Path $log) | Out-Null
+# Runtime state (the published heartbeat) sits beside the log, mirroring loam's
+# $HOME/.lab. LAB_STATE_DIR exists so the dry-run harness can point it somewhere
+# throwaway; the scheduled job never sets it.
+$stateDir = if ($env:LAB_STATE_DIR) { $env:LAB_STATE_DIR } else { Join-Path $HOME '.lab' }
+New-Item -ItemType Directory -Force -Path $stateDir | Out-Null
 # Append UTF-8 log lines. LogCmd coerces a native command's merged stdout+stderr
 # to plain strings, so git's normal stderr (e.g. "main -> main") isn't logged as a
 # scary NativeCommandError and the whole log stays one consistent encoding. The
 # control flow keys off $LASTEXITCODE, which the pipe preserves.
 function Log($m) { Add-Content -LiteralPath $log -Value $m -Encoding utf8 }
 filter LogCmd { Log "$_" }
+function Restore-CampaignPaths {
+    # Put the nightly-owned tracked paths back to HEAD after a refused run. A
+    # half-written pot.json left behind would be swept into the NEXT run's
+    # commit under a "nightly:" message, which is the failure this whole block
+    # exists to stop. campaign.sh:294-300 is the loam twin.
+    git checkout -q -- pot.json physics-latest.json reports/ 2>&1 | LogCmd
+    if ($LASTEXITCODE -ne 0) { Log "   restore failed -- the next run may refuse a dirty worktree" }
+}
 trap { Log "-- failed: $($_.Exception.Message)"; exit 1 }
 # A conflicted pull must never survive into the next git command -- see
 # setup.UNWEDGE_PS1 for the outage this closes.
@@ -330,7 +365,8 @@ if (@(Sync-Main)[-1] -ne 0) { Log "   pull did not land -- continuing from local
 # Advance the portfolio: `lab next` runs the open milestone's experiment when it has
 # a runner, otherwise the committed portfolio rotation (curriculum.ROTATION) past the
 # receipts-ledger pointer -- so 4 passes/day re-measure the whole runnable portfolio
-# instead of re-running M01 every pass. Best-effort; always leave the feed fresh.
+# instead of re-running M01 every pass. NOT best-effort since 2026-08-22: the feed
+# is refreshed only by a run that graded clean -- see the block below.
 # (Frontier scheduler 2026-07-05 PR #49; rotation 2026-08-01, see
 # docs/investigations/2026-08-01-portfolio-rotation.md.) The UTC date+HOUR --seed
 # makes each of the four daily passes an independent sample; a retry within the
@@ -338,8 +374,28 @@ if (@(Sync-Main)[-1] -ne 0) { Log "   pull did not land -- continuing from local
 # their own hour, so they get their own sample). This retires the documented
 # "same-day rerun repeats" property of the old date-only seed.
 $seed = (Get-Date).ToUniversalTime().ToString('yyyyMMddHH')
+# Publish ONLY what a graded run produced. Two defects lived here until
+# 2026-08-22, both absent from loam's campaign.sh:
+#   * a failed `lab next` fell through to `lab publish` and the block below
+#     committed "nightly: <date>" anyway -- a receipt, on main, for an
+#     experiment that never ran, exit 0 (the AUTO-F3 failure-masquerade);
+#   * there was no `lab verify` re-grade at all, so a run that produced an
+#     ungraded or failing result published exactly like a good one.
+# campaign.sh:291 withholds the publish when verify fails; this is that rule.
 & '__PY__' -m lab.cli next --seed $seed 2>&1 | LogCmd
-if ($LASTEXITCODE -ne 0) { & '__PY__' -m lab.cli publish 2>&1 | LogCmd }
+if ($LASTEXITCODE -ne 0) {
+    Log "FAILED: 'lab next' failed -- no receipt is written for a run that did not happen."
+    Restore-CampaignPaths
+    Log "-- done (FAILED: experiment failed)"
+    exit 1
+}
+& '__PY__' -m lab.cli verify 2>&1 | LogCmd
+if ($LASTEXITCODE -ne 0) {
+    Log "WITHHELD: 'lab verify' failed -- publishing withheld (the grades are in the log above)."
+    Restore-CampaignPaths
+    Log "-- done (FAILED: verify failed)"
+    exit 1
+}
 # Stage the feed + the WHOLE reports/ tree (recursive) so every permanent
 # per-run report (reports/<date>-<slug>.html/.json) lands, not just latest.html.
 git add pot.json physics-latest.json 2>&1 | LogCmd
@@ -372,6 +428,16 @@ if ($LASTEXITCODE -ne 0) {
         Log "ERROR: push failed after 4 attempts (clone left clean on main)"
         exit 1
     }
+    # Heartbeat for the estate watcher, touched ONLY here -- see campaign.sh:330
+    # for the loam twin and the ~33h stall it was born from. Everything else this
+    # script writes moves on a REFUSED or FAILED run too (the log grows, the
+    # mirror bot rewrites pot.json), so an mtime watcher reading any of those
+    # scores a halted win nightly as healthy. Loam's stall was caught only
+    # because campaign.published went stale; win had no equivalent -- 26h of
+    # green exit-0 with no publish would have been invisible.
+    # Consumer: groundskeeper/checks/freshness.py.
+    New-Item -ItemType File -Force -Path (Join-Path $stateDir 'nightly.published') | Out-Null
+    Log "-- published"
 }
 Log "-- done (success)"
 """
