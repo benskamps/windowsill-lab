@@ -55,6 +55,16 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 #: for the main process's downloads and the OS.
 MAX_WORKERS = 12
 
+#: How many times one checkpoint may fail grading before the lane sets it aside.
+#: ``find_checkpoint`` resumes what is OPEN, and an ungraded receipt is filed in
+#: ``LAB_HOME/ungraded`` rather than committed — so a checkpoint whose grade fails
+#: DETERMINISTICALLY never acquires the thing that would retire it. Without a bound
+#: the sector lane rebuilds the same rows, writes the same receipt, fails the same
+#: grade and requarantines it every slot, forever, under two green units: no new sky
+#: is searched and nothing alarms. Bounded, not zero: a grade can fail for a reason
+#: that clears, and a 100-minute slice is worth a second attempt.
+GRADE_RETRY_LIMIT = 2
+
 
 def _lab_roots() -> tuple[Path, ...]:
     """Where checkpoints and summaries actually land: LAB_HOME and its
@@ -177,6 +187,27 @@ def floor_history() -> list[dict]:
     return points
 
 
+def _grade_failure_ledger(hunt_id: str) -> Path:
+    """Where a hunt id's failed-grade tally lives — beside the receipt it filed."""
+    return LAB_HOME / "ungraded" / f"{hunt_id}.grade-failures"
+
+
+def grade_failures(hunt_id: str) -> int:
+    try:
+        return int(_grade_failure_ledger(hunt_id).read_text(encoding="utf-8").strip())
+    except (OSError, ValueError):
+        return 0
+
+
+def record_grade_failure(hunt_id: str) -> int:
+    """Count one failed grade for this hunt id and return the running total."""
+    ledger = _grade_failure_ledger(hunt_id)
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    total = grade_failures(hunt_id) + 1
+    ledger.write_text(f"{total}\n", encoding="utf-8")
+    return total
+
+
 def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]:
     """(hunt_id, checkpoint path): resume what is OPEN, not what is dated today.
 
@@ -184,8 +215,9 @@ def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]
     old date-stamped naming made the post-midnight rerun open a FRESH file and
     re-search the slice. The rule now: resume the NEWEST ``a05-hunt-*-s{sector}``
     checkpoint that has no committed receipt, whatever its date; ``--hunt-id``
-    overrides for surgical resumes. Only when every checkpoint is receipted
-    does a fresh dated id start.
+    overrides for surgical resumes. Only when every checkpoint is receipted — or
+    SET ASIDE after ``GRADE_RETRY_LIMIT`` failed grades — does a fresh dated id
+    start.
     """
     if hunt_id:
         return hunt_id, LAB_HOME / f"a05-{hunt_id}.jsonl"
@@ -194,8 +226,18 @@ def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]
                         key=lambda p: p.stat().st_mtime, reverse=True)
     for ckpt in candidates:
         hid = ckpt.stem[len("a05-"):]
-        if not (hunts_dir / f"{hid}.json").exists():
-            return hid, ckpt
+        if (hunts_dir / f"{hid}.json").exists():
+            continue
+        # A committed receipt is not the only way a checkpoint finishes. One whose
+        # grade has failed GRADE_RETRY_LIMIT times is set aside so the lane advances
+        # — its rows and its quarantined receipt stay on disk as evidence, and its
+        # searched targets stay excluded by prior_targets(), so no sky is re-covered.
+        failures = grade_failures(hid)
+        if failures >= GRADE_RETRY_LIMIT:
+            print(f"setting aside {hid}: failed grading {failures} times "
+                  "— the sector lane moves on")
+            continue
+        return hid, ckpt
     # Fresh id — but NEVER one whose receipt is already committed. The bare
     # dated id collides the moment a second producer (or a second same-day
     # slot) hunts the same sector: on 2026-08-15 loam's bare survey-slot hunt
@@ -250,6 +292,11 @@ def settle_receipt(receipt_path: Path, ok: bool | None,
         return receipt_path
     dest_dir = LAB_HOME / "ungraded"
     dest_dir.mkdir(parents=True, exist_ok=True)
+    # Tally it. Quarantining alone leaves no trace that survives to the NEXT slot's
+    # find_checkpoint, which is why a deterministic grade failure used to livelock
+    # the sector lane (see GRADE_RETRY_LIMIT).
+    total = record_grade_failure(receipt_path.stem)
+    print(f"grade failure {total}/{GRADE_RETRY_LIMIT} for {receipt_path.stem}")
     for tic in (dossiers or {}):
         rendered = receipt_path.parent / "dossiers" / f"{receipt_path.stem}-tic{tic}.html"
         if rendered.exists():

@@ -396,6 +396,71 @@ pass: `test_an_errored_target_stays_eligible_for_a_later_hunt`,
 
 **Commit:** `<F10-SHA>`
 
-## AUTO-F4 — quarantine-resume livelock
+## AUTO-F4 — quarantine-resume livelock — **CLOSED**
 
-_pending_
+**Confirmed at the base.** Two correct-looking rules that compose into a trap:
+
+* `find_checkpoint` (`scripts/a05_hunt.py:139-172`) resumes the newest checkpoint
+  that has **no committed receipt**;
+* `settle_receipt` (`:187-218`) files an ungraded receipt in `LAB_HOME/ungraded`
+  rather than committing it.
+
+So a checkpoint whose grade fails *deterministically* never acquires the one thing
+that would retire it. The sector lane rebuilds the same rows, writes the same
+receipt, fails the same grade, requarantines it — every slot, forever, under two
+green units. No new sky is searched and nothing alarms.
+
+### BEFORE — the regression test drives the livelock (written first)
+
+```
+$ python -m pytest tests/test_a05_hunt_script.py -q --no-header \
+      -k ungradeable
+
+        seen = []
+        for _ in range(6):  # six slots — a day and a half of the sector lane
+            hunt_id, _ckpt = mod.find_checkpoint(3)
+            seen.append(hunt_id)
+            if hunt_id != stuck:
+                break
+            # The slot reruns, rebuilds identical rows, and grading fails identically.
+            mod.settle_receipt(_receipt(tmp_path, f"{hunt_id}.json"), None)
+
+>       assert seen[-1] != stuck, f"the sector lane never advanced: {seen}"
+E       AssertionError: the sector lane never advanced: ['hunt-2026-08-20-s3',
+        'hunt-2026-08-20-s3', 'hunt-2026-08-20-s3', 'hunt-2026-08-20-s3',
+        'hunt-2026-08-20-s3', 'hunt-2026-08-20-s3']
+
+FAILED test_a_deterministically_ungradeable_checkpoint_stops_being_resumed
+```
+
+Six consecutive slots — a day and a half of the sector lane — all resuming the same
+dead checkpoint. That is the livelock, literally.
+
+### The fix
+
+`settle_receipt` now tallies each failed grade in
+`LAB_HOME/ungraded/<hunt-id>.grade-failures`, and `find_checkpoint` skips a candidate
+once the tally reaches `GRADE_RETRY_LIMIT` (**2**), printing why. When every
+candidate is receipted *or set aside*, a fresh dated id starts and the lane advances.
+
+Three properties worth naming:
+
+* **Bounded, not zero.** A grade can fail for a reason that clears, and a
+  100-minute slice is worth a second attempt.
+  `test_a_single_grade_failure_is_still_retried` pins that.
+* **The evidence survives.** The checkpoint rows and the quarantined receipt stay on
+  disk; only the *resume* stops selecting them. The test asserts the quarantined
+  receipt still exists after set-aside.
+* **No sky is re-covered.** A set-aside checkpoint keeps its filename, so
+  `prior_targets()` still globs it and its `searched` rows stay excluded. Setting
+  aside costs the lane the ungradeable *receipt*, not the coverage.
+
+### AFTER — the lane advances
+
+```
+$ python -m pytest tests/test_a05_hunt_script.py -q --no-header
+tests\test_a05_hunt_script.py ................                           [100%]
+============================= 16 passed in 0.34s ==============================
+```
+
+**Commit:** `<F4-SHA>`
