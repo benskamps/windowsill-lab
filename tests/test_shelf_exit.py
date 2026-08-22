@@ -24,13 +24,23 @@ from lab import shelf
 
 # ---------------------------------------------------------------- fixtures --
 
-def receipt(tmp_path, name, sector, generated_at, rows):
+#: A receipt whose permutation null certified itself — the default, because
+#: real receipts carry this block and _significance refuses to read a FAP
+#: without it (an uncontrolled null is not a null).
+UNIFORMITY_OK = {"n_control": 25, "p_values": [0.5] * 25,
+                 "ks_stat": 0.11, "pass": True}
+
+
+def receipt(tmp_path, name, sector, generated_at, rows, uniformity="ok"):
     d = tmp_path / "hunts"
     d.mkdir(exist_ok=True)
-    (d / name).write_text(json.dumps({
-        "experiment": "a05", "generated_at": generated_at,
-        "sector": sector, "targets": rows,
-    }), encoding="utf-8")
+    payload = {"experiment": "a05", "generated_at": generated_at,
+               "sector": sector, "targets": rows}
+    if uniformity == "ok":
+        payload["uniformity"] = UNIFORMITY_OK
+    elif uniformity is not None:
+        payload["uniformity"] = uniformity
+    (d / name).write_text(json.dumps(payload), encoding="utf-8")
     return d
 
 
@@ -190,6 +200,34 @@ def test_a_receipt_predating_the_physical_gate_is_ungraded_not_passed(tmp_path):
                     [lead_row(depth_err=0.002, physical="absent")])
     (e,) = shelf.register(hunts, rulings=None, today=TODAY)
     assert any("admissib" in r for r in e["parked_on"])
+
+
+def test_a_failed_uniformity_control_makes_the_faps_uninterpretable(tmp_path):
+    """check_a05 gate 10's verdict, mirrored: a receipt whose own uniformity
+    control failed cannot certify any FAP it graded. hunt-2026-08-18-s2-1000
+    (D=0.265, the receipt that minted TIC 77044472's lead) is the live case —
+    the shelf was reading FAPs a control had already disowned."""
+    receipt(tmp_path, "hunt-2026-08-14-s2.json", 2, "2026-08-14T10:00:00",
+            [lead_row(depth_err=0.002)])
+    hunts = receipt(tmp_path, "hunt-2026-08-18-s3.json", 3,
+                    "2026-08-18T10:00:00", [lead_row(depth_err=0.002)],
+                    uniformity={"n_control": 25, "p_values": [0.9] * 25,
+                                "ks_stat": 0.265, "pass": False})
+    (e,) = shelf.register(hunts, rulings=None, today=TODAY)
+    assert any("uninterpretable" in r and "uniformity control failed" in r
+               and "0.265" in r for r in e["parked_on"]), e["parked_on"]
+    assert e["state"] == "parked"
+    assert e["state"] != "refuted", "uninterpretable is not negative"
+
+
+def test_a_receipt_without_a_uniformity_block_is_ungraded_not_passed(tmp_path):
+    receipt(tmp_path, "hunt-2026-08-14-s2.json", 2, "2026-08-14T10:00:00",
+            [lead_row(depth_err=0.002)])
+    hunts = receipt(tmp_path, "hunt-2026-08-15-s3.json", 3,
+                    "2026-08-15T10:00:00", [lead_row(depth_err=0.002)],
+                    uniformity=None)
+    (e,) = shelf.register(hunts, rulings=None, today=TODAY)
+    assert any("uniformity control ungraded" in r for r in e["parked_on"])
 
 
 # ------------------------------------------------- the machine never promotes --
