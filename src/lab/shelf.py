@@ -168,6 +168,13 @@ def _persistence(lead_obs: list[dict]) -> list[str]:
     return reasons
 
 
+def _uniformity_min_n() -> int:
+    """checks.A05_UNIFORMITY_MIN_N, imported lazily — lab.checks pulls the
+    heavy numeric stack, and the register must stay importable without it."""
+    from .checks import A05_UNIFORMITY_MIN_N
+    return A05_UNIFORMITY_MIN_N
+
+
 def _significance(lead_obs: list[dict]) -> list[str]:
     """Both shuffling schemes under alpha, in every lead sector — but a FAP is
     a statement made AGAINST a null, and the receipt's own uniformity control
@@ -185,6 +192,14 @@ def _significance(lead_obs: list[dict]) -> list[str]:
             return [f"significance: uniformity control ungraded in "
                     f"{o['receipt']} — an ungraded control is not a passed "
                     "control, and a FAP without its null is not a number"]
+        # check_a05 refuses to grade the calibrator below
+        # A05_UNIFORMITY_MIN_N control points; a `pass: true` over fewer is a
+        # claim the KS test cannot back, so it grades as ungraded here too.
+        n = len(uni.get("p_values") or []) or uni.get("n_control") or 0
+        if n < _uniformity_min_n():
+            return [f"significance: uniformity control ungradeable in "
+                    f"{o['receipt']} — {n} control p-value(s), "
+                    f"need >= {_uniformity_min_n()} to grade the calibrator"]
         if uni["pass"] is False:
             return [f"significance: FAP uninterpretable — the receipt's own "
                     f"uniformity control failed (D={uni.get('ks_stat', 0):.3f}"
@@ -215,7 +230,10 @@ def _star_gate(tic: int, all_obs: list[dict]) -> list[str]:
     d = a05_star.star_dossier(tic, all_obs)
     combined = d["combined_fold"]
     if combined.get("verdict"):
-        sectors = ",".join(str(s) for s in d["graded_sectors"])
+        # The claim names the combiner's CONTRIBUTING set — never the looser
+        # graded/observed lists — so "across sectors [...]" is exactly the
+        # evidence the number rests on.
+        sectors = ",".join(str(s) for s in d["combined_sectors"])
         per = ", ".join(f"{s:.1f}σ" for s in combined["per_sector_sigma"])
         return [f"gate fired (combined): {combined['verdict']} at "
                 f"{combined['difference_sigma']:.1f}σ across sectors "

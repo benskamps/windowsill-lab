@@ -103,6 +103,74 @@ def test_per_sector_verdicts_ride_the_dossier():
     assert d["sector_verdicts"] == {5: "eclipsing-binary-odd-even"}
 
 
+def test_three_receipts_of_one_sector_are_one_look_not_three():
+    """The refutation case, pinned: the same sector re-hunted lands the same
+    photons in a new receipt (TIC 234518605's lead sits in two s2 receipts
+    today). Three identical s2 folds at 3.5σ each must NOT combine into a
+    6.1σ verdict — a receipt is not a unit of independence, and min_sectors=2
+    means SECTORS."""
+    p2 = fold(0.00258, 0.00052, 0.00052)   # 3.5σ alone
+    d = a05_star.star_dossier(234518605, [
+        obs(234518605, 2, p2=dict(p2), day="2026-08-15",
+            receipt="hunt-2026-08-15-s2.json"),
+        obs(234518605, 2, p2=dict(p2), day="2026-08-15",
+            receipt="hunt-2026-08-15-s2-1630.json"),
+        obs(234518605, 2, p2=dict(p2), day="2026-08-16",
+            receipt="hunt-2026-08-16-s2.json"),
+    ])
+    assert d["combined_fold"]["verdict"] is None
+    assert d["combined_fold"]["reason"] == "insufficient-sectors"
+    assert d["combined_fold"]["n_sectors"] == 1
+    assert d["graded_sectors"] == [2]
+    assert [s["receipt"] for s in d["superseded"]] == [
+        "hunt-2026-08-15-s2-1630.json", "hunt-2026-08-15-s2.json"], \
+        "the older duplicates are named, newest represents"
+    assert all("same photons" in s["reason"] for s in d["superseded"])
+
+
+def test_same_sector_folds_that_disagree_refuse_the_sector_loudly():
+    """Two looks at the same photons that disagree mean the pipeline changed
+    between receipts. Picking either silently would bury that; the sector is
+    refused with every receipt named."""
+    d = a05_star.star_dossier(555, [
+        obs(555, 2, p2=fold(0.00258, 0.00041, 0.00041), day="2026-08-15"),
+        obs(555, 2, p2=fold(0.00301, 0.00041, 0.00041), day="2026-08-16",
+            receipt="hunt-2026-08-16-s2.json"),
+        obs(555, 3, p2=fold(0.00250, 0.00040, 0.00040), day="2026-08-16"),
+    ])
+    assert d["graded_sectors"] == [3]
+    refused = [u for u in d["ungraded"] if u["sector"] == 2]
+    assert len(refused) == 2 and all("disagrees" in u["reason"]
+                                     for u in refused)
+    assert d["combined_fold"]["reason"] == "insufficient-sectors"
+
+
+def test_a_combiner_excluded_sector_is_named_and_absent_from_the_claim():
+    """A sector with signed evidence the combiner's own filter drops (both
+    eclipses not individually significant) must be NAMED in ungraded and
+    absent from combined_sectors — the set any fired claim is built from."""
+    d = a05_star.star_dossier(666, [
+        obs(666, 2, p2=fold(0.00258, 0.00029, 0.00029)),
+        obs(666, 3, p2=fold(0.00264, 0.00030, 0.00030)),
+        obs(666, 5, p2=fold(0.00250, 0.00030, 0.00030, significant=False)),
+    ])
+    assert d["combined_sectors"] == [2, 3]
+    (u,) = d["ungraded"]
+    assert u["sector"] == 5 and "not individually significant" in u["reason"]
+    assert d["combined_fold"]["n_sectors"] == 2
+
+
+def test_a_declined_current_format_fold_is_not_called_pre_vet_f2():
+    """A current p2_fold that early-returned (reason set) declined to grade;
+    calling it 'pre-VET-F2' misstates the receipt's vintage."""
+    declined = {"verdict": None, "reason": "no-support"}
+    d = a05_star.star_dossier(777, [obs(777, 2, p2=declined),
+                                    obs(777, 3, p2=fold(0.002, 4e-4, 4e-4))])
+    (u,) = [u for u in d["ungraded"] if u["sector"] == 2]
+    assert "declined to grade" in u["reason"] and "no-support" in u["reason"]
+    assert "pre-VET-F2" not in u["reason"]
+
+
 # --------------------------------------------------- the sweep as anchor --
 
 def test_the_sweep_fixture_is_internally_consistent():

@@ -220,6 +220,21 @@ def test_a_failed_uniformity_control_makes_the_faps_uninterpretable(tmp_path):
     assert e["state"] != "refuted", "uninterpretable is not negative"
 
 
+def test_a_small_uniformity_ensemble_is_ungradeable_not_passed(tmp_path):
+    """check_a05 refuses to grade the calibrator below A05_UNIFORMITY_MIN_N
+    control points; a `pass: true` over three p-values is a claim the KS
+    test cannot back, and the register must not accept it."""
+    receipt(tmp_path, "hunt-2026-08-14-s2.json", 2, "2026-08-14T10:00:00",
+            [lead_row(depth_err=0.002)])
+    hunts = receipt(tmp_path, "hunt-2026-08-15-s3.json", 3,
+                    "2026-08-15T10:00:00", [lead_row(depth_err=0.002)],
+                    uniformity={"n_control": 3, "p_values": [0.4, 0.5, 0.6],
+                                "ks_stat": 0.1, "pass": True})
+    (e,) = shelf.register(hunts, rulings=None, today=TODAY)
+    assert any("ungradeable" in r and "3 control p-value" in r
+               for r in e["parked_on"]), e["parked_on"]
+
+
 def test_a_receipt_without_a_uniformity_block_is_ungraded_not_passed(tmp_path):
     receipt(tmp_path, "hunt-2026-08-14-s2.json", 2, "2026-08-14T10:00:00",
             [lead_row(depth_err=0.002)])
