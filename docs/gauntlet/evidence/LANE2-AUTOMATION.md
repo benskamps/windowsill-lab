@@ -14,7 +14,7 @@ an inference with a proof.
 | **AUTO-F6** `git commit … \|\| exit 0` conflates every failure | **CLOSED** | `a558b36` | real failing pre-commit hook, 4 tests |
 | **AUTO-F2** `git pull --rebase` exit unchecked | **CLOSED** | `616ff20` | real git conflict + real detached clone, 2 tests |
 | **AUTO-F10** MAST outage rows count as DONE | **CLOSED** | `06f72ff` | 4 regression tests, written first |
-| **AUTO-F4** quarantine-resume livelock | **CLOSED** (refuted once, repaired) | `b0ecf36` + `<F4B-SHA>` | livelock driven over 6 slots, parametrised same-day/prior-day |
+| **AUTO-F4** quarantine-resume livelock | **CLOSED** (refuted once, repaired) | `b0ecf36` + `6ea04ec` | livelock driven over 6 slots, parametrised same-day/prior-day |
 
 All five were **confirmed at the base** — none refuted. The failing harness was
 committed first, at `f5435ab`, so the pre-fix state is re-runnable from git rather
@@ -566,7 +566,7 @@ AssertionError: the sector lane never advanced:
 `test_a_single_grade_failure_is_still_retried` is unchanged and still green: the
 bound is 2, not 0. This was under-correction, and the over-correction fence held.
 
-**Repair commit:** `<F4B-SHA>`
+**Repair commit:** `6ea04ec`
 
 ---
 
