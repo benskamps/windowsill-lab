@@ -419,6 +419,10 @@ Usage:
   lab verify --rerun-smoke
                       also re-run the pinned L=16 CPU smoke config and prove it
                       reproduces itself + the committed golden (determinism gate)
+  lab shelf           grade every lead-awaiting-human-review row against the
+                      shelf-exit contract (docs/shelf-exit-contract.md): who is
+                      promotable, who is parked and on what, whose clock has run
+  lab shelf --json    the same register as JSON (for surfaces; insertion order)
   lab scoreboard      render the calibration scoreboard (measured vs theory) + archive
   lab controls        run published controls: cross-updater agreement + a J=0 null
   lab setup           install the nightly job (run → publish → push)
@@ -1242,6 +1246,31 @@ def main(argv=None):
             print("web page missing — expected web/index.html", file=sys.stderr); return 1
         webbrowser.open(f"file://{path}")
         print(path); return 0
+
+    if cmd == "shelf":
+        # The shelf-exit contract, enforced: a pure read of the committed
+        # receipts — writes nothing, publishes nothing (surfaces render on
+        # their own schedule, from the same derivation).
+        import argparse
+        from datetime import date as _date
+        from . import shelf as shelf_mod
+        from .publish import REPO_ROOT
+        p = argparse.ArgumentParser(prog="lab shelf")
+        p.add_argument("--json", action="store_true")
+        p.add_argument("--today", default=None,
+                       help="grade as of this YYYY-MM-DD (default: today)")
+        opts = p.parse_args(args[1:])
+        today = (_date.fromisoformat(opts.today) if opts.today
+                 else _date.today())
+        rulings = REPO_ROOT / "docs" / "shelf-rulings.json"
+        entries = shelf_mod.register(
+            REPO_ROOT / "reports" / "hunts",
+            rulings if rulings.exists() else None, today)
+        if opts.json:
+            print(json.dumps(entries, indent=2))
+        else:
+            print(shelf_mod.render_text(entries))
+        return 0
 
     if cmd == "hunt":
         # The scheduler's survey slot: a bounded, resumable A05 hunt slice.
