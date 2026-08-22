@@ -404,6 +404,7 @@ Usage:
   lab k01             run K01: Kuramoto synchronization — verify K_c = 2γ (Track K)
   lab k02             run K02: does the χ(r) shape survive N? (Track K)
   lab k03             run K03: Daido vs Hong — is the susceptibility exponent asymmetric across K_c? (Track K)
+  lab k04             run K04: Mirollo–Strogatz fireflies — measure the almost-sure sync theorem (Track K)
   lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
   lab c05             run C05: BBP hex digits of π extracted at position, byte-checked
                       against an independent Machin expansion; deep window at 10^7
@@ -1005,6 +1006,29 @@ def _parse_k03(args):
         ns.n, ns.points, ns.rungs = 200, 4, 2
         ns.t_burn, ns.t_measure = 30.0, 60.0
     return ns
+
+
+def _parse_k04(args):
+    # Import-late like the other K parsers: defaults anchored to the module's
+    # calibration identity so the CLI and the runner cannot drift. A run that
+    # overrides any of them is a diagnostic and check_k04 says so out loud.
+    from . import k04 as k04_mod
+
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--n", type=int, default=k04_mod.CALIBRATION_N,
+                   help="oscillators (default 100 — the calibration)")
+    p.add_argument("--b", type=float, default=k04_mod.B_DISSIPATION,
+                   help="charging-curve concavity b > 0 (default 3.0)")
+    p.add_argument("--eps", type=float, default=k04_mod.CALIBRATION_EPS,
+                   help="per-oscillator flash kick ε (default 0.001)")
+    p.add_argument("--trials", type=int, default=k04_mod.CALIBRATION_TRIALS,
+                   help="independent initial conditions (default 200)")
+    p.add_argument("--max-events", type=int,
+                   default=k04_mod.CALIBRATION_MAX_EVENTS)
+    p.add_argument("--no-ladders", action="store_true",
+                   help="skip the reported-not-graded N and ε ladders")
+    p.add_argument("--seed", type=int, default=42)
+    return p.parse_args(args)
 
 
 def _parse_c01(args):
@@ -2324,6 +2348,50 @@ def main(argv=None):
               f"{result.branch_points} couplings · ⟨r⟩(K=0)={result.r_incoherent:.4f} "
               f"vs 1/√N={result.r_incoherent_scale:.4f}")
         verdict = ("synchronization transition reproduced"
+                   if report["status"] == "pass" else "[~] null — see the report")
+        print(f"  → {verdict} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001 — publishing must never fail a run
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "k04":
+        ns = _parse_k04(args[1:])
+        from . import k04 as k04_mod
+        from . import render as render_mod
+        print(f"K04 Mirollo–Strogatz fireflies · N={ns.n} · b={ns.b:g} · "
+              f"ε={ns.eps:g} · {ns.trials} initial conditions · event bound "
+              f"{ns.max_events} · theorem: almost-sure unison")
+        last = [None]
+
+        def progress(stage, done, total):
+            labels = {"trials": f"  · trials {done}/{total}",
+                      "null": "  · ε=0 control (order without coupling would "
+                              "be bookkeeping)",
+                      "ladders": "  · N and ε ladders (reported, not graded)"}
+            msg = labels.get(stage)
+            if msg and (stage != last[0] or stage == "trials"):
+                print(msg)
+                last[0] = stage
+
+        result = k04_mod.run_k04(
+            n=ns.n, b=ns.b, eps=ns.eps, trials=ns.trials,
+            max_events=ns.max_events, seed=ns.seed,
+            ladders=not ns.no_ladders, progress=progress,
+        )
+        report = k04_mod.to_report(result)
+        print(f"  → {result.synced}/{result.trials} reached unison · median "
+              f"{result.events_median:.0f} / max {result.events_max} events "
+              f"vs bound {result.max_events_bound}")
+        nulls = result.null_clusters
+        print(f"  → ε=0 control: {min(nulls) if nulls else 0} clusters of "
+              f"{result.n} after {result.null_event_budget} events "
+              f"({result.null_trials} trials)")
+        verdict = ("almost-sure synchronization reproduced"
                    if report["status"] == "pass" else "[~] null — see the report")
         print(f"  → {verdict} · {result.wall_seconds:.0f}s")
         path = render_mod.render_calibration(report)
