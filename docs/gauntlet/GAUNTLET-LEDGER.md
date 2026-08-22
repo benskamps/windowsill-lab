@@ -176,8 +176,14 @@ the pipeline or the check, never retro-edited into the evidence):
   446s / 451s against the declared 0.100 share of a 2700s slot. The receipt records it and
   `check_a05` catches it post-hoc, but nothing in `scripts/a05_hunt.py` stops a slow
   target from eating a slot while it happens (same family as AUTO-F10's no-attempt-cap
-  residual). Done-when: a mutation test drives one over-share target and shows the slot
-  moving on with the overage recorded.
+  residual). **Design nuance, read before fixing:** the share comment at
+  `src/lab/a05.py:136-139` says post-hoc refusal is deliberate — 10% "clears the measured
+  cost with margin while still refusing a pathological target." So the open question is a
+  RULING, not just a build: should a pathological target permanently redden its slot's
+  receipt (current, honest, unrecoverable) or be cooperatively abandoned mid-grade with an
+  `over-budget` outcome row (recoverable, but an abandoned grade is a new kind of
+  ungraded)? Done-when: the ruling recorded here, then a mutation test for whichever
+  behavior it names.
 - **Three receipts carry a FAILED uniformity control** (`08-14-s3` D=0.336, `08-17-s2-0026`
   D=0.360, `08-18-s2-1000` D=0.265): by the check's own contract every graded FAP in them
   is *uninterpretable, not negative*. `08-18-s2-1000` is the receipt that minted
