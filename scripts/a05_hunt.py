@@ -70,6 +70,12 @@ MAX_WORKERS = 12
 #: that clears, and a 100-minute slice is worth a second attempt.
 GRADE_RETRY_LIMIT = 2
 
+#: How long the pot refresh waits for the box run lock before it gives up and
+#: withholds the receipt. Sized against the two clocks it sits between: a
+#: campaign turn holds the lock for minutes, and the hunt unit's
+#: ``TimeoutStartSec=2h`` has to still cover a 100-minute slice plus this wait.
+POT_LOCK_WAIT_SECONDS = float(os.environ.get("LAB_HUNT_POT_LOCK_WAIT", "300"))
+
 
 def _lab_roots() -> tuple[Path, ...]:
     """Where checkpoints and summaries actually land: LAB_HOME and its
@@ -296,8 +302,46 @@ def provenance() -> dict:
             "python": platform.python_version()}
 
 
+def unowned_receipt_path(hunts_dir: Path, hunt_id: str) -> Path:
+    """Where this run's receipt may be written WITHOUT destroying someone else's.
+
+    The receipt used to be opened at ``<hunt_id>.json`` unconditionally, which
+    makes the write the last unguarded step in a pipeline that guards everything
+    else. A receipt already sitting at that path was written by somebody else —
+    this run has not written one yet — and on 2026-08-15 that somebody was win:
+    loam's bare survey slot defaulted into sector 2 and overwrote win's
+    committed s2 receipt, taking a lead-awaiting-human-review row with it.
+
+    ``find_checkpoint`` avoids colliding ids at the START of a run, and two
+    things walk straight past it: ``--hunt-id``, which names an id outright, and
+    the 100 minutes in between, during which the other box can commit a receipt
+    for the id we chose and our pre-hunt pull can bring it down.
+
+    Refusing is not discarding. The slice really was searched and really did
+    grade, so it lands BESIDE the incumbent under a stamped id — the same
+    collision-avoidance shape ``find_checkpoint`` already uses, and the same
+    lesson (#79's turn stamp): a new receipt next to the old one, never an
+    overwrite.
+    """
+    candidate = hunts_dir / f"{hunt_id}.json"
+    if not candidate.exists():
+        return candidate
+    for fmt in ("%H%M", "%H%M%S"):
+        stamped = hunts_dir / f"{hunt_id}-{time.strftime(fmt, time.gmtime())}.json"
+        if not stamped.exists():
+            print(f"receipt {candidate.name} already exists and is not this "
+                  f"run's — filing beside it as {stamped.name}")
+            return stamped
+    # Both stamps taken in the same second by earlier slices: fall back to the
+    # pid, which is unique on this box for as long as this run exists.
+    stamped = hunts_dir / f"{hunt_id}-{os.getpid()}.json"
+    print(f"receipt {candidate.name} already exists and is not this run's "
+          f"— filing beside it as {stamped.name}")
+    return stamped
+
+
 def settle_receipt(receipt_path: Path, ok: bool | None,
-                   dossiers: dict | None = None) -> Path:
+                   dossiers: dict | None = None, tally: bool = True) -> Path:
     """Where a graded receipt belongs — in the ledger, or beside the logs.
 
     ``check_a05`` returns ``None`` for *uninterpretable* (a control failed, so
@@ -316,6 +360,13 @@ def settle_receipt(receipt_path: Path, ok: bool | None,
 
     Cost, eyes open: ``already_searched()`` globs the same directory, so a
     quarantined run's targets become eligible for a later slice again.
+
+    ``tally=False`` files the receipt without counting a grade failure, for the
+    one caller that withholds a receipt the GRADE never touched (the pot refresh
+    could not take the run lock). Counting that against ``GRADE_RETRY_LIMIT``
+    would retire a healthy checkpoint over someone else's scheduling; leaving it
+    untallied means the next slot resumes the checkpoint, rebuilds the same rows
+    from disk without re-searching a single star, and publishes.
     """
     if ok is True:
         return receipt_path
@@ -324,8 +375,9 @@ def settle_receipt(receipt_path: Path, ok: bool | None,
     # Tally it. Quarantining alone leaves no trace that survives to the NEXT slot's
     # find_checkpoint, which is why a deterministic grade failure used to livelock
     # the sector lane (see GRADE_RETRY_LIMIT).
-    total = record_grade_failure(receipt_path.stem)
-    print(f"grade failure {total}/{GRADE_RETRY_LIMIT} for {receipt_path.stem}")
+    if tally:
+        total = record_grade_failure(receipt_path.stem)
+        print(f"grade failure {total}/{GRADE_RETRY_LIMIT} for {receipt_path.stem}")
     for tic in (dossiers or {}):
         rendered = receipt_path.parent / "dossiers" / f"{receipt_path.stem}-tic{tic}.html"
         if rendered.exists():
@@ -416,7 +468,7 @@ def main() -> int:
                            provenance=provenance())
     hunts_dir = REPO_ROOT / "reports/hunts"
     hunts_dir.mkdir(parents=True, exist_ok=True)
-    receipt_path = hunts_dir / f"{hunt_id}.json"
+    receipt_path = unowned_receipt_path(hunts_dir, hunt_id)
     tmp_receipt = receipt_path.with_suffix('.tmp')
     with tmp_receipt.open("w", encoding="utf-8") as f:
         f.write(json.dumps(report, indent=1))
@@ -448,14 +500,50 @@ def main() -> int:
     # nightly did exactly that. Refresh surgically: the hunt key only, the
     # publisher's own serialization (indent=2, insertion order — never
     # sort_keys), so the receipt and its aggregate land together.
+    #
+    # THE LOCK. The write below is atomic and always was; the READ-MODIFY-WRITE
+    # around it was not serialized against anything. pot.json has a second
+    # writer — the campaign lane publishes through `lab next`, which holds
+    # ``next_run_lock`` (src/lab/cli.py) for its whole turn — and mutual
+    # exclusion that only one of two writers observes is not mutual exclusion.
+    # Interleave them and the loss is total and silent: hunt reads pot, campaign
+    # publishes a pass, hunt writes back the copy it read, and the pass is gone
+    # with nothing dirty, nothing red, and nothing to alarm on. The only thing
+    # keeping that off production was that the two lanes are SCHEDULED in
+    # different hours, and configuration is not a lock.
+    #
+    # Take the same lock, not a second scheme: two locking schemes over one file
+    # is the same bug wearing a hat. Wait rather than skip — this run is
+    # finishing 100 minutes of work, so minutes of waiting are cheap where a
+    # scheduled turn would rightly skip its slot.
+    from lab.cli import LockBusy, next_run_lock
     from lab.publish import POT_JSON, hunt_block
-    pot = json.loads(POT_JSON.read_text(encoding="utf-8"))
-    pot["hunt"] = hunt_block()
-    tmp_pot = POT_JSON.with_suffix('.tmp')
-    with tmp_pot.open("w", encoding="utf-8") as f:
-        f.write(json.dumps(pot, indent=2) + "\n")
-        os.fsync(f.fileno())
-    tmp_pot.replace(POT_JSON)
+    try:
+        with next_run_lock(wait_seconds=POT_LOCK_WAIT_SECONDS):
+            pot = json.loads(POT_JSON.read_text(encoding="utf-8"))
+            pot["hunt"] = hunt_block()
+            tmp_pot = POT_JSON.with_suffix('.tmp')
+            with tmp_pot.open("w", encoding="utf-8") as f:
+                f.write(json.dumps(pot, indent=2) + "\n")
+                os.fsync(f.fileno())
+            tmp_pot.replace(POT_JSON)
+    except LockBusy as busy:
+        # The receipt graded, but its aggregate cannot be refreshed without
+        # racing the other lane. Publishing the receipt alone is the 2026-08-15
+        # red-main class, so withhold BOTH: file the receipt with the logs and
+        # exit non-zero, which is the wrapper's first proof and stops it
+        # staging anything. Not a grade failure — nothing is wrong with this
+        # slice — so it is not tallied, and the next slot resumes the very same
+        # checkpoint, rebuilds these rows off disk without re-searching a star,
+        # and publishes then.
+        print(f"pot NOT refreshed: run lock held by pid {busy.pid} since "
+              f"{busy.started} — withholding this receipt rather than "
+              "publishing it without its aggregate")
+        withheld = settle_receipt(receipt_path, False, dossiers=result.dossiers,
+                                  tally=False)
+        print(f"receipt -> {withheld}  (withheld: filed with the logs, "
+              "not published and not aggregated)")
+        return 1
     print(f"pot hunt block refreshed -> {POT_JSON}")
     return 0
 

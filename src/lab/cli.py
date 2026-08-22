@@ -3,6 +3,7 @@ import contextlib
 import json
 import os
 import sys
+import time
 import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
@@ -17,6 +18,16 @@ from .labhome import LAB_HOME  # ~/.lab, or $LAB_HOME when set
 
 # One turn per box. See `next_run_lock` below and tests/test_next_lock.py.
 NEXT_LOCK_NAME = "next.lock"
+
+#: Set in the environment for as long as this process holds the run lock, so a
+#: child dispatched BY the turn (``lab next`` → ``lab hunt`` → a subprocess
+#: running ``scripts/a05_hunt.py``) can tell "my own turn owns this" apart from
+#: "another box turn owns this" and re-enter instead of deadlocking on itself.
+NEXT_LOCK_ENV = "LAB_NEXT_LOCK_PID"
+
+#: How often a waiting acquirer re-checks a busy lock. Short enough that the
+#: handoff is prompt, long enough that a 5-minute wait is ~150 stat calls.
+LOCK_POLL_SECONDS = 2.0
 
 
 class LockBusy(Exception):
@@ -103,8 +114,36 @@ def note_lock_milestone(path, milestone) -> None:
         pass
 
 
+def _held_by_this_process_tree(path) -> bool:
+    """Does an ANCESTOR of this process already hold the lock at ``path``?
+
+    The lock protects the box, not one process, and a turn dispatches real work
+    into children: `lab next` takes the lock and then reaches `lab hunt`, which
+    runs ``scripts/a05_hunt.py`` in a SUBPROCESS (see ``cmd == "hunt"``). A
+    child that asks for the same lock its own parent is holding must not be told
+    the box is busy — it is the busy-ness. Without this, a hunt driver that
+    locks its pot refresh would block on its own dispatcher for the whole wait
+    budget and then withhold a perfectly good receipt.
+
+    The environment variable is the ancestry channel (``subprocess`` inherits
+    it), and the lock FILE is the proof: the two must agree and the named pid
+    must still be a live python, or this is a leaked variable from a dead turn
+    and the caller falls through to real acquisition.
+    """
+    claimed = os.environ.get(NEXT_LOCK_ENV)
+    if not claimed:
+        return False
+    holder = _read_lock(path)
+    if holder is None or str(holder.get("pid")) != str(claimed):
+        return False
+    try:
+        return _process_is_live_python(int(claimed))
+    except (TypeError, ValueError):
+        return False
+
+
 @contextlib.contextmanager
-def next_run_lock(path=None):
+def next_run_lock(path=None, wait_seconds=0.0):
     """Hold the one-turn-per-box lock for the duration of a `lab next` turn.
 
     Overlap prevention lives HERE, in the process that actually knows whether a
@@ -115,33 +154,66 @@ def next_run_lock(path=None):
 
     Raises ``LockBusy`` when a live python process already holds it. A lock whose
     owner is dead (killed turn, reboot, power loss) is announced and taken over.
+
+    ``wait_seconds`` polls for a busy lock instead of giving up on the first
+    look, and defaults to 0 so `lab next` keeps its original behaviour exactly:
+    a scheduled turn that finds the box busy skips its slot rather than queueing
+    behind one. Callers that are FINISHING work rather than starting it — the
+    hunt driver's pot refresh — pass a budget, because for them waiting a few
+    minutes is cheaper than throwing away a graded slice.
+
+    Re-entrant across a process tree: see :func:`_held_by_this_process_tree`.
     """
     path = Path(path) if path is not None else LAB_HOME / NEXT_LOCK_NAME
     path.parent.mkdir(parents=True, exist_ok=True)
+    if _held_by_this_process_tree(path):
+        # Our own turn owns it. Yield it, and do NOT release on the way out —
+        # the ancestor that took it is the one that gets to give it back.
+        yield path
+        return
     payload = json.dumps({
         "pid": os.getpid(),
         "started": datetime.now(timezone.utc).isoformat(),
         "milestone": None,
     })
-    try:
-        # O_EXCL so two turns starting in the same instant cannot both win.
-        fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
-    except FileExistsError:
-        holder = _read_lock(path)
-        held_pid = holder.get("pid") if holder else None
-        if holder is not None and _process_is_live_python(held_pid):
-            raise LockBusy(held_pid, holder.get("started", "unknown")) from None
-        print(
-            f"lab next · stale lock from pid {held_pid} "
-            f"(since {holder.get('started', 'unknown') if holder else 'unreadable'}) "
-            "— taking it over"
-        )
-        fd = os.open(path, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)
+    deadline = time.monotonic() + max(0.0, float(wait_seconds))
+    announced = False
+    while True:
+        try:
+            # O_EXCL so two turns starting in the same instant cannot both win.
+            fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+            break
+        except FileExistsError:
+            holder = _read_lock(path)
+            held_pid = holder.get("pid") if holder else None
+            if holder is not None and _process_is_live_python(held_pid):
+                if time.monotonic() >= deadline:
+                    raise LockBusy(held_pid,
+                                   holder.get("started", "unknown")) from None
+                if not announced:
+                    print(f"lab · run lock held by pid {held_pid} — waiting up "
+                          f"to {float(wait_seconds):.0f}s")
+                    announced = True
+                time.sleep(LOCK_POLL_SECONDS)
+                continue
+            print(
+                f"lab next · stale lock from pid {held_pid} "
+                f"(since {holder.get('started', 'unknown') if holder else 'unreadable'}) "
+                "— taking it over"
+            )
+            fd = os.open(path, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)
+            break
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         fh.write(payload)
+    previously_claimed = os.environ.get(NEXT_LOCK_ENV)
+    os.environ[NEXT_LOCK_ENV] = str(os.getpid())
     try:
         yield path
     finally:
+        if previously_claimed is None:
+            os.environ.pop(NEXT_LOCK_ENV, None)
+        else:
+            os.environ[NEXT_LOCK_ENV] = previously_claimed
         # Only clear a lock we still own: if a later turn decided ours was stale
         # and took over, that lock is theirs to release.
         current = _read_lock(path)
