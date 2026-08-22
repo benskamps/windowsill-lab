@@ -166,6 +166,26 @@ resolve_by_regeneration(){
 # construction once we share the 4/day rotation. Resolve it by regeneration when only those
 # derived feeds conflict; otherwise fail loudly, leave the clone usable, and let the caller
 # skip the pass rather than pretend it synced.
+# The one way a pass declines to publish. Both failure branches call it, so the two
+# cannot drift into two different conventions — which is exactly how a failed
+# `lab next` ended up on the publishing path while a failed `verify` did not.
+#
+# Restoring the campaign-owned TRACKED paths matters twice over: the dirty-worktree
+# guard at the top of every pass would otherwise refuse the lane until a human
+# cleared it, and anything the failed run half-wrote must not survive to be swept up
+# by the NEXT pass's `git add -A -- reports/`. `git checkout` only restores tracked
+# files, so untracked wreckage in reports/ is cleaned explicitly.
+withhold_pass(){
+  if git checkout -q -- pot.json physics-latest.json reports/ 2>/dev/null; then
+    log "campaign: pass $iter — campaign-owned paths restored to last committed state"
+  else
+    log "campaign: pass $iter — restore failed; next pass will refuse the dirty worktree"
+  fi
+  if ! git clean -qfd -- reports/ 2>/dev/null; then
+    log "campaign: pass $iter — could not clear untracked artifacts under reports/"
+  fi
+}
+
 safe_pull_rebase(){
   local out rc
   out="$(git pull --rebase 2>&1)"; rc=$?
@@ -259,6 +279,7 @@ fi
 # Sourced by the conflict fixtures to drive the functions above against a throwaway
 # clone without entering the loop:  LAB_CAMPAIGN_LIB=1 . scripts/campaign.sh
 if [ -n "${LAB_CAMPAIGN_LIB:-}" ]; then
+  # shellcheck disable=SC2317  # reached when SOURCED; the loop below is what is skipped
   return 0 2>/dev/null || exit 0
 fi
 
@@ -283,21 +304,35 @@ while :; do
   elif ! safe_pull_rebase; then
     log "campaign: pass $iter - publish skipped: could not sync with origin (see ERROR above)"
   else
+    # A pass publishes only what it can VOUCH for, and there are two ways it cannot.
+    # Until 2026-08-22 they were treated as one benign and one fatal.
+    #
+    # A failed `lab next` used to log "experiment failed; refreshing existing feed
+    # only", leave publishable=1, and fall straight through to the staging block —
+    # which `git add -A -- reports/` (indiscriminate) then committed as
+    # `campaign: pass N <date> seed=S`, a subject IDENTICAL IN SHAPE to a successful
+    # pass. Four things went wrong at once: `verify` re-grades only on the SUCCEEDED
+    # path, so nothing re-checked what shipped; a real `lab next` fails PART WAY
+    # THROUGH, so the artifacts swept in were torn; the commit was pushed; and the
+    # `campaign.published` heartbeat was touched, so the estate watcher scored the
+    # failed lane healthy. The pass counter is recovered by reading these subjects
+    # back out of the ledger, so the masquerade corrupted the ledger as well as the
+    # feed.
+    #
+    # One convention now: EITHER failure withholds, restores the campaign-owned
+    # paths, and commits nothing. The feed is not "refreshed" on the way past —
+    # regenerating it here only ever produced output this same pass then had to
+    # restore, and the next successful pass rebuilds it from the committed receipts
+    # anyway.
     publishable=1
     if ! "$PY" -m lab.cli next --seed "$seed" --device "$DEVICE" >> "$LOG" 2>&1; then
-      log "campaign: pass $iter — experiment failed; refreshing existing feed only"
-      "$PY" -m lab.cli publish >> "$LOG" 2>&1 \
-        || log "campaign: pass $iter — feed refresh also failed"
+      publishable=0
+      log "campaign: pass $iter — experiment failed; publishing withheld"
+      withhold_pass
     elif ! "$PY" -m lab.cli verify >> "$LOG" 2>&1; then
       publishable=0
       log "campaign: pass $iter — verify failed; publishing withheld"
-      # Restore campaign-owned tracked paths to HEAD, or the dirty-worktree guard
-      # would refuse every later pass; the failing grades are in the log above.
-      if git checkout -q -- pot.json physics-latest.json reports/ 2>/dev/null; then
-        log "campaign: pass $iter — campaign-owned paths restored to last committed state"
-      else
-        log "campaign: pass $iter — restore failed; next pass will refuse the dirty worktree"
-      fi
+      withhold_pass
     fi
     if [ "$publishable" -eq 0 ]; then
       : # withheld above — nothing staged this pass
@@ -322,7 +357,7 @@ while :; do
         log "campaign: pass $iter — commit failed"
       else
         pushed=0
-        for a in 1 2 3 4; do
+        for _ in 1 2 3 4; do   # attempt counter is unused by design
           if git push -q >/dev/null 2>&1; then pushed=1; break; fi
           safe_pull_rebase || break
         done

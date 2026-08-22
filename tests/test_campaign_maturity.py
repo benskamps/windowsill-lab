@@ -148,13 +148,33 @@ def test_campaign_verify_gates_publication_between_run_and_staging():
 
 
 def test_campaign_withheld_pass_restores_owned_paths_for_the_next_pass():
+    """BOTH ways a pass can decline route through one helper since AUTO-F3, so this
+    follows the call rather than an inlined copy of the restore. Two inlined copies
+    is how the two branches drifted apart in the first place: a failed `verify`
+    restored and withheld, a failed `lab next` did neither."""
     script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
     loop = _loop_body()
     restore = "git checkout -q -- pot.json physics-latest.json reports/"
-    assert restore in script
-    withheld = loop.index("verify failed; publishing withheld")
+    assert "withhold_pass(){" in script
+    assert script.count(restore) == 1, "the restore belongs to withhold_pass alone"
     stage = loop.index("git add -- pot.json physics-latest.json")
-    assert withheld < loop.index(restore) < stage
+    for reason in ("experiment failed; publishing withheld",
+                   "verify failed; publishing withheld"):
+        logged = loop.index(reason)
+        called = loop.index("withhold_pass", logged)
+        assert logged < called < stage, f"{reason!r} does not reach withhold_pass"
+
+
+def test_campaign_experiment_failure_never_reaches_the_publishing_path():
+    """AUTO-F3, pinned as text so the masquerade cannot come back by edit.
+
+    A failed `lab next` used to log "refreshing existing feed only", leave
+    publishable=1, and commit under `campaign: pass N <date> seed=S` — a subject
+    indistinguishable from a success, in a ledger the pass counter is recovered from.
+    """
+    script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    assert "refreshing existing feed only" not in script
+    assert "experiment failed; publishing withheld" in script
 
 
 def test_campaign_commit_message_dates_in_local_time():
