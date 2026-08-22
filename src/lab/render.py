@@ -12,6 +12,7 @@ import platform
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+from .atomic import atomic_write_text
 
 import matplotlib
 matplotlib.use("Agg")
@@ -183,8 +184,8 @@ def _commit_report(date: str, slug: str, html: str, json_dump: str) -> Path:
     REPO_REPORTS.mkdir(parents=True, exist_ok=True)
     html_path = REPO_REPORTS / f"{date}-{slug}.html"
     json_path = REPO_REPORTS / f"{date}-{slug}.json"
-    html_path.write_text(html, encoding="utf-8")
-    json_path.write_text(json_dump, encoding="utf-8")
+    atomic_write_text(html_path, html, encoding="utf-8")
+    atomic_write_text(json_path, json_dump, encoding="utf-8")
     # Keep a small, durable public record even though the full dated report is
     # intentionally gitignored.  Numerical curves + provenance remain; only
     # heavyweight lattice snapshots are replaced by explicit digests.
@@ -199,7 +200,7 @@ def _commit_report(date: str, slug: str, html: str, json_dump: str) -> Path:
         json_dump.encode("utf-8"),
     )
     # Back-compat pointer: a copy of the newest, not an archive that gets clobbered.
-    (REPO_REPORTS / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(REPO_REPORTS / "latest.html", html, encoding="utf-8")
     return html_path
 
 
@@ -413,11 +414,11 @@ def render(result: RunResult, date: str | None = None) -> Path:
     # reports/ tree is already slug-keyed via _commit_report.)
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
     # The raw JSON next to it (same slug-keyed name) so it's easy to grep.
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
     # Update the local ~/.lab latest pointer (cache, untouched by the repo).
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
 
     # Commit the permanent per-run report into the repo so the windowsill page
     # can deep-link this exact run — never clobbering an earlier one.
@@ -708,9 +709,9 @@ def render_m03(report: dict, date: str | None = None) -> Path:
     # Slug-keyed ~/.lab cache (no same-day clobber) + local latest pointer.
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     # Commit the permanent per-run report (reports/<date>-m03.html/.json) so this
     # data-collapse run is preserved and the milestone can be archived.
     _commit_report(date, slug, html, json_dump)
@@ -768,9 +769,9 @@ def render_fss(report: dict, date: str | None = None) -> Path:
     # one locally (the committed reports/ tree is already slug-keyed).
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     # Commit the permanent per-run report (e.g. reports/<date>-m02.html/.json)
     # so this finite-size-scaling run is preserved, not buried by the next run.
     _commit_report(date, slug, html, json_dump)
@@ -947,9 +948,9 @@ def render_m06(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -1116,9 +1117,9 @@ def render_m04(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -1362,9 +1363,9 @@ def render_m05(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -1582,9 +1583,9 @@ def render_m07(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -1787,9 +1788,9 @@ def render_m08(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -2018,9 +2019,9 @@ def render_m09(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -2217,9 +2218,9 @@ def render_m10(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -2419,9 +2420,9 @@ def render_m11(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -2635,9 +2636,9 @@ def render_m12(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -2858,9 +2859,9 @@ def render_m13(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -3061,9 +3062,9 @@ def render_m14(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -3302,9 +3303,9 @@ def render_m15(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(html, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(html, encoding="utf-8")
+    atomic_write_text(out, html, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", html, encoding="utf-8")
     _commit_report(date, slug, html, json_dump)
     return out
 
@@ -3667,8 +3668,8 @@ def render_calibration(report: dict, date: str | None = None) -> Path:
     )
     slug = _slug_for(report)
     out = LAB_HOME / f"{date}-{slug}.html"
-    out.write_text(page, encoding="utf-8")
-    (LAB_HOME / f"{date}-{slug}.json").write_text(json_dump, encoding="utf-8")
-    (LAB_HOME / "latest.html").write_text(page, encoding="utf-8")
+    atomic_write_text(out, page, encoding="utf-8")
+    atomic_write_text(LAB_HOME / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+    atomic_write_text(LAB_HOME / "latest.html", page, encoding="utf-8")
     _commit_report(date, slug, page, json_dump)
     return out

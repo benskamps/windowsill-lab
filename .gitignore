@@ -13,3 +13,10 @@ output/playwright/
 scripts/nightly.sh
 scripts/nightly.ps1
 scripts/windowsill-lab.task.xml
+
+# Scratch files from lab.atomic.atomic_write_text (tmp -> fsync -> replace) and
+# from the hunt receipt writer in scripts/a05_hunt.py. A crashed write leaves one
+# behind, and the nightly stages reports/ with `git add -A` — which picks up
+# dotfiles. Nothing tracked here ends in .tmp.
+.*.tmp
+*.tmp

@@ -26,6 +26,7 @@ import math
 from pathlib import Path
 
 from .m01_quality import assess_m01_quality
+from .atomic import atomic_write_text
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 REPORTS_DIR = REPO_ROOT / "reports"
@@ -425,5 +426,5 @@ def build_physics_feed(out_path: Path = PHYSICS_JSON,
     feed = build_feed(reports_dir, lab_home, provenance, previous_feed)
     if feed is None:
         return None
-    out_path.write_text(json.dumps(feed, indent=2) + "\n", encoding="utf-8")
+    atomic_write_text(out_path, json.dumps(feed, indent=2) + "\n", encoding="utf-8")
     return out_path

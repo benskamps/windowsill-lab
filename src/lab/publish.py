@@ -24,6 +24,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from . import origin
+from .atomic import atomic_write_text
 from .stories import STORIES   # durable plain-language story layer (stdlib-only dict)
 from .curriculum import RUNNERS
 from .m01_quality import assess_m01_quality
@@ -1478,7 +1479,7 @@ def ensure_public_receipts() -> list[Path]:
             continue
         content = receipt_text(data, source.read_bytes())
         destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(content, encoding="utf-8")
+        atomic_write_text(destination, content, encoding="utf-8")
         paths.append(destination)
     return paths
 
@@ -1523,7 +1524,7 @@ def backfill(dry_run: bool = False) -> list[Path]:
         # so a today-stamped copy of an old run would masquerade as the
         # latest and scramble the public feed's order (bit on 2026-07-19).
         src_mtime = src.stat().st_mtime
-        json_dest.write_text(src.read_text(encoding="utf-8"), encoding="utf-8")
+        atomic_write_text(json_dest, src.read_text(encoding="utf-8"), encoding="utf-8")
         os.utime(json_dest, (src_mtime, src_mtime))
         written.append(json_dest)
 
@@ -1532,7 +1533,7 @@ def backfill(dry_run: bool = False) -> list[Path]:
         src_html = src.with_suffix(".html")
         try:
             if src_html.exists():
-                html_dest.write_text(src_html.read_text(encoding="utf-8"), encoding="utf-8")
+                atomic_write_text(html_dest, src_html.read_text(encoding="utf-8"), encoding="utf-8")
                 written.append(html_dest)
             else:
                 exp = str(data.get("experiment", ""))
@@ -1574,10 +1575,10 @@ def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
     ensure_public_receipts()
     snap = collect()
     content = json.dumps(snap, indent=2) + "\n"
-    POT_JSON.write_text(content, encoding="utf-8")  # canonical, committed live feed
+    atomic_write_text(POT_JSON, content, encoding="utf-8")  # canonical, committed live feed
     LAB_HOME.mkdir(parents=True, exist_ok=True)
     out = LAB_HOME / "pot.json"
-    out.write_text(content, encoding="utf-8")
+    atomic_write_text(out, content, encoding="utf-8")
 
     # Refresh the committed archive index (reports/index.html) so the every-run
     # ledger page tracks the feed. Best-effort — same guard as the gist push;
