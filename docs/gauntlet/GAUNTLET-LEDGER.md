@@ -18,7 +18,7 @@ command has been shown FAILING at the pre-fix base and PASSING on the fix branch
 
 | Metric | Baseline (21:00) | Now |
 |---|---|---|
-| P1 closed (open PR + fail-before/pass-after shown) | 0 / 15 | **6 / 15** — VET-F1 (#114); AUTO-F1/F2/F6/F10/F4 (#113, lane complete) |
+| P1 closed (open PR + fail-before/pass-after shown) | 0 / 15 | **7 / 15** — VET-F1, VET-F3 (#114); AUTO-F1/F2/F6/F10/F4 (#113, lane complete) |
 | Bonus P1 closed (found during remediation, outside the 15) | — | AUTO-F11 (#113) |
 | P2 closed | 0 / 20 | 0 / 20 |
 
