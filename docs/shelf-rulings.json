@@ -1,0 +1,44 @@
+[
+  {
+    "tic": 234518605,
+    "ruling": "refuted",
+    "date": "2026-08-19",
+    "by": "machine — fold + catalog gates (2026-08-19 shelf sweep; transcribed 2026-08-22)",
+    "why": "Refuted twice over: doubled-fold difference 28.3 sigma combined over 6 sectors, and a direct-period CTOI match on ExoFOP. docs/investigations/2026-08-19-fold-gate-validation.md §6.5; raw per-sector verdicts in 2026-08-19-shelf-sweep.json."
+  },
+  {
+    "tic": 272357134,
+    "ruling": "refuted",
+    "date": "2026-08-19",
+    "by": "machine — fold + catalog gates (2026-08-19 shelf sweep; transcribed 2026-08-22)",
+    "why": "Refuted twice over: 16.4 sigma combined over 8 sectors, plus two CTOIs at a direct period match. docs/investigations/2026-08-19-fold-gate-validation.md §6.5."
+  },
+  {
+    "tic": 287328866,
+    "ruling": "refuted",
+    "date": "2026-08-19",
+    "by": "machine — fold + catalog gates (2026-08-19 shelf sweep; transcribed 2026-08-22)",
+    "why": "Refuted twice over: 9.8 sigma combined over 8 sectors (eclipsing-binary P/2 alias), plus two CTOIs at alias n=2. docs/investigations/2026-08-19-fold-gate-validation.md §6.5. Also the physical-admissibility exemplar: implied 2.5 R_Jup on an F subgiant."
+  },
+  {
+    "tic": 369603748,
+    "ruling": "refuted",
+    "date": "2026-08-19",
+    "by": "machine — fold gate (2026-08-19 shelf sweep; transcribed 2026-08-22)",
+    "why": "8.2 sigma combined over 2 sectors (5.1 and 6.5 per sector — grading the star, not the sector, is what closed it). docs/investigations/2026-08-19-fold-gate-validation.md §6.5."
+  },
+  {
+    "tic": 49558810,
+    "ruling": "refuted",
+    "date": "2026-08-19",
+    "by": "machine — fold gate (2026-08-19 shelf sweep; transcribed 2026-08-22)",
+    "why": "8.6 sigma combined over 2 sectors (2.6 and 9.0 per sector). docs/investigations/2026-08-19-fold-gate-validation.md §6.5."
+  },
+  {
+    "tic": 77044472,
+    "ruling": "refuted",
+    "date": "2026-08-20",
+    "by": "machine — sky gates (2026-08-20 investigation; transcribed 2026-08-22)",
+    "why": "The light curve was never wrong; the pipeline never asked whose light it was. The dip is HATS-16 b (TOI 228.01, TFOPWG KP) on neighbour TIC 77044471, 0.71 px away, at a direct period match. Refutation of this TARGET, not of the signal. docs/investigations/2026-08-20-tic77044472-is-hats16b-on-the-neighbour.md."
+  }
+]

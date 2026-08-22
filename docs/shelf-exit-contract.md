@@ -191,7 +191,8 @@ candidate, and every new gate emits refutations only.
 | 2.2 | `fold_gate` in the mandatory list | **built** 2026-08-19, wired into `a05.process_target` |
 | 2.4 | CTOI in `catalog_crosscheck` | **built** 2026-08-19 (`lab.exofop`) |
 | 3 | per-sector evidence combined | `combine_p2_folds` built; general version **not built** |
-| 4 | promotion criteria | **ruled** 2026-08-19; not yet enforced in code |
+| 4 | promotion criteria | **enforced** 2026-08-22 (`lab.shelf`, `lab shelf` CLI): a pure derivation of the committed receipts grades every lead — promotable / parked with the failing criterion named. Two criteria grade as *ungradeable-therefore-parked* until the pipeline measures what they need: depth consistency (no `depth_err` in receipts) and, for pre-08-19 receipts, physical admissibility. Significance is graded per sector in both schemes; the combined-evidence version waits on §3's general machinery, deliberately — per-sector-independent can only under-promote. |
 | 4 | companion-radius admissibility gate | **built** 2026-08-19 (`lab.a05_physical`), wired into `a05.process_target` |
-| 5 | `first_seen` + the clock | **not built** |
-| 6 | destination | **ruled** 2026-08-19 — ExoFOP as CTOI; submission path not built |
+| 5 | `first_seen` + the clock | **built** 2026-08-22 (`lab.shelf`): `first_seen` = earliest lead receipt; 14 days → `surfaced` with the one question it needs; 60 days → `stale-unruled`, recorded as a bandwidth admission, never a refutation. |
+| 5 | rulings ledger | **built** 2026-08-22: `docs/shelf-rulings.json` — the only path to `promoted`, human-written, vocabulary enforced (`promoted` / `refuted` / `not-novel`; anything else refuses the whole file). Seeded with the six historical refutations (08-19 sweep §6.5 + the 08-20 HATS-16 b sky-gate finding), each citing its investigation. |
+| 6 | destination | **ruled** 2026-08-19 — ExoFOP as CTOI; submission path not built (Ben's account, Ben's button) |
