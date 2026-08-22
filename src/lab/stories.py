@@ -228,6 +228,12 @@ STORIES: dict[str, dict[str, str | None]] = {
         "why_it_matters": "It tests whether the search and vetting can find real signals without leaking the catalogue answer into the hunt — the calibration needed before any genuinely new candidate could be trusted.",
         "result_plain": "Yes — three times, with the labels taken away. The earlier planet-weighing run was told where to look; this one searched 26 stars with no planet names or periods. The two planets it was graded on came back first and second in its own ranking. It also flagged a third star nobody had asked about, put it through the same checks, and only afterwards identified it as another already-known planet. During the debugging runs it rejected deep, convincing signals that were alternating eclipses or artifacts at the edge of the search range. The cutoff was measured rather than chosen: fake transits at three depths all cleared it, while twenty-two quieter stars stayed below it. The claim is narrow: a blind sample recovered known planets and measured its own noise floor. It is not a discovery, a survey of the whole sector, or a submission for follow-up.",
     },
+    "A07": {
+        "short_label": "Jupiter's clockwork",
+        "question_plain": "If you watch Jupiter's four big moons for four months, do they keep the exact mathematical rhythm Kepler and Laplace wrote down centuries ago?",
+        "why_it_matters": "Three of the moons are locked in a gravitational waltz so precise it has held for billions of years — recovering it from public ephemerides proves this lab can measure celestial clockwork end to end.",
+        "result_plain": "Yes — all four moons land on Kepler's line, Jupiter's mass falls out of the fit, and Io, Europa and Ganymede keep the Laplace rhythm while Callisto, the outsider, proves the rhythm is real by breaking it.",
+    },
     "A05": {
         "short_label": "Pricing false alarms",
         "question_plain": "When the planet-hunt flags a dip in a star's light, can the lab measure — for that exact star — how often pure chance would fake a dip just as convincing, and how small a dip that star could even show?",

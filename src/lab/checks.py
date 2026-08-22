@@ -4025,6 +4025,80 @@ def check_k03(report: dict) -> tuple[bool | None, str]:
                     "left to the reported σ-distances")
 
 
+def check_a07(report: dict) -> tuple[bool | None, str]:
+    """Re-derive A07's celestial mechanics from the CACHED Horizons bytes.
+
+    The check_a05 doctrine, applied to the sky's clockwork: nothing carried
+    in the receipt is trusted for grading. The cached responses are located
+    by the receipt's own basenames, pinned by SHA-256 (a mismatch is
+    tampering — False, never a shrug), re-parsed, re-fit, and re-graded with
+    the module's own tolerances. A missing cache is ``None`` — "cannot
+    re-derive" on this box is not evidence against the run (the A07 cache,
+    like A05's, lives on the box that ran it).
+    """
+    from . import a07 as a07_mod
+
+    if report.get("experiment") != "A07-galilean-clockwork":
+        return None, "not an A07 Galilean clockwork receipt"
+    cache = report.get("cache")
+    if not isinstance(cache, dict) or set(cache) != set(a07_mod.MOONS.values()):
+        return None, "A07 receipt carries no complete cache block"
+
+    name_to_id = {v: k for k, v in a07_mod.MOONS.items()}
+    per_moon: dict[str, dict] = {}
+    for name, pin in cache.items():
+        path = a07_mod.CACHE_DIR / str(pin.get("file", ""))
+        if not path.is_file():
+            return None, (f"A07 cache missing: {pin.get('file')} — cannot "
+                          "re-derive the physics on this box")
+        blob = path.read_bytes()
+        digest = hashlib.sha256(blob).hexdigest()
+        if digest != pin.get("sha256"):
+            return False, (f"A07 cache {pin.get('file')} does not match its "
+                           f"receipt pin ({digest[:12]} != "
+                           f"{str(pin.get('sha256'))[:12]})")
+        try:
+            t, r, v = a07_mod.parse_vectors(blob.decode("utf-8",
+                                                        errors="replace"))
+            per_moon[name_to_id[name]] = a07_mod.mean_motion(t, r, v)
+        except Exception as exc:  # noqa: BLE001 — a broken cache is named
+            return False, f"A07 cached response no longer parses: {exc}"
+
+    # The receipt's carried periods must match what its own bytes re-derive.
+    reported = report.get("per_moon") or {}
+    for moon_id, m in per_moon.items():
+        name = a07_mod.MOONS[moon_id]
+        try:
+            carried = float((reported.get(name) or {}).get("period_days"))
+        except (TypeError, ValueError):
+            return False, f"A07 receipt carries no period for {name}"
+        if abs(carried / m["period_days"] - 1.0) > 1e-6:
+            return False, (f"A07 {name} period {carried} does not re-derive "
+                           f"from the cached bytes ({m['period_days']:.9f})")
+
+    g = a07_mod.grade(per_moon)
+    bad = [p["name"] for p in g["periods"].values() if not p["pass"]]
+    if bad:
+        return False, (f"A07 re-derived periods out of tolerance: "
+                       f"{', '.join(bad)}")
+    if not g["kepler"]["pass"]:
+        return False, (f"A07 Kepler III fails re-derivation: spread "
+                       f"{g['kepler']['max_fractional_spread']:.2e}, GM rel "
+                       f"error {g['kepler']['gm_rel_error']:.2e}")
+    if not g["laplace"]["pass"]:
+        return False, (f"A07 Laplace relation fails re-derivation: residual "
+                       f"{g['laplace']['residual_rel']:.2e} (Callisto "
+                       f"control {g['laplace']['callisto_substituted_rel']:.2f})")
+    return True, (
+        "Galilean clockwork re-derived from cached bytes: periods within "
+        f"{a07_mod.PERIOD_RTOL:g} of published, T^2/a^3 spread "
+        f"{g['kepler']['max_fractional_spread']:.2e}, GM_Jupiter rel error "
+        f"{g['kepler']['gm_rel_error']:.2e}, Laplace residual "
+        f"{g['laplace']['residual_rel']:.1e} with the Callisto control open "
+        f"at {g['laplace']['callisto_substituted_rel']:.2f}")
+
+
+
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
@@ -4032,8 +4106,10 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
           "M16": check_m16, "M17": check_m17, "M18": check_m18,
           "K01": check_k01, "K02": check_k02, "K03": check_k03,
-          "C01": check_c01, "C05": check_c05, "A01": check_a01, "A03": check_a03, "A04": check_a04,
-          "A05": check_a05, "I01": check_i01, "CTRL": check_controls}
+          "C01": check_c01, "C05": check_c05,
+          "A01": check_a01, "A03": check_a03, "A04": check_a04,
+          "A05": check_a05, "A07": check_a07,
+          "I01": check_i01, "CTRL": check_controls}
 
 
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:

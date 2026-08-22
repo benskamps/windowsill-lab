@@ -758,6 +758,31 @@ def test_m05_lattice_dispatch_defaults_to_triangular_and_never_guesses_honeycomb
         assert abs(exact - TC_TRI_EXACT) < 1e-12
 
 
+def test_an_escaped_embed_is_stamped_not_refused(tmp_path, monkeypatch):
+    """render_calibration embeds the html-ESCAPED dump; the STR-5 gate must
+    stamp that embedded copy rather than refuse it as missing. Found live by
+    A07's first real run (2026-08-22): the raw-only check raised on every
+    calibration-family report the day it landed. End-to-end through
+    render_calibration: the page commits, and the html carries the STAMPED
+    provenance in its escaped embed.
+    """
+    import html as html_lib
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    report = {"experiment": "A07-galilean-clockwork",
+              "status": "pass", "headline": "escaped-embed test",
+              "claim_boundary": "test only",
+              "per_moon": {"Io": {"a_km": 421800.0, "period_days": 1.769},
+                           "Europa": {"a_km": 671100.0, "period_days": 3.551}},
+              "grades": {"laplace": {"residual_rel": 1e-5,
+                                     "callisto_substituted_rel": 0.28}}}
+    from lab.render import render_calibration
+    render_calibration(report, date="2026-06-15")
+    html = (reports / "2026-06-15-a07.html").read_text(encoding="utf-8")
+    assert html_lib.escape("source_tree_sha256") in html or "source_tree_sha256" in html
+    committed = json.loads((reports / "2026-06-15-a07.json").read_text(encoding="utf-8"))
+    assert committed["provenance"]["source_tree_sha256"]
+
+
 def test_a_report_that_does_not_embed_its_own_json_is_refused(tmp_path, monkeypatch):
     """STR-5: when stamping changes the dump and the html does not embed it,
     the html would silently keep an UNSTAMPED copy while the committed receipt

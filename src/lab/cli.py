@@ -411,6 +411,7 @@ Usage:
   lab a03             run A03: chirp mass of a GWOSC event by matched filtering
   lab m18             run M18: directed percolation in 2+1d (absorbing-state transition)
   lab a04             run A04: blind transit search across a TESS sector
+  lab a07             run A07: Galilean moons from JPL Horizons — Kepler III + Laplace resonance
   lab i01             run I01: calibrate a real capped-CMOS dark-frame stack
   lab i01 --camera 0  acquire a bounded live grayscale stack, then calibrate it
   lab open            open the latest report (no run)
@@ -2428,6 +2429,38 @@ def main(argv=None):
               f"(Δ={100*result.depth_error_fraction:.3f}%) · "
               f"{sum(result.kept_transits)} timed transits · "
               f"{'calibrated' if result.calibration_passed else '[~] null'} · "
+              f"{result.wall_seconds:.1f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "a07":
+        from . import a07
+        from . import render as render_mod
+        print(f"A07 Galilean clockwork · Io/Europa/Ganymede/Callisto from JPL "
+              f"Horizons · {a07.START} → {a07.STOP} @ {a07.STEP}, jovicentric "
+              f"({a07.CENTER}) · Kepler III + the Laplace resonance")
+
+        def _phase(kind, payload):
+            if kind == "moon":
+                print(f"    {payload['name']:<9} P = {payload['period_days']:.6f} d "
+                      f"(a = {payload['a_km']:.0f} km, "
+                      f"{payload['n_samples']} samples)")
+
+        result = a07.run_a07(phase=_phase)
+        report = a07.to_report(result)
+        g = result.grades
+        print(f"  → periods {'ok' if all(x['pass'] for x in g['periods'].values()) else 'OUT OF TOLERANCE'} · "
+              f"Kepler spread {g['kepler']['max_fractional_spread']:.2e} · "
+              f"GM rel err {g['kepler']['gm_rel_error']:.2e} · "
+              f"Laplace {g['laplace']['residual_rel']:.1e} "
+              f"(Callisto control {g['laplace']['callisto_substituted_rel']:.2f}) · "
+              f"{'PASS' if result.passed else '[~] null'} · "
               f"{result.wall_seconds:.1f}s")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")

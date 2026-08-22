@@ -3660,6 +3660,33 @@ def _plot_calibration(report: dict) -> str:
             ax.axis("off")
             ax.text(.5, .5, "No window data available", ha="center", va="center",
                     fontsize=14, color="#6f5b48")
+    elif exp.startswith("A07"):
+        # One panel: T vs a on log-log with the Kepler 3/2 line — four moons
+        # falling on one straight line IS the law; the Laplace residual is
+        # annotated because it has no natural axis of its own.
+        fig, ax = plt.subplots(figsize=(6.4, 4.2))
+        moons = report.get("per_moon") or {}
+        names = list(moons)
+        a_km = np.asarray([moons[m].get("a_km", np.nan) for m in names])
+        T_d = np.asarray([moons[m].get("period_days", np.nan) for m in names])
+        ax.loglog(a_km, T_d, "o", color="#7a5c3e", ms=7)
+        for x, y, name in zip(a_km, T_d, names):
+            ax.annotate(name, (x, y), textcoords="offset points",
+                        xytext=(6, -3), fontsize=9, color="#6f5b48")
+        if np.isfinite(a_km).all() and len(a_km) >= 2:
+            aa = np.linspace(a_km.min() * 0.9, a_km.max() * 1.1, 50)
+            k = float(np.median(T_d / a_km ** 1.5))
+            ax.loglog(aa, k * aa ** 1.5, "--", color="#667c86", lw=1,
+                      label="T ∝ a^{3/2} (Kepler III)")
+            ax.legend(loc="upper left", fontsize=9)
+        lap = ((report.get("grades") or {}).get("laplace") or {})
+        if lap:
+            ax.set_title(
+                f"Laplace: |n₁−3n₂+2n₃|/n₁ = {lap.get('residual_rel', float('nan')):.1e}"
+                f"  ·  Callisto control {lap.get('callisto_substituted_rel', float('nan')):.2f}",
+                fontsize=10)
+        ax.set_xlabel("mean jovicentric distance a (km)")
+        ax.set_ylabel("recovered sidereal period T (d)")
     else:
         fig, ax = plt.subplots(figsize=(8, 3.6))
         analysis = report.get("analysis")
