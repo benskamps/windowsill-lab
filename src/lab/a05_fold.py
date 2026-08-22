@@ -383,6 +383,7 @@ def p2_fold(t: np.ndarray, f: np.ndarray, det: Detection,
 
     a, b = (dip_1, dip_2) if _depth(dip_1) >= _depth(dip_2) else (dip_2, dip_1)
     out["eclipse_a"], out["eclipse_b"] = a, b
+    out["phase_a"], out["phase_b"] = float(c_a), float(c_b)
     if a["depth"] is None or b["depth"] is None:
         out["reason"] = a.get("reason") or b.get("reason") or "unmeasurable"
         return out
@@ -390,6 +391,17 @@ def p2_fold(t: np.ndarray, f: np.ndarray, det: Detection,
     sigma = float(np.hypot(a["sigma"], b["sigma"]))
     out["depth_difference"] = diff
     out["difference_sigma"] = float(diff / sigma) if sigma > 0 else float("inf")
+    # The sort above makes `depth_difference` a MAGNITUDE: A is the deeper dip
+    # by construction, so it is never negative and a "sign" taken from it
+    # carries no information at all. `combine_p2_folds` used to test exactly
+    # that non-sign across sectors, which is why its guard could never fail and
+    # why combining |noise| grew like sqrt(k) (VET-F2). The quantity that DOES
+    # carry information is anchored to the fold PHASE rather than to the sort:
+    # which of the two fixed eclipse slots was the deeper one. A real
+    # primary/secondary alternation puts the same slot on top in every sector;
+    # noise does not.
+    out["signed_difference"] = float(dip_1["depth"] - dip_2["depth"])
+    out["deeper_phase"] = float(c_a if out["signed_difference"] >= 0 else c_b)
     out["depth_ratio"] = (float(a["depth"] / b["depth"])
                           if b["depth"] not in (None, 0) else None)
     both_real = (a["depth_sigma"] >= MIN_ECLIPSE_SIGMA
@@ -508,10 +520,28 @@ def combine_p2_folds(folds, min_sectors: int = 2) -> dict:
     Combines only the DIFFERENCE, not the depths: eclipse depth is a property of
     the star and the aperture (so it is comparable across sectors), but the
     aperture is re-located per sector and the crowding differs, whereas the
-    difference is the quantity the verdict actually rests on. Sign is preserved
-    — a real primary/secondary alternation keeps the same sign in every sector,
-    and a set of differences that disagree about sign is noise wearing a
-    verdict, so ``sign_consistent`` is reported and gates the fire.
+    difference is the quantity the verdict actually rests on.
+
+    It combines ``signed_difference`` — the PHASE-anchored quantity — and not
+    ``depth_difference``, which ``p2_fold`` sorts so that the deeper eclipse is
+    always A and the number is therefore always positive. Combining that
+    magnitude was wrong twice over (VET-F2): ``sign_consistent`` tested a sign
+    that could not vary, so the guard could never fail; and averaging k
+    folded-normal ``|noise|`` draws biases the mean by about
+    ``0.8 * sigma``, so the combined significance grew like ``sqrt(k)`` out of
+    nothing. Measured on a REAL PLANET — equal depths at both 2P slots, the
+    difference pure noise — that reached 5.89 sigma at k=40 and fired this
+    verdict. CVZ targets have that many sectors, so the gate built to refute
+    eclipsing binaries would have refuted a planet, with a 40-sector receipt
+    behind it.
+
+    With the signed quantity the noise is zero-mean, the combination is
+    unbiased at any k, and ``sign_consistent`` becomes a real test: a real
+    primary/secondary alternation puts the same eclipse slot on top in every
+    sector; noise splits. Note the failure direction — if a sector's detection
+    lands on the other epoch parity, its slots swap and the sign flips, which
+    makes ``sign_consistent`` False and REFUSES to refute. That is the safe
+    way round for a gate whose job is to kill candidates.
 
     ``min_sectors`` exists so a single-sector call cannot quietly become a
     "combined" result with a different threshold than the per-sector one.
@@ -519,16 +549,19 @@ def combine_p2_folds(folds, min_sectors: int = 2) -> dict:
     usable = [d for d in folds
               if d and d.get("difference_sigma") is not None
               and d.get("both_eclipses_significant")
-              and d.get("depth_difference") is not None
+              # An unsigned row cannot be combined: that is the vacuous path,
+              # and it is refused rather than silently re-entered.
+              and d.get("signed_difference") is not None
               and d.get("eclipse_a", {}).get("sigma")]
     out = {"verdict": None, "n_sectors": len(usable),
            "difference": None, "sigma": None, "difference_sigma": None,
            "sign_consistent": None, "per_sector_sigma": [
-               float(d["difference_sigma"]) for d in usable]}
+               float(d["difference_sigma"]) for d in usable],
+           "deeper_phases": [d.get("deeper_phase") for d in usable]}
     if len(usable) < min_sectors:
         out["reason"] = "insufficient-sectors"
         return out
-    diffs = np.array([float(d["depth_difference"]) for d in usable])
+    diffs = np.array([float(d["signed_difference"]) for d in usable])
     sigmas = np.array([float(np.hypot(d["eclipse_a"]["sigma"],
                                       d["eclipse_b"]["sigma"])) for d in usable])
     if np.any(sigmas <= 0):
@@ -541,6 +574,9 @@ def combine_p2_folds(folds, min_sectors: int = 2) -> dict:
     out["sigma"] = sigma
     out["difference_sigma"] = float(combined / sigma)
     out["sign_consistent"] = bool(np.all(diffs > 0) or np.all(diffs < 0))
-    if out["sign_consistent"] and out["difference_sigma"] >= P2_ALIAS_SIGMA:
+    # The magnitude decides, the sign gates: a consistent alternation is
+    # evidence whichever slot is on top, but an inconsistent one is noise.
+    if (out["sign_consistent"]
+            and abs(out["difference_sigma"]) >= P2_ALIAS_SIGMA):
         out["verdict"] = "eclipsing-binary-p2-alias"
     return out

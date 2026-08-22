@@ -355,4 +355,121 @@ $ PYTHONPATH="$PWD/src" python -m pytest tests/test_a05_hunt_script.py -p no:ran
 ============================= 12 passed in 0.26s ==============================
 ```
 
-**Commit:** VETF4_SHA
+**Commit:** `32b5184` — fix(vet-f4): run the sky gates where hunts actually happen
+
+
+---
+
+## VET-F2 — vacuous sign guard + noise bias in `combine_p2_folds` — **CLOSED**
+
+**Defect (confirmed, both halves, measured through the real producer).**
+`p2_fold` sorts the deeper dip into eclipse A (`a05_fold.py:382`), so
+`depth_difference = a.depth - b.depth` is a **magnitude** and is never
+negative. `combine_p2_folds` then tested `all(diffs > 0) or all(diffs < 0)`
+on those magnitudes (`:541`) — always True on real producer output, so
+`sign_consistent` could not fail. Separately, averaging k folded-normal
+`|noise|` draws biases the mean by about `0.8 * sigma`, so the combined
+significance grew like `sqrt(k)` out of nothing.
+
+The sharpest statement of the consequence is not "noise sectors cross the
+bar" — it is that **the victim is a real planet**. A genuine transiting planet
+folded at 2P shows two equally-deep eclipses, both individually significant,
+so its folds are *usable* and their difference is pure noise. Driving the real
+`p2_fold` over k sectors of one planted planet at `15f0cf6`:
+
+| k | combined significance | `sign_consistent` | verdict |
+|---|---|---|---|
+| 10 | 3.17 | True | None |
+| 20 | 4.21 | True | None |
+| 40 | **5.89** | True | **eclipsing-binary-p2-alias** |
+| 60 | **7.04** | True | **eclipsing-binary-p2-alias** |
+
+Every producer row was non-negative in every one of those runs. CVZ targets
+have 40+ sectors, so the gate built to refute eclipsing binaries would have
+refuted a real planet, with a 40-sector receipt behind it.
+
+The existing tests could not see any of this because
+`tests/test_a05_fold.py:383` hand-built `_fold_dict` rows carrying *signed*
+`depth_difference` values — a shape `p2_fold` cannot emit.
+
+**Fix.**
+
+- `p2_fold` keeps the sort (so `depth_difference` and `depth_ratio` read the
+  same way for every star, as documented) and additionally emits
+  `signed_difference` — `dip_at_phase_a.depth - dip_at_phase_b.depth`,
+  anchored to the fold PHASE rather than to the sort — plus `phase_a`,
+  `phase_b` and `deeper_phase`, so the receipt records *which* eclipse was
+  deeper.
+- `combine_p2_folds` combines `signed_difference`. The noise is then zero-mean,
+  the combination is unbiased at any k, and `sign_consistent` becomes a real
+  test. The verdict gates on `abs(difference_sigma)` so a consistent
+  alternation still fires whichever slot is on top.
+- A fold row without `signed_difference` is **refused** (dropped from
+  `usable`), so the vacuous path cannot be re-entered by the next hand-built
+  fixture.
+- `_fold_dict` in the tests now derives both fields from one number, and its
+  docstring says what it is standing in for.
+
+**Failure direction, stated.** If one sector's detection lands on the other
+epoch parity its two slots swap and its sign flips, making `sign_consistent`
+False and REFUSING to refute. For a gate whose job is to kill candidates,
+failing toward "do not refute" is the safe way round.
+
+**Measured after the fix** — same planet, same seeds, the noise floor is now
+flat in k instead of growing as ~0.93*sqrt(k), and the signs split:
+
+```
+  k=10  |z|= 2.24  sign_consistent=False verdict=None  (pos 3 / neg 7)
+  k=20  |z|= 1.84  sign_consistent=False verdict=None  (pos 9 / neg 11)
+  k=40  |z|= 2.29  sign_consistent=False verdict=None  (pos 18 / neg 22)
+  k=60  |z|= 3.24  sign_consistent=False verdict=None  (pos 26 / neg 34)
+  k=80  |z|= 2.12  sign_consistent=False verdict=None  (pos 38 / neg 42)
+```
+
+**Test command**
+
+```
+python -m pytest tests/test_a05_fold.py -p no:randomly -q
+```
+
+**FAIL-BEFORE** (base source at `15f0cf6`)
+
+```
+E   KeyError: 'signed_difference'
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a05_fold.py:494: KeyError: 'signed_difference'
+E   AssertionError: 40 sectors of a REAL PLANET were refuted as an eclipsing binary at 5.89 sigma
+    assert 'eclipsing-binary-p2-alias' is None
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a05_fold.py:506: AssertionError: 40 sectors of a REAL PLANET were refuted as an eclipsing binary at 5.89 sigma
+E   AssertionError: k=60: combined significance 6.32 on a real planet - the combination still accumulates noise
+    assert 6.317910096988359 < 5.0
+     +  where 6.317910096988359 = abs(6.317910096988359)
+     +  and   5.0 = fold.P2_ALIAS_SIGMA
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a05_fold.py:518: AssertionError: k=60: combined significance 6.32 on a real planet - the combination still accumulates noise
+E   AssertionError: assert 'eclipsing-binary-p2-alias' is None
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a05_fold.py:544: AssertionError: assert 'eclipsing-binary-p2-alias' is None
+=========================== short test summary info ===========================
+FAILED tests/test_a05_fold.py::test_combining_refuses_when_the_sign_disagrees
+FAILED tests/test_a05_fold.py::test_p2_fold_reports_which_eclipse_was_deeper
+FAILED tests/test_a05_fold.py::test_the_sign_is_not_vacuous_on_producer_real_output
+FAILED tests/test_a05_fold.py::test_forty_sectors_of_a_real_planet_are_not_refuted
+FAILED tests/test_a05_fold.py::test_the_noise_floor_does_not_grow_with_sector_count
+FAILED tests/test_a05_fold.py::test_combining_refuses_folds_that_carry_no_sign
+======================== 6 failed, 30 passed in 2.42s =========================
+```
+
+Note the first line of that summary: `test_combining_refuses_when_the_sign_disagrees`
+is a **pre-existing** test, and it fails at the base *because the fixture now
+emits a producer-real shape*. That is the finding, demonstrated on the repo's
+own test: the guard only ever "worked" on input the producer cannot make.
+
+**PASS-AFTER**
+
+```
+collected 36 items
+
+tests\test_a05_fold.py ....................................              [100%]
+
+============================= 36 passed in 2.48s ==============================
+```
+
+**Commit:** VETF2_SHA
