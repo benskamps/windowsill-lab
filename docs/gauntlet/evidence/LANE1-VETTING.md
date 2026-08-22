@@ -472,4 +472,4 @@ tests\test_a05_fold.py ....................................              [100%]
 ============================= 36 passed in 2.48s ==============================
 ```
 
-**Commit:** VETF2_SHA
+**Commit:** `00affd1` — fix(vet-f2): combine the phase-anchored signed difference
