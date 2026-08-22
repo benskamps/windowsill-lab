@@ -171,6 +171,11 @@ stem="$(basename "$receipt" .json)"
 # receipt that ships it, so it has to travel WITH that receipt. The 2026-08-18 lead
 # (TIC 287328866) pushed its receipt and left its dossier sitting untracked.
 if ! git add -- pot.json "$receipt" "reports/hunts/dossiers/${stem}"-tic*.html 2>>"$log"; then
+  echo "$(date -Is) staging FAILED — nothing of this run is published" >>"$log"
+  # Same rule as every other unpublished exit: a receipt left in reports/hunts/ is
+  # counted by the pot aggregator (which globs the directory) and not by CI (which
+  # reads git), so it must not stay there.
+  quarantine_receipt
   restore_pot
   exit 1
 fi
