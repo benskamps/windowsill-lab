@@ -114,7 +114,11 @@ def collect(hunts_dir: Path) -> dict[int, list[dict]]:
                 continue
             obs = {"tic": int(tic), "sector": sector, "day": day,
                    "receipt": path.name, "disposition": disposition,
-                   "row": row}
+                   "row": row,
+                   # Receipt-level: the FAPs in `row` are graded against this
+                   # receipt's own permutation null, so its control travels
+                   # with every row it minted.
+                   "uniformity": payload.get("uniformity")}
             observations.setdefault(int(tic), []).append(obs)
             if disposition == LEAD:
                 leads.add(int(tic))
@@ -164,8 +168,43 @@ def _persistence(lead_obs: list[dict]) -> list[str]:
     return reasons
 
 
+def _uniformity_min_n() -> int:
+    """checks.A05_UNIFORMITY_MIN_N, imported lazily — lab.checks pulls the
+    heavy numeric stack, and the register must stay importable without it."""
+    from .checks import A05_UNIFORMITY_MIN_N
+    return A05_UNIFORMITY_MIN_N
+
+
 def _significance(lead_obs: list[dict]) -> list[str]:
+    """Both shuffling schemes under alpha, in every lead sector — but a FAP is
+    a statement made AGAINST a null, and the receipt's own uniformity control
+    is what certifies that null. check_a05 gate 10 (src/lab/checks.py:3042)
+    rules that a failed control makes every graded FAP in the receipt
+    *uninterpretable, not negative*; this mirrors that verdict rather than
+    re-deriving the KS statistic (check_a05 already polices the recorded
+    block against a re-run, so `pass` here is a checked claim, not a trusted
+    one). Three of the committed receipts carry exactly this failure — one of
+    them (hunt-2026-08-18-s2-1000) is the receipt that minted TIC 77044472's
+    lead — so this is a live case, not an edge case."""
     for o in lead_obs:
+        uni = o.get("uniformity")
+        if not isinstance(uni, dict) or not isinstance(uni.get("pass"), bool):
+            return [f"significance: uniformity control ungraded in "
+                    f"{o['receipt']} — an ungraded control is not a passed "
+                    "control, and a FAP without its null is not a number"]
+        # check_a05 refuses to grade the calibrator below
+        # A05_UNIFORMITY_MIN_N control points; a `pass: true` over fewer is a
+        # claim the KS test cannot back, so it grades as ungraded here too.
+        n = len(uni.get("p_values") or []) or uni.get("n_control") or 0
+        if n < _uniformity_min_n():
+            return [f"significance: uniformity control ungradeable in "
+                    f"{o['receipt']} — {n} control p-value(s), "
+                    f"need >= {_uniformity_min_n()} to grade the calibrator"]
+        if uni["pass"] is False:
+            return [f"significance: FAP uninterpretable — the receipt's own "
+                    f"uniformity control failed (D={uni.get('ks_stat', 0):.3f}"
+                    f" over n={uni.get('n_control')}) in {o['receipt']}; "
+                    "uninterpretable is not passed (check_a05 gate 10)"]
         for scheme in ("iid", "block"):
             fap = _fap(o["row"], scheme)
             if fap is None:
@@ -175,6 +214,31 @@ def _significance(lead_obs: list[dict]) -> list[str]:
                 return [f"significance: {scheme} FAP {fap:.4g} > "
                         f"alpha={FAP_ALPHA} in sector {o['sector']} "
                         f"(both shuffling schemes must clear, everywhere)"]
+    return []
+
+
+def _star_gate(tic: int, all_obs: list[dict]) -> list[str]:
+    """§3's gate: the star's per-sector fold evidence combined as one body.
+
+    A star observed eight times must not get eight weak looks — TIC 287328866
+    read the doubled-fold difference under 5σ in six of eight sectors while
+    the combination reads 9.8σ. The combination is `combine_p2_folds` via
+    `lab.a05_star` (the VET-F2-corrected signed statistic), so this fires only
+    a verdict the reviewed combiner itself emits; with fewer than two graded
+    sectors it stays silent and the per-sector criteria stand alone."""
+    from . import a05_star
+    d = a05_star.star_dossier(tic, all_obs)
+    combined = d["combined_fold"]
+    if combined.get("verdict"):
+        # The claim names the combiner's CONTRIBUTING set — never the looser
+        # graded/observed lists — so "across sectors [...]" is exactly the
+        # evidence the number rests on.
+        sectors = ",".join(str(s) for s in d["combined_sectors"])
+        per = ", ".join(f"{s:.1f}σ" for s in combined["per_sector_sigma"])
+        return [f"gate fired (combined): {combined['verdict']} at "
+                f"{combined['difference_sigma']:.1f}σ across sectors "
+                f"[{sectors}] (per-sector: {per} — no single sector cleared "
+                "the bar alone)"]
     return []
 
 
@@ -229,7 +293,8 @@ def grade(tic: int, all_obs: list[dict], today: date,
         return entry
 
     parked_on = (_persistence(lead_obs) + _significance(lead_obs)
-                 + _gates_silent(all_obs) + _admissible(lead_obs))
+                 + _gates_silent(all_obs) + _star_gate(tic, all_obs)
+                 + _admissible(lead_obs))
     promotable = not parked_on
 
     if days >= STALE_AFTER_DAYS:
