@@ -1,0 +1,156 @@
+{
+  "cache": {
+    "Callisto": {
+      "file": "horizons-504-2026-01-01-2026-05-01-1h.txt",
+      "sha256": "dd0915c9dfc377a0f3db3ff2cfb0d7b556d71fcad08628f1efbf3ed7c6f366b9"
+    },
+    "Europa": {
+      "file": "horizons-502-2026-01-01-2026-05-01-1h.txt",
+      "sha256": "e86a47baf3a6b079450ae3f856a0a94884e238ad4f9a12ce960d52e2f2091a57"
+    },
+    "Ganymede": {
+      "file": "horizons-503-2026-01-01-2026-05-01-1h.txt",
+      "sha256": "c27009845b3c1d5e8bae8a3d853725f18cf44ba7769b590cf00b8c4c2a19bb50"
+    },
+    "Io": {
+      "file": "horizons-501-2026-01-01-2026-05-01-1h.txt",
+      "sha256": "eaa89f0f6f63e15d2eac3be4f9f8ee701cae52fb1755d5fb7e3049d1d5d2dbee"
+    }
+  },
+  "claim_boundary": "Horizons serves a fitted solar-system model, so every number here is a consistency check of THIS pipeline (fetch, parse, plane recovery, phase-slope frequency estimation) against the world's best ephemeris — a calibration, not an independent observation of Jupiter. The moon's own GM (<= 0.008% of Jupiter's) is absorbed by the stated tolerance, 'a' is the mean jovicentric distance (exact only for e = 0), and the published periods are MEAN elements while the fit is a 120-day osculating slope — all three approximations are inside the graded tolerances, and the tolerances say so.",
+  "experiment": "A07-galilean-clockwork",
+  "generated_at": "2026-08-22T21:30:53.250302+00:00",
+  "grades": {
+    "kepler": {
+      "gm_mean_km3_s2": 126754078.54780714,
+      "gm_per_moon_km3_s2": {
+        "Callisto": 126764490.08506177,
+        "Europa": 126747896.33770314,
+        "Ganymede": 126727679.67738026,
+        "Io": 126776248.09108339
+      },
+      "gm_published_km3_s2": 126686531.9,
+      "gm_rel_error": 0.0005331793900589243,
+      "gm_rtol": 0.01,
+      "gm_source": "Jupiter GM 126686531.9 km^3 s^-2 — JPL Horizons Jupiter object data / JUP365 solution (planet alone, satellites excluded)",
+      "max_fractional_spread": 0.0002082684102107102,
+      "pass": true,
+      "spread_tol": 0.01
+    },
+    "laplace": {
+      "callisto_substituted_rel": 0.2825201264548664,
+      "pass": true,
+      "residual_rel": 1.2398626334980004e-05,
+      "tol": 0.001
+    },
+    "periods": {
+      "501": {
+        "name": "Io",
+        "pass": true,
+        "published_days": 1.769137786,
+        "recovered_days": 1.7691375019040454,
+        "rel_error": 1.6058441398847378e-07
+      },
+      "502": {
+        "name": "Europa",
+        "pass": true,
+        "published_days": 3.551181041,
+        "recovered_days": 3.5512062331790877,
+        "rel_error": 7.094028380061346e-06
+      },
+      "503": {
+        "name": "Ganymede",
+        "pass": true,
+        "published_days": 7.15455296,
+        "recovered_days": 7.154529300029836,
+        "rel_error": 3.3069809248775783e-06
+      },
+      "504": {
+        "name": "Callisto",
+        "pass": true,
+        "published_days": 16.6890184,
+        "recovered_days": 16.68857288267306,
+        "rel_error": 2.6695238525054066e-05
+      }
+    }
+  },
+  "headline": "four moons, one law: T^2/a^3 spread 2.08e-04, GM_Jupiter 1.268e+08 vs 1.267e+08 km^3/s^2; Laplace residual 1.2e-05 (Callisto substituted: 0.28)",
+  "per_moon": {
+    "Callisto": {
+      "a_km": 1882931.787253142,
+      "fit_rms_rad": 0.0102456559484935,
+      "n_err_rad_per_day": 5.508416513187816e-06,
+      "n_rad_per_day": 0.3764962619244162,
+      "n_samples": 2881,
+      "period_days": 16.68857288267306,
+      "period_err_days": 0.0002441660641690771,
+      "span_days": 120.0
+    },
+    "Europa": {
+      "a_km": 671099.2687741109,
+      "fit_rms_rad": 0.013321836703212351,
+      "n_err_rad_per_day": 7.162276934817084e-06,
+      "n_rad_per_day": 1.7693101708584225,
+      "n_samples": 2881,
+      "period_days": 3.5512062331790877,
+      "period_err_days": 1.4375502336222361e-05,
+      "span_days": 120.0
+    },
+    "Ganymede": {
+      "a_km": 1070451.8117452462,
+      "fit_rms_rad": 0.0021846589114944623,
+      "n_err_rad_per_day": 1.1745476604188013e-06,
+      "n_rad_per_day": 0.8782108568838182,
+      "n_samples": 2881,
+      "period_days": 7.154529300029836,
+      "period_err_days": 9.568699344671751e-06,
+      "span_days": 120.0
+    },
+    "Io": {
+      "a_km": 421770.57087913813,
+      "fit_rms_rad": 0.005775026213102343,
+      "n_err_rad_per_day": 3.1048524288015845e-06,
+      "n_rad_per_day": 3.5515528331841186,
+      "n_samples": 2881,
+      "period_days": 1.7691375019040454,
+      "period_err_days": 1.5466223163984623e-06,
+      "span_days": 120.0
+    }
+  },
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.10.8",
+      "numpy": "2.4.2",
+      "torch": "2.9.1"
+    },
+    "platform": "windows-amd64",
+    "python": "3.11.9",
+    "source_clean": false,
+    "source_commit": "bba48cf32855d94b76232b454382d1dd8f84e500",
+    "source_diff_sha256": "59984cae6fa5dff1f0dac7497a71eb5ec4317fd4fc298570d6101e0761dfe6ed",
+    "source_tree_sha256": "e8cf97fe1c1e21b90e373faf210ad23fd1543d69f1f7d6aceee4e2751cb9bf20"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "4440d60e9c85a07baf86b0da74c50fdb326b9fcfa3259b6532b1cd6f87c074ea"
+  },
+  "published_period_source": "JPL SSD Planetary Satellite Mean Orbital Parameters, https://ssd.jpl.nasa.gov/sats/elem/ (retrieved 2026-08-22)",
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify A07",
+    "rerun": "python -m lab.cli a07"
+  },
+  "schema": 1,
+  "status": "pass",
+  "wall_seconds": 0.06291937828063965,
+  "window": {
+    "center": "500@599",
+    "ref_plane": "ECLIPTIC",
+    "start": "2026-01-01",
+    "step": "1h",
+    "stop": "2026-05-01",
+    "units": "KM-S"
+  }
+}
