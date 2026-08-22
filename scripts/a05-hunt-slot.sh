@@ -57,6 +57,10 @@ restore_pot(){
 # run's targets become eligible again and a later slot may re-search them.
 quarantine_receipt(){
   [ -n "${receipt:-}" ] && [ -f "$receipt" ] || return 0
+  # The runner quarantines its own ungraded receipts and PRINTS the settled path,
+  # so the path read back may already be the filed one — never move a file onto
+  # itself.
+  case "$receipt" in "$LAB/ungraded/"*) return 0 ;; esac
   mkdir -p "$LAB/ungraded" && mv -f "$receipt" "$LAB/ungraded/" \
     && echo "$(date -Is) ungraded receipt filed with the log -> $LAB/ungraded/$(basename "$receipt")" >>"$log"
 }
@@ -64,10 +68,19 @@ quarantine_receipt(){
 git pull --rebase --autostash -q 2>>"$log"
 
 echo "$(date -Is) slot start — sector $sector" >>"$log"
+
+# THE WINDOW RULE. There is ONE log file per sector per day and all four slots
+# append to it, so anything read back out of it has to be scoped to THIS run.
+# Read the whole file and a crashed slot 2 inherits slot 1's "receipt -> " line,
+# republishing a receipt that is already committed; read a fixed `tail -5` window
+# and this run's grade line is invisible the moment anything prints after it.
+# Remember where this run starts and read only from there.
+log_mark=$(wc -l <"$log" 2>/dev/null || echo 0)
 PYTHONPATH=src "$PY" scripts/a05_hunt.py \
   --sector "$sector" --n 200 --minutes 100 >>"$log" 2>&1
 rc=$?
 echo "$(date -Is) runner exit $rc" >>"$log"
+run_log="$(tail -n +$((log_mark + 1)) "$log")"
 
 # THE STAGING RULE. Stage the receipt the RUNNER says it wrote, read back from its
 # own "receipt -> PATH" line. This was once a glob, `hunt-*-s${sector}.json`, written
@@ -77,15 +90,35 @@ echo "$(date -Is) runner exit $rc" >>"$log"
 # exited 0 — a silent failure under a green unit. Two graded receipts stranded that
 # way before it was caught. A path the producer PRINTS cannot drift out of sync with
 # the producer's naming; a glob written from memory always can.
-receipt="$(sed -n 's|^receipt -> ||p' "$log" | tail -1)"
+receipt="$(printf '%s\n' "$run_log" | sed -n 's|^receipt -> ||p' | tail -1)"
+
+# THE GATE. Publishing needs two POSITIVE proofs, never the absence of a negative.
+# It used to need neither: `rc` was captured on the line after the runner and never
+# read again, and success was inferred from `tail -5 "$log"` NOT matching
+# `check_a05: None|False`. A crash between the receipt write (a05_hunt.py:296) and
+# the grade print satisfies that gate perfectly — a complete-looking receipt on
+# disk, no failure string anywhere — and publishes an ungraded receipt alongside a
+# pot.json the dead run never refreshed. CI recomputes `pot == hunt_block()` from
+# the committed set and goes red in the producer's own commit: the realized
+# 2026-08-15 class. Absence is what a crash, a truncated log, a scrolled-away line
+# and a renamed grade token ALL look like.
+#
+# Proof 1: the runner exited 0.
+if [ "$rc" -ne 0 ]; then
+  echo "$(date -Is) runner failed rc=$rc — nothing of this run is published" >>"$log"
+  quarantine_receipt
+  restore_pot
+  exit "$rc"
+fi
 if [ -z "$receipt" ] || [ ! -f "$receipt" ]; then
-  echo "$(date -Is) no receipt path in the log — nothing staged" >>"$log"
+  echo "$(date -Is) no receipt path in this run's log — nothing staged" >>"$log"
   restore_pot
   exit 1
 fi
-# Push only a graded receipt; None/False stays local with the log (win's contract).
-if tail -5 "$log" | grep -q 'check_a05: \(None\|False\)'; then
-  echo "$(date -Is) grade None/False — receipt NOT pushed" >>"$log"
+# Proof 2: this run printed `check_a05: True`. None (a control failed, so the FAPs
+# mean nothing) and False (a real failure) stay local with the log — win's contract.
+if ! printf '%s\n' "$run_log" | grep -q '^check_a05: True'; then
+  echo "$(date -Is) no positive grade in this run's log — receipt NOT pushed" >>"$log"
   quarantine_receipt
   restore_pot
   exit 0
