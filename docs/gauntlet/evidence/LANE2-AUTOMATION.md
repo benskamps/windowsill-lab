@@ -864,3 +864,28 @@ artifact list, the way `a05_hunt.py` prints `receipt -> PATH` for the slot). Out
 scope here; worth a finding of its own.
 
 **Commit:** `32b2185` · **failing harness:** `0893ea2`
+
+---
+
+## Final full suite (both assignments, pinned)
+
+```
+$ PYTHONPATH=src python -m pytest tests/ -q --no-header
+=========== 1620 passed, 8 skipped, 1 warning in 577.79s (0:09:37) ============
+exit=0
+```
+
+**1620 passed, 0 failed, exit 0.** The warning line now cites
+`_workspaces/windowsill-lab-auto/src/lab/fss.py`, which is the pinning working —
+compare the earlier unpinned run, whose warning cited the live clone.
+
+**The 4 `test_i01_maturity` failures reported earlier are GONE**, on the same
+invocation that produced them. They were the box, as suspected: the OpenBLAS
+allocation failure cleared once the orphaned workers from the concurrent lane were no
+longer holding memory. The earlier section's conclusion stands — they never had
+anything to do with this lane — but the cause is now confirmed rather than inferred,
+and no i01 failure remains to explain away.
+
+Lane totals across both assignments: **13** slot-gate tests, **8** pre-existing slot
+regressions (previously skipped on Windows), **17** driver tests, **7** campaign
+pass-gate tests, **6** campaign conflict tests, **17** campaign maturity pins.
