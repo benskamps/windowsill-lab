@@ -103,24 +103,14 @@ N_PLACEBO = 25
 #: FP = false positive (astrophysical impostor, e.g. a blend), FA = false
 #: alarm (instrumental). Either way nothing real was re-found: the row is
 #: neither a recovery nor a lead.
-TOI_REFUTED_DISPOSITIONS = ("FP", "FA")
-
-#: The machine's ENTIRE disposition vocabulary. "planet" is not in it, and
-#: neither is bare "planet-candidate" — that is a vetting VERDICT, an
-#: intermediate rung; the ladder must resolve it to a blend gate, a catalog
-#: identification, or the terminal lead state before the receipt is written.
-MACHINE_DISPOSITIONS = (
-    "stellar-pulsation", "harmonic-alias", "eclipsing-binary-odd-even",
-    "eclipsing-binary-secondary", "eclipsing-binary-p2-alias",
-    "phased-brightening", "low-significance",
-    "insufficient-coverage", "period-railed", "centroid-shift",
-    "companion-too-large",
-    # --- sky gates (2026-08-20): the ladder's first questions that are about
-    # the field rather than the series. See lab.a05_sky and the TIC 77044472
-    # investigation — a lead can be a real planet on the wrong star.
-    "blended-known-planet", "blend-favours-neighbour",
-    "recovery-or-known", "known-planet", "toi-known-fp", "ctoi-known",
-    "lead-awaiting-human-review",
+#:
+#: Both this and :data:`MACHINE_DISPOSITIONS` are re-exported from
+#: :mod:`lab.a05_vocab`, NOT restated here: the checker grades receipts
+#: against the same objects, and a restated contract drifts (VET-F1 — the
+#: checker sat five verdicts behind the engine from 2026-08-20).
+from .a05_vocab import (  # noqa: E402  (contract import, kept beside its docs)
+    MACHINE_DISPOSITIONS,
+    TOI_REFUTED_DISPOSITIONS,
 )
 
 #: Prior false-alarm-floor measurements, appended to every receipt so the

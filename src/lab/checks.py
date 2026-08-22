@@ -25,6 +25,10 @@ from .m01_quality import (
     assess_m01_quality,
     nonequilibrated_indices,
 )
+from .a05_vocab import (
+    MACHINE_VOCABULARY as _A05_MACHINE_VOCABULARY,
+    TOI_REFUTED_DISPOSITIONS as _A05_TOI_REFUTED,
+)
 from .curriculum import (
     CANARY_HALF_LIFE_DAYS,
     HUNT_CANDIDATE,
@@ -178,20 +182,21 @@ A05_BUDGET_RTOL = 0.05
 # per-worker wall inside process_target; the soft budget is serial survey
 # wall — the two are compared per ROW, never summed against each other.
 A05_PER_TARGET_SHARE = 0.10
-# The machine's ENTIRE disposition vocabulary, restated. "planet" is absent
-# by design and its appearance anywhere is an affirmative contract violation,
-# not a formatting problem.
-A05_MACHINE_VOCABULARY = frozenset({
-    "stellar-pulsation", "harmonic-alias", "eclipsing-binary-odd-even",
-    "eclipsing-binary-secondary", "phased-brightening", "low-significance",
-    "insufficient-coverage", "period-railed", "centroid-shift",
-    "recovery-or-known", "known-planet", "toi-known-fp",
-    "lead-awaiting-human-review",
-})
+# The machine's ENTIRE disposition vocabulary — DERIVED from lab.a05_vocab,
+# never restated. "planet" is absent by design and its appearance anywhere is
+# an affirmative contract violation, not a formatting problem. This used to be
+# a hand-copied literal, and it fell five verdicts behind the engine when the
+# 2026-08-20 sky and blend gates landed (VET-F1): the first honest refutation
+# those gates drew would have failed gate 4 below and quarantined the entire
+# receipt, losing the slice and silently making its targets re-eligible.
+# a05_vocab is stdlib-only and imports nothing else from the package, so this
+# check module stays importable without numpy or any engine code.
+A05_MACHINE_VOCABULARY = _A05_MACHINE_VOCABULARY
 # TFOPWG dispositions meaning "community already refuted this signal" — such
 # a row must be machine-dispositioned toi-known-fp and can be neither a
-# recovery nor a lead (the TIC 278866211 / TOI 189.01 lesson).
-A05_TOI_REFUTED = ("FP", "FA")
+# recovery nor a lead (the TIC 278866211 / TOI 189.01 lesson). Same single
+# source of truth as the vocabulary above.
+A05_TOI_REFUTED = _A05_TOI_REFUTED
 # Panels a lead's dossier must carry (echo of the dossier contract).
 A05_DOSSIER_PANELS = ("fold_p", "fold_half_p", "fold_2p",
                       "odd_even", "secondary", "self_injection")

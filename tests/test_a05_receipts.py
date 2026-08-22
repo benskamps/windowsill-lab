@@ -692,3 +692,62 @@ def test_killed_and_resumed_run_writes_the_same_receipt(tmp_path):
     rep_resumed = _strip_volatile(a05.to_report(resumed))
     rep_fresh = _strip_volatile(a05.to_report(fresh))
     assert rep_resumed == rep_fresh
+
+
+# ------------------------- (VET-F1) checker vocabulary tracks the engine -----
+#
+# The checker used to RESTATE the engine's disposition vocabulary. When the
+# 8/19-20 gates taught the engine five new honest words, the checker kept the
+# old thirteen, so the first honest refutation those gates drew would fail
+# gate 4 and quarantine the whole receipt — losing the slice and making the
+# targets re-eligible. The vocabulary now has ONE definition; these tests are
+# the tripwire that keeps it that way.
+
+#: The five verdicts the 8/19-20 sky and blend gates added to the ladder.
+VET_F1_NEW_VERDICTS = (
+    "eclipsing-binary-p2-alias", "companion-too-large",
+    "blended-known-planet", "blend-favours-neighbour", "ctoi-known",
+)
+
+
+def test_checker_vocabulary_is_lockstep_with_the_engine():
+    """One source of truth: the checker's set IS the engine's, not a copy."""
+    assert checks.A05_MACHINE_VOCABULARY == frozenset(a05.MACHINE_DISPOSITIONS)
+
+
+def test_every_new_verdict_is_in_the_checker_vocabulary():
+    """Named explicitly so the tripwire says WHICH word went missing."""
+    missing = [v for v in VET_F1_NEW_VERDICTS
+               if v not in checks.A05_MACHINE_VOCABULARY]
+    assert not missing, f"checker has no word for {missing}"
+
+
+def _reworded(report: dict, verdict: str) -> dict:
+    """The honest receipt with one searched row re-dispositioned to *verdict*.
+
+    Skips the TOI-FP replay TIC 902 (re-wording it would break gate 5, not
+    gate 4) and re-derives ``counts.leads_awaiting_human_review`` so the
+    counts block still reconciles — the ONLY gate under test is gate 4's
+    vocabulary. This is exactly the shape of receipt the 8/19-20 sky and
+    blend gates emit when they draw an honest refutation.
+    """
+    out = _mut(report)
+    for r in out["targets"]:
+        if (r.get("outcome") == "searched" and r.get("disposition")
+                and str(r.get("tic")) != "902"):
+            r["disposition"] = verdict
+            out["counts"]["leads_awaiting_human_review"] = sum(
+                1 for x in out["targets"]
+                if x.get("outcome") == "searched"
+                and x.get("disposition") == "lead-awaiting-human-review")
+            return out
+    raise AssertionError("fixture carries no re-dispositionable searched row")
+
+
+@pytest.mark.parametrize("verdict", VET_F1_NEW_VERDICTS)
+def test_new_engine_verdict_clears_gate_4(hunt, verdict):
+    """A receipt carrying an honest new verdict is not quarantined."""
+    ok, detail = checks.check_a05(_reworded(hunt["report"], verdict),
+                                  cache_dir=hunt["cache"])
+    assert "machine vocabulary" not in detail, detail
+    assert ok is not False, detail
