@@ -133,8 +133,10 @@ MEASURE_WINDOW_PHASE = a04.VET_WINDOW_PHASE
 #: Standard error of a median vs a mean on Gaussian noise, sqrt(pi/2). The
 #: aperture reads depths with a median (see :func:`depth_in_support`), so the
 #: error bar has to pay the median's efficiency cost rather than quietly
-#: reporting a mean's bar on a median's number.
-MEDIAN_SIGMA_FACTOR = float(np.sqrt(np.pi / 2.0))
+#: reporting a mean's bar on a median's number. Defined in :mod:`lab.a04` and
+#: re-exported here: this module fixed the math first, A04's vetting rung
+#: carried the mean's bar until VET-F3, and one convention beats two.
+MEDIAN_SIGMA_FACTOR = a04.MEDIAN_SIGMA_FACTOR
 
 #: Hard ceiling on the half-window. The annulus reaches DIP_OUT_FACTOR windows
 #: out, and in the doubled fold the OTHER eclipse sits at Δφ = 0.5; letting the

@@ -26,14 +26,32 @@ $ PYTHONPATH="$PWD/src" python -c "import lab; print(lab.__file__)"
 C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\src\lab\__init__.py
 ```
 
-The FAIL-BEFORE blocks were produced by reverting only the source (leaving the
-new tests in place), which is the exact state the manager will re-verify:
+The FAIL-BEFORE blocks were produced against a pristine export of the base
+commit's source, with the new tests in place — the exact state the manager
+will re-verify. Set the rig up once:
 
 ```
-git stash push -u -- src/     # tests stay, fix goes away
-PYTHONPATH="$PWD/src" python -m pytest <selector>
-git stash pop
+BASE=/tmp/base15f0cf6
+rm -rf "$BASE" && mkdir -p "$BASE"
+git archive 15f0cf6 src | tar -x -C "$BASE"
+PYTHONPATH="$BASE/src" python -c "import lab; print(lab.__file__)"   # must print $BASE
 ```
+
+Then every FAIL-BEFORE below reproduces as
+
+```
+PYTHONPATH="$BASE/src" python -m pytest <selector>
+```
+
+and its matching PASS-AFTER as
+
+```
+PYTHONPATH="$PWD/src" python -m pytest <selector>
+```
+
+(VET-F1's fail-before predates this rig and was captured with
+`git stash push -u -- src/`, which is equivalent for that finding — it reverts
+every file VET-F1 touches.)
 
 ---
 
@@ -107,4 +125,104 @@ tests\test_a05_receipts.py ........                                      [100%]
 ================= 8 passed, 40 deselected in 83.64s (0:01:23) =================
 ```
 
-**Commit:** ``d2546b3``
+**Commit:** `b692d1a` — fix(vet-f1): derive checker disposition vocabulary from the engine's
+
+
+---
+
+## VET-F3 — a mean's error bar on a median's number — **CLOSED**
+
+**Defect (confirmed — and quantified more precisely than the ledger).**
+`vet_candidate` reads every depth with `np.median` but divides by a **mean's**
+standard error, `noise / sqrt(n)` (`a04.py:210`, `:215` at `15f0cf6`). The SE
+of a median on Gaussian noise is `sqrt(pi/2)` times a mean's, and a
+*difference* of two medians carries that factor on each term. Measured on the
+pre-fix tree, the two affected statistics run hot by different amounts:
+
+| statistic | site | true inflation | measured pre-fix |
+|---|---|---|---|
+| `odd_even_sigma` — difference of two medians | `:211` | `sqrt(pi)` = 1.7725 | **1.7697** (analytic pin); 1.81 (120-trial pure-noise MC) |
+| `depth_sigma` — depth against the baseline median | `:220` | `sqrt(pi/2)` = 1.2533 | **1.253** (6.15 reported on a true 4.91-sigma dip) |
+
+The ledger's headline is right: the candidate-minting rung at `:244` is
+miscalibrated and mints below threshold. One number in it is not. The "true
+~2.8 sigma clears the 5-sigma bar" figure applies `sqrt(pi)` to the *depth*
+gate, but the depth gate carries `sqrt(pi/2)` — one median against a
+large-`n` baseline, not two medians differenced. So `:244` actually admits
+true **~3.99-sigma** dips (5 / 1.2533), not 2.8-sigma ones. The 1.77x figure
+is exactly right for the odd-even statistic at `:211`. Both sites are wrong,
+both are fixed; the magnitudes are recorded here as measured rather than
+restated.
+
+**Fix.** `MEDIAN_SIGMA_FACTOR` now has one definition, in `a04.py` — the lower
+module, since `a05_fold` imports `a04` and the constant cannot live in
+`a05_fold` without a cycle — and `a05_fold.MEDIAN_SIGMA_FACTOR` re-exports it,
+giving the repo one convention as the brief required. A local
+`_median_se(*counts)` builds the SE of a sum or difference of independent
+medians, and each statistic asks for its own terms instead of sharing one
+wrong bar:
+
+- `odd_even_sigma` -> `_median_se(n_odd, n_even)`
+- `sec_sigma` -> `_median_se(n_sec, n_out)`, sign preserved (the
+  `phased-brightening` verdict tests `sec_sigma <= -5`)
+- `depth_sigma` -> `_median_se(min(n_odd, n_even), n_out)`
+
+`base` is itself a median over the out-of-transit sample, so it enters as a
+term: negligible at large `n_out`, but not zero, and not the caller's job to
+decide that.
+
+**Test command**
+
+```
+python -m pytest tests/test_a04_maturity.py \
+  -k "calibrated or analytic_difference or sub_five or genuinely_significant" \
+  -p no:randomly -q --tb=line
+```
+
+**FAIL-BEFORE** (base source at `15f0cf6`)
+
+```
+     +  where 0.6446568637086126 = abs((1.442541424511478 - 0.7978845608028654))
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a04_maturity.py:350: AssertionError: odd-even sigma is not calibrated: mean|z| = 1.443, expected 0.798 (scale is off by 1.808x)
+E   AssertionError: reported 0.5011 vs analytic 0.2832 - ratio 1.7697
+    assert 0.5010991962750879 == 0.28315497039243254 +- 2.8e-10
+
+      comparison failed
+      Obtained: 0.5010991962750879
+      Expected: 0.28315497039243254 +- 2.8e-10
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a04_maturity.py:371: AssertionError: reported 0.5011 vs analytic 0.2832 - ratio 1.7697
+E   AssertionError: depth_sigma 6.15 still clears the 5-sigma bar on a true ~4.9-sigma dip
+    assert 6.152078020953943 < 5.0
+     +  where 5.0 = a04.ODD_EVEN_SIGMA
+C:\Users\beschipp\projects\_workspaces\windowsill-lab-vet\tests\test_a04_maturity.py:386: AssertionError: depth_sigma 6.15 still clears the 5-sigma bar on a true ~4.9-sigma dip
+=========================== short test summary info ===========================
+FAILED tests/test_a04_maturity.py::test_odd_even_sigma_is_calibrated_on_pure_noise
+FAILED tests/test_a04_maturity.py::test_odd_even_sigma_matches_the_analytic_difference_of_medians
+FAILED tests/test_a04_maturity.py::test_depth_gate_does_not_mint_a_sub_five_sigma_candidate
+================= 3 failed, 1 passed, 25 deselected in 1.67s ==================
+```
+
+The fourth selected test (`test_a_genuinely_significant_dip_is_still_a_candidate`)
+passes at the base by design — it is the guard that the fix tightens the bar
+without closing it.
+
+**PASS-AFTER**
+
+```
+collected 29 items / 25 deselected / 4 selected
+
+tests\test_a04_maturity.py ....                                          [100%]
+
+====================== 4 passed, 25 deselected in 1.47s =======================
+```
+
+**No collateral damage.** Every suite that consumes these statistics stays
+green with the tightened bars:
+
+```
+$ PYTHONPATH="$PWD/src" python -m pytest tests/test_a04_maturity.py tests/test_a05_fold.py \
+    tests/test_a05_vetting.py tests/test_a05_mono.py tests/test_a05_shape.py -p no:randomly -q
+============================= 97 passed in 33.93s =============================
+```
+
+**Commit:** VETF3_SHA
