@@ -39,6 +39,10 @@ RUNNERS = {
     # two-branch linear-response measurement the 2026-08-08 estimator assay
     # specified. ~45-60 min of NumPy CPU — K02's wall-clock class.
     "K03": "k03",
+    # K04's runner landed 2026-08-22: event-driven Mirollo–Strogatz fireflies,
+    # graded against the almost-sure synchronization THEOREM plus an ε=0
+    # null. Seconds of NumPy CPU — the cheapest turn on the shelf.
+    "K04": "k04",
     "C01": "c01",
     "C05": "c05",
     "A01": "a01",
@@ -68,6 +72,9 @@ RUNNER_SCHEDULER_OPTIONS = {
     # K03 accepts a scheduler seed (it varies the shared initial condition);
     # --device would abort at its argparse (NumPy CPU only).
     "K03": frozenset({"seed"}),
+    # K04 accepts a scheduler seed (it re-draws the 200 initial conditions);
+    # --device would abort at its argparse (NumPy CPU only).
+    "K04": frozenset({"seed"}),
     # K02 sweeps a LADDER of population sizes over a fixed set of initial
     # conditions (`--seeds`), so a scheduler's single `--seed` is not a thing it
     # can accept — the seed set is part of the measurement's identity.

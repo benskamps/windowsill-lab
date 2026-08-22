@@ -4097,6 +4097,116 @@ def check_a07(report: dict) -> tuple[bool | None, str]:
         f"{g['laplace']['residual_rel']:.1e} with the Callisto control open "
         f"at {g['laplace']['callisto_substituted_rel']:.2f}")
 
+# ── K04: Mirollo–Strogatz fireflies. Track K (coherence). ────────────────────
+# The fixed calibration identity, mirrored from ``k04`` so grader and producer
+# cannot drift (test_k04_identity_mirrors_the_runner pins the pair). The check
+# target is a THEOREM — almost-sure synchronization for all-to-all pulse
+# coupling with a concave-down charging curve (SIAM J. Appl. Math. 50, 1645
+# (1990)) — so there is no tolerance band: every trial must reach unison, and
+# the uncoupled control must not. The only knob is the event bound, and it is
+# set from measurement, not hope: the shipped configuration's worst case is
+# 228 events; 5000 is ~22× that.
+FIREFLY_N = 100
+FIREFLY_B = 3.0
+FIREFLY_EPS = 0.001
+FIREFLY_TRIALS = 200
+FIREFLY_MAX_EVENTS = 5000
+FIREFLY_NULL_TRIALS = 20
+FIREFLY_NULL_EVENT_BUDGET = 2000
+
+
+def check_k04(report: dict) -> tuple[bool | None, str]:
+    """Fireflies: the theorem's prediction, re-derived from the per-trial rows.
+
+    Returns ``None`` unless this is a K04 report. Every graded number is
+    re-derived from the raw per-trial arrays rather than read from the
+    headline (a receipt, not an echo); a structurally unreadable receipt is
+    ``None`` — unreadable, never negative — per the check_a05 doctrine.
+
+    1. **Identity.** N, b, ε, the trial count and the event bound must be the
+       fixed calibration; a run that changed any of them is a diagnostic.
+    2. **The theorem.** All ``FIREFLY_TRIALS`` per-trial event counts must be
+       integers in [1, bound] — unison reached, within budget, every time.
+       The stored ``synced``/``events_max`` must agree with what the rows
+       re-derive, or the receipt is not self-consistent.
+    3. **The null control.** Every ε = 0 trial must end with exactly N
+       clusters: no coupling, no merging — the gate that proves the
+       simulation can fail.
+    """
+    if report.get("experiment") != "K04-firefly-synchronization":
+        return None, "not a K04 firefly report"
+
+    n, b, eps = report.get("n"), report.get("b"), report.get("eps")
+    trials = report.get("trials")
+    bound = report.get("max_events_bound")
+    events = report.get("events")
+    null_clusters = report.get("null_clusters")
+    if (
+        not isinstance(n, int) or isinstance(n, bool)
+        or not isinstance(trials, int) or isinstance(trials, bool)
+        or not isinstance(bound, int) or isinstance(bound, bool)
+        or isinstance(b, bool) or not isinstance(b, (int, float))
+        or isinstance(eps, bool) or not isinstance(eps, (int, float))
+        or not isinstance(events, list) or not isinstance(null_clusters, list)
+    ):
+        return None, "K04 report missing readable trial rows or configuration"
+
+    # ── gate 1: the fixed calibration identity ──
+    if not (
+        n == FIREFLY_N and float(b) == FIREFLY_B
+        and float(eps) == FIREFLY_EPS and trials == FIREFLY_TRIALS
+        and bound == FIREFLY_MAX_EVENTS
+    ):
+        return False, (
+            f"K04 must run {FIREFLY_TRIALS} trials of N={FIREFLY_N} at "
+            f"b={FIREFLY_B:g}, ε={FIREFLY_EPS:g} under an event bound of "
+            f"{FIREFLY_MAX_EVENTS} — firefly calibration identity changed"
+        )
+    if len(events) != FIREFLY_TRIALS:
+        return None, (f"K04 report carries {len(events)} trial rows, "
+                      f"not {FIREFLY_TRIALS}")
+
+    # ── gate 2: the theorem, re-derived row by row ──
+    unsynced = [i for i, e in enumerate(events)
+                if not isinstance(e, int) or isinstance(e, bool)
+                or not (1 <= e <= FIREFLY_MAX_EVENTS)]
+    synced = FIREFLY_TRIALS - len(unsynced)
+    stored_synced = report.get("synced")
+    stored_max = report.get("events_max")
+    finished = [e for e in events
+                if isinstance(e, int) and not isinstance(e, bool)]
+    derived_max = max(finished) if finished else -1
+    if stored_synced != synced or stored_max != derived_max:
+        return False, ("stored synced/events_max disagree with the per-trial "
+                       "rows — receipt is not self-consistent")
+    if unsynced:
+        return False, (
+            f"{len(unsynced)} of {FIREFLY_TRIALS} initial conditions did not "
+            f"reach unison within {FIREFLY_MAX_EVENTS} events (first: trial "
+            f"{unsynced[0]}) — the almost-sure synchronization prediction "
+            "failed on a positive-measure sample"
+        )
+
+    # ── gate 3: the ε = 0 control ──
+    if len(null_clusters) != FIREFLY_NULL_TRIALS:
+        return None, (f"K04 report carries {len(null_clusters)} null rows, "
+                      f"not {FIREFLY_NULL_TRIALS}")
+    merged = [c for c in null_clusters
+              if not isinstance(c, int) or isinstance(c, bool)
+              or c != FIREFLY_N]
+    if merged:
+        return False, (
+            f"uncoupled control failed: an ε=0 population left "
+            f"{merged[0]} clusters of {FIREFLY_N} — order without coupling "
+            "is bookkeeping, not physics"
+        )
+
+    return True, (
+        f"all {FIREFLY_TRIALS} random initial conditions reached unison "
+        f"(max {derived_max} events vs bound {FIREFLY_MAX_EVENTS}) and "
+        f"{FIREFLY_NULL_TRIALS} uncoupled controls stayed at {FIREFLY_N} "
+        "clusters — Mirollo–Strogatz almost-sure synchronization reproduced"
+    )
 
 
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
@@ -4106,6 +4216,7 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
           "M16": check_m16, "M17": check_m17, "M18": check_m18,
           "K01": check_k01, "K02": check_k02, "K03": check_k03,
+          "K04": check_k04,
           "C01": check_c01, "C05": check_c05,
           "A01": check_a01, "A03": check_a03, "A04": check_a04,
           "A05": check_a05, "A07": check_a07,
