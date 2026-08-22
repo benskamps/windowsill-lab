@@ -288,15 +288,25 @@ pretended away by a conftest that cannot reach it.
 
 ```
 base   (15f0cf6, PYTHONPATH=src, new files excluded)
-  1584 passed, 16 skipped, 1 warning in 538.30s (0:08:58)
+  1584 passed, 16 skipped, 1 warning in 538.30s (0:08:58)   [clean, box quiet]
 
 branch (bare `python -m pytest`, no PYTHONPATH)
-  BRANCH-SUITE: see the line appended below
+  NOT OBTAINABLE — see below
 ```
 
-Status changes: none expected — the only deltas are the new tests
-(`test_import_hygiene.py` +2, `test_nightly_drive.py` +4). Final numbers are
-recorded in the BRANCH-SUITE line at the end of this file.
+**The branch full-suite number was not obtained, and is not estimated here.**
+Three attempts were each truncated by `MemoryError` while the box sat at
+99.9–100.0% commit charge (63.9 GB of a 63.9 GB limit, ~18 concurrent agent
+sessions); the last could not even `import logging` to start pytest. Rather than
+report a number the machine never actually produced, this row stays empty. What
+IS established is the per-finding evidence above — fail-before and pass-after
+for both findings, plus `24 passed` across `test_setup.py` +
+`test_nightly_drive.py` on the final tree.
+
+Expected delta if someone re-runs it on a quiet box: `+2` from
+`test_import_hygiene.py` and `+4` from `test_nightly_drive.py`, no status
+changes elsewhere. That is a prediction, not a measurement — treat it as
+outstanding.
 
 ### A discarded run, recorded because it is this lane's own subject matter
 
