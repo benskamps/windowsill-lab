@@ -405,6 +405,8 @@ Usage:
   lab k02             run K02: does the χ(r) shape survive N? (Track K)
   lab k03             run K03: Daido vs Hong — is the susceptibility exponent asymmetric across K_c? (Track K)
   lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
+  lab c05             run C05: BBP hex digits of π extracted at position, byte-checked
+                      against an independent Machin expansion; deep window at 10^7
   lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
   lab a03             run A03: chirp mass of a GWOSC event by matched filtering
   lab m18             run M18: directed percolation in 2+1d (absorbing-state transition)
@@ -1007,6 +1009,16 @@ def _parse_k03(args):
 def _parse_c01(args):
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument("--terms", type=int, default=40)
+    return p.parse_args(args)
+
+
+def _parse_c05(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--digits", type=int, default=None,
+                   help="reference expansion length (diagnostic only; the "
+                        "public calibration identity is fixed)")
+    p.add_argument("--deep", type=int, default=None,
+                   help="deep extraction position (diagnostic only)")
     return p.parse_args(args)
 
 
@@ -2334,6 +2346,31 @@ def main(argv=None):
               f"Lucas–Lehmer residue={result.lucas_lehmer_residue} · "
               f"{'calibrated' if result.calibration_passed else '[~] null'} · "
               f"{result.wall_seconds:.2f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "c05":
+        ns = _parse_c05(args[1:])
+        from . import c05
+        from . import render as render_mod
+        n = ns.digits if ns.digits is not None else c05.CALIBRATION_HEX_DIGITS
+        deep = ns.deep if ns.deep is not None else c05.DEEP_POSITION
+        print(f"C05 BBP digit extraction · Machin reference {n} hex digits · "
+              f"deep window at {deep:,}")
+        result = c05.run_c05(n_digits=n, deep_position=deep)
+        report = c05.to_report(result)
+        n_match = sum(1 for w in result.windows if w["match"])
+        print(f"  → {n_match}/{len(result.windows)} windows byte-identical · "
+              f"overlaps {'agree' if result.all_overlaps_agree else 'DISAGREE'} · "
+              f"deep {result.deep['digits']} in {result.deep['wall_seconds']}s · "
+              f"{'calibrated' if result.calibration_passed else '[~] null'} · "
+              f"{result.wall_seconds:.1f}s")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")
         try:

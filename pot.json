@@ -323,6 +323,17 @@
       "venue": "PrimeGrid"
     },
     {
+      "id": "C05",
+      "title": "BBP digit extraction, cross-verified.",
+      "status": "pending",
+      "track": "compute",
+      "growth_form": "vine",
+      "runner_available": true,
+      "short_label": "Teleport into \u03c0",
+      "question_plain": "Can we read a digit from deep inside \u03c0 without computing any of the digits before it \u2014 and prove the trick against an old-fashioned full expansion?",
+      "why_it_matters": "Two completely different centuries of mathematics \u2014 a 1706 arctan formula and a 1997 digit-extraction identity \u2014 must agree byte for byte, or our arithmetic cannot be trusted anywhere else."
+    },
+    {
       "id": "A01",
       "title": "Calibrate photometry",
       "status": "verified",

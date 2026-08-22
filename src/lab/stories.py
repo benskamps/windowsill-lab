@@ -197,6 +197,12 @@ STORIES: dict[str, dict[str, str | None]] = {
         "why_it_matters": "It contributes verified work to open mathematical problems that no single computer could finish alone.",
         "result_plain": None,
     },
+    "C05": {
+        "short_label": "Teleport into π",
+        "question_plain": "Can we read a digit from deep inside π without computing any of the digits before it — and prove the trick against an old-fashioned full expansion?",
+        "why_it_matters": "Two completely different centuries of mathematics — a 1706 arctan formula and a 1997 digit-extraction identity — must agree byte for byte, or our arithmetic cannot be trusted anywhere else.",
+        "result_plain": None,
+    },
     # ── Track A — astronomy from open archives ───────────────────────────────
     "A01": {
         "short_label": "Weigh starlight",

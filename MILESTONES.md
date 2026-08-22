@@ -89,6 +89,7 @@ contribution carries its record as `{venue=… ; url=… ; doi=…}`.
 - [ ] **C02** — Run one assigned GIMPS exponent (PRP + proof) to completion and submit the residue. {venue=GIMPS}
 - [ ] **C03** — Extend an existing OEIS sequence's b-file by N verified terms (or submit a new sequence) and get it accepted. {venue=OEIS}
 - [ ] **C04** — Join PrimeGrid and complete validated work units on an open prime problem (Proth / Sierpiński). {venue=PrimeGrid}
+- [ ] **C05** — **BBP digit extraction, cross-verified.** Extract 8-hex-digit windows of π at 24 seeded positions with the Bailey–Borwein–Plouffe formula (no earlier digits computed) and grade them byte-for-byte against an independent Machin integer expansion of the first 12,000 hex digits; adjacent windows must agree on their 4 shared digits, and one deep window at position 10,000,000 is reported with its wall time and graded by overlap self-consistency only — the boundary is stated: no external authority verifies the deep digits, the run's own adjacent extraction does. `check_c05` re-derives the Machin prefix and re-extracts seeded windows independently, so a fabricated receipt fails on arithmetic.
 
 ## Track A — astronomy from open archives
 

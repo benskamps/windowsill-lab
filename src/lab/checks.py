@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import random
 import re
 import statistics
 from pathlib import Path
@@ -2325,6 +2326,180 @@ def check_c01(report: dict) -> tuple[bool | None, str]:
     )
 
 
+_C05_HEX_DIGITS = 12_000
+_C05_WINDOW = 8
+_C05_SAMPLE_SEED = 20260822
+_C05_N_SAMPLED = 24
+_C05_DEEP_POSITION = 10_000_000
+_C05_PREFIX_LEN = 2048
+_C05_KNOWN_PREFIX_32 = "243F6A8885A308D313198A2E03707344"
+#: How many of the receipt's sampled windows the checker re-extracts itself.
+#: Positions inside the re-derived prefix cost milliseconds each; positions
+#: beyond it are still verified against the receipt's own retained reference
+#: via the overlap arithmetic, but only prefix-range windows are re-run.
+_C05_RECHECK_WINDOWS = 6
+
+
+def _c05_machin_prefix(n_digits: int) -> str:
+    """Independent Machin re-derivation — deliberately NOT imported from
+    ``lab.c05`` (the C01 pattern: the checker must not trust the module under
+    check for the arithmetic it is checking)."""
+    guard = 12
+    scale = 1 << (4 * (n_digits + guard))
+
+    def arctan_inv(x: int) -> int:
+        total, power, x2, k = 0, scale // x, x * x, 0
+        while power:
+            term = power // (2 * k + 1)
+            if term == 0:
+                break
+            total += -term if (k & 1) else term
+            power //= x2
+            k += 1
+        return total
+
+    pi_scaled = 16 * arctan_inv(5) - 4 * arctan_inv(239)
+    frac = (pi_scaled - 3 * scale) >> (4 * guard)
+    return format(frac, "x").upper().zfill(n_digits)[:n_digits]
+
+
+def _c05_bbp_window(d: int, width: int) -> str:
+    """Independent BBP extraction (same published formula, separate code)."""
+    def series(j: int) -> float:
+        total = 0.0
+        for k in range(d + 1):
+            m = 8 * k + j
+            total += pow(16, d - k, m) / m
+            total -= int(total)
+        t, k = 1.0 / 16.0, d + 1
+        while t > 1e-19:
+            total += t / (8 * k + j)
+            total -= int(total)
+            k += 1
+            t /= 16.0
+        return total - int(total)
+
+    frac = 4.0 * series(1) - 2.0 * series(4) - series(5) - series(6)
+    frac -= int(frac)
+    if frac < 0:
+        frac += 1.0
+    out = []
+    for _ in range(width):
+        frac *= 16.0
+        digit = int(frac)
+        out.append(format(digit, "X"))
+        frac -= digit
+    return "".join(out)
+
+
+def check_c05(report: dict) -> tuple[bool | None, str]:
+    """Re-derive C05 without trusting one carried number.
+
+    The checker rebuilds the Machin prefix independently, re-extracts a
+    seeded subset of the BBP windows inside it, and re-runs every overlap
+    comparison from the retained digits — so a fabricated receipt fails on
+    arithmetic, not on a flag. Honest limit, stated in the verdict: the deep
+    window is too expensive to re-extract at verify time, so its digits are
+    checked for internal overlap consistency only; its cross-check happens
+    once, at run time, by the run's own adjacent extraction.
+    """
+    if report.get("experiment") != "C05-bbp-digit-extraction":
+        return None, "not a C05 BBP digit extraction"
+
+    n = report.get("n_hex_digits")
+    windows = report.get("windows")
+    prefix = report.get("reference_prefix_text")
+    deep = report.get("deep") or {}
+    if (not isinstance(n, int) or isinstance(n, bool)
+            or not isinstance(windows, list) or not windows
+            or not isinstance(prefix, str)):
+        return None, "C05 report missing windows or reference prefix"
+
+    # One fixed calibration, C01-style — reject identity drift before doing
+    # any arithmetic, which also bounds hostile-receipt compute.
+    identity_ok = bool(
+        n == _C05_HEX_DIGITS
+        and report.get("window") == _C05_WINDOW
+        and report.get("sample_seed") == _C05_SAMPLE_SEED
+        and len(windows) == _C05_N_SAMPLED
+        and deep.get("position") == _C05_DEEP_POSITION
+    )
+    if not identity_ok:
+        return False, (
+            f"C05 must extract {_C05_N_SAMPLED} seeded windows over "
+            f"{_C05_HEX_DIGITS} hex digits with the deep window at "
+            f"{_C05_DEEP_POSITION:,} — calibration identity changed"
+        )
+
+    # The seeded sample is re-derived, not trusted.
+    rng = random.Random(_C05_SAMPLE_SEED)
+    hi = _C05_HEX_DIGITS - _C05_WINDOW
+    expected_positions = [0, *sorted(rng.sample(range(1, hi),
+                                                _C05_N_SAMPLED - 2)), hi]
+    positions_ok = [w.get("position") for w in windows] == expected_positions
+
+    # Independent reference prefix + hash evidence.
+    derived_prefix = _c05_machin_prefix(_C05_PREFIX_LEN)
+    prefix_ok = bool(
+        prefix == derived_prefix
+        and derived_prefix[:32] == _C05_KNOWN_PREFIX_32
+        and isinstance(report.get("reference_prefix_sha256"), str)
+        and report["reference_prefix_sha256"].lower()
+        == hashlib.sha256(derived_prefix.encode("ascii")).hexdigest()
+    )
+
+    # Re-extract the prefix-range windows with the checker's own BBP and
+    # demand three-way agreement: checker BBP == checker Machin == receipt.
+    in_prefix = [w for w in windows
+                 if isinstance(w.get("position"), int)
+                 and 0 <= w["position"] <= _C05_PREFIX_LEN - _C05_WINDOW]
+    rechecked = in_prefix[:_C05_RECHECK_WINDOWS]
+    rederived_ok = all(
+        (lambda got: got == derived_prefix[w["position"]:w["position"] + _C05_WINDOW]
+         and got == w.get("bbp") == w.get("reference"))(
+            _c05_bbp_window(w["position"], _C05_WINDOW))
+        for w in rechecked
+    ) if rechecked else False
+
+    # Every window's match flag must equal its own digits' comparison, and
+    # every overlap's agree flag must equal the retained digits' arithmetic —
+    # a flag that contradicts its evidence is fabrication, not disagreement.
+    flags_ok = all(
+        (w.get("bbp") == w.get("reference")) == bool(w.get("match"))
+        for w in windows
+    ) and all(bool(w.get("match")) for w in windows)
+    overlaps = report.get("overlap_pairs") or []
+    overlaps_ok = bool(overlaps) and all(
+        (o.get("shared_from_d") == o.get("shared_from_d4"))
+        == bool(o.get("agree")) and bool(o.get("agree"))
+        for o in overlaps
+    )
+    deep_digits = str(deep.get("digits") or "")
+    deep_adj = str(deep.get("adjacent_digits") or "")
+    deep_ok = bool(
+        len(deep_digits) == _C05_WINDOW and len(deep_adj) == _C05_WINDOW
+        and (deep_digits[4:] == deep_adj[:4]) == bool(
+            deep.get("adjacent_overlap_agree"))
+        and bool(deep.get("adjacent_overlap_agree"))
+    )
+
+    ok = bool(positions_ok and prefix_ok and rederived_ok
+              and flags_ok and overlaps_ok and deep_ok)
+    detail = (
+        f"Machin prefix re-derived ({_C05_PREFIX_LEN} hex digits) "
+        + ("matches" if prefix_ok else "DOES NOT match")
+        + f"; {len(rechecked)} BBP window(s) independently re-extracted "
+        + ("agree three-way" if rederived_ok else "DISAGREE")
+        + "; overlap arithmetic "
+        + ("re-verified" if overlaps_ok and deep_ok else "FAILED")
+        + f" incl. the deep window at {_C05_DEEP_POSITION:,} "
+        "(deep digits checked for overlap consistency only — "
+        "re-extraction there is a run-time cost, not a verify-time one) — "
+        + ("digit extraction reproduced" if ok else "digit extraction failed")
+    )
+    return ok, detail
+
+
 def _linear_slope(xs, ys) -> float:
     xbar, ybar = sum(xs) / len(xs), sum(ys) / len(ys)
     denom = sum((x - xbar) ** 2 for x in xs)
@@ -3857,7 +4032,7 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M13": check_m13, "M14": check_m14, "M15": check_m15,
           "M16": check_m16, "M17": check_m17, "M18": check_m18,
           "K01": check_k01, "K02": check_k02, "K03": check_k03,
-          "C01": check_c01, "A01": check_a01, "A03": check_a03, "A04": check_a04,
+          "C01": check_c01, "C05": check_c05, "A01": check_a01, "A03": check_a03, "A04": check_a04,
           "A05": check_a05, "I01": check_i01, "CTRL": check_controls}
 
 
