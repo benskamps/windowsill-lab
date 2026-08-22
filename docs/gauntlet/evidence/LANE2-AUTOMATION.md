@@ -246,10 +246,21 @@ tests\test_hunt_slot_gates.py ....                                       [100%]
 ======================= 4 passed, 8 deselected in 9.59s =======================
 ```
 
-Four, not three: `test_transient_index_lock_contention_is_retried_not_abandoned`
-asserts the retry actually publishes on the third attempt, and
-`test_genuinely_nothing_to_commit_is_still_a_quiet_success` pins the benign branch
-so the fix did not turn a re-run into an alarm.
+Four, not three: the fourth is
+`test_genuinely_nothing_to_commit_is_still_a_quiet_success`, which pins the benign
+branch so the fix did not turn a re-run into an alarm.
+
+A fifth test covers the retry and does not match that `-k` filter:
+
+```
+$ python -m pytest tests/test_hunt_slot_gates.py -q --no-header \
+      -k transient_index_lock
+tests\test_hunt_slot_gates.py .                                          [100%]
+====================== 1 passed, 11 deselected in 2.35s =======================
+```
+
+`test_transient_index_lock_contention_is_retried_not_abandoned` asserts the slot
+publishes on the third attempt (`commit_attempts() == 3`) rather than giving up.
 
 ```
 $ tr -d '\r' < scripts/a05-hunt-slot.sh | shellcheck -f gcc -s bash -
