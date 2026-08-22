@@ -770,3 +770,23 @@ def test_a_report_that_does_not_embed_its_own_json_is_refused(tmp_path, monkeypa
     dump = json.dumps({"experiment": "M02-finite-size-scaling"})
     with pytest.raises(RuntimeError, match="provenance mismatch"):
         _commit_report("2026-06-15", "m02", "<html>no embed here</html>", dump)
+
+
+def test_an_escaped_embed_is_stamped_not_refused(tmp_path, monkeypatch):
+    """render_calibration embeds the html-ESCAPED dump; the STR-5 gate must
+    stamp that embedded copy rather than refuse it as missing. Found live by
+    A07's first real run (2026-08-22): the raw-only check raised on every
+    calibration-family report the day it landed — a regression #122 shipped
+    with green tests because no test drove the escaped-embed path. This one
+    does, at the seam.
+    """
+    import html as html_lib
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+    dump = json.dumps({"experiment": "C01-arithmetic"})
+    page = "<pre>" + html_lib.escape(dump) + "</pre>"
+    _commit_report("2026-06-15", "c01", page, dump)   # must not raise
+    html = (reports / "2026-06-15-c01.html").read_text(encoding="utf-8")
+    assert html_lib.escape("source_tree_sha256")[:10] in html or "source_tree_sha256" in html, \
+        "the escaped embed carries the STAMPED provenance"
+    committed = json.loads((reports / "2026-06-15-c01.json").read_text(encoding="utf-8"))
+    assert committed["provenance"]["source_tree_sha256"]

@@ -178,8 +178,18 @@ def _commit_report(date: str, slug: str, html: str, json_dump: str) -> Path:
     """
     stamped_dump = _stamp_report_json(json_dump, slug)
     if stamped_dump != json_dump:
+        # Templates embed the dump in one of two byte-faithful forms: raw
+        # (the `<pre>{json_dump}</pre>` milestone templates) or html-escaped
+        # (render_calibration, which escapes the dump before formatting —
+        # found live by A07's first run, 2026-08-22: the raw-only check
+        # refused every calibration-family report on the day it landed).
+        # Both forms get their embedded copy stamped; anything else is the
+        # STR-5 divergence and refuses loudly.
+        escaped = html_lib.escape(json_dump)
         if json_dump in html:
             html = html.replace(json_dump, stamped_dump)
+        elif escaped in html:
+            html = html.replace(escaped, html_lib.escape(stamped_dump))
         else:
             # STR-5: the embed seam must not fail silently. Every report
             # template embeds the exact dump it was rendered from; if this
