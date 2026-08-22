@@ -109,21 +109,10 @@ class QuenchResult:
         }
 
 
-def _checkerboard_masks(L: int, n_seeds: int, device: torch.device):
-    ix = torch.arange(L, device=device).view(L, 1).expand(L, L)
-    iy = torch.arange(L, device=device).view(1, L).expand(L, L)
-    a = ((ix + iy) % 2 == 0).unsqueeze(0).expand(n_seeds, L, L).contiguous()
-    return a, ~a
-
-
-def _neighbor_sum(spins: torch.Tensor) -> torch.Tensor:
-    """Σ of the four von-Neumann neighbours (periodic), reused verbatim from ``ising.py``."""
-    return (
-        torch.roll(spins, 1, dims=-2)
-        + torch.roll(spins, -1, dims=-2)
-        + torch.roll(spins, 1, dims=-1)
-        + torch.roll(spins, -1, dims=-1)
-    )
+# Both kernels are ising's, imported rather than copied (STR-3). The second
+# argument of ``_checkerboard_masks`` is a batch dimension — seeds here,
+# temperatures in ising — the mask itself is the same red/black checkerboard.
+from .ising import _checkerboard_masks, _neighbor_sum
 
 
 def heatbath_prob_up(neighbor_sum: torch.Tensor, beta: float) -> torch.Tensor:
