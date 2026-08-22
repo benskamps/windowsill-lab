@@ -72,6 +72,17 @@ def test_the_gate_reads_this_runs_log_not_the_days(slot):
     assert "reports/hunts/hunt-2026-08-21-s3-1302.json" not in pushed
 
 
+def test_a_run_that_graded_and_then_died_publishes_nothing(slot):
+    """The other side of the crash window. ``a05_hunt.py`` refreshes pot.json AFTER
+    grading, so a run can print ``check_a05: True`` and still die before the pot and
+    the receipt agree. A positive grade is necessary, not sufficient — rc is the
+    other half, which is why the gate needs both."""
+    proc = slot.run("hunt-2026-08-21-s3.json", exit_code=3)
+    assert "reports/hunts/hunt-2026-08-21-s3.json" not in slot.pushed_files()
+    assert proc.returncode == 3, "the runner's own exit code should survive"
+    assert slot.is_clean()
+
+
 def test_a_graded_run_still_publishes(slot):
     """The gate tightened, not the lane closed."""
     slot.run("hunt-2026-08-21-s3.json")
