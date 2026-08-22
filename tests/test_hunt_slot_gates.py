@@ -1,0 +1,135 @@
+"""The slot's publish gate, proved by injecting the failures it is supposed to stop.
+
+``tests/test_hunt_slot_script.py`` proves the slot does the right thing when
+everything works. These prove it REFUSES when something breaks — the half that
+was missing, and the half the 2026-08-15 red main came from.
+
+Three gates, three injected faults, all against throwaway clones:
+
+* **AUTO-F1** — the runner crashes between writing its receipt and grading it.
+  The wrapper captured ``rc=$?`` and never read it, then inferred success from the
+  ABSENCE of ``check_a05: None|False`` in the last five log lines. An ungraded
+  receipt therefore published, with a pot.json the crashed run never refreshed:
+  CI recomputes ``pot == hunt_block()`` from the committed set and goes red, in the
+  producer's own commit.
+* **AUTO-F6** — ``git commit`` fails for a reason that is not "nothing to commit"
+  (losing the index.lock race to ``campaign.sh``, which shares this clone and these
+  hours). ``|| exit 0`` conflated the two, leaving the receipt STAGED — and a staged
+  index is one of the three conditions campaign.sh refuses to run against, so one
+  lost race silently halted the other lane until a human noticed.
+* **AUTO-F2** — ``git pull --rebase --autostash`` conflicts. Its status was
+  discarded, so the 100-minute hunt burned against a clone that was mid-rebase and
+  detached, and its receipt was stranded. ``campaign.sh:169`` (``safe_pull_rebase``)
+  already fixed this class; the sibling script regressed it.
+
+Nothing here touches the real remote, the real MAST API, or any systemd unit.
+"""
+from __future__ import annotations
+
+import pytest
+
+from tests.slot_harness import make_slot
+
+
+@pytest.fixture
+def slot(tmp_path):
+    return make_slot(tmp_path)
+
+
+# --- AUTO-F1: the exit code is the gate, and the grade must be POSITIVE -------
+
+def test_a_crashed_runner_publishes_nothing(slot):
+    """The realized 8/15 class. The receipt is on disk and no failure string was
+    ever printed, so an absence-gate reads the crash as a success."""
+    proc = slot.run("hunt-2026-08-21-s3.json", crash_after_receipt=True)
+    assert "reports/hunts/hunt-2026-08-21-s3.json" not in slot.pushed_files()
+    assert proc.returncode != 0, "a crashed hunt must not exit green"
+
+
+def test_a_crashed_runner_leaves_the_clone_runnable(slot):
+    """...and must not strand its receipt in the directory the pot aggregator
+    globs, or the next publishing run counts a hunt that never graded."""
+    slot.run("hunt-2026-08-21-s3.json", crash_after_receipt=True)
+    assert slot.is_clean(), "campaign.sh would refuse to run against this clone"
+    assert not (slot.repo / "reports" / "hunts" / "hunt-2026-08-21-s3.json").exists()
+
+
+def test_a_failing_grade_that_scrolled_out_of_the_tail_window_publishes_nothing(slot):
+    """``tail -5 | grep -q 'check_a05: (None|False)'`` is a five-line window onto a
+    log the runner keeps writing to. Push the grade line out of it and the gate
+    stops seeing the failure at all — string-ABSENCE is not evidence of success."""
+    slot.run("hunt-2026-08-21-s3-1302.json", grade="False", trailing_lines=8)
+    assert "reports/hunts/hunt-2026-08-21-s3-1302.json" not in slot.pushed_files()
+
+
+def test_the_gate_reads_this_runs_log_not_the_days(slot):
+    """One log file per sector per DAY, appended by all four slots. A crashed run
+    that printed no receipt line must not inherit the previous slot's."""
+    slot.run("hunt-2026-08-21-s3.json")               # slot 1: graded, published
+    slot.run("hunt-2026-08-21-s3-1302.json", crash_after_receipt=True)  # slot 2
+    pushed = slot.pushed_files()
+    assert "reports/hunts/hunt-2026-08-21-s3.json" in pushed
+    assert "reports/hunts/hunt-2026-08-21-s3-1302.json" not in pushed
+
+
+def test_a_graded_run_still_publishes(slot):
+    """The gate tightened, not the lane closed."""
+    slot.run("hunt-2026-08-21-s3.json")
+    assert "reports/hunts/hunt-2026-08-21-s3.json" in slot.pushed_files()
+    assert "4686" in slot.log_text() or slot.is_clean()
+
+
+# --- AUTO-F6: nothing-to-commit is not the same as commit failed --------------
+
+def test_a_failed_commit_does_not_exit_green(slot):
+    """A green exit under a green unit is how the lane loses days."""
+    slot.break_commit()
+    proc = slot.run("hunt-2026-08-21-s3.json")
+    assert proc.returncode != 0
+
+
+def test_a_failed_commit_does_not_leave_the_receipt_staged(slot):
+    """THE regression: campaign.sh refuses to run a pass against a staged index,
+    so losing one index.lock race silently halted the physics lane."""
+    slot.break_commit()
+    slot.run("hunt-2026-08-21-s3.json")
+    assert slot.is_clean(), "campaign.sh would refuse to run against this clone"
+
+
+def test_a_failed_commit_does_not_strand_its_receipt_in_the_ledger(slot):
+    """An uncommitted receipt left in reports/hunts/ is counted by the pot
+    aggregator (which globs the directory) but not by CI (which reads git)."""
+    slot.break_commit()
+    slot.run("hunt-2026-08-21-s3.json")
+    assert not (slot.repo / "reports" / "hunts" / "hunt-2026-08-21-s3.json").exists()
+    assert (slot.lab / "ungraded" / "hunt-2026-08-21-s3.json").exists()
+
+
+def test_genuinely_nothing_to_commit_is_still_a_quiet_success(slot):
+    """The branch ``|| exit 0`` was actually there for. Re-running a slot whose
+    receipt is already published stages nothing and must exit 0, not alarm."""
+    slot.run("hunt-2026-08-21-s3.json")
+    proc = slot.run("hunt-2026-08-21-s3.json")
+    assert proc.returncode == 0
+    assert slot.is_clean()
+
+
+# --- AUTO-F2: a failed sync aborts the slot BEFORE the hunt starts ------------
+
+def test_a_conflicted_pull_aborts_the_slot_before_the_hunt(slot):
+    """100 minutes of telescope archive time against a clone that is mid-rebase
+    and detached, ending in a push that silently fails. Check the pull first."""
+    slot.diverge_with_conflict()
+    proc = slot.run("hunt-2026-08-21-s3.json")
+    assert not slot.hunt_ran(), "the hunt burned against an unsynced clone"
+    assert proc.returncode != 0
+
+
+def test_a_conflicted_pull_leaves_the_clone_on_main(slot):
+    """campaign.sh's third condition. A clone left detached logs 'on HEAD not
+    main' on every later pass — a symptom four days downstream of its cause."""
+    slot.diverge_with_conflict()
+    slot.run("hunt-2026-08-21-s3.json")
+    assert slot.branch() == "main"
+    assert not (slot.repo / ".git" / "rebase-merge").exists()
+    assert not (slot.repo / ".git" / "rebase-apply").exists()
