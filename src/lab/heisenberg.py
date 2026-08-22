@@ -85,6 +85,8 @@ from dataclasses import dataclass, asdict
 import numpy as np
 import torch
 
+from .ising import _checkerboard_masks as _ising_checkerboard_masks
+
 
 def _random_unit_vectors(shape: tuple[int, ...], g: torch.Generator,
                          device: torch.device) -> torch.Tensor:
@@ -162,12 +164,12 @@ def _checkerboard_masks(L: int, n_temps: int, device: torch.device):
     boolean ``torch.where`` selects whole 3-vectors. A site on colour ``a`` has all
     four neighbours on colour ``b``; updating one colour with the other held fixed
     is exact for the Heisenberg model too (the lattice graph is bipartite).
+
+    The mask itself is ising's (STR-3 — one kernel); only the trailing broadcast
+    axis is added here, because it is this module's shape contract, not physics.
     """
-    ix = torch.arange(L, device=device).view(L, 1).expand(L, L)
-    iy = torch.arange(L, device=device).view(1, L).expand(L, L)
-    a = ((ix + iy) % 2 == 0).unsqueeze(0).expand(n_temps, L, L).contiguous()
-    a = a.unsqueeze(-1)            # (n_temps, L, L, 1) — broadcasts over the 3 comps
-    return a, ~a
+    a, b = _ising_checkerboard_masks(L, n_temps, device)
+    return a.unsqueeze(-1), b.unsqueeze(-1)
 
 
 def _neighbor_field(S: torch.Tensor) -> torch.Tensor:

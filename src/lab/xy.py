@@ -124,17 +124,11 @@ class XYRunResult:
         }
 
 
-def _checkerboard_masks(L: int, n_temps: int, device: torch.device):
-    """The two bipartite sublattice masks — identical to ``ising._checkerboard_masks``.
-
-    The square lattice is bipartite, so a site on colour ``a`` has all four
-    neighbours on colour ``b`` and vice-versa; updating one colour while the other
-    is held fixed is exact for the XY model too.
-    """
-    ix = torch.arange(L, device=device).view(L, 1).expand(L, L)
-    iy = torch.arange(L, device=device).view(1, L).expand(L, L)
-    a = ((ix + iy) % 2 == 0).unsqueeze(0).expand(n_temps, L, L).contiguous()
-    return a, ~a
+# The two bipartite sublattice masks are ising's, imported rather than copied
+# (STR-3): the square lattice is bipartite, so a site on colour ``a`` has all
+# four neighbours on colour ``b`` and vice-versa; updating one colour while the
+# other is held fixed is exact for the XY model too.
+from .ising import _checkerboard_masks
 
 
 def _neighbor_angle_sums(theta: torch.Tensor):

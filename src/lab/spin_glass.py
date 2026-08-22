@@ -137,17 +137,13 @@ class SpinGlassResult:
         }
 
 
-def _checkerboard_masks(L: int, batch: int, device: torch.device):
-    """The two bipartite sublattice masks, shape ``(batch, L, L)``.
-
-    Random *bonds* don't break the lattice's bipartiteness — it's the lattice graph
-    that's 2-colourable, and frustration lives in the bond signs — so the same
-    red/black checkerboard the ferromagnet uses parallelises the EA update exactly.
-    """
-    ix = torch.arange(L, device=device).view(L, 1).expand(L, L)
-    iy = torch.arange(L, device=device).view(1, L).expand(L, L)
-    a = ((ix + iy) % 2 == 0).unsqueeze(0).expand(batch, L, L).contiguous()
-    return a, ~a
+# The two bipartite sublattice masks are ising's, imported rather than copied
+# (STR-3): random *bonds* don't break the lattice's bipartiteness — it's the
+# lattice graph that's 2-colourable, and frustration lives in the bond signs —
+# so the same red/black checkerboard the ferromagnet uses parallelises the EA
+# update exactly. (``random_bond`` re-imports this name from here; the chain
+# ends at ising either way.)
+from .ising import _checkerboard_masks
 
 
 def _weighted_neighbor_sum(spins: torch.Tensor, Jx: torch.Tensor, Jy: torch.Tensor) -> torch.Tensor:
