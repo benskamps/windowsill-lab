@@ -4025,6 +4025,83 @@ def check_k03(report: dict) -> tuple[bool | None, str]:
                     "left to the reported σ-distances")
 
 
+def check_a02(report: dict) -> tuple[bool | None, str]:
+    """Re-derive every A02 period from the CACHED photometry and catalogue bytes.
+
+    The check_a05 doctrine again: nothing the receipt asserts about a period is
+    trusted. Each target's TESS product and its VSX response are located by the
+    receipt's own basenames, pinned by SHA-256, re-read, re-transformed and
+    re-graded with the module's own bar — so a receipt whose numbers were edited
+    after the fact grades False rather than passing on its own say-so.
+
+    A missing cache is ``None`` (this box cannot re-derive; not evidence against
+    the run). A pin that does not match is ``False`` — that is tampering, and it
+    is never a shrug.
+    """
+    from . import a01 as a01_mod
+    from . import a02 as a02_mod
+    from . import a05 as a05_mod
+
+    if report.get("experiment") != "A02-variable-star-recovery":
+        return None, "not an A02 variable-star receipt"
+    rows = [r for r in (report.get("targets") or [])
+            if isinstance(r, dict) and r.get("outcome") == "measured"]
+    if not rows:
+        return None, "A02 receipt grades no measured target"
+
+    verdicts: list[str] = []
+    worst_beat = float("inf")
+    for row in rows:
+        ident = str(row.get("ident"))
+
+        # ── the catalogue half, re-read from its pinned bytes ──
+        vsx = row.get("vsx") or {}
+        prov = vsx.get("provenance") or {}
+        vsx_path = a02_mod.CACHE_DIR / str(prov.get("cache_file", ""))
+        if not vsx_path.is_file():
+            return None, f"A02 VSX cache missing for {ident} — cannot re-derive"
+        blob = vsx_path.read_bytes()
+        if hashlib.sha256(blob).hexdigest() != prov.get("sha256"):
+            return False, f"A02 VSX cache for {ident} does not match its receipt pin"
+        record = (json.loads(blob.decode("utf-8")) or {}).get("VSXObject") or {}
+        published = float(record.get("Period"))
+
+        # ── the photometry half, re-measured from the pinned FITS ──
+        phot = row.get("photometry") or {}
+        fits_path = a01_mod.CACHE_DIR / str(phot.get("cache_file", ""))
+        if not fits_path.is_file():
+            return None, (f"A02 photometry cache missing for {ident} "
+                          f"({phot.get('cache_file')}) — cannot re-derive")
+        raw = fits_path.read_bytes()
+        if hashlib.sha256(raw).hexdigest() != phot.get("sha256"):
+            return False, f"A02 photometry for {ident} does not match its receipt pin"
+        curve = a05_mod.curve_from_blob(raw)
+        meas = a02_mod.measure(curve["t"], curve["f"],
+                               seed=int(row.get("control_seed", 0)))
+
+        error = abs(meas["period_days"] - published)
+        resolution = a02_mod.rayleigh_period_resolution(published, meas["baseline_days"])
+        if error > resolution:
+            return False, (f"A02 {ident}: re-derived P={meas['period_days']:.6f} d vs "
+                           f"published {published:.6f} — off by {error:.2e} d, outside "
+                           f"the {resolution:.2e} d resolution element")
+        if meas["control_margin"] < a02_mod.CONTROL_MARGIN:
+            return False, (f"A02 {ident}: shuffled control is only "
+                           f"{meas['control_margin']:.1f}x below the peak "
+                           f"(needs {a02_mod.CONTROL_MARGIN}x) — the detection is "
+                           "not separated from what this sampling makes from noise")
+        beat = resolution / error if error > 0 else float("inf")
+        worst_beat = min(worst_beat, beat)
+        verdicts.append(f"{ident} P={meas['period_days']:.6f} vs {published:.6f} "
+                        f"(rel {error / published:.1e}, {beat:.0f}x inside resolution, "
+                        f"control x{meas['control_margin']:.0f})")
+
+    return True, (f"{len(rows)} known variables recovered blind from TESS photometry, "
+                  f"graded against AAVSO VSX read only at grading time; every period "
+                  f"inside its own Rayleigh resolution element and the tightest margin "
+                  f"still beats it {worst_beat:.0f}x — " + "; ".join(verdicts))
+
+
 def check_a07(report: dict) -> tuple[bool | None, str]:
     """Re-derive A07's celestial mechanics from the CACHED Horizons bytes.
 
@@ -4218,7 +4295,8 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "K01": check_k01, "K02": check_k02, "K03": check_k03,
           "K04": check_k04,
           "C01": check_c01, "C05": check_c05,
-          "A01": check_a01, "A03": check_a03, "A04": check_a04,
+          "A01": check_a01,
+    "A02": check_a02, "A03": check_a03, "A04": check_a04,
           "A05": check_a05, "A07": check_a07,
           "I01": check_i01, "CTRL": check_controls}
 
