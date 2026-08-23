@@ -1481,13 +1481,13 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 9411,
-    "above_threshold": 92,
+    "targets_searched": 9611,
+    "above_threshold": 93,
     "dispositions": {
       "eclipsing-binary-secondary": 15,
       "harmonic-alias": 15,
       "eclipsing-binary-odd-even": 14,
-      "low-significance": 10,
+      "low-significance": 11,
       "phased-brightening": 2,
       "toi-known-fp": 2,
       "known-planet": 3,
