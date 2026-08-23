@@ -498,23 +498,23 @@
     }
   ],
   "total": 39,
-  "last_run": "2026-08-23T01:00:04.012372+00:00",
-  "runs": 58,
-  "temp_c": 72.9,
+  "last_run": "2026-08-23T07:01:45.682068+00:00",
+  "runs": 59,
+  "temp_c": 65.8,
   "latest_report": {
-    "date": "2026-08-22",
-    "milestone": "C01",
+    "date": "2026-08-23",
+    "milestone": "A01",
     "verdict": "verified",
-    "headline": "OEIS A000045: 40 terms matched byte-for-byte; Lucas\u2013Lehmer residue for 2^31\u22121 is 0",
+    "headline": "TESS recovered WASP-18 b: P=0.94145236 d, depth=1.022% from 177 timed transits",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-22-2100-c01.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-23-0301-a01.json",
     "machine": "linux-rocm",
-    "at": "2026-08-23T01:00:04.012372+00:00"
+    "at": "2026-08-23T07:01:45.682068+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-23T01:00:04.708058+00:00",
+  "updated": "2026-08-23T07:01:46.371022+00:00",
   "provenance": {
-    "code_sha": "12ae2ca",
+    "code_sha": "9ebdbbc",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -523,6 +523,16 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-23",
+      "milestone": "A01",
+      "verdict": "verified",
+      "headline": "TESS recovered WASP-18 b: P=0.94145236 d, depth=1.022% from 177 timed transits",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-23-0301-a01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-23-0301-a01.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-23T07:01:45.682068+00:00"
+    },
     {
       "date": "2026-08-22",
       "milestone": "C01",
@@ -1452,11 +1462,11 @@
     }
   ],
   "turns": {
-    "count": 150,
-    "today": 5,
+    "count": 151,
+    "today": 1,
     "last_by_machine": {
       "windows-cuda": "2026-08-20T01:11:49.221742+00:00",
-      "linux-rocm": "2026-08-23T01:00:04.012372+00:00"
+      "linux-rocm": "2026-08-23T07:01:45.682068+00:00"
     },
     "expected_interval_h": 3
   },
