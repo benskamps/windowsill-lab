@@ -2507,6 +2507,20 @@ def main(argv=None):
             print(f"  (snapshot skipped: {e})")
         return 0
 
+    if cmd == "deep":
+        from . import deep as deep_mod
+        if "--queue" in args:
+            for i, job in enumerate(deep_mod.read_queue(), 1):
+                print(f"  {i}. {job}")
+            if not deep_mod.read_queue():
+                print("  (empty — the deep lane will report the vacuum, not invent work)")
+            return 0
+        print(f"deep lane · unit of work is a NIGHT, not a slot · queue "
+              f"{deep_mod.QUEUE}")
+        verdict = deep_mod.run_next()
+        print(f"  → {verdict['outcome']}: {verdict['detail']}")
+        return 0 if verdict["outcome"] in ("ok", "idle") else 1
+
     if cmd == "frontier":
         import textwrap as _tw
         from . import frontier as frontier_mod

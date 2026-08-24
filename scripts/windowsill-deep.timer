@@ -1,0 +1,12 @@
+[Unit]
+Description=Fire the deep lane nightly, in the hours nothing else wants
+
+[Timer]
+# 23:30 local: after the 21:00 campaign pass and its 21:02 hunt slot have
+# finished, with a clear run at the GPU until the 03:00 pass — which takes
+# under a minute and can share.
+OnCalendar=*-*-* 23:30:00
+Persistent=false
+
+[Install]
+WantedBy=timers.target

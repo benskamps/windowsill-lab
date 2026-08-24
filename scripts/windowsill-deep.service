@@ -1,0 +1,17 @@
+[Unit]
+Description=Windowsill Lab — the deep lane (one job whose unit of work is a night)
+# LOAM ONLY. This box measured a ~2% physics duty cycle with 98% of the GPU
+# idle; win's box does not have that headroom, which is why this lane is not
+# part of the shared portfolio contract and win must not adopt it wholesale.
+# Rationale and measurements: docs/design/2026-08-24-deployment-note.md
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/projects/windowsill-lab
+ExecStart=%h/projects/windowsill-lab/.venv/bin/python -m lab.cli deep
+# No TimeoutStartSec: the entire point of this lane is that its jobs do not fit
+# in a slot. A hero run is hours; capping it would recreate the problem.
+TimeoutStartSec=infinity
+Environment=TMPDIR=%h/.cache/wtmp
+Environment=LAB_CAMPAIGN_DEVICE=cuda
+Nice=5
