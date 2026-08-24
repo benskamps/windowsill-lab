@@ -148,11 +148,11 @@
     {
       "id": "M12",
       "title": "3D EA spin glass \u2014 the harder, more famous case",
-      "status": "null",
+      "status": "review",
       "track": "physics",
       "growth_form": "fern",
       "runner_available": true,
-      "result": "code merged 2026-07-01, PR #43 \u2014 the quick-CPU calibration ships a [~] null: at L=4,6,8 \u00d7 8 disorder realizations the multi-L Binder crossing resolves to T_SG\u22480.56, so the finite-T crossing does not resolve at CPU scale \u2014 report reports/2026-07-04-m12.html. The GPU promotion run happened 2026-07-22 \u2014 L=6,8,10 \u00d7 200 realizations with parallel tempering, receipt reports/receipts/run-2026-07-22-m12.json \u2014 and returned a second null: crossing_T = 1.244 against the 0.95\u00b10.15 band configured at the time. The 2026-08-01 audit found two defects that invalidate that run as a promotion gate. First, the PT swap scheduler derived swap parity from the sweep index, so the production default swap_every=10 pinned parity to 0 and odd-gap replica pairs were never attempted \u2014 the ladder decomposed into isolated 2-rung pairs, visible in the receipt as exactly 0.0 at every odd gap of swap_rate_by_L; PR #68 fixes this by counting swap rounds. Second, the 0.95 benchmark was the Gaussian-disorder value graded against a bimodal \u00b1J simulation, so even a converged run near the correct \u22481.102 could not have passed; PR #68 corrects the benchmark and tolerance, with the checks.py mirror updated in its stacked follow-up. The 2026-07-01/04 CPU nulls ran swap_every=5 [odd] and are unaffected by the parity defect. Promotion to [x] now requires: [1] the parity fix and corrected benchmark merged, [2] a fresh multi-L GPU run whose crossing lands within the corrected tolerance, [3] human review of that run.",
+      "result": "code merged 2026-07-01, PR #43 \u2014 the quick-CPU calibration ships a [~] null: at L=4,6,8 \u00d7 8 disorder realizations the multi-L Binder crossing resolves to T_SG\u22480.56, so the finite-T crossing does not resolve at CPU scale \u2014 report reports/2026-07-04-m12.html. The GPU promotion run happened 2026-07-22 \u2014 L=6,8,10 \u00d7 200 realizations with parallel tempering, receipt reports/receipts/run-2026-07-22-m12.json \u2014 and returned a second null: crossing_T = 1.244 against the 0.95\u00b10.15 band configured at the time. The 2026-08-01 audit found two defects that invalidate that run as a promotion gate. First, the PT swap scheduler derived swap parity from the sweep index, so the production default swap_every=10 pinned parity to 0 and odd-gap replica pairs were never attempted \u2014 the ladder decomposed into isolated 2-rung pairs, visible in the receipt as exactly 0.0 at every odd gap of swap_rate_by_L; PR #68 fixes this by counting swap rounds. Second, the 0.95 benchmark was the Gaussian-disorder value graded against a bimodal \u00b1J simulation, so even a converged run near the correct \u22481.102 could not have passed; PR #68 corrects the benchmark and tolerance, with the checks.py mirror updated in its stacked follow-up. The 2026-07-01/04 CPU nulls ran swap_every=5 [odd] and are unaffected by the parity defect. Promotion to [x] now requires: [1] the parity fix and corrected benchmark merged, [2] a fresh multi-L GPU run whose crossing lands within the corrected tolerance, [3] human review of that run. **[1] and [2] are now MET; [3] is open, which is why this is [?] and not [x].** The 2026-08-24 hero run \u2014 L=6,8,10,12 on one 0.80-1.60 ladder of 16 rungs, **800 disorder realizations x 2 replicas, 100k burn-in + 100k measurement sweeps per size, 4.4 GPU-hours** \u2014 lands the Binder crossing at **T_SG = 1.124** against the 1.102 benchmark (tol 0.10), with the equilibration guard at max|<q>| = 0.001 and PT health `ok` at all four sizes (swap 0.48-0.81). `check_m12` re-derives it: True. **The honest uncertainty is larger than that number looks.** The six pairwise crossings scatter 0.973-1.184 (mean 1.074, sem 0.031 -> 0.9 sigma from the literature 1.1019(29)), and five of the six would pass the tolerance individually while **8x10 alone would fail low at 0.973** \u2014 so the verdict is pair-selection-dependent, and the defensible claim is *consistent with T_SG ~ 1.10 at +/-0.1*, not a measurement of 1.124. A second estimator now rides along: xi_L/L, the second-moment correlation length of the overlap field, whose crossing is **1.229** (pairwise mean 1.150, 1.7 sigma high). **The two estimators bracket the literature value** (1.074 < 1.1019 < 1.150). A mid-flight hypothesis that the Binder cumulant was biased HIGH relative to xi/L \u2014 from a short 6k-sweep L=6/10 probe reading 1.288 vs 1.199 \u2014 **did not survive the full run**, which inverts the order; that probe was noise-dominated and is recorded here so nobody re-derives it. Receipt `reports/receipts/run-2026-08-24-0324-m12.json`; rerun `lab m12 --L-values 6,8,10,12 --t-min 0.80 --t-max 1.60 --realizations 800 --sweeps 100000 --burnin 100000 --swap-every 5 --seed 20260823`.",
       "short_label": "3D spin glass",
       "question_plain": "Give that same tangled, conflicting magnet a third dimension to live in \u2014 does the extra room finally let it freeze into a glassy, locked-up state at a real temperature?",
       "why_it_matters": "This is the famous case behind real glassy materials, and finding the freezing point would prove the lab can reach the genuinely hard problems, not just the textbook ones.",
@@ -501,21 +501,21 @@
   "total": 39,
   "last_run": "2026-08-24T07:24:13.773030+00:00",
   "runs": 60,
-  "temp_c": 86.9,
+  "temp_c": 85.4,
   "latest_report": {
     "date": "2026-08-24",
-    "milestone": "K01",
+    "milestone": "M12",
     "verdict": "verified",
-    "headline": "Kuramoto synchronization (N=2000, \u03b3=0.5): \u03c7=N\u00b7Var(r) peaks at K_c=0.9946 vs exact 2\u03b3=1.0000 (rel. err 0.5%); ordered branch \u221a(1\u2212K_c/K) matched to 9.0e-05 over 7 couplings \u00b7 97s",
+    "headline": "3D Edwards\u2013Anderson spin glass (L=[6, 8, 10, 12], 800 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 1.124 (benchmark 1.10 \u00b1 0.10) \u2014 crossing at T_SG\u22481.124 \u00b7 15858s",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-0301-k01.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-0324-m12.json",
     "machine": "linux-rocm",
-    "at": "2026-08-24T07:01:39.516480+00:00"
+    "at": "2026-08-24T07:24:13.773030+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-24T11:38:08.657727+00:00",
+  "updated": "2026-08-24T11:49:25.993980+00:00",
   "provenance": {
-    "code_sha": "b9f8385",
+    "code_sha": "de41ca9",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -526,6 +526,16 @@
   "reports": [
     {
       "date": "2026-08-24",
+      "milestone": "M12",
+      "verdict": "verified",
+      "headline": "3D Edwards\u2013Anderson spin glass (L=[6, 8, 10, 12], 800 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 1.124 (benchmark 1.10 \u00b1 0.10) \u2014 crossing at T_SG\u22481.124 \u00b7 15858s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-24-0324-m12",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-0324-m12.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-24T07:24:13.773030+00:00"
+    },
+    {
+      "date": "2026-08-24",
       "milestone": "K01",
       "verdict": "verified",
       "headline": "Kuramoto synchronization (N=2000, \u03b3=0.5): \u03c7=N\u00b7Var(r) peaks at K_c=0.9946 vs exact 2\u03b3=1.0000 (rel. err 0.5%); ordered branch \u221a(1\u2212K_c/K) matched to 9.0e-05 over 7 couplings \u00b7 97s",
@@ -533,16 +543,6 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-0301-k01.json",
       "machine": "linux-rocm",
       "at": "2026-08-24T07:01:39.516480+00:00"
-    },
-    {
-      "date": "2026-08-24",
-      "milestone": "M12",
-      "verdict": "verified",
-      "headline": "3D Edwards\u2013Anderson spin glass (L=[6, 8, 10, 12], 800 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 1.124 (benchmark 1.10 \u00b1 0.10) \u2014 crossing at T_SG\u22481.124 \u00b7 15858s",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-24-m12",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-m12.json",
-      "machine": "linux-rocm",
-      "at": "2026-08-24T07:24:13.773030+00:00"
     },
     {
       "date": "2026-08-23",
