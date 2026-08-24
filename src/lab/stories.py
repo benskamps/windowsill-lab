@@ -219,8 +219,8 @@ STORIES: dict[str, dict[str, str | None]] = {
     "A02": {
         "short_label": "Track a pulsing star",
         "question_plain": "Can we follow a star that brightens and dims, time its rhythm, and add a real observation to the amateur record?",
-        "why_it_matters": "It earns a place in the standard amateur variable-star database that researchers draw on for long-term star behavior.",
-        "result_plain": None,
+        "why_it_matters": "Some stars pulse like a heartbeat, swelling and shrinking on a rhythm you could set a clock by. Timing one is how you prove a telescope pipeline actually works, because the right answer is already written down by other people — so there is nowhere to hide.",
+        "result_plain": "Six stars, given to the lab as names and nothing else. It found each one in the public telescope archive, watched it brighten and dim, and worked out its rhythm without ever being told the answer — then checked all six against the catalogue afterwards. All six right. The best was a star called AI Vel, whose pulse the lab timed to within about five thousandths of a second per day. The hardest was RR Lyrae, and we said before starting that it would be: its rhythm slowly wanders, so a month of watching can only ever catch that month's version of it. It came last, exactly as predicted. The other half of this experiment is still open — sending an observation to the amateur astronomers' database is something a person has to do, not a program.",
     },
     "A03": {
         "short_label": "Reweigh a neutron-star collision",
