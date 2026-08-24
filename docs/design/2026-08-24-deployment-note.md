@@ -262,8 +262,15 @@ Written before anyone argues, so the argument has somewhere to land:
   answer and it is his to give.
 * **If the canary streak is genuinely valuable** — if re-verifying green rungs
   catches real regressions at a rate worth 98 % of the schedule — then §3.2 is
-  wrong. This is measurable: count how many canary passes have ever changed a
-  verdict. I have not measured it, and I should before step 2 lands.
+  wrong. **MEASURED 2026-08-24, and it does not survive.** Over **160 scheduled
+  passes**, `lab verify` has failed exactly **three** times and all three were
+  the `PLANNED` audit failing on a receipt-backfill defect introduced that
+  morning — *zero* failures from a milestone's own check. No verified rung has
+  ever been demoted by a re-run either: the three `[~]` entries on the ladder
+  (A03, M12, I01) were authored as nulls, not caught by one. **In 160 passes the
+  maintenance queue has changed zero verdicts.** It is not worthless — a
+  regression it would catch has simply never happened — but it cannot justify
+  98 % of the schedule, and §3.2 stands.
 * **If the eight runnerless rungs are not wanted** — if C02-C04, I02-I03 and
   B01-B02 are aspirational rather than planned — then they are not a bottleneck,
   they are a wish list, and the honest fix is to say so in MILESTONES.md rather
