@@ -1448,7 +1448,7 @@ def ensure_public_receipts() -> list[Path]:
     bare legacy name. Only ``render._commit_report`` — which sees the actual
     pass — stamps a turn.
     """
-    from .receipt import receipt_text  # stdlib-only; avoids a heavy render import
+    from .receipt import paused_planned_decision, receipt_text  # stdlib-only
 
     # (date, slug) -> (is_repo, mtime, path, decoded report)
     selected: dict[tuple[str, str], tuple[bool, float, Path, dict]] = {}
@@ -1484,7 +1484,10 @@ def ensure_public_receipts() -> list[Path]:
         if destination.exists():
             paths.append(destination)
             continue
-        content = receipt_text(data, source.read_bytes())
+        # Backfilled receipts belong to OTHER runs, so they must never inherit
+        # the planned block of the turn that happens to be publishing.
+        with paused_planned_decision():
+            content = receipt_text(data, source.read_bytes())
         destination.parent.mkdir(parents=True, exist_ok=True)
         atomic_write_text(destination, content, encoding="utf-8")
         paths.append(destination)

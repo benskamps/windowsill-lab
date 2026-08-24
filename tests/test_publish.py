@@ -860,3 +860,57 @@ def test_a_malformed_hunt_row_cannot_take_down_the_physics_rotation():
     assert dispositions.get("malformed-row") == 1, (
         "a row with no disposition is counted as malformed-row, "
         "never dropped and never given a real disposition")
+
+
+# ── The backfill must not inherit the turn's planned block ───────────────────
+#
+# ensure_public_receipts() walks every dated report on the box. With the
+# scheduler's seam armed, it was stamping that turn's selection rationale onto
+# receipts for runs it had nothing to do with; the planned-decision audit then
+# refused the arithmetic, `verify` failed on PLANNED, and the campaign withheld
+# publishing for three straight passes (2026-08-23 19:00Z through 08-24 07:00Z)
+# with nothing louder than a log line. The two poisoned receipts were manual
+# `lab a02` runs that happened to be sitting in reports/.
+
+def test_backfilled_receipts_do_not_inherit_an_armed_planned_block(tmp_path, monkeypatch):
+    import json as _json
+
+    from lab import publish as publish_mod
+    from lab import receipt as receipt_mod
+
+    reports = tmp_path / "reports"
+    (reports / "receipts").mkdir(parents=True)
+    (reports / "2026-08-23-a02.json").write_text(_json.dumps({
+        "experiment": "A02-variable-star-recovery", "generated_at": "2026-08-23T18:25:46Z",
+    }), encoding="utf-8")
+    monkeypatch.setattr(publish_mod, "REPORTS_DIR", reports)
+    monkeypatch.setattr(publish_mod, "RECEIPTS_DIR", reports / "receipts")
+    monkeypatch.setattr(publish_mod, "LAB_HOME", tmp_path / "nolab")
+
+    receipt_mod.set_planned_decision({"chosen": "M04", "planner": "v1",
+                                      "reason": "canary", "scoreboard": []})
+    try:
+        written = publish_mod.ensure_public_receipts()
+    finally:
+        receipt_mod.clear_planned_decision()
+
+    assert written, "the backfill wrote nothing to assert on"
+    for path in written:
+        body = _json.loads(path.read_text(encoding="utf-8"))
+        assert "planned" not in body.get("public_receipt", {}), (
+            f"{path.name} inherited a decision block from another run's turn")
+
+
+def test_the_seam_is_restored_after_a_pause():
+    """A pause that leaked would silently strip the block from the receipt the
+    turn actually produced — the opposite failure, equally quiet."""
+    from lab import receipt as receipt_mod
+
+    decision = {"chosen": "M04", "planner": "v1", "reason": "canary", "scoreboard": []}
+    receipt_mod.set_planned_decision(decision)
+    try:
+        with receipt_mod.paused_planned_decision():
+            assert receipt_mod._PLANNED_DECISION is None
+        assert receipt_mod._PLANNED_DECISION is decision
+    finally:
+        receipt_mod.clear_planned_decision()
