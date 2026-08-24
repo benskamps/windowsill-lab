@@ -65,7 +65,7 @@ catalogue of unknowns from a catalogue of wishes.
 
 **reach.** out-of-reach
 
-**reach evidence.** Local exponent drifts 20.1% across the window, monotonically: 0.979 at the inner edge to 1.195 at the outer, falling as ε shrinks — the signature of a crossover approached from outside. Measured 2026-08-24 from `run-2026-08-23-2216-k03.json`.
+**reach evidence.** Local exponent drifts 20.1% across the window, monotonically: 0.979 at the inner edge to 1.195 at the outer, falling as ε shrinks — the signature of a crossover approached from outside. Compounding it, the subcritical gate is thresholding a noisy statistic: ε = 0.127 was refused while ε = 0.08, *closer* to K_c, passed, so the three surviving columns passed partly on the draw and cannot carry γ′ either. Measured 2026-08-24 from `run-2026-08-23-2216-k03.json`.
 
 ## U-K02 · track K
 
@@ -77,13 +77,17 @@ catalogue of unknowns from a catalogue of wishes.
 
 **who would care.** Anyone who cites either paper for the critical behaviour of the regular-frequency Kuramoto model — the two are not reconcilable and the literature carries both.
 
-**feasibility test.** Already answered in the affirmative for precision and in the negative for window. The instrument's demonstrated stderr on a branch it can measure is 0.0177, and the gap between the two claims is Δγ' = 0.75 — a **42σ separation** if the subcritical branch can be measured at comparable precision. Resolving power is not the blocker; U-K01 is.
+**feasibility test.** Priced before spending anything. The instrument's demonstrated stderr on a branch it can measure is 0.0177 against a Δγ' = 0.75 gap — a **42σ separation**, so precision was never the blocker. What blocks it is noise on the subcritical branch, and that noise was diagnosed: the refused columns' secants *rise and scatter* rather than falling monotonically, which is noise and not saturation, and the implied noise scales as **ε^-0.76** — critical slowing down against a `T_MEASURE` pinned at 2000 for every column.
 
-**if out of reach.** Blocked on U-K01 and on getting four subcritical columns past the linearity gate. If the gate cannot be satisfied near K_c at any affordable N, the honest deliverable is the refusal itself, with the gate's rejections as the evidence — which is exactly what `TRACKS.md` already declares Track K's arrival to be.
+**if out of reach.** Raise the ε floor or split the grid across nights. **Do not trim `T_MEASURE`**, the one axis that cannot be cut without reopening the noise problem the run exists to close.
 
 **importance.** 5
 
-**reach.** untested
+**status.** charted
+
+**reach.** in-reach
+
+**reach evidence.** N is the lever, not T: error falls as 1/√(N·T) but time is serial while N is parallel. Benchmarked on this box 2026-08-24 (RK4, float64, per step): NumPy 203 µs at N=2,000 and 17,680 µs at N=200,000; torch on the RX 6900 XT 306 µs and 527 µs. The GPU is *slower* at N=2,000 and 33× faster at N=200,000 — 100× the oscillators for 2.6× the wall-clock. Projected grid reaching ε = 0.005 at N = 200,000 with ε-scaled `T_MEASURE`: every column predicted at or under half the gate tolerance, **3.1 GPU-hours** against 103 hours on the CPU engine.
 
 ## U-M01 · track M
 
