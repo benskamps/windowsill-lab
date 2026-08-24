@@ -1,6 +1,6 @@
 <!doctype html>
 <html lang="en"><head><meta charset="utf-8">
-<title>windowsill-lab &middot; 2026-08-24 &middot; P01</title>
+<title>windowsill-lab &middot; 2026-08-24 &middot; H01</title>
 <style>
   :root { color-scheme: light; }
   body { margin:0; padding:36px 24px 80px; min-height:100vh;
@@ -13,7 +13,7 @@
   .date { opacity:.55; font-size:14px; margin-bottom:28px; }
   .lede,.verdict,.boundary { padding:16px 20px; border-radius:3px; margin:12px 0; }
   .lede { background:#fbf6ea; border-left:3px solid #c89878; font-size:17px; }
-  .verdict { background:#eee9e2; border-left:3px solid #8d8175; }
+  .verdict { background:#eef3e6; border-left:3px solid #7a9b56; }
   .boundary { background:#f5eadb; border-left:3px solid #b88963; font-size:14px; }
   figure { margin:22px 0; } figure img { width:100%; border-radius:4px; }
   details { margin-top:28px; padding:14px 18px; background:#fbf6ea; border-radius:4px; }
@@ -22,790 +22,70 @@
     opacity:.55; font-size:12px; }
 </style></head><body><div class="wrap">
   <h1>windowsill-lab &middot; calibration plant</h1>
-  <div class="date">2026-08-24 &middot; P01</div>
-  <div class="lede">calibration run</div>
-  <div class="verdict">Calibration did not pass. The null remains visible and is not promoted.</div>
-  <div class="boundary"><strong>Claim boundary.</strong> Ground states of a coarse-grained lattice model, proven by exhaustive enumeration for the graded chains and searched blind. No claim about real protein structure is made or implied.</div>
+  <div class="date">2026-08-24 &middot; H01</div>
+  <div class="lede">H01 ran and the claim under test survived</div>
+  <div class="verdict">Machine gate passed; this measurement remains amber until human review.</div>
+  <div class="boundary"><strong>Claim boundary.</strong> `status: pass` on this receipt means the experiment reached a verdict with its controls intact — it does NOT mean the audited claim survived. Here it did: the hypothesis was not killed by the evidence declared in advance. That is weaker than proof — it means one specific way of being wrong has been ruled out, at one depth.</div>
   <h2>Calibration evidence</h2>
   <figure><img src="data:image/png;base64,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AACMRKAFAAAAABiJQAsAAAAAMBKBFgAAAABgJAItAAAAAMBIBFoAAAAAgJEItAAAAAAAIxFoAQAAAABGItACAAAAAIxEoAUAAAAAGIlACwAAAAAwEoEWAAAAAGAkAi0AAAAAwEgEWgAAAACAkQi0AAAAAAAjEWgBAAAAAEYi0AIAAAAAjESgBQAAAAAYiUALAAAAADASgRYAAAAAYCQCLQAAAADASARaAAAAAICRCLQAAAAAACMRaAEAAAAARiLQAgAAAACMRKAFAAAAABiJQAsAAAAAMBKBFgAAAABgJAItAAAAAMBIBFoAAAAAgJEItAAAAAAAIxFoAQAAAABGItACAAAAAIxEoAUAAAAAGIlACwAAAAAwEoEWAAAAAGAkAi0AAAAAwEgEWgAAAACAkQi0AAAAAAAjEWgBAAAAAEYi0AIAAAAAjESgBQAAAAAYiUALAAAAADASgRYAAAAAYCQCLQAAAADASARaAAAAAICRCLQAAAAAACMRaAEAAAAARiLQAgAAAACMRKAFAAAAABiJQAsAAAAAMBKBFgAAAABgJAItAAAAAMBIBFoAAAAAgJEItAAAAAAAIxFoAQAAAABGItACAAAAAIxEoAUAAAAAGIlACwAAAAAwEoEWAAAAAGAkAi0AAAAAwEgEWgAAAACAkQi0AAAAAAAjEWgBAAAAAEYi0AIAAAAAjESgBQAAAAAYiUALAAAAADASgRYAAAAAYCQCLQAAAADASARaAAAAAICRCLQAAAAAACMRaAEAAAAARiLQAgAAAACMRKAFAAAAABiJQAsAAAAAMBKBFgAAAABgJAItAAAAAMBIBFoAAAAAgJEItAAAAAAAIxFoAQAAAABGItACAAAAAIxEoAUAAAAAGOn/B22AA22KWD9DAAAAAElFTkSuQmCC" alt="calibration evidence plot"></figure>
   <details><summary>Measurement receipt (JSON)</summary><pre>{
-  &quot;milestone&quot;: &quot;P01&quot;,
-  &quot;experiment&quot;: &quot;P01-hp-lattice-folding&quot;,
+  &quot;experiment&quot;: &quot;H01-hypothesis&quot;,
+  &quot;milestone&quot;: &quot;H01&quot;,
   &quot;schema&quot;: 1,
-  &quot;generated_at&quot;: &quot;2026-08-24T12:08:31.261616+00:00&quot;,
-  &quot;model&quot;: &quot;2D square-lattice HP (Dill); E = -(H-H contacts non-adjacent in chain)&quot;,
-  &quot;counts&quot;: {
-    &quot;graded&quot;: 7,
-    &quot;recovered&quot;: 7,
-    &quot;parity_controls&quot;: 2,
-    &quot;reported_only&quot;: 2
+  &quot;status&quot;: &quot;pass&quot;,
+  &quot;headline&quot;: &quot;H01 ran and the claim under test survived&quot;,
+  &quot;claim_boundary&quot;: &quot;`status: pass` on this receipt means the experiment reached a verdict with its controls intact — it does NOT mean the audited claim survived. Here it did: the hypothesis was not killed by the evidence declared in advance. That is weaker than proof — it means one specific way of being wrong has been ruled out, at one depth.&quot;,
+  &quot;hypothesis&quot;: {
+    &quot;id&quot;: &quot;H01&quot;,
+    &quot;track&quot;: &quot;C&quot;,
+    &quot;question&quot;: &quot;Does C05&#x27;s deep BBP window at hex position 10^7 survive an independent exact-integer computation, or has float64&#x27;s tail already corrupted digits the lab is reporting?&quot;,
+    &quot;why_unanswered&quot;: &quot;c05.py names the float tail as its precision boundary and grades the deep window only by overlap with an adjacent window — two float computations agreeing with each other, which is not independence. And `reports/receipts/` holds no C05 receipt at all: the runner has never been executed.&quot;,
+    &quot;observable&quot;: &quot;The hex digit strings from the float path and the exact path at the same position. They are equal, or the index of the first digit at which they differ.&quot;,
+    &quot;kill_condition&quot;: &quot;Any disagreement inside the reported window kills the claim: C05&#x27;s deep digits are retracted, and the position of the first failing digit becomes the measured result.&quot;,
+    &quot;cheapest_decisive&quot;: &quot;One exact recomputation of the same window: ~4 engineering-hours, minutes of CPU, no GPU.&quot;,
+    &quot;why_this_might_be_nothing&quot;: &quot;An 8-hex-digit window is ~32 bits, comfortably inside float64&#x27;s ~52-bit mantissa, so the most likely outcome by far is exact agreement and one caveat sentence deleted. It is worth four hours only because that sentence is the one Track C&#x27;s own goal — verifiable by a second, independent method — is currently failing on.&quot;
   },
-  &quot;graded&quot;: [
-    {
-      &quot;sequence&quot;: &quot;HPHPPHHPHH&quot;,
-      &quot;length&quot;: 10,
-      &quot;enumerated&quot;: -4,
-      &quot;nodes_visited&quot;: 830,
-      &quot;energy&quot;: -4,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          0,
-          1
-        ],
-        [
-          1,
-          1
-        ],
-        [
-          2,
-          1
-        ],
-        [
-          2,
-          0
-        ],
-        [
-          1,
-          0
-        ],
-        [
-          1,
-          -1
-        ],
-        [
-          1,
-          -2
-        ],
-        [
-          0,
-          -2
-        ],
-        [
-          0,
-          -1
-        ]
-      ],
-      &quot;recovered&quot;: true,
-      &quot;swap_health&quot;: &quot;ok&quot;,
-      &quot;swap_rate_min&quot;: 0.606,
-      &quot;shuffled_sequence&quot;: &quot;HPPHHPHPHH&quot;,
-      &quot;shuffle_energy&quot;: -4,
-      &quot;shuffle_enumerated&quot;: -4,
-      &quot;shuffle_recovered&quot;: true,
-      &quot;sweeps&quot;: 20000,
-      &quot;seed&quot;: 1000
+  &quot;verdict&quot;: &quot;supported&quot;,
+  &quot;detail&quot;: &quot;at hex position 10,000,000 the float and exact paths agree on all 8 digits (7AF5863E); the float tail has not corrupted the reported window, and C05&#x27;s caveat can be narrowed from &#x27;unverified&#x27; to &#x27;verified to this depth by exact arithmetic&#x27;&quot;,
+  &quot;evidence&quot;: {
+    &quot;position&quot;: 10000000,
+    &quot;width&quot;: 8,
+    &quot;float&quot;: &quot;7AF5863E&quot;,
+    &quot;exact&quot;: &quot;7AF5863E&quot;,
+    &quot;first_difference_index&quot;: null,
+    &quot;precision_bits&quot;: 192
+  },
+  &quot;controls&quot;: {
+    &quot;0&quot;: {
+      &quot;machin&quot;: &quot;243F6A88&quot;,
+      &quot;exact&quot;: &quot;243F6A88&quot;,
+      &quot;float&quot;: &quot;243F6A88&quot;,
+      &quot;exact_matches_machin&quot;: true,
+      &quot;float_matches_machin&quot;: true
     },
-    {
-      &quot;sequence&quot;: &quot;HHPPHPPHPH&quot;,
-      &quot;length&quot;: 10,
-      &quot;enumerated&quot;: -4,
-      &quot;nodes_visited&quot;: 335,
-      &quot;energy&quot;: -4,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          0,
-          1
-        ],
-        [
-          0,
-          2
-        ],
-        [
-          -1,
-          2
-        ],
-        [
-          -1,
-          1
-        ],
-        [
-          -2,
-          1
-        ],
-        [
-          -2,
-          0
-        ],
-        [
-          -1,
-          0
-        ],
-        [
-          -1,
-          -1
-        ],
-        [
-          0,
-          -1
-        ]
-      ],
-      &quot;recovered&quot;: true,
-      &quot;swap_health&quot;: &quot;ok&quot;,
-      &quot;swap_rate_min&quot;: 0.584,
-      &quot;shuffled_sequence&quot;: &quot;PHPPHHHPHP&quot;,
-      &quot;shuffle_energy&quot;: -3,
-      &quot;shuffle_enumerated&quot;: -3,
-      &quot;shuffle_recovered&quot;: true,
-      &quot;sweeps&quot;: 20000,
-      &quot;seed&quot;: 1001
+    &quot;16&quot;: {
+      &quot;machin&quot;: &quot;13198A2E&quot;,
+      &quot;exact&quot;: &quot;13198A2E&quot;,
+      &quot;float&quot;: &quot;13198A2E&quot;,
+      &quot;exact_matches_machin&quot;: true,
+      &quot;float_matches_machin&quot;: true
     },
-    {
-      &quot;sequence&quot;: &quot;HHHPPPHHHPP&quot;,
-      &quot;length&quot;: 11,
-      &quot;enumerated&quot;: -2,
-      &quot;nodes_visited&quot;: 508,
-      &quot;energy&quot;: -2,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          0,
-          1
-        ],
-        [
-          0,
-          2
-        ],
-        [
-          0,
-          3
-        ],
-        [
-          0,
-          4
-        ],
-        [
-          -1,
-          4
-        ],
-        [
-          -1,
-          3
-        ],
-        [
-          -1,
-          2
-        ],
-        [
-          -1,
-          1
-        ],
-        [
-          -2,
-          1
-        ],
-        [
-          -2,
-          2
-        ]
-      ],
-      &quot;recovered&quot;: true,
-      &quot;swap_health&quot;: &quot;ok&quot;,
-      &quot;swap_rate_min&quot;: 0.698,
-      &quot;shuffled_sequence&quot;: &quot;PHHHPHPHHPP&quot;,
-      &quot;shuffle_energy&quot;: -3,
-      &quot;shuffle_enumerated&quot;: -3,
-      &quot;shuffle_recovered&quot;: true,
-      &quot;sweeps&quot;: 20000,
-      &quot;seed&quot;: 1002
-    },
-    {
-      &quot;sequence&quot;: &quot;HPPHPHHPHPPH&quot;,
-      &quot;length&quot;: 12,
-      &quot;enumerated&quot;: -5,
-      &quot;nodes_visited&quot;: 917,
-      &quot;energy&quot;: -5,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          0,
-          -1
-        ],
-        [
-          1,
-          -1
-        ],
-        [
-          1,
-          0
-        ],
-        [
-          1,
-          1
-        ],
-        [
-          0,
-          1
-        ],
-        [
-          0,
-          2
-        ],
-        [
-          -1,
-          2
-        ],
-        [
-          -1,
-          1
-        ],
-        [
-          -2,
-          1
-        ],
-        [
-          -2,
-          0
-        ],
-        [
-          -1,
-          0
-        ]
-      ],
-      &quot;recovered&quot;: true,
-      &quot;swap_health&quot;: &quot;ok&quot;,
-      &quot;swap_rate_min&quot;: 0.542,
-      &quot;shuffled_sequence&quot;: &quot;HPPHHPHHPPHP&quot;,
-      &quot;shuffle_energy&quot;: -4,
-      &quot;shuffle_enumerated&quot;: -4,
-      &quot;shuffle_recovered&quot;: true,
-      &quot;sweeps&quot;: 20000,
-      &quot;seed&quot;: 1003
-    },
-    {
-      &quot;sequence&quot;: &quot;HHPHPPHPPHPH&quot;,
-      &quot;length&quot;: 12,
-      &quot;enumerated&quot;: -5,
-      &quot;nodes_visited&quot;: 1226,
-      &quot;energy&quot;: -5,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          0,
-          1
-        ],
-        [
-          1,
-          1
-        ],
-        [
-          1,
-          0
-        ],
-        [
-          2,
-          0
-        ],
-        [
-          2,
-          -1
-        ],
-        [
-          1,
-          -1
-        ],
-        [
-          1,
-          -2
-        ],
-        [
-          0,
-          -2
-        ],
-        [
-          0,
-          -1
-        ],
-        [
-          -1,
-          -1
-        ],
-        [
-          -1,
-          0
-        ]
-      ],
-      &quot;recovered&quot;: true,
-      &quot;swap_health&quot;: &quot;ok&quot;,
-      &quot;swap_rate_min&quot;: 0.44,
-      &quot;shuffled_sequence&quot;: &quot;HHHHPPPHHPPP&quot;,
-      &quot;shuffle_energy&quot;: -3,
-      &quot;shuffle_enumerated&quot;: -3,
-      &quot;shuffle_recovered&quot;: true,
-      &quot;sweeps&quot;: 20000,
-      &quot;seed&quot;: 1004
-    },
-    {
-      &quot;sequence&quot;: &quot;PHPHHPPHPHHPP&quot;,
-      &quot;length&quot;: 13,
-      &quot;enumerated&quot;: -4,
-      &quot;nodes_visited&quot;: 1613,
-      &quot;energy&quot;: -4,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          -1,
-          0
-        ],
-        [
-          -2,
-          0
-        ],
-        [
-          -2,
-          -1
-        ],
-        [
-          -1,
-          -1
-        ],
-        [
-          0,
-          -1
-        ],
-        [
-          0,
-          -2
-        ],
-        [
-          -1,
-          -2
-        ],
-        [
-          -1,
-          -3
-        ],
-        [
-          -2,
-          -3
-        ],
-        [
-          -2,
-          -2
-        ],
-        [
-          -3,
-          -2
-        ],
-        [
-          -4,
-          -2
-        ]
-      ],
-      &quot;recovered&quot;: true,
-      &quot;swap_health&quot;: &quot;ok&quot;,
-      &quot;swap_rate_min&quot;: 0.558,
-      &quot;shuffled_sequence&quot;: &quot;HHPHPPPPPHHPH&quot;,
-      &quot;shuffle_energy&quot;: -4,
-      &quot;shuffle_enumerated&quot;: -4,
-      &quot;shuffle_recovered&quot;: true,
-      &quot;sweeps&quot;: 20000,
-      &quot;seed&quot;: 1005
-    },
-    {
-      &quot;sequence&quot;: &quot;HHPPHPHPHPPHH&quot;,
-      &quot;length&quot;: 13,
-      &quot;enumerated&quot;: -4,
-      &quot;nodes_visited&quot;: 9592,
-      &quot;energy&quot;: -4,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          -1,
-          0
-        ],
-        [
-          -1,
-          -1
-        ],
-        [
-          -1,
-          -2
-        ],
-        [
-          -2,
-          -2
-        ],
-        [
-          -2,
-          -1
-        ],
-        [
-          -2,
-          0
-        ],
-        [
-          -2,
-          1
-        ],
-        [
-          -1,
-          1
-        ],
-        [
-          -1,
-          2
-        ],
-        [
-          0,
-          2
-        ],
-        [
-          0,
-          1
-        ],
-        [
-          1,
-          1
-        ]
-      ],
-      &quot;recovered&quot;: true,
-      &quot;swap_health&quot;: &quot;ok&quot;,
-      &quot;swap_rate_min&quot;: 0.518,
-      &quot;shuffled_sequence&quot;: &quot;HHHHHPPPPPPHH&quot;,
-      &quot;shuffle_energy&quot;: -3,
-      &quot;shuffle_enumerated&quot;: -3,
-      &quot;shuffle_recovered&quot;: true,
-      &quot;sweeps&quot;: 20000,
-      &quot;seed&quot;: 1006
+    &quot;1000&quot;: {
+      &quot;machin&quot;: &quot;49F1C09B&quot;,
+      &quot;exact&quot;: &quot;49F1C09B&quot;,
+      &quot;float&quot;: &quot;49F1C09B&quot;,
+      &quot;exact_matches_machin&quot;: true,
+      &quot;float_matches_machin&quot;: true
     }
-  ],
-  &quot;parity_controls&quot;: [
-    {
-      &quot;sequence&quot;: &quot;HPHPHPHPHP&quot;,
-      &quot;length&quot;: 10,
-      &quot;enumerated&quot;: 0,
-      &quot;energy&quot;: 0,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          1,
-          0
-        ],
-        [
-          2,
-          0
-        ],
-        [
-          3,
-          0
-        ],
-        [
-          4,
-          0
-        ],
-        [
-          5,
-          0
-        ],
-        [
-          6,
-          0
-        ],
-        [
-          7,
-          0
-        ],
-        [
-          8,
-          0
-        ],
-        [
-          9,
-          0
-        ]
-      ],
-      &quot;reason&quot;: &quot;all H beads on one sequence parity — bipartite lattice forbids any H-H contact&quot;
-    },
-    {
-      &quot;sequence&quot;: &quot;HPHPHPHPHPHP&quot;,
-      &quot;length&quot;: 12,
-      &quot;enumerated&quot;: 0,
-      &quot;energy&quot;: 0,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          1,
-          0
-        ],
-        [
-          2,
-          0
-        ],
-        [
-          3,
-          0
-        ],
-        [
-          4,
-          0
-        ],
-        [
-          5,
-          0
-        ],
-        [
-          6,
-          0
-        ],
-        [
-          7,
-          0
-        ],
-        [
-          8,
-          0
-        ],
-        [
-          9,
-          0
-        ],
-        [
-          10,
-          0
-        ],
-        [
-          11,
-          0
-        ]
-      ],
-      &quot;reason&quot;: &quot;all H beads on one sequence parity — bipartite lattice forbids any H-H contact&quot;
-    }
-  ],
-  &quot;reported&quot;: [
-    {
-      &quot;sequence&quot;: &quot;HPHPPHHPHPPHPHHPPHPH&quot;,
-      &quot;length&quot;: 20,
-      &quot;energy&quot;: -9,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          -1,
-          0
-        ],
-        [
-          -1,
-          1
-        ],
-        [
-          -1,
-          2
-        ],
-        [
-          0,
-          2
-        ],
-        [
-          0,
-          1
-        ],
-        [
-          1,
-          1
-        ],
-        [
-          1,
-          2
-        ],
-        [
-          2,
-          2
-        ],
-        [
-          3,
-          2
-        ],
-        [
-          3,
-          1
-        ],
-        [
-          2,
-          1
-        ],
-        [
-          2,
-          0
-        ],
-        [
-          1,
-          0
-        ],
-        [
-          1,
-          -1
-        ],
-        [
-          2,
-          -1
-        ],
-        [
-          2,
-          -2
-        ],
-        [
-          1,
-          -2
-        ],
-        [
-          0,
-          -2
-        ],
-        [
-          0,
-          -1
-        ]
-      ],
-      &quot;swap_health&quot;: &quot;ok&quot;,
-      &quot;sweeps&quot;: 60000,
-      &quot;claim&quot;: &quot;best found — not proven optimal (enumeration out of reach)&quot;
-    },
-    {
-      &quot;sequence&quot;: &quot;HHPPHPPHPPHPPHPPHPPHPPHH&quot;,
-      &quot;length&quot;: 24,
-      &quot;energy&quot;: -9,
-      &quot;coords&quot;: [
-        [
-          0,
-          0
-        ],
-        [
-          0,
-          -1
-        ],
-        [
-          0,
-          -2
-        ],
-        [
-          -1,
-          -2
-        ],
-        [
-          -1,
-          -1
-        ],
-        [
-          -2,
-          -1
-        ],
-        [
-          -2,
-          0
-        ],
-        [
-          -1,
-          0
-        ],
-        [
-          -1,
-          1
-        ],
-        [
-          0,
-          1
-        ],
-        [
-          1,
-          1
-        ],
-        [
-          1,
-          2
-        ],
-        [
-          1,
-          3
-        ],
-        [
-          2,
-          3
-        ],
-        [
-          2,
-          2
-        ],
-        [
-          2,
-          1
-        ],
-        [
-          2,
-          0
-        ],
-        [
-          3,
-          0
-        ],
-        [
-          3,
-          -1
-        ],
-        [
-          2,
-          -1
-        ],
-        [
-          2,
-          -2
-        ],
-        [
-          1,
-          -2
-        ],
-        [
-          1,
-          -1
-        ],
-        [
-          1,
-          0
-        ]
-      ],
-      &quot;swap_health&quot;: &quot;ok&quot;,
-      &quot;sweeps&quot;: 60000,
-      &quot;claim&quot;: &quot;best found — not proven optimal (enumeration out of reach)&quot;
-    }
-  ],
-  &quot;wall_seconds&quot;: 133.20144033432007,
-  &quot;claim_boundary&quot;: &quot;Ground states of a coarse-grained lattice model, proven by exhaustive enumeration for the graded chains and searched blind. No claim about real protein structure is made or implied.&quot;,
+  },
+  &quot;wall_seconds&quot;: 57.555821895599365,
   &quot;report_schema_version&quot;: 1,
+  &quot;generated_at&quot;: &quot;2026-08-24T15:09:50.757005+00:00&quot;,
   &quot;provenance&quot;: {
-    &quot;source_commit&quot;: &quot;f6971b9b7461fd8c43bfb1406b0263da0de207a0&quot;,
+    &quot;source_commit&quot;: &quot;96538faf99421158fa7606f113750aa0a52f92fd&quot;,
     &quot;source_clean&quot;: false,
-    &quot;source_diff_sha256&quot;: &quot;a1253809e75bc7888d2461f499907c23c9c08334ec8b47a87dece275adf862b3&quot;,
-    &quot;source_tree_sha256&quot;: &quot;c2b4742d61625f8de8e8e2286117a682271278dd97bc4300da570a29de8e7245&quot;,
+    &quot;source_diff_sha256&quot;: &quot;fdd348badcaba2196ab0607995ebfcb225eef4f30d2b290385cdef8e9ad93fe7&quot;,
+    &quot;source_tree_sha256&quot;: &quot;a39c7127ba0196ec56b8a8dbdfcd135224f6e30e5b2706e771758bac4fb12a9a&quot;,
     &quot;python&quot;: &quot;3.14.4&quot;,
     &quot;platform&quot;: &quot;linux-x86_64&quot;,
     &quot;dependencies&quot;: {
@@ -815,8 +95,8 @@
     }
   },
   &quot;reproduction&quot;: {
-    &quot;regrade&quot;: &quot;python -m lab.cli verify P01&quot;,
-    &quot;rerun&quot;: &quot;python -m lab.cli p01&quot;
+    &quot;regrade&quot;: &quot;python -m lab.cli verify H01&quot;,
+    &quot;rerun&quot;: &quot;python -m lab.cli h01&quot;
   }
 }</pre></details>
   <div class="footer">Four plants, one rule: reproduce a known signal before claiming a new one.

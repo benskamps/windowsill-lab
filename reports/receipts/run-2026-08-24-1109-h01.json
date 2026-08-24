@@ -1,0 +1,77 @@
+{
+  "claim_boundary": "`status: pass` on this receipt means the experiment reached a verdict with its controls intact — it does NOT mean the audited claim survived. Here it did: the hypothesis was not killed by the evidence declared in advance. That is weaker than proof — it means one specific way of being wrong has been ruled out, at one depth.",
+  "controls": {
+    "0": {
+      "exact": "243F6A88",
+      "exact_matches_machin": true,
+      "float": "243F6A88",
+      "float_matches_machin": true,
+      "machin": "243F6A88"
+    },
+    "1000": {
+      "exact": "49F1C09B",
+      "exact_matches_machin": true,
+      "float": "49F1C09B",
+      "float_matches_machin": true,
+      "machin": "49F1C09B"
+    },
+    "16": {
+      "exact": "13198A2E",
+      "exact_matches_machin": true,
+      "float": "13198A2E",
+      "float_matches_machin": true,
+      "machin": "13198A2E"
+    }
+  },
+  "detail": "at hex position 10,000,000 the float and exact paths agree on all 8 digits (7AF5863E); the float tail has not corrupted the reported window, and C05's caveat can be narrowed from 'unverified' to 'verified to this depth by exact arithmetic'",
+  "evidence": {
+    "exact": "7AF5863E",
+    "first_difference_index": null,
+    "float": "7AF5863E",
+    "position": 10000000,
+    "precision_bits": 192,
+    "width": 8
+  },
+  "experiment": "H01-hypothesis",
+  "generated_at": "2026-08-24T15:09:50.757005+00:00",
+  "headline": "H01 ran and the claim under test survived",
+  "hypothesis": {
+    "cheapest_decisive": "One exact recomputation of the same window: ~4 engineering-hours, minutes of CPU, no GPU.",
+    "id": "H01",
+    "kill_condition": "Any disagreement inside the reported window kills the claim: C05's deep digits are retracted, and the position of the first failing digit becomes the measured result.",
+    "observable": "The hex digit strings from the float path and the exact path at the same position. They are equal, or the index of the first digit at which they differ.",
+    "question": "Does C05's deep BBP window at hex position 10^7 survive an independent exact-integer computation, or has float64's tail already corrupted digits the lab is reporting?",
+    "track": "C",
+    "why_this_might_be_nothing": "An 8-hex-digit window is ~32 bits, comfortably inside float64's ~52-bit mantissa, so the most likely outcome by far is exact agreement and one caveat sentence deleted. It is worth four hours only because that sentence is the one Track C's own goal — verifiable by a second, independent method — is currently failing on.",
+    "why_unanswered": "c05.py names the float tail as its precision boundary and grades the deep window only by overlap with an adjacent window — two float computations agreeing with each other, which is not independence. And `reports/receipts/` holds no C05 receipt at all: the runner has never been executed."
+  },
+  "milestone": "H01",
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.1",
+      "numpy": "2.5.1",
+      "torch": "2.10.0.dev20251031+rocm6.4"
+    },
+    "platform": "linux-x86_64",
+    "python": "3.14.4",
+    "source_clean": false,
+    "source_commit": "96538faf99421158fa7606f113750aa0a52f92fd",
+    "source_diff_sha256": "fdd348badcaba2196ab0607995ebfcb225eef4f30d2b290385cdef8e9ad93fe7",
+    "source_tree_sha256": "a39c7127ba0196ec56b8a8dbdfcd135224f6e30e5b2706e771758bac4fb12a9a"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "147d478d9b2aa571abb5b85fa6fef8b1233b77f0ad49f1d95b2d5082549d3c4d"
+  },
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify H01",
+    "rerun": "python -m lab.cli h01"
+  },
+  "schema": 1,
+  "status": "pass",
+  "verdict": "supported",
+  "wall_seconds": 57.555821895599365
+}
