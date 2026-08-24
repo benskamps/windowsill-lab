@@ -1485,3 +1485,31 @@ def test_a05_triage_constants_mirror_the_engine():
     assert checks.A05_TRIAGE_FLOOR_POINTS == a05_stats.TRIAGE_FLOOR_POINTS
     assert checks.A05_TRIAGE_SAFETY_MARGIN == a05_stats.TRIAGE_SAFETY_MARGIN
     assert checks.A05_BLOCK_DAYS == a05_stats.BLOCK_DAYS
+
+
+# ── "this environment cannot run the check" is not "the milestone failed" ────
+
+def test_a_missing_dependency_defers_it_does_not_fail(monkeypatch):
+    """CI runs verify twice on purpose: once on stdlib alone to prove the
+    publish/verify machinery needs nothing heavy, and once with the full stack.
+    A02 folds a least-squares spectrum and P01 enumerates self-avoiding walks;
+    neither can be graded by the lean job, and failing there would report broken
+    science when what is missing is numpy. Promoting those two milestones turned
+    that into a red main on 2026-08-24."""
+    def needs_numpy(_report):
+        raise ModuleNotFoundError("No module named 'numpy'", name="numpy")
+
+    status, detail = checks._grade(needs_numpy, [{"experiment": "anything"}])
+    assert status == "needs-deps"
+    assert "numpy is absent" in detail
+    assert "graded in the full-stack job" in detail
+
+
+def test_a_real_crash_is_still_a_failure():
+    """The narrowness is the point — only a missing MODULE defers. Anything
+    else a checker raises is still a named failure, or this becomes a hole."""
+    def broken(_report):
+        raise ValueError("the receipt is malformed")
+
+    status, detail = checks._grade(broken, [{"experiment": "anything"}])
+    assert status == "fail" and "ValueError" in detail

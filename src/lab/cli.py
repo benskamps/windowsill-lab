@@ -1395,7 +1395,15 @@ def main(argv=None):
             mark = {"pass": "✓", "fail": "✗", "unchecked": "·", "no-report": "?"}
             for r in results:
                 print(f"  {mark.get(r['status'], '?')} {r['id']} [{r['status']}] — {r['detail']}")
-            blocked = [r for r in results if r["status"] != "pass"]
+            # `needs-deps` is disclosed on its own line and does NOT block:
+            # it means this environment cannot execute the check, not that the
+            # milestone failed. Every other non-pass still blocks.
+            blocked = [r for r in results
+                       if r["status"] not in ("pass", "needs-deps")]
+            deferred = [r for r in results if r["status"] == "needs-deps"]
+            if deferred:
+                print(f"\n{len(deferred)} check(s) deferred to the full-stack job: "
+                      + ", ".join(r["id"] for r in deferred))
             if blocked:
                 summary = ", ".join(f"{r['id']} ({r['status']})" for r in blocked)
                 print(f"\nVERIFICATION INCOMPLETE: {summary}", file=sys.stderr)

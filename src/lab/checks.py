@@ -4396,6 +4396,21 @@ def _grade(fn, reports: list[dict]) -> tuple[str, str]:
     for rep in reports:
         try:
             ok, detail = fn(rep)
+        except ModuleNotFoundError as exc:
+            # "This environment cannot run the check" is not "the milestone
+            # failed" — the same None-is-never-False discipline the cache-missing
+            # paths already use, extended to a missing dependency.
+            #
+            # CI runs verify TWICE on purpose: once in the lean `pipeline` job on
+            # stdlib alone, to prove the publish/verify machinery needs nothing
+            # heavy, and once in `physics` with the full stack. A02 folds a
+            # least-squares spectrum over 19k cadences and P01 enumerates
+            # self-avoiding walks; both genuinely need numerics, and neither can
+            # be graded by the lean job. Failing there would say the science is
+            # broken when what is missing is numpy. The physics job still grades
+            # them for real, so the gate moves rather than weakens.
+            return "needs-deps", (f"not gradable here: {exc.name} is absent — "
+                                  "this check is graded in the full-stack job")
         except Exception as exc:                # noqa: BLE001 — any crash must grade
             return "fail", f"checker crashed: {type(exc).__name__}: {exc}"
         if ok is not None:
