@@ -4025,6 +4025,91 @@ def check_k03(report: dict) -> tuple[bool | None, str]:
                     "left to the reported σ-distances")
 
 
+def check_p01(report: dict) -> tuple[bool | None, str]:
+    """Re-fold every reported conformation and re-prove every graded target.
+
+    Nothing in the receipt is taken on trust. Each conformation's coordinates
+    are re-validated as a self-avoiding walk and its energy recomputed from the
+    geometry, and each graded sequence's optimum is re-established by running
+    the enumeration again — so a receipt whose numbers were edited grades False
+    rather than passing on its own arithmetic.
+
+    Cheap by construction: the graded chains were chosen short enough that
+    proving them costs seconds, which is what makes re-proving them at grading
+    time affordable rather than ceremonial.
+    """
+    from . import hp_lattice as hp_mod
+
+    if report.get("experiment") != "P01-hp-lattice-folding":
+        return None, "not a P01 HP-lattice receipt"
+    graded = report.get("graded") or []
+    parity = report.get("parity_controls") or []
+    if not graded:
+        return None, "P01 receipt grades no sequence"
+
+    verdicts = []
+    for row in graded:
+        seq = str(row.get("sequence", ""))
+        # No numpy at this module's top level — the lean `pipeline` job installs
+        # only pytest, and checks.py must stay importable there. The lattice
+        # helpers take plain lists and do their own asarray.
+        coords = row.get("coords") or []
+        if not coords or not hp_mod.is_self_avoiding(coords):
+            return False, (f"P01 {seq}: the reported conformation is not a "
+                           "self-avoiding walk — beads overlap or the chain "
+                           "teleports")
+        is_h = hp_mod.parse_sequence(seq)
+        e_geom = hp_mod.energy(coords, is_h)
+        if e_geom != row.get("energy"):
+            return False, (f"P01 {seq}: reported E={row.get('energy')} but its own "
+                           f"coordinates give E={e_geom}")
+        proof = hp_mod.enumerate_ground_state(seq)
+        if proof["energy"] != row.get("enumerated"):
+            return False, (f"P01 {seq}: receipt claims the optimum is "
+                           f"{row.get('enumerated')}, re-enumeration proves "
+                           f"{proof['energy']}")
+        if e_geom != proof["energy"]:
+            return False, (f"P01 {seq}: search reached {e_geom}, the proven "
+                           f"optimum is {proof['energy']} — not a recovery")
+        # The shuffled sequence is a DIFFERENT sequence with its own ground
+        # state — it may legitimately fold lower, and clustering hydrophobics
+        # is exactly why. What must hold is that the search recovers whatever
+        # optimum it is handed, so that is what is graded.
+        shuffled = str(row.get("shuffled_sequence", ""))
+        if shuffled:
+            shuffle_proof = hp_mod.enumerate_ground_state(shuffled)
+            if row.get("shuffle_enumerated") != shuffle_proof["energy"]:
+                return False, (f"P01 shuffle {shuffled}: receipt claims optimum "
+                               f"{row.get('shuffle_enumerated')}, re-enumeration "
+                               f"proves {shuffle_proof['energy']}")
+            if row.get("shuffle_energy") != shuffle_proof["energy"]:
+                return False, (f"P01 shuffle {shuffled}: search reached "
+                               f"{row.get('shuffle_energy')} against a proven "
+                               f"{shuffle_proof['energy']} — the search fails on a "
+                               "sequence nobody designed")
+        verdicts.append(f"{seq} E*={e_geom} (shuffle {row.get('shuffle_energy')})")
+
+    for row in parity:
+        seq = str(row.get("sequence", ""))
+        is_h = hp_mod.parse_sequence(seq)
+        if any(bool(is_h[i]) and i % 2 for i in range(len(is_h))) and \
+           any(bool(is_h[i]) and i % 2 == 0 for i in range(len(is_h))):
+            return None, (f"P01 parity control {seq} has H beads on BOTH "
+                          "parities — it cannot control anything")
+        if row.get("energy") != 0 or row.get("enumerated") != 0:
+            return False, (f"P01 parity control {seq}: a bipartite lattice "
+                           "forbids any H-H contact here, so both the search and "
+                           f"the enumeration must return 0, not "
+                           f"{row.get('energy')}/{row.get('enumerated')}")
+
+    return True, (f"{len(graded)} HP sequences folded blind and every one recovered "
+                  f"the ground state exhaustive enumeration proves; "
+                  f"{len(parity)} bipartite-parity controls return exactly 0 as "
+                  f"geometry requires; every conformation re-validated as a "
+                  f"self-avoiding walk and re-scored from its own coordinates — "
+                  + "; ".join(verdicts))
+
+
 def check_a02(report: dict) -> tuple[bool | None, str]:
     """Re-derive every A02 period from the CACHED photometry and catalogue bytes.
 
@@ -4296,7 +4381,8 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "K04": check_k04,
           "C01": check_c01, "C05": check_c05,
           "A01": check_a01,
-    "A02": check_a02, "A03": check_a03, "A04": check_a04,
+    "A02": check_a02,
+    "P01": check_p01, "A03": check_a03, "A04": check_a04,
           "A05": check_a05, "A07": check_a07,
           "I01": check_i01, "CTRL": check_controls}
 

@@ -474,6 +474,15 @@
       "venue": "Zenodo"
     },
     {
+      "id": "P01",
+      "title": "Fold HP lattice sequences blind and recover ground states proven in-house.",
+      "status": "review",
+      "track": "misc",
+      "growth_form": "sprout",
+      "runner_available": true,
+      "result": "machine gate PASSED, awaiting human review."
+    },
+    {
       "id": "B01",
       "title": "Join a team and complete validated work units on Einstein@Home (continuous-gravitational-wave / pulsar search)",
       "status": "pending",
@@ -498,24 +507,24 @@
       "venue": "BOINC"
     }
   ],
-  "total": 39,
-  "last_run": "2026-08-24T07:24:13.773030+00:00",
+  "total": 40,
+  "last_run": "2026-08-24T12:08:31.261616+00:00",
   "runs": 60,
-  "temp_c": 85.4,
+  "temp_c": 89.4,
   "latest_report": {
     "date": "2026-08-24",
-    "milestone": "M12",
+    "milestone": "P01",
     "verdict": "verified",
-    "headline": "3D Edwards\u2013Anderson spin glass (L=[6, 8, 10, 12], 800 disorder realizations, parallel tempering): disorder-averaged Binder cumulant crossing at T_SG = 1.124 (benchmark 1.10 \u00b1 0.10) \u2014 crossing at T_SG\u22481.124 \u00b7 15858s",
+    "headline": null,
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-0324-m12.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-0808-p01.json",
     "machine": "linux-rocm",
-    "at": "2026-08-24T07:24:13.773030+00:00"
+    "at": "2026-08-24T12:08:31.261616+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-24T11:49:25.993980+00:00",
+  "updated": "2026-08-24T12:08:34.942583+00:00",
   "provenance": {
-    "code_sha": "de41ca9",
+    "code_sha": "f6971b9-dirty",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -524,6 +533,16 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-24",
+      "milestone": "P01",
+      "verdict": "verified",
+      "headline": null,
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-24-0808-p01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-0808-p01.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-24T12:08:31.261616+00:00"
+    },
     {
       "date": "2026-08-24",
       "milestone": "M12",
@@ -1523,11 +1542,11 @@
     }
   ],
   "turns": {
-    "count": 157,
-    "today": 2,
+    "count": 158,
+    "today": 3,
     "last_by_machine": {
       "windows-cuda": "2026-08-20T01:11:49.221742+00:00",
-      "linux-rocm": "2026-08-24T07:24:13.773030+00:00"
+      "linux-rocm": "2026-08-24T12:08:31.261616+00:00"
     },
     "expected_interval_h": 3
   },
