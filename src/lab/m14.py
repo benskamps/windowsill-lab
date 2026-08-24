@@ -72,6 +72,14 @@ class M14Result:
     energy_err_by_L: dict
     abs_mag_by_L: dict             # {L: [⟨|m|⟩(p)]} — the ferromagnetic order parameter
     binder_by_L: dict              # {L: [U(p)]} — magnetic Binder cumulant
+    # The two-sided equilibration bracket, added 2026-08-24 before the first
+    # large-L run. Each point is run twice — once relaxing UP from a random
+    # start, once relaxing DOWN from an ordered one — and the gap between them
+    # can only close when both have arrived. M14 previously had NO test on the
+    # order parameter at all; its only evidence was the energy, a one-body
+    # quantity that equilibrates far faster than m. Reported, not gated: a
+    # threshold would have to be invented, and at L=24/4k sweeps the bracket
+    # measures 4.8 sigma, so nobody yet knows what closure looks like here.
     energy_exact: list             # exact −2 tanh(1/T) at each point (identical across L)
     calibration_points: list       # [{p, T, energy, energy_err, energy_exact, abs_dev}] at gate_L
     max_energy_dev: float          # max_p |E_measured − E_exact| at gate_L — the headline
@@ -83,6 +91,8 @@ class M14Result:
     t_c_benchmark: float
     n_realizations: int
     wall_seconds: float
+    bracket_by_L: dict | None = None
+    bracket_sigma_by_L: dict | None = None
     config: dict = field(default_factory=dict)
 
 
@@ -154,9 +164,11 @@ def run_m14(
     energy_exact = [nishimori_energy_per_spin(T) for T in T_values]
 
     energy_by_L, energy_err_by_L, abs_mag_by_L, binder_by_L = {}, {}, {}, {}
+    bracket_by_L, bracket_sigma_by_L = {}, {}
     on_nl = True
     for li, L in enumerate(L_values):
         e_row, ee_row, m_row, u_row = [], [], [], []
+        b_row, bs_row = [], []
         for pi, p in enumerate(p_values):
             cfg = RandomBondConfig(
                 L=L, p=p, T=T_values[pi], n_realizations=n_realizations,
@@ -168,9 +180,13 @@ def run_m14(
             ee_row.append(r.energy_err)
             m_row.append(r.abs_mag)
             u_row.append(r.binder)
+            b_row.append(r.gauge_gap)
+            bs_row.append(r.gauge_gap_sigma)
             on_nl = on_nl and r.on_nishimori_line
             if progress is not None:
                 progress(L, p, r)
+        bracket_by_L[str(L)] = b_row
+        bracket_sigma_by_L[str(L)] = bs_row
         energy_by_L[str(L)] = e_row
         energy_err_by_L[str(L)] = ee_row
         abs_mag_by_L[str(L)] = m_row
@@ -203,6 +219,8 @@ def run_m14(
         p_values=p_values, T_values=T_values, L_values=L_values, gate_L=gate_L,
         energy_by_L=energy_by_L, energy_err_by_L=energy_err_by_L,
         abs_mag_by_L=abs_mag_by_L, binder_by_L=binder_by_L,
+        bracket_by_L=bracket_by_L,
+        bracket_sigma_by_L=bracket_sigma_by_L,
         energy_exact=energy_exact, calibration_points=calibration_points,
         max_energy_dev=max_dev, energy_resolved=energy_resolved, on_nishimori_line=on_nl,
         mnp_order_p_half=p_half, binder_crossing_p=crossing_p,

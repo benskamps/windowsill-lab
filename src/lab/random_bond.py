@@ -123,6 +123,10 @@ class RandomBondResult:
     m2: float              # disorder-averaged ⟨m²⟩
     m4: float              # disorder-averaged ⟨m⁴⟩
     binder: float          # magnetic Binder cumulant U = 1 − ⟨m⁴⟩/(3⟨m²⟩²)
+    mag_signed: float      # [⟨|m|⟩] approached from a RANDOM start (relaxes up)
+    overlap: float         # [⟨|m|⟩] approached from an ORDERED start (relaxes down)
+    gauge_gap: float       # the bracket width — 0 only when both have arrived
+    gauge_gap_sigma: float  # that width in units of its own combined SEM
     energy_exact_nl: float  # exact Nishimori-line energy per spin at this T
     on_nishimori_line: bool  # whether (p, T) sits on the line (within a tight tol)
     wall_seconds: float
@@ -181,21 +185,52 @@ def run(cfg: RandomBondConfig) -> RandomBondResult:
     Jx, Jy = _draw_bonds(R, L, cfg.p, cfg.J, g_bond, device)
     spins = (torch.randint(0, 2, (R, L, L), generator=g_init, device=device,
                            dtype=torch.int8) * 2 - 1)
+    # A SECOND REPLICA on the SAME quenched bonds, independently initialised and
+    # independently updated. It exists to make the run testable: on the Nishimori
+    # line the gauge identity [<m>] = [<q>] holds EXACTLY, at any L and any p, so
+    # the overlap between two replicas is an equilibration test that needs no
+    # tolerance from the literature — only the run's own error bar.
+    #
+    # M14 had no overlap at all (this module's own header said "no replicas"),
+    # which meant its only equilibration evidence was the energy — a one-body
+    # quantity that equilibrates far faster than the order parameter. A hero run
+    # producing p_c without this would produce a number nobody could defend.
+    g_step2 = torch.Generator(device=device).manual_seed(cfg.seed + 12)
+    # The second replica starts ORDERED while the first starts random: the
+    # classic two-sided equilibration bound. An ordered start relaxes DOWN
+    # toward equilibrium and a random start relaxes UP toward it, so the two
+    # bracket the truth and can only meet when both have arrived. Under-
+    # equilibrated, they are far apart and say so.
+    #
+    # The first thing I tried was Nishimori's gauge identity [<m>] = [<q>],
+    # which is exact on the line — and it is VACUOUS as an equilibration test
+    # here: signed m averaged over disorder is ~0 by Z2 symmetry, since each
+    # realization spontaneously picks +m or -m and they cancel. Both sides sat
+    # at zero whether the run was equilibrated or starved of burn-in. A guard
+    # that cannot fire is worse than no guard, so it was replaced rather than
+    # kept for decoration.
+    spins2 = torch.ones((R, L, L), device=device, dtype=torch.int8)
     mask_a, mask_b = _checkerboard_masks(L, R, device)
 
     t0 = time.time()
     for _ in range(cfg.n_burnin):
         spins = _half_sweep(spins, beta, Jx, Jy, mask_a, g_step)
         spins = _half_sweep(spins, beta, Jx, Jy, mask_b, g_step)
+        spins2 = _half_sweep(spins2, beta, Jx, Jy, mask_a, g_step2)
+        spins2 = _half_sweep(spins2, beta, Jx, Jy, mask_b, g_step2)
 
     e_acc = torch.zeros(R, device=device)      # per-realization energy/spin sum
     m2_acc = torch.zeros(R, device=device)
     m4_acc = torch.zeros(R, device=device)
     mabs_acc = torch.zeros(R, device=device)
+    m_acc = torch.zeros(R, device=device)          # SIGNED m, for the gauge identity
+    q_acc = torch.zeros(R, device=device)          # two-replica overlap
     n_samp = 0
     for s in range(cfg.n_sweeps):
         spins = _half_sweep(spins, beta, Jx, Jy, mask_a, g_step)
         spins = _half_sweep(spins, beta, Jx, Jy, mask_b, g_step)
+        spins2 = _half_sweep(spins2, beta, Jx, Jy, mask_a, g_step2)
+        spins2 = _half_sweep(spins2, beta, Jx, Jy, mask_b, g_step2)
         if s % cfg.sample_every == 0:
             sv = spins.float()
             field = _weighted_neighbor_sum(spins, Jx, Jy).float()
@@ -206,6 +241,8 @@ def run(cfg: RandomBondConfig) -> RandomBondResult:
             m2_acc += m * m
             m4_acc += m ** 4
             mabs_acc += m.abs()
+            m_acc += m.abs()                                   # random start
+            q_acc += spins2.float().mean(dim=(-1, -2)).abs()   # ordered start
             n_samp += 1
     wall = time.time() - t0
 
@@ -213,12 +250,22 @@ def run(cfg: RandomBondConfig) -> RandomBondResult:
     m2_per = (m2_acc / n_samp).cpu().numpy()
     m4_per = (m4_acc / n_samp).cpu().numpy()
     mabs_per = (mabs_acc / n_samp).cpu().numpy()
+    m_per = (m_acc / n_samp).cpu().numpy()
+    q_per = (q_acc / n_samp).cpu().numpy()
 
     energy = float(np.mean(e_per))
     energy_err = float(np.std(e_per) / math.sqrt(R))
     m2 = float(np.mean(m2_per))
     m4 = float(np.mean(m4_per))
     abs_mag = float(np.mean(mabs_per))
+    # Nishimori's gauge identity: on the line, [<m>] = [<q>] exactly. The gap is
+    # measured against the combined SEM, so "equilibrated" is decided by this
+    # run's own statistics rather than by a threshold somebody chose.
+    mag_signed = float(np.mean(m_per))      # [<|m|>] approached from disorder
+    overlap = float(np.mean(q_per))         # [<|m|>] approached from order
+    gap = abs(mag_signed - overlap)
+    gap_err = float(math.sqrt(np.var(m_per) / R + np.var(q_per) / R))
+    gap_sigma = float(gap / gap_err) if gap_err > 0 else float("inf")
     # Magnetic Binder cumulant from the disorder-averaged moments. U → 2/3 in the
     # ordered (ferro) phase, → 0 in the disordered phase; the L-crossing marks the MNP.
     binder = float(1.0 - m4 / (3.0 * m2 ** 2)) if m2 > 0 else 0.0
@@ -231,6 +278,8 @@ def run(cfg: RandomBondConfig) -> RandomBondResult:
         config=cfg, p=cfg.p, T=cfg.T,
         energy=energy, energy_err=energy_err,
         abs_mag=abs_mag, m2=m2, m4=m4, binder=binder,
+        mag_signed=mag_signed, overlap=overlap,
+        gauge_gap=gap, gauge_gap_sigma=gap_sigma,
         energy_exact_nl=e_exact, on_nishimori_line=on_nl,
         wall_seconds=wall,
     )
