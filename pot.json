@@ -1576,7 +1576,7 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 10166,
+    "targets_searched": 10260,
     "above_threshold": 94,
     "dispositions": {
       "eclipsing-binary-secondary": 15,
