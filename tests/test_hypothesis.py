@@ -9,14 +9,16 @@ from __future__ import annotations
 import pytest
 
 from lab import h01_bbp_tail as h01
-from lab.hypothesis import (KILLED, SUPPORTED, UNRESOLVED, Finding, Hypothesis)
+from lab.hypothesis import (CALIBRATE, DISCOVER, KILLED, SUPPORTED, UNRESOLVED,
+                            Finding, Hypothesis)
 
 
 def _h(**over):
     base = dict(id="HXX", question="q?", why_unanswered="because",
                 observable="a number", kill_condition="if it disagrees",
                 cheapest_decisive="an afternoon",
-                why_this_might_be_nothing="it probably just agrees")
+                why_this_might_be_nothing="it probably just agrees",
+                stage=CALIBRATE)
     base.update(over)
     return Hypothesis(**base)
 
@@ -127,6 +129,37 @@ def test_a_shallow_run_reaches_a_verdict_end_to_end():
     assert finding.controls["0"]["exact_matches_machin"]
 
 
+def test_discovery_cannot_be_self_declared():
+    """The load-bearing rule of the gate. A runner may not simply announce that
+    it is doing discovery — it has to name a catalogued unknown, so the claim is
+    checkable against UNKNOWNS.md instead of asserted in its own docstring."""
+    with pytest.raises(ValueError) as caught:
+        _h(stage=DISCOVER)
+    assert "not self-declarable" in str(caught.value)
+
+
+def test_discovery_with_a_named_unknown_is_allowed():
+    assert _h(stage=DISCOVER, unknown_id="U-K02").stage == DISCOVER
+
+
+def test_an_invented_stage_is_refused():
+    with pytest.raises(ValueError):
+        _h(stage="frontier-ish")
+
+
+def test_the_report_says_which_side_of_the_gate_it_is_on():
+    """So `is this lab still only calibrating?` is a number, not a feeling."""
+    assert _h().to_json()["crosses_the_gate"] is False
+    assert _h(stage=DISCOVER, unknown_id="U-M01").to_json()["crosses_the_gate"] is True
+
+
+def test_h01_is_labelled_calibration_and_does_not_pretend_otherwise():
+    """H01 audits our own arithmetic against a second method. That is the
+    definition of the calibrate side, and a lab whose self-audits quietly count
+    as discovery has lost the ability to answer the only question about its aim."""
+    assert h01.HYPOTHESIS.stage == CALIBRATE
+
+
 def test_the_board_schema_and_the_dataclass_are_the_same_six_fields():
     """`lab frontier` has been asking proposals for six fields in prose. The
     dataclass now enforces them in code. If those two ever drift, the board is
@@ -134,5 +167,6 @@ def test_the_board_schema_and_the_dataclass_are_the_same_six_fields():
     pinned to each other here rather than by anybody remembering."""
     from dataclasses import fields
     from lab.frontier import HYPOTHESIS_SCHEMA
-    declared = {f.name for f in fields(Hypothesis)} - {"id", "track"}
+    declared = {f.name for f in fields(Hypothesis)} - {"id", "track", "stage",
+                                                       "unknown_id"}
     assert declared == set(HYPOTHESIS_SCHEMA)

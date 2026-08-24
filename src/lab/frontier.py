@@ -197,9 +197,22 @@ def board(milestones=None, tracks_text=None) -> dict:
     tracks = parse_tracks(tracks_text)
     review = steward(milestones, tracks)
     candidates = harvest(milestones)
+    # The gate ratio rides on the board that is already read, rather than
+    # standing up a competing surface. It is the one number that answers "is
+    # this lab still only calibrating?" without an argument, and it belongs
+    # next to the rung counts it contextualises: forty verified rungs mean
+    # something different if none of them face an unknown.
+    from . import unknowns as _U
+    catalogue = _U.load()
+    gate = _U.gate_ratio(catalogue)
+    nxt = _U.next_to_test(catalogue)
     return {
         "tracks": review,
         "candidates": candidates,
+        "gate": gate,
+        "next_reach_test": nxt.id if nxt else None,
+        "tracks_without_an_unknown": sorted(
+            {t for t in tracks} - {u.track for u in catalogue} - {"B"}),
         "totals": {
             "tracks": len(review),
             "tracks_without_a_goal": sum(1 for t in review if t["charter_missing"]),
@@ -207,6 +220,8 @@ def board(milestones=None, tracks_text=None) -> dict:
             "awaiting_review": sum(len(t["awaiting_review"]) for t in review),
             "unrunnable": sum(len(t["no_runner"]) for t in review),
             "candidates": len(candidates),
+            "unknowns": gate["total"],
+            "across_the_gate": gate["field"],
         },
         "schema": list(HYPOTHESIS_SCHEMA),
     }

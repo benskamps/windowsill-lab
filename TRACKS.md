@@ -57,3 +57,22 @@
 **Goal.** Contribute compute to somebody else's science, and be clear that this is participation rather than measurement.
 
 **Arrived when.** Validated work units are credited and archived. **This track can never earn a green leaf the way the others do** — its deliverable is a credit record from a pipeline this lab does not run, so there is no observable here to re-derive and no checker that could. That is a fact about the track, not a failure of it.
+
+---
+
+## Unknowns
+
+Each track's destination above says what it is for. `UNKNOWNS.md` says what it
+does **not know** — and, for each, the cheap feasibility test that decides
+whether this box can reach it at all.
+
+Added 2026-08-24. Until then the estate had a ladder and a summit and no map of
+the dark, which meant a track that had stopped asking questions looked identical
+to a healthy one on every surface. The gate ratio — what fraction of live
+unknowns are unknown to the *field* rather than merely to us — now rides on the
+`lab frontier` board, where the rung counts are, because forty verified rungs
+mean something different if none of them face an unknown.
+
+**Track B has no unknown and never will.** Its deliverable is a credit record
+from a pipeline this lab does not run; there is nothing here it could fail to
+know. That is a fact about the track, not a gap in it.
