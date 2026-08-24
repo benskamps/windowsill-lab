@@ -417,3 +417,72 @@ def test_run_m12_integration_tiny():
     assert all(h == "ok" for h in result.pt_health_by_L.values())
     rep = to_report(result)
     assert rep["experiment"] == "M12-spin-glass-3d"
+
+
+# ── ξ_L/L — the second estimator, added 2026-08-23 ───────────────────────────
+#
+# M12 has nulled twice on the Binder crossing. On identical configurations
+# (L=6 vs L=10, 6k+6k sweeps, 200 realizations) the two estimators disagree by
+# a lot: ξ/L crosses at 1.199 and Binder at 1.288, against a 1.102 benchmark.
+# That gap is the finite-size correction the literature avoids by using ξ/L,
+# and it is why the 2026-07-22 GPU run's 1.244 is consistent with a biased
+# observable rather than only a broken swap ladder. Reported, never graded:
+# the milestone declared the Binder crossing, and moving a bar after seeing
+# the data is not a gate.
+
+import pytest
+
+from lab.spin_glass3d import (_k_phases, overlap_susceptibilities,
+                              xi_second_moment)
+
+
+def test_a_fully_correlated_box_puts_everything_at_k_zero():
+    """Planted limit: q_i ≡ 1 has all its weight in the k=0 mode, so χ(0) is
+    exactly N and the minimal mode is empty."""
+    L = 8
+    chi0, chik = overlap_susceptibilities(torch.ones((1, 1, L, L, L)), L)
+    assert chi0.item() == pytest.approx(L ** 3)
+    assert chik.item() < 1e-9
+
+
+def test_an_uncorrelated_field_has_no_correlation_length():
+    """The other planted limit: white noise spreads evenly across modes, so
+    χ(0)/χ(k) is O(1) and ξ collapses toward zero."""
+    L = 8
+    g = torch.Generator().manual_seed(0)
+    field = torch.randint(0, 2, (1, 1, L, L, L), generator=g).float() * 2 - 1
+    chi0, chik = overlap_susceptibilities(field, L)
+    assert (xi_second_moment(chi0, chik, L) / L).item() < 0.3
+
+
+def test_a_negative_ratio_is_zero_not_a_nan():
+    """Above the transition the ratio can dip below 1 on finite statistics. A
+    negative correlation length is a noise excursion, and √(negative) would
+    poison the whole temperature ladder with NaN."""
+    xi = xi_second_moment(torch.tensor([0.5]), torch.tensor([1.0]), 8)
+    assert xi.item() == 0.0
+
+
+def test_the_three_axis_phases_are_shaped_to_broadcast():
+    phases = _k_phases(6, torch.device("cpu"), torch.float32)
+    assert [tuple(c.shape) for _a, c, _s in phases] == [(6, 1, 1), (1, 6, 1), (1, 1, 6)]
+    assert _k_phases(6, torch.device("cpu"), torch.float32) is phases, "cached"
+
+
+def test_the_report_carries_both_estimators_and_grades_only_one():
+    """The receipt must show ξ/L beside the Binder crossing so a reviewer can
+    see the disagreement — while `resolved` still keys on the declared gate."""
+    result = M12Result(
+        T=[1.0, 1.1], L_values=[6, 8], q_bin_centers=[0.0], pq_ref=[[1.0]],
+        pq_ref_L=8, binder_by_L={6: [0.8, 0.7], 8: [0.81, 0.69]},
+        q2_by_L={}, q4_by_L={}, q_mean_by_L={}, energy_by_L={}, swap_rate_by_L={},
+        crossing_T=1.29, crossing_pairs=[], crossing_mean_T=1.29,
+        t_sg_benchmark=T_SG_BENCHMARK, tolerance=CROSSING_TOL,
+        crossing_resolved=False, max_abs_q_mean=0.01, n_realizations=8,
+        wall_seconds=1.0, config={},
+        xi_crossing_T=1.20, xi_over_L_by_L={6: [0.6, 0.5], 8: [0.62, 0.49]},
+    )
+    report = to_report(result)
+    assert report["crossing_T"] == 1.29
+    assert report["xi_crossing_T"] == 1.20
+    assert "6" in report["xi_over_L_by_L"]
