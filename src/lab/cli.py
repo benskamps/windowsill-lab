@@ -2507,6 +2507,71 @@ def main(argv=None):
             print(f"  (snapshot skipped: {e})")
         return 0
 
+    if cmd == "deep":
+        from . import deep as deep_mod
+        if "--queue" in args:
+            for i, job in enumerate(deep_mod.read_queue(), 1):
+                print(f"  {i}. {job}")
+            if not deep_mod.read_queue():
+                print("  (empty — the deep lane will report the vacuum, not invent work)")
+            return 0
+        print(f"deep lane · unit of work is a NIGHT, not a slot · queue "
+              f"{deep_mod.QUEUE}")
+        verdict = deep_mod.run_next()
+        print(f"  → {verdict['outcome']}: {verdict['detail']}")
+        return 0 if verdict["outcome"] in ("ok", "idle") else 1
+
+    if cmd == "frontier":
+        import textwrap as _tw
+        from . import frontier as frontier_mod
+        b = frontier_mod.board()
+        tot = b["totals"]
+        print("── the frontier board ─────────────────────────────────────────")
+        print(f"  {tot['milestones']} rungs across {tot['tracks']} tracks · "
+              f"{tot['awaiting_review']} awaiting review · "
+              f"{tot['unrunnable']} pending with NO RUNNER · "
+              f"{tot['candidates']} harvested questions")
+        if tot["tracks_without_a_goal"]:
+            print(f"  ⚠ {tot['tracks_without_a_goal']} track(s) have no declared goal "
+                  f"— a ladder without a summit is a to-do list")
+        for t_ in b["tracks"]:
+            print()
+            print(f"  Track {t_['track']} · {t_['name']}")
+            if t_["goal"]:
+                for line in _tw.wrap(t_["goal"], 74):
+                    print(f"      {line}")
+            else:
+                print("      *** NO GOAL DECLARED ***")
+            state = " ".join(f"{k}={v}" for k, v in sorted(t_["counts"].items()))
+            print(f"      {t_['total']} rungs · {state}")
+            if t_["open"]:
+                print(f"      on the bench: {t_['open']}")
+            if t_["awaiting_review"]:
+                print(f"      awaiting your review: {', '.join(t_['awaiting_review'])}")
+            if t_["nulls"]:
+                print(f"      standing nulls: {', '.join(t_['nulls'])}")
+            if t_["no_runner"]:
+                print(f"      BLOCKED — no runner, the scheduler walks past these "
+                      f"forever: {', '.join(t_['no_runner'])}")
+            if not t_["open"] and not t_["no_runner"] and \
+                    set(t_["counts"]) <= {"verified"}:
+                print("      ARRIVED? every rung verified and nothing open — "
+                      "declare it finished or give it a new question")
+        print()
+        print("── questions this lab already admitted it cannot answer ───────")
+        print("   harvested from the ladder's own prose — nothing here is invented")
+        for c in b["candidates"]:
+            print()
+            print(f"  {c['milestone']} ({c['status']}) — {c['meaning']}")
+            for line in _tw.wrap(c["sentence"], 72)[:4]:
+                print(f"      {line}")
+        print()
+        print(f"  A candidate becomes a rung only with all of: "
+              f"{', '.join(b['schema'])}.")
+        print("  The kill condition is not optional — an idea that cannot say what")
+        print("  would refute it is not a hypothesis.")
+        return 0
+
     if cmd == "p01":
         from . import p01
         from . import render as render_mod
