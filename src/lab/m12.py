@@ -138,6 +138,13 @@ class M12Result:
     config: dict
     # PT scheduling receipts (per L, str keys like the other by_L dicts): the raw
     # attempt counters and the engine's own health verdict derived from them.
+    # The second, independent estimator: ξ_L/L, whose crossing the modern
+    # literature uses precisely because its finite-size corrections are far
+    # smaller than the Binder cumulant's. Reported alongside, never instead —
+    # the graded signature stays the one the milestone declared.
+    xi_over_L_by_L: dict = field(default_factory=dict)
+    xi_crossing_T: float | None = None
+    xi_pairs: list = field(default_factory=list)
     swap_attempts_by_L: dict = field(default_factory=dict)
     pt_health_by_L: dict = field(default_factory=dict)
 
@@ -173,6 +180,7 @@ def run_m12(
     L_values = [int(L) for L in L_values]
     T_ref = None
     binder_by_L, q2_by_L, q4_by_L, qmean_by_L = {}, {}, {}, {}
+    xi_over_L_by_L = {}
     energy_by_L, swap_by_L, attempts_by_L, pt_by_L = {}, {}, {}, {}
     pq_ref, centers, pq_ref_L = None, None, None
     max_abs_qmean = 0.0
@@ -187,6 +195,7 @@ def run_m12(
         if T_ref is None:
             T_ref = r.T.tolist()
         binder_by_L[L] = r.binder.tolist()
+        xi_over_L_by_L[L] = (r.xi / L).tolist()
         q2_by_L[L] = r.q2_mean.tolist()
         q4_by_L[L] = r.q4_mean.tolist()
         qmean_by_L[L] = r.q_mean.tolist()
@@ -201,6 +210,7 @@ def run_m12(
             progress(L, r)
 
     crossing_T, pairs, mean_T = locate_tsg(T_ref, binder_by_L)
+    xi_crossing_T, xi_pairs, _xi_mean = locate_tsg(T_ref, xi_over_L_by_L)
     near = crossing_T is not None and abs(crossing_T - T_SG_BENCHMARK) <= CROSSING_TOL
     symmetric = max_abs_qmean <= 0.15
     # A ladder with never-swapped gaps is fragmented — whatever crossing it shows is
@@ -209,6 +219,9 @@ def run_m12(
     resolved = bool(near and symmetric and pt_ok)
 
     result = M12Result(
+        xi_over_L_by_L=xi_over_L_by_L,
+        xi_crossing_T=xi_crossing_T,
+        xi_pairs=xi_pairs,
         T=T_ref,
         L_values=L_values,
         q_bin_centers=centers,
@@ -295,6 +308,12 @@ def to_report(result: M12Result) -> dict:
         "pq_ref": result.pq_ref,
         "pq_ref_L": result.pq_ref_L,
         "crossing_T": result.crossing_T,
+        # Reported, not graded: the milestone declared the Binder crossing as its
+        # signature, and changing the gate mid-flight would be grading against a
+        # bar moved after seeing the data.
+        "xi_crossing_T": result.xi_crossing_T,
+        "xi_over_L_by_L": {str(k): v for k, v in result.xi_over_L_by_L.items()},
+        "xi_pairs": result.xi_pairs,
         "crossing_pairs": result.crossing_pairs,
         "crossing_mean_T": result.crossing_mean_T,
         "t_sg_benchmark": result.t_sg_benchmark,

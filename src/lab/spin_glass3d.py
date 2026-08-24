@@ -76,6 +76,7 @@ parallel-tempered sibling of ``spin_glass.py`` (2D, single-spin Metropolis).
 """
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass, asdict
 
@@ -114,6 +115,9 @@ class SpinGlass3DResult:
     q_abs_mean: np.ndarray         # [⟨|q|⟩] disorder-averaged, (n_temps,)
     q_mean: np.ndarray             # [⟨q⟩] disorder-averaged, (n_temps,) — ≈0 by symmetry
     binder: np.ndarray             # g_L = ½(3 − [⟨q⁴⟩]/[⟨q²⟩]²), (n_temps,)
+    xi: np.ndarray                 # second-moment correlation length ξ_L, (n_temps,)
+    chi_sg0: np.ndarray            # [χ_SG(0)] disorder-averaged, (n_temps,)
+    chi_sgk: np.ndarray            # [χ_SG(2π/L)] disorder-averaged, (n_temps,)
     energy: np.ndarray             # mean energy per spin, (n_temps,)
     swap_rate: np.ndarray          # PT acceptance per adjacent T-gap, (n_temps-1,)
     swap_attempts: np.ndarray      # PT rounds attempted per adjacent T-gap, (n_temps-1,)
@@ -133,6 +137,9 @@ class SpinGlass3DResult:
             "q_mean": self.q_mean.tolist(),
             "binder": self.binder.tolist(),
             "energy": self.energy.tolist(),
+            "xi": self.xi.tolist(),
+            "chi_sg0": self.chi_sg0.tolist(),
+            "chi_sgk": self.chi_sgk.tolist(),
             "swap_rate": self.swap_rate.tolist(),
             "swap_attempts": self.swap_attempts.tolist(),
             "pt_health": self.pt_health,
@@ -207,6 +214,63 @@ def _total_energy_3d(spins, Jx, Jy, Jz):
     """
     field = _weighted_neighbor_sum_3d(spins, Jx, Jy, Jz)
     return -0.5 * (spins.float() * field.float()).sum(dim=(-1, -2, -3))
+
+
+
+_K_PHASE_CACHE: dict = {}
+
+
+def _k_phases(L: int, device, dtype):
+    """cos/sin of k·r for the three minimal wavevectors k = (2π/L)·ê, shaped to
+    broadcast over ``(R, M, L, L, L)``.
+
+    The lowest non-zero mode a periodic box supports is 2π/L, and it is the one
+    the second-moment correlation length is defined against. Cached because the
+    phases depend only on the geometry, never on the configuration.
+    """
+    key = (L, str(device), str(dtype))
+    hit = _K_PHASE_CACHE.get(key)
+    if hit is not None:
+        return hit
+    x = torch.arange(L, device=device, dtype=dtype)
+    ang = 2.0 * math.pi * x / L
+    out = []
+    for axis in range(3):
+        shape = [1, 1, 1]
+        shape[axis] = L
+        out.append((axis, torch.cos(ang).reshape(shape), torch.sin(ang).reshape(shape)))
+    _K_PHASE_CACHE[key] = out
+    return out
+
+
+
+def overlap_susceptibilities(qfield, L: int):
+    """``(χ_SG(0), χ_SG(2π/L))`` from a local overlap field, both per ``(R, M)``.
+
+    ``qfield`` is ``q_i = s_i^α s_i^β`` shaped ``(R, M, L, L, L)``. χ(k) is
+    ``|Σ_i q_i e^{i k·r_i}|² / N``, averaged over the three equivalent axis
+    directions of the minimal wavevector.
+    """
+    N = L ** 3
+    q = qfield.mean(dim=(-1, -2, -3))
+    chi0 = (q * q) * N
+    chik = torch.zeros_like(chi0)
+    for _axis, cosv, sinv in _k_phases(L, qfield.device, qfield.dtype):
+        re = (qfield * cosv).sum(dim=(-1, -2, -3))
+        im = (qfield * sinv).sum(dim=(-1, -2, -3))
+        chik += (re * re + im * im) / N
+    return chi0, chik / 3.0
+
+
+def xi_second_moment(chi0, chik, L: int):
+    """ξ_L = √(χ(0)/χ(k_min) − 1) / (2 sin(π/L)) — the second-moment length.
+
+    Clamped at zero because above the transition the ratio can dip below 1 on
+    finite statistics, and a negative correlation length is a noise excursion,
+    not a measurement.
+    """
+    ratio = (chi0 / chik.clamp_min(1e-12) - 1.0).clamp_min(0.0)
+    return torch.sqrt(ratio) / (2.0 * math.sin(math.pi / L))
 
 
 def _pt_swap_round(spins, energies, beta_ladder, parity, rng):
@@ -315,6 +379,8 @@ def run(cfg: SpinGlass3DConfig) -> SpinGlass3DResult:
     qabs_acc = torch.zeros(R, M, device=device)
     q_acc = torch.zeros(R, M, device=device)
     e_acc = torch.zeros(R, M, device=device)
+    chi0_acc = torch.zeros((cfg.n_realizations, M), device=device)
+    chik_acc = torch.zeros((cfg.n_realizations, M), device=device)
     swap_acc = torch.zeros(M - 1, device=device)
     swap_attempts = torch.zeros(M - 1, device=device)   # per-gap, for an honest rate
     n_samp = 0
@@ -329,8 +395,17 @@ def run(cfg: SpinGlass3DConfig) -> SpinGlass3DResult:
             n_swap_rounds += 1
         if s % cfg.sample_every == 0:
             sv = spins.float()                                 # (R, 2, M, L, L, L)
-            # Overlap between the two replicas of each (realization, temperature).
-            q = (sv[:, 0] * sv[:, 1]).mean(dim=(-1, -2, -3))    # (R, M) ∈ [-1, 1]
+            # The LOCAL overlap field q_i = s_i^α s_i^β, kept before it is averaged:
+            # its k=0 moment is the usual overlap, and its lowest non-zero Fourier
+            # mode is what the correlation length is built from.
+            qfield = sv[:, 0] * sv[:, 1]                        # (R, M, L, L, L)
+            q = qfield.mean(dim=(-1, -2, -3))                   # (R, M) ∈ [-1, 1]
+            # χ_SG(k) = |Σ_i q_i e^{i k·r_i}|² / N, averaged over the three
+            # equivalent axis directions k = (2π/L)·ê. Real cos/sin sums rather
+            # than an FFT: one wavevector is wanted, not the whole spectrum.
+            c0, ck = overlap_susceptibilities(qfield, L)
+            chi0_acc += c0
+            chik_acc += ck
             q2_acc += q * q
             q4_acc += q ** 4
             qabs_acc += q.abs()
@@ -366,6 +441,13 @@ def run(cfg: SpinGlass3DConfig) -> SpinGlass3DResult:
     pq_density = pq_hist / (pq_hist.sum(dim=2, keepdim=True).clamp_min(1.0) * bin_w)
     pq_mean = pq_density.mean(dim=0)                            # (M, n_qbins)
 
+    # ξ_L from the DISORDER-AVERAGED susceptibilities, never from a ratio of
+    # per-realization ratios: [χ(0)]/[χ(k)] is the estimator the literature uses,
+    # and averaging ratios instead would bias it by Jensen's inequality.
+    chi0_mean = (chi0_acc / n_samp).mean(dim=0)                 # (M,)
+    chik_mean = (chik_acc / n_samp).mean(dim=0)                 # (M,)
+    xi = xi_second_moment(chi0_mean, chik_mean, L)              # (M,)
+
     swap_rate = swap_acc / swap_attempts.clamp_min(1.0)        # (M-1,) per-gap acceptance
 
     # Self-alarm, derived from the attempt counters: a gap with ZERO attempted rounds
@@ -388,6 +470,9 @@ def run(cfg: SpinGlass3DConfig) -> SpinGlass3DResult:
         q_abs_mean=qabs_mean.cpu().numpy(),
         q_mean=q_mean.cpu().numpy(),
         binder=binder.cpu().numpy(),
+        xi=xi.cpu().numpy(),
+        chi_sg0=chi0_mean.cpu().numpy(),
+        chi_sgk=chik_mean.cpu().numpy(),
         energy=energy.cpu().numpy(),
         swap_rate=swap_rate.cpu().numpy(),
         swap_attempts=swap_attempts.cpu().numpy(),
