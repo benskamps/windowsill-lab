@@ -2582,6 +2582,37 @@ def main(argv=None):
         print("  would refute it is not a hypothesis.")
         return 0
 
+    if cmd == "h01":
+        from . import h01_bbp_tail as h01
+        from . import render as render_mod
+        import textwrap as _tw
+        h = h01.HYPOTHESIS
+        print(f"H01 · track {h.track} · hypothesis-first runner")
+        print(f"  asking: {h.question}")
+        print(f"  dies if: {h.kill_condition}")
+        deep = h01.c05.DEEP_POSITION      # --position audits a shallower window
+        if "--position" in args:
+            deep = int(args[args.index("--position") + 1])
+        finding = h01.run(deep_position=deep)
+        for pos, c in sorted(finding.controls.items(), key=lambda kv: int(kv[0])):
+            print(f"    control d={pos:<8} machin={c['machin']} exact={c['exact']} "
+                  f"float={c['float']} "
+                  f"{'ok' if c['exact_matches_machin'] else 'INSTRUMENT FAILED'}")
+        print(f"  → {finding.verdict.upper()} · {finding.wall_seconds:.0f}s")
+        for line in _tw.wrap(finding.detail, 72):
+            print(f"      {line}")
+        report = finding.to_report()
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        # A killed hypothesis is a successful run, so it must not exit nonzero:
+        # a lane that treats self-correction as a job failure will stop doing it.
+        return 0 if finding.decided else 1
+
     if cmd == "p01":
         from . import p01
         from . import render as render_mod
