@@ -1,0 +1,797 @@
+{
+  "claim_boundary": "Ground states of a coarse-grained lattice model, proven by exhaustive enumeration for the graded chains and searched blind. No claim about real protein structure is made or implied.",
+  "counts": {
+    "graded": 7,
+    "parity_controls": 2,
+    "recovered": 7,
+    "reported_only": 2
+  },
+  "experiment": "P01-hp-lattice-folding",
+  "generated_at": "2026-08-24T12:08:31.261616+00:00",
+  "graded": [
+    {
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          -1
+        ],
+        [
+          1,
+          -2
+        ],
+        [
+          0,
+          -2
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "energy": -4,
+      "enumerated": -4,
+      "length": 10,
+      "nodes_visited": 830,
+      "recovered": true,
+      "seed": 1000,
+      "sequence": "HPHPPHHPHH",
+      "shuffle_energy": -4,
+      "shuffle_enumerated": -4,
+      "shuffle_recovered": true,
+      "shuffled_sequence": "HPPHHPHPHH",
+      "swap_health": "ok",
+      "swap_rate_min": 0.606,
+      "sweeps": 20000
+    },
+    {
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          -1,
+          2
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          -2,
+          1
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "energy": -4,
+      "enumerated": -4,
+      "length": 10,
+      "nodes_visited": 335,
+      "recovered": true,
+      "seed": 1001,
+      "sequence": "HHPPHPPHPH",
+      "shuffle_energy": -3,
+      "shuffle_enumerated": -3,
+      "shuffle_recovered": true,
+      "shuffled_sequence": "PHPPHHHPHP",
+      "swap_health": "ok",
+      "swap_rate_min": 0.584,
+      "sweeps": 20000
+    },
+    {
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          3
+        ],
+        [
+          0,
+          4
+        ],
+        [
+          -1,
+          4
+        ],
+        [
+          -1,
+          3
+        ],
+        [
+          -1,
+          2
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          -2,
+          1
+        ],
+        [
+          -2,
+          2
+        ]
+      ],
+      "energy": -2,
+      "enumerated": -2,
+      "length": 11,
+      "nodes_visited": 508,
+      "recovered": true,
+      "seed": 1002,
+      "sequence": "HHHPPPHHHPP",
+      "shuffle_energy": -3,
+      "shuffle_enumerated": -3,
+      "shuffle_recovered": true,
+      "shuffled_sequence": "PHHHPHPHHPP",
+      "swap_health": "ok",
+      "swap_rate_min": 0.698,
+      "sweeps": 20000
+    },
+    {
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          1,
+          -1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          -1,
+          2
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          -2,
+          1
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "energy": -5,
+      "enumerated": -5,
+      "length": 12,
+      "nodes_visited": 917,
+      "recovered": true,
+      "seed": 1003,
+      "sequence": "HPPHPHHPHPPH",
+      "shuffle_energy": -4,
+      "shuffle_enumerated": -4,
+      "shuffle_recovered": true,
+      "shuffled_sequence": "HPPHHPHHPPHP",
+      "swap_health": "ok",
+      "swap_rate_min": 0.542,
+      "sweeps": 20000
+    },
+    {
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          2,
+          -1
+        ],
+        [
+          1,
+          -1
+        ],
+        [
+          1,
+          -2
+        ],
+        [
+          0,
+          -2
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          0
+        ]
+      ],
+      "energy": -5,
+      "enumerated": -5,
+      "length": 12,
+      "nodes_visited": 1226,
+      "recovered": true,
+      "seed": 1004,
+      "sequence": "HHPHPPHPPHPH",
+      "shuffle_energy": -3,
+      "shuffle_enumerated": -3,
+      "shuffle_recovered": true,
+      "shuffled_sequence": "HHHHPPPHHPPP",
+      "swap_health": "ok",
+      "swap_rate_min": 0.44,
+      "sweeps": 20000
+    },
+    {
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -2,
+          -1
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          -2
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          -1,
+          -3
+        ],
+        [
+          -2,
+          -3
+        ],
+        [
+          -2,
+          -2
+        ],
+        [
+          -3,
+          -2
+        ],
+        [
+          -4,
+          -2
+        ]
+      ],
+      "energy": -4,
+      "enumerated": -4,
+      "length": 13,
+      "nodes_visited": 1613,
+      "recovered": true,
+      "seed": 1005,
+      "sequence": "PHPHHPPHPHHPP",
+      "shuffle_energy": -4,
+      "shuffle_enumerated": -4,
+      "shuffle_recovered": true,
+      "shuffled_sequence": "HHPHPPPPPHHPH",
+      "swap_health": "ok",
+      "swap_rate_min": 0.558,
+      "sweeps": 20000
+    },
+    {
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          -2,
+          -2
+        ],
+        [
+          -2,
+          -1
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -2,
+          1
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          -1,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ]
+      ],
+      "energy": -4,
+      "enumerated": -4,
+      "length": 13,
+      "nodes_visited": 9592,
+      "recovered": true,
+      "seed": 1006,
+      "sequence": "HHPPHPHPHPPHH",
+      "shuffle_energy": -3,
+      "shuffle_enumerated": -3,
+      "shuffle_recovered": true,
+      "shuffled_sequence": "HHHHHPPPPPPHH",
+      "swap_health": "ok",
+      "swap_rate_min": 0.518,
+      "sweeps": 20000
+    }
+  ],
+  "milestone": "P01",
+  "model": "2D square-lattice HP (Dill); E = -(H-H contacts non-adjacent in chain)",
+  "parity_controls": [
+    {
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          4,
+          0
+        ],
+        [
+          5,
+          0
+        ],
+        [
+          6,
+          0
+        ],
+        [
+          7,
+          0
+        ],
+        [
+          8,
+          0
+        ],
+        [
+          9,
+          0
+        ]
+      ],
+      "energy": 0,
+      "enumerated": 0,
+      "length": 10,
+      "reason": "all H beads on one sequence parity — bipartite lattice forbids any H-H contact",
+      "sequence": "HPHPHPHPHP"
+    },
+    {
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          4,
+          0
+        ],
+        [
+          5,
+          0
+        ],
+        [
+          6,
+          0
+        ],
+        [
+          7,
+          0
+        ],
+        [
+          8,
+          0
+        ],
+        [
+          9,
+          0
+        ],
+        [
+          10,
+          0
+        ],
+        [
+          11,
+          0
+        ]
+      ],
+      "energy": 0,
+      "enumerated": 0,
+      "length": 12,
+      "reason": "all H beads on one sequence parity — bipartite lattice forbids any H-H contact",
+      "sequence": "HPHPHPHPHPHP"
+    }
+  ],
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.1",
+      "numpy": "2.5.1",
+      "torch": "2.10.0.dev20251031+rocm6.4"
+    },
+    "platform": "linux-x86_64",
+    "python": "3.14.4",
+    "source_clean": false,
+    "source_commit": "f6971b9b7461fd8c43bfb1406b0263da0de207a0",
+    "source_diff_sha256": "a1253809e75bc7888d2461f499907c23c9c08334ec8b47a87dece275adf862b3",
+    "source_tree_sha256": "c2b4742d61625f8de8e8e2286117a682271278dd97bc4300da570a29de8e7245"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "d9b7abba4f9033f228cdfa526d355fc12165e5fe45383eee3e12fdf09fbf18d4"
+  },
+  "report_schema_version": 1,
+  "reported": [
+    {
+      "claim": "best found — not proven optimal (enumeration out of reach)",
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          -1,
+          2
+        ],
+        [
+          0,
+          2
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          3,
+          2
+        ],
+        [
+          3,
+          1
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          1,
+          0
+        ],
+        [
+          1,
+          -1
+        ],
+        [
+          2,
+          -1
+        ],
+        [
+          2,
+          -2
+        ],
+        [
+          1,
+          -2
+        ],
+        [
+          0,
+          -2
+        ],
+        [
+          0,
+          -1
+        ]
+      ],
+      "energy": -9,
+      "length": 20,
+      "sequence": "HPHPPHHPHPPHPHHPPHPH",
+      "swap_health": "ok",
+      "sweeps": 60000
+    },
+    {
+      "claim": "best found — not proven optimal (enumeration out of reach)",
+      "coords": [
+        [
+          0,
+          0
+        ],
+        [
+          0,
+          -1
+        ],
+        [
+          0,
+          -2
+        ],
+        [
+          -1,
+          -2
+        ],
+        [
+          -1,
+          -1
+        ],
+        [
+          -2,
+          -1
+        ],
+        [
+          -2,
+          0
+        ],
+        [
+          -1,
+          0
+        ],
+        [
+          -1,
+          1
+        ],
+        [
+          0,
+          1
+        ],
+        [
+          1,
+          1
+        ],
+        [
+          1,
+          2
+        ],
+        [
+          1,
+          3
+        ],
+        [
+          2,
+          3
+        ],
+        [
+          2,
+          2
+        ],
+        [
+          2,
+          1
+        ],
+        [
+          2,
+          0
+        ],
+        [
+          3,
+          0
+        ],
+        [
+          3,
+          -1
+        ],
+        [
+          2,
+          -1
+        ],
+        [
+          2,
+          -2
+        ],
+        [
+          1,
+          -2
+        ],
+        [
+          1,
+          -1
+        ],
+        [
+          1,
+          0
+        ]
+      ],
+      "energy": -9,
+      "length": 24,
+      "sequence": "HHPPHPPHPPHPPHPPHPPHPPHH",
+      "swap_health": "ok",
+      "sweeps": 60000
+    }
+  ],
+  "reproduction": {
+    "regrade": "python -m lab.cli verify P01",
+    "rerun": "python -m lab.cli p01"
+  },
+  "schema": 1,
+  "wall_seconds": 133.20144033432007
+}

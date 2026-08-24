@@ -2507,6 +2507,43 @@ def main(argv=None):
             print(f"  (snapshot skipped: {e})")
         return 0
 
+    if cmd == "p01":
+        from . import p01
+        from . import render as render_mod
+        print(f"P01 HP lattice folding · {len(p01.GRADED)} sequences whose ground "
+              f"state is PROVEN by exhaustive enumeration, then searched blind · "
+              f"{len(p01.PARITY_CONTROLS)} bipartite-parity controls · "
+              f"replica exchange, {p01.N_REPLICAS} replicas")
+
+        def _row(kind, r):
+            if kind == "graded":
+                print(f"    {r['sequence']:<14} proven E* = {r['enumerated']:<3} "
+                      f"search found {r['energy']:<3} "
+                      f"{'RECOVERED' if r['recovered'] else 'MISSED'}"
+                      f"  · shuffle {r['shuffled_sequence']} E* = "
+                      f"{r['shuffle_enumerated']:<3} "
+                      f"{'ok' if r['shuffle_recovered'] else 'MISSED'}")
+            elif kind == "parity":
+                print(f"    {r['sequence']:<14} parity control · enumeration "
+                      f"{r['enumerated']}, search {r['energy']} (geometry forbids any contact)")
+            else:
+                print(f"    {r['sequence']:<26} best found {r['energy']} — not proven optimal")
+
+        result = p01.run_p01(progress=_row)
+        report = p01.to_report(result)
+        c = report["counts"]
+        print(f"  → {c['recovered']}/{c['graded']} ground states recovered blind, "
+              f"{c['parity_controls']} parity controls exact · "
+              f"{'PASS' if result.passed else '[~] null'} · {result.wall_seconds:.0f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
     if cmd == "a02":
         from . import a02
         from . import render as render_mod
