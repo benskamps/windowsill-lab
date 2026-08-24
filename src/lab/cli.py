@@ -2507,6 +2507,40 @@ def main(argv=None):
             print(f"  (snapshot skipped: {e})")
         return 0
 
+    if cmd == "a02":
+        from . import a02
+        from . import render as render_mod
+        print(f"A02 variable-star recovery · {len(a02.TARGETS)} known variables, "
+              f"resolved from NAME · dominant frequency measured blind over "
+              f"{a02.F_LO_CPD}-{a02.F_HI_CPD} c/d · AAVSO VSX read only at grading")
+
+        def _row(r):
+            if r.get("outcome") != "measured":
+                print(f"    {r['ident']:<10} {r.get('outcome')}"
+                      f"{' — ' + r['reason'] if r.get('reason') else ''}")
+                return
+            print(f"    {r['ident']:<10} TIC {r['tic']:>10} s{r['sector']:<3} "
+                  f"P = {r['period_days']:.6f} d  vs {r['published_period_days']:.6f} "
+                  f"(rel {r['rel_error']:.1e}, {r['resolution_beat_factor']:.0f}x inside "
+                  f"resolution, control x{r['control_margin']:.0f})"
+                  + (f"  [{r['harmonic']}]" if r.get("harmonic") else "")
+                  + ("  [Blazhko-modulated]" if r.get("blazhko") else ""))
+
+        result = a02.run_a02(on_row=_row)
+        report = a02.to_report(result)
+        c = report["counts"]
+        print(f"  → {c['within_resolution']}/{c['measured']} recovered inside their own "
+              f"resolution element, {c['control_clear']}/{c['measured']} clear of the "
+              f"shuffled control · {'PASS' if result.passed else '[~] null'}")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
     if cmd == "a07":
         from . import a07
         from . import render as render_mod

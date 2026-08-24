@@ -48,6 +48,7 @@ RUNNERS = {
     "A01": "a01",
     "A03": "a03",
     "A04": "a04",
+    "A02": "a02",
     "A07": "a07",
     # A05's runner is the survey driver: a bounded, checkpointed, resumable
     # hunt slice (scripts/a05_hunt.py via `lab hunt`). Registered 2026-08-15 —
