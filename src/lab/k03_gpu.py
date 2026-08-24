@@ -199,3 +199,171 @@ def run(n=200_000, gamma=k03.GAMMA, eps_floor=0.005, eps_max=k03.EPS_MAX,
         "verdict": k03._verdict(fit_above, fit_below),   # the SAME adjudicator
         "wall_seconds": time.time() - t0,
     }
+
+
+# ── the h→0 estimator ────────────────────────────────────────────────────────
+#
+# The 2026-08-24 h-scan found that K03's single-ladder χ carries a saturation
+# bias of 11–33%, and — the part that matters — the bias SHRINKS with ε. A
+# systematic that varies across the fit range does not cancel in a power-law
+# fit; it tilts it. Every supercritical column of the deep run was affected,
+# which is why its γ = 1.064 is not a measurement.
+#
+# Linear response is defined in the limit h → 0, so the fix is to measure it
+# there rather than at one convenient h: walk a long ladder, fit χ over
+# progressively shorter sub-ladders, and extrapolate χ(h_top) to h_top = 0. For
+# a response with a leading cubic correction the single-ladder slope is biased
+# linearly in h_top, so the extrapolation is a straight line — which is exactly
+# what the scan observed.
+
+#: Shortest sub-ladder to fit. Below three points there is no secant spread to
+#: judge linearity by, and the fit becomes a two-point slope with no diagnostic.
+MIN_SUBLADDER = 3
+
+
+def _poly_fit(h, obs, order):
+    """Least-squares ``obs = a + b·h + … `` returning coefficients low-order first."""
+    V = np.vander(np.asarray(h, dtype=np.float64), order + 1, increasing=True)
+    coef, *_ = np.linalg.lstsq(V, np.asarray(obs, dtype=np.float64), rcond=None)
+    resid = obs - V @ coef
+    ss_res = float((resid ** 2).sum())
+    ss_tot = float(((obs - obs.mean()) ** 2).sum())
+    return coef, (1.0 - ss_res / ss_tot if ss_tot > 0 else 1.0)
+
+
+def chi_h0(h, obs, order: int = 4) -> dict:
+    """χ as the LINEAR coefficient of the response, measured where it is defined.
+
+    Linear response is a statement about the h → 0 limit, so the estimator must
+    separate the linear term from the curvature rather than average over it. The
+    direct way is to fit the response itself,
+
+        ⟨obs⟩(h) = a + b·h + c·h² + d·h³ + …
+
+    and report ``b``. The intercept ``a`` absorbs the h = 0 baseline (assay rule
+    #1); the higher terms absorb the saturation that biased K03's single-ladder
+    slope by 11–33%.
+
+    An earlier version of this function extrapolated *nested sub-ladder slopes*
+    to h_top = 0 instead. On a synthetic cubic response that estimator returned
+    49.1 for a true χ of 42 — it assumes the bias is linear in h_top, which
+    holds for a quadratic response and not a cubic one. The negative controls in
+    `test_k03_h0.py` exist because that defect was found by them and not by
+    reasoning.
+
+    Sufficiency is checked by ADDING a term, not by removing one. A response
+    with genuine cubic content will disagree with a quadratic fit — and the
+    cubic is the correct one there, so comparing those two would reject good
+    columns. The question is instead whether the cubic is *enough*: if a quartic
+    fit returns the same linear coefficient, the expansion has converged. If it
+    does not, the ladder reaches too far into the nonlinear regime to determine
+    b at all, and the column says so rather than picking the prettier number.
+    """
+    h = np.asarray(h, dtype=np.float64)
+    obs = np.asarray(obs, dtype=np.float64)
+    if h.size < order + 2:
+        return {"chi": None, "reason": f"ladder of {h.size} points cannot "
+                                       f"support an order-{order} fit"}
+    coef3, r2_3 = _poly_fit(h, obs, 3)
+    coef2, r2_2 = _poly_fit(h, obs, 2)
+    coef4, _ = _poly_fit(h, obs, 4)
+    chi3, chi2, chi4 = float(coef3[1]), float(coef2[1]), float(coef4[1])
+    single = k03._ols_line(h, obs)["slope"]      # what K03's estimator would say
+    disagreement = abs(chi4 - chi3) / abs(chi3) if chi3 else float("inf")
+    return {
+        "chi": chi3,
+        "chi_quadratic": chi2,
+        "chi_quartic": chi4,
+        "order_disagreement": disagreement,   # cubic vs quartic
+        "orders_agree": disagreement <= 0.05,
+        "curvature": float(coef3[2]),
+        "cubic_term": float(coef3[3]),
+        "fit_r2": r2_3,
+        "fit_r2_quadratic": r2_2,
+        "baseline": float(coef3[0]),
+        "single_ladder_chi": single,
+        "bias_fraction": (1.0 - single / chi3) if chi3 else None,
+        "reason": None,
+    }
+
+
+def run_h0(n=200_000, gamma=k03.GAMMA, eps_floor=0.005, eps_max=k03.EPS_MAX,
+           n_points=8, rungs=6, dt=k03.DT, seed=42, t_floor=2500.0,
+           device="cuda", progress=None) -> dict:
+    """Both branches, long ladders, χ measured where linear response is defined.
+
+    ``rungs``+1 field values per column instead of K03's four, because the
+    estimator needs a ladder to extrapolate along rather than a single slope.
+    """
+    from . import u_k02_reach as reach
+    t0 = time.time()
+    eps = np.geomspace(eps_floor, eps_max, n_points)
+    k_c = k03.critical_coupling(gamma)
+    below, above = [], []
+
+    for i, e in enumerate(eps):
+        e = float(e)
+        t_meas = max(t_floor, reach.required_t_measure(
+            e, ref_eps=0.02, ref_spread=0.400, ref_t=k03.T_MEASURE,
+            secant_tol=k03.SECANT_TOL, n_ratio=n / k03.N_OSCILLATORS))
+        if progress:
+            progress(i, len(eps), e, t_meas)
+        grid_K = np.array([k_c * (1.0 - e), k_c * (1.0 + e)])
+        pilot = measure_grid(
+            np.concatenate([grid_K, grid_K]),
+            np.concatenate([np.zeros(2), np.full(2, k03.PILOT_FIELD)]),
+            n=n, gamma=gamma, dt=dt, t_burn=k03.PILOT_T_BURN,
+            t_measure=k03.PILOT_T_MEASURE, seed=seed, device=device)
+        chi_p = np.abs(np.array([pilot["m_mean"][2], pilot["r_mean"][3]])
+                       - np.array([pilot["m_mean"][0], pilot["r_mean"][1]])
+                       ) / k03.PILOT_FIELD
+        h_max = np.clip(k03.TARGET_RESPONSE / np.maximum(chi_p, 1e-12),
+                        k03.H_MIN, k03.H_MAX)
+
+        fracs = np.arange(rungs + 1) / rungs
+        graded = measure_grid(np.tile(grid_K, rungs + 1),
+                              np.concatenate([h_max * f for f in fracs]),
+                              n=n, gamma=gamma, dt=dt,
+                              t_burn=t_meas * BURN_FRACTION, t_measure=t_meas,
+                              seed=seed, device=device)
+        H = np.concatenate([h_max * f for f in fracs])
+        for j, branch in ((0, "below"), (1, "above")):
+            rows = [j + k * 2 for k in range(rungs + 1)]
+            obs_key = "m_mean" if branch == "below" else "r_mean"
+            drift_key = "m_drift" if branch == "below" else "r_drift"
+            h_ladder = H[rows]
+            obs = np.asarray([graded[obs_key][r] for r in rows])
+            rec = chi_h0(h_ladder, obs)
+            rec.update({
+                "eps": e, "K": float(grid_K[j]), "branch": branch,
+                "h_ladder": h_ladder.tolist(), "obs": obs.tolist(),
+                "t_measure": float(t_meas),
+                "half_window_drift": float(np.max(np.abs(
+                    [graded[drift_key][r] for r in rows]))),
+                # A column is usable only if the ladder actually determines the
+                # linear coefficient: the response must be well described, and
+                # the quadratic and cubic fits must agree on b. If they do not,
+                # the curvature is eating the term we came to measure.
+                "ok": rec["chi"] is not None and rec["fit_r2"] > 0.999
+                      and rec["orders_agree"],
+            })
+            (below if branch == "below" else above).append(rec)
+
+    def _fit(cols):
+        ok = [c for c in cols if c["ok"]]
+        if len(ok) < k03.MIN_COLUMNS_PER_BRANCH:
+            return {"gamma": None, "err": None, "r2": None,
+                    "reason": f"only {len(ok)} column(s) usable "
+                              f"(need {k03.MIN_COLUMNS_PER_BRANCH})"}
+        return k03.branch_exponent([c["eps"] for c in ok], [c["chi"] for c in ok])
+
+    fit_below, fit_above = _fit(below), _fit(above)
+    return {
+        "experiment": "K03-h0-extrapolated", "milestone": "K03", "schema": 1,
+        "engine": "kuramoto_gpu", "estimator": "chi extrapolated to h=0",
+        "device": gpu.device_name(), "n_oscillators": n, "rungs": rungs,
+        "eps": eps.tolist(), "columns_below": below, "columns_above": above,
+        "fit_below": fit_below, "fit_above": fit_above,
+        "verdict": k03._verdict(fit_above, fit_below),
+        "wall_seconds": time.time() - t0,
+    }

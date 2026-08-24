@@ -113,6 +113,16 @@ catalogue of unknowns from a catalogue of wishes.
 
 **known to.** field
 
+> ⚠ **THIS ENTRY IS PROBABLY WRONG AND IS FLAGGED FOR RETIREMENT (2026-08-24).**
+> Borwein, Borwein & Galway, *"Finding and excluding b-ary Machin-type BBP
+> formulae"* (2004) is believed to have **excluded** base-10 Machin-type BBP
+> formulae for π. If that holds, this question is *closed*, not open, and the
+> entry must be retired — dropping the gate ratio from 57% to 50%. Recorded as a
+> belief needing a human literature check, which is exactly the failure this
+> file's own header warns about: drafted by a machine confident but not
+> authoritative about what the literature contains. **A catalogue that only ever
+> grows is a wish list.**
+
 **who would care.** Number theorists and the normality-of-π programme; a base-10 analogue would be a genuinely notable result and its impossibility proof more so.
 
 **feasibility test.** Not a simulation question — the cheap test is whether this lab can do anything beyond restating it. Search the space of known BBP-type formula families for base-10 candidates by the standard integer-relation approach and report the search bound reached. If the honest answer is "we can only restate the problem", this is a `us`-flavoured entry masquerading as a `field` one and should be demoted.
@@ -131,11 +141,17 @@ catalogue of unknowns from a catalogue of wishes.
 
 **who would care.** It is a small, real, checkable contribution — and it is the one place in this repo where the lab is already on the far side of the SETI gate rather than preparing to cross it.
 
-**feasibility test.** Already partly measured and the result is uncomfortable: the pooled placebo run rejects uniformity (n = 830, D = 0.0798 against a 0.0473 critical value, 3.6% of trials at the FAP floor against 0.39% expected). The feasibility question is therefore whether the false-alarm model is trustworthy enough to price a real detection — a detection from a mis-calibrated null is worth nothing.
+**feasibility test.** Pool every epoch-scramble ever run — a scrambled curve is by construction a draw from the null — and ask whether the promotion threshold can be *priced* rather than merely set.
 
-**if out of reach.** Fix the FAP floor artifact before any lead is promoted. A shelf with an honest empty is a better outcome than a lead priced by a null that does not hold.
+**if out of reach.** Quote only the model-free bound and treat the shelf as unpriceable until more scrambles exist. A shelf with an honest empty beats a lead priced by a null that does not hold.
 
 **importance.** 5
+
+**status.** charted
+
+**reach.** in-reach
+
+**reach evidence.** 1,400 null draws pooled from 58 hunts (2026-08-24); the largest ever reached SDE 7.00 against a promotion threshold of 8.0, so there are **zero exceedances**. An exponential tail fit extrapolates a per-curve FAP of 6.2e-5, stable to 6.1x across the fit cut, which over 9,985 real trials expects **0.61 false alarms across the entire survey** — a crossing would matter. The model-free bound (rule of three) is 2.1e-3, permitting up to 21, under which a crossing would prove nothing. **The price therefore rests entirely on a one-SDE extrapolation and is never quoted without that bound beside it.** ~325,000 pooled scrambles would replace the extrapolation with a measurement; scrambles reuse curves already on disk and are CPU work that does not compete with the GPU lane.
 
 ## U-I01 · track I
 
@@ -147,11 +163,17 @@ catalogue of unknowns from a catalogue of wishes.
 
 **who would care.** Only this lab — and that is stated plainly rather than dressed up. It does not cross the gate and must not be counted as if it did.
 
-**feasibility test.** Cap the sensor, take a dark run, and measure whether the hot-pixel population is stable enough between exposures to be subtracted. If hot pixels are not stable, no transient claim is possible at any exposure.
+**feasibility test.** Confirm an instrument exists before designing an experiment for it.
 
-**if out of reach.** Say so and close Track I at "noise characterised, detection not attempted" — which is a legitimate arrival by the track's own stated terms.
+**if out of reach.** Close Track I at "no instrument present", which is a legitimate arrival by the track's own stated terms.
 
 **importance.** 2
+
+**status.** charted
+
+**reach.** out-of-reach
+
+**reach evidence.** `ls /dev/video*` returns nothing — there is no camera on this box (2026-08-24). The unknown cannot be attempted at all, which was worth thirty seconds to establish rather than months to plan around.
 
 ## U-P01 · track P
 
@@ -163,8 +185,14 @@ catalogue of unknowns from a catalogue of wishes.
 
 **who would care.** Us first, since P01's honesty rule is that a proven optimum is never pooled with an unproven one, and that rule needs a measured boundary to sit on.
 
-**feasibility test.** Time the existing enumerator at increasing length until it exceeds one night, and record the length. The admissible-bound pruning already in `hp_lattice.py` makes this cheap to measure rather than estimate.
+**feasibility test.** Time the existing enumerator at increasing length until it exceeds one night, and record the length.
 
-**if out of reach.** Report the measured enumeration ceiling as the deliverable. Track P's goal already says the arrival condition is knowing where proving becomes impossible and saying so.
+**if out of reach.** Report the measured ceiling as the deliverable. Track P's goal already says the arrival condition is knowing where proving becomes impossible and saying so.
 
 **importance.** 3
+
+**status.** charted
+
+**reach.** in-reach
+
+**reach evidence.** Measured 2026-08-24, three random sequences per length: L=20 at 0.28 s/seq, L=24 at 7.5 s, **L=25 at 33 s**, L=26 exceeding 80 s (timed out) — clean exponential growth, as a self-avoiding walk count demands. So a graded set of ~10 sequences fits one night up to **L ≈ 26**, and a single hero sequence to **L ≈ 30**. Beyond that, proving stops and Track P's honesty rule takes over.
