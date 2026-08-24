@@ -2582,6 +2582,83 @@ def main(argv=None):
         print("  would refute it is not a hypothesis.")
         return 0
 
+    if cmd == "unknowns":
+        from . import unknowns as U
+        import textwrap as _tw
+        cat = U.load()
+        if not cat:
+            print("UNKNOWNS.md is empty or missing — the lab has not written "
+                  "down what it does not know.")
+            return 1
+
+        # --reach ID runs that unknown's feasibility test rather than the board.
+        if "--reach" in args:
+            uid = args[args.index("--reach") + 1].upper()
+            entry = next((u for u in cat if u.id == uid), None)
+            if entry is None:
+                print(f"no unknown {uid} in the catalogue")
+                return 1
+            if uid != "U-K01":
+                # Deliberately not a stub that prints "ok". An unwritten
+                # feasibility test must be visibly unwritten, or the catalogue
+                # will fill up with unknowns nobody ever tried to reach.
+                print(f"{uid} has no feasibility runner yet. Its declared test is:")
+                for line in _tw.wrap(entry.feasibility_test, 68):
+                    print(f"    {line}")
+                return 2
+            from . import u_k01_window
+            from pathlib import Path as _P
+            receipts = sorted(_P("reports/receipts").glob("*k03*.json"))
+            if not receipts:
+                print("no committed k03 receipt to test reach against")
+                return 1
+            r = u_k01_window.run(receipts[-1])
+            print(f"U-K01 reach test · {r['receipt']}")
+            for x in r["branches"]["above"]["local"]:
+                print(f"    eps {x['eps_lo']:.4f}→{x['eps_hi']:.4f}   "
+                      f"local gamma = {x['gamma_local']:.4f}")
+            print(f"  → {r['reach'].upper()}")
+            for line in _tw.wrap(r["detail"], 68):
+                print(f"      {line}")
+            return 0
+
+        ratio = U.gate_ratio(cat)
+        print(f"the catalogue of unknowns · {ratio['total']} live")
+        print(f"  across the SETI gate: {ratio['field']} field-unknown"
+              f"{'' if ratio['field'] == 1 else 's'} "
+              f"({ratio['ratio']:.0%}) · {ratio['us']} gap"
+              f"{'' if ratio['us'] == 1 else 's'} in us · "
+              f"{ratio['reach']} reach question"
+              f"{'' if ratio['reach'] == 1 else 's'}")
+        print(f"  reach: {ratio['in_reach']} in · {ratio['out_of_reach']} out · "
+              f"{ratio['untested']} untested   |   "
+              f"{ratio['charted']}/{ratio['total']} charted, the rest claimed")
+        print()
+        for u in sorted(cat, key=lambda u: (-u.importance, u.id)):
+            gate = "GATE" if u.crosses_the_gate else "    "
+            print(f"  {gate} {u.id} · track {u.track} · imp {u.importance} · "
+                  f"{u.known_to_whom} · reach={u.reach}")
+            for line in _tw.wrap(u.question, 66)[:3]:
+                print(f"         {line}")
+            if u.reach_evidence:
+                for line in _tw.wrap(f"measured: {u.reach_evidence}", 62)[:3]:
+                    print(f"           {line}")
+        nxt = U.next_to_test(cat)
+        print()
+        if nxt is None:
+            print("  every live unknown has had its reach measured — the next "
+                  "move is an attempt, not another feasibility test.")
+        else:
+            print(f"  heartbeat would test next: {nxt.id} (importance "
+                  f"{nxt.importance}, reach untested)")
+            for line in _tw.wrap(nxt.feasibility_test, 66):
+                print(f"      {line}")
+        print()
+        print("  Only a `field` unknown crosses the gate. A gap in us is "
+              "calibration —")
+        print("  often the right work, never the same thing.")
+        return 0
+
     if cmd == "h01":
         from . import h01_bbp_tail as h01
         from . import render as render_mod

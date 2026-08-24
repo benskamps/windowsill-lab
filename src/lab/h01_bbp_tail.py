@@ -16,12 +16,18 @@ from __future__ import annotations
 
 import time
 
-from .hypothesis import KILLED, SUPPORTED, UNRESOLVED, Finding, Hypothesis
+from .hypothesis import (CALIBRATE, KILLED, SUPPORTED, UNRESOLVED,
+                         Finding, Hypothesis)
 from . import c05
 
 HYPOTHESIS = Hypothesis(
     id="H01",
     track="C",
+    # An audit of our own arithmetic against a second method. This is exactly
+    # what the calibrate side of the gate IS, and saying so is the point of the
+    # field — a lab that lets its self-audits count as discovery has stopped
+    # being able to answer the only question that matters about its aim.
+    stage=CALIBRATE,
     question=("Does C05's deep BBP window at hex position 10^7 survive an "
               "independent exact-integer computation, or has float64's tail "
               "already corrupted digits the lab is reporting?"),

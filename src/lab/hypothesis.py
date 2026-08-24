@@ -34,6 +34,20 @@ KILLED = "killed"
 UNRESOLVED = "unresolved"
 VERDICTS = (SUPPORTED, KILLED, UNRESOLVED)
 
+#: Which side of the charter's SETI gate this runner sits on — the hinge where
+#: work stops reproducing an answer we already know and starts searching for one
+#: we don't. Every runner must declare it, because the alternative is what this
+#: lab did for months: five of seven tracks on the calibrate side by their own
+#: stated verbs, nobody counting, and no way to answer "is this lab still only
+#: calibrating?" with a number instead of a feeling.
+#:
+#: `DISCOVER` is not self-declarable. A runner claiming it must name the
+#: catalogued unknown it attacks, so the claim is checkable against `UNKNOWNS.md`
+#: rather than asserted in its own docstring.
+CALIBRATE = "calibrate"
+DISCOVER = "discover"
+STAGES = (CALIBRATE, DISCOVER)
+
 
 @dataclass(frozen=True)
 class Hypothesis:
@@ -46,7 +60,9 @@ class Hypothesis:
     kill_condition: str
     cheapest_decisive: str
     why_this_might_be_nothing: str
+    stage: str
     track: str = "?"
+    unknown_id: str = ""
 
     def __post_init__(self) -> None:
         missing = [f for f in ("id", "question", "why_unanswered", "observable",
@@ -59,6 +75,14 @@ class Hypothesis:
                 "a question that cannot say what would refute it is not a "
                 "hypothesis, and one whose proposer will not say how it might "
                 "be nothing has not been thought about")
+        if self.stage not in STAGES:
+            raise ValueError(f"{self.id}: stage must be one of {STAGES}")
+        if self.stage == DISCOVER and not self.unknown_id.strip():
+            raise ValueError(
+                f"{self.id} claims to cross the SETI gate but names no "
+                "catalogued unknown. Discovery is not self-declarable — cite "
+                "an id from UNKNOWNS.md so the claim can be checked rather "
+                "than believed")
 
     def to_json(self) -> dict:
         return {
@@ -67,6 +91,9 @@ class Hypothesis:
             "kill_condition": self.kill_condition,
             "cheapest_decisive": self.cheapest_decisive,
             "why_this_might_be_nothing": self.why_this_might_be_nothing,
+            "stage": self.stage,
+            "unknown_id": self.unknown_id,
+            "crosses_the_gate": self.stage == DISCOVER,
         }
 
 
