@@ -1399,8 +1399,10 @@ def main(argv=None):
             # it means this environment cannot execute the check, not that the
             # milestone failed. Every other non-pass still blocks.
             blocked = [r for r in results
-                       if r["status"] not in ("pass", "needs-deps")]
-            deferred = [r for r in results if r["status"] == "needs-deps"]
+                       if r["status"] not in ("pass", "needs-deps",
+                                              "needs-evidence")]
+            deferred = [r for r in results
+                        if r["status"] in ("needs-deps", "needs-evidence")]
             if deferred:
                 print(f"\n{len(deferred)} check(s) deferred to the full-stack job: "
                       + ", ".join(r["id"] for r in deferred))

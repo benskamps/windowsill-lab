@@ -177,11 +177,26 @@ def test_a_broken_pin_is_false_never_a_shrug(tmp_path, monkeypatch):
     assert ok is False and "does not match" in detail
 
 
-def test_a_missing_cache_is_none_not_a_failure(tmp_path, monkeypatch):
+def test_absent_evidence_is_its_own_verdict_not_a_failure(tmp_path, monkeypatch):
+    """The run's light curves live on the box that downloaded them. On a clean
+    checkout they are simply absent, and grading that as a failure would report
+    broken science when what is missing is a file. It is also NOT `no-report`,
+    which means a gap — this is a known, declared property of the milestone."""
+    import pytest as _pytest
+
     receipt, checks = _receipt(tmp_path, monkeypatch)
     receipt["targets"][0]["photometry"]["cache_file"] = "gone.fits"
-    ok, detail = checks.check_a02(receipt)
-    assert ok is None and "cannot re-derive" in detail
+    with _pytest.raises(checks.EvidenceNotHere) as caught:
+        checks.check_a02(receipt)
+    assert "is absent" in str(caught.value)
+
+
+def test_absent_evidence_grades_as_needs_evidence(tmp_path, monkeypatch):
+    receipt, checks = _receipt(tmp_path, monkeypatch)
+    receipt["targets"][0]["photometry"]["cache_file"] = "gone.fits"
+    status, detail = checks._grade(checks.check_a02, [receipt])
+    assert status == "needs-evidence"
+    assert "lives on the box that produced it" in detail
 
 
 def test_a_foreign_receipt_is_not_graded(tmp_path, monkeypatch):

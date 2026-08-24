@@ -4144,7 +4144,7 @@ def check_a02(report: dict) -> tuple[bool | None, str]:
         prov = vsx.get("provenance") or {}
         vsx_path = a02_mod.CACHE_DIR / str(prov.get("cache_file", ""))
         if not vsx_path.is_file():
-            return None, f"A02 VSX cache missing for {ident} — cannot re-derive"
+            raise EvidenceNotHere(f"the VSX cache for {ident} is absent")
         blob = vsx_path.read_bytes()
         if hashlib.sha256(blob).hexdigest() != prov.get("sha256"):
             return False, f"A02 VSX cache for {ident} does not match its receipt pin"
@@ -4155,8 +4155,9 @@ def check_a02(report: dict) -> tuple[bool | None, str]:
         phot = row.get("photometry") or {}
         fits_path = a01_mod.CACHE_DIR / str(phot.get("cache_file", ""))
         if not fits_path.is_file():
-            return None, (f"A02 photometry cache missing for {ident} "
-                          f"({phot.get('cache_file')}) — cannot re-derive")
+            raise EvidenceNotHere(
+                f"the cached light curve for {ident} ({phot.get('cache_file')}) "
+                "is absent")
         raw = fits_path.read_bytes()
         if hashlib.sha256(raw).hexdigest() != phot.get("sha256"):
             return False, f"A02 photometry for {ident} does not match its receipt pin"
@@ -4387,6 +4388,22 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "I01": check_i01, "CTRL": check_controls}
 
 
+class EvidenceNotHere(Exception):
+    """The run's evidence lives on the box that produced it.
+
+    Distinct from "no report" (a gap) and from "failed" (a verdict). A02's
+    checker re-derives six periods from the cached TESS light curves that run
+    downloaded; on a clean CI checkout those 11.6 MB are simply not present, and
+    grading that as a failure would report broken science when what is absent is
+    a file. The estate already treats a missing cache this way for A05 and A07 —
+    A02 is just the first milestone promoted to [x] where it is load-bearing.
+
+    Raising rather than returning None keeps the two cases apart: None means
+    "this report is not mine to grade", which must still fall through to the
+    next report.
+    """
+
+
 def _grade(fn, reports: list[dict]) -> tuple[str, str]:
     """Grade a milestone against the newest report its check can evaluate.
 
@@ -4396,6 +4413,9 @@ def _grade(fn, reports: list[dict]) -> tuple[str, str]:
     for rep in reports:
         try:
             ok, detail = fn(rep)
+        except EvidenceNotHere as exc:
+            return "needs-evidence", (f"not gradable here: {exc} — the run's "
+                                      "evidence lives on the box that produced it")
         except ModuleNotFoundError as exc:
             # "This environment cannot run the check" is not "the milestone
             # failed" — the same None-is-never-False discipline the cache-missing
