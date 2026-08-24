@@ -4142,9 +4142,9 @@ def check_a02(report: dict) -> tuple[bool | None, str]:
         # ── the catalogue half, re-read from its pinned bytes ──
         vsx = row.get("vsx") or {}
         prov = vsx.get("provenance") or {}
-        vsx_path = a02_mod.CACHE_DIR / str(prov.get("cache_file", ""))
-        if not vsx_path.is_file():
-            raise EvidenceNotHere(f"the VSX cache for {ident} is absent")
+        vsx_path = _evidence_path(str(prov.get("cache_file", "")), a02_mod.CACHE_DIR)
+        if vsx_path is None:
+            raise EvidenceNotHere(f"the VSX record for {ident} is absent")
         blob = vsx_path.read_bytes()
         if hashlib.sha256(blob).hexdigest() != prov.get("sha256"):
             return False, f"A02 VSX cache for {ident} does not match its receipt pin"
@@ -4153,11 +4153,10 @@ def check_a02(report: dict) -> tuple[bool | None, str]:
 
         # ── the photometry half, re-measured from the pinned FITS ──
         phot = row.get("photometry") or {}
-        fits_path = a01_mod.CACHE_DIR / str(phot.get("cache_file", ""))
-        if not fits_path.is_file():
+        fits_path = _evidence_path(str(phot.get("cache_file", "")), a01_mod.CACHE_DIR)
+        if fits_path is None:
             raise EvidenceNotHere(
-                f"the cached light curve for {ident} ({phot.get('cache_file')}) "
-                "is absent")
+                f"the light curve for {ident} ({phot.get('cache_file')}) is absent")
         raw = fits_path.read_bytes()
         if hashlib.sha256(raw).hexdigest() != phot.get("sha256"):
             return False, f"A02 photometry for {ident} does not match its receipt pin"
@@ -4386,6 +4385,29 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
     "P01": check_p01, "A03": check_a03, "A04": check_a04,
           "A05": check_a05, "A07": check_a07,
           "I01": check_i01, "CTRL": check_controls}
+
+
+def _evidence_path(name: str, *cache_dirs) -> "Path | None":
+    """Find a run's pinned bytes: the box's cache first, then the repo.
+
+    ``evidence/<milestone>/`` is the committed copy — the difference between a
+    milestone anyone can re-derive and one only the box that ran it can check.
+    The local cache is tried first purely for speed; both are byte-identical or
+    the SHA-256 pin fails, which is the point.
+    """
+    from pathlib import Path as _P
+    for base in cache_dirs:
+        if base is None:
+            continue
+        candidate = _P(base) / name
+        if candidate.is_file():
+            return candidate
+    committed = REPORTS_DIR.parent / "evidence"
+    for sub in committed.glob("*"):
+        candidate = sub / name
+        if candidate.is_file():
+            return candidate
+    return None
 
 
 class EvidenceNotHere(Exception):
