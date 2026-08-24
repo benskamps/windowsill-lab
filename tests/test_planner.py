@@ -687,3 +687,33 @@ def test_an_undeclared_box_still_hunts(monkeypatch):
     pick, _decision = plan_turn([], statuses, now=NOW,
                                 hunt_status={"remaining_targets": 500})
     assert pick == HUNT_CANDIDATE
+
+
+# ── the planner must be able to say "nothing is worth running" ───────────────
+
+def test_an_all_canary_board_is_named_as_an_idle_frontier(monkeypatch):
+    """Twelve consecutive passes on 2026-08-24 re-ran already-green milestones
+    and every surface reported health. In 160 passes of history a canary has
+    changed zero verdicts, so a board with nothing but canaries is a fact the
+    operator needs — not a state to hide behind a pick."""
+    monkeypatch.delenv("LAB_NEXT_SKIP", raising=False)
+    monkeypatch.setattr(curriculum, "ROTATION", ("M03", "M04", "M05"))
+    old = _stamp(NOW - timedelta(days=30))
+    records = [(old, "M03"), (old, "M04"), (old, "M05")]
+    statuses = {"M03": "verified", "M04": "verified", "M05": "verified"}
+    _pick, decision = plan_turn(records, statuses, now=NOW)
+    assert decision["frontier_idle"] is True
+    assert "frontier has nothing runnable" in decision["frontier_idle_reason"]
+
+
+def test_a_board_with_real_work_is_not_flagged_idle(monkeypatch):
+    """The narrowness matters: a frontier that IS moving must not carry the
+    flag, or it becomes noise and gets ignored like every other permanent
+    warning."""
+    monkeypatch.delenv("LAB_NEXT_SKIP", raising=False)
+    monkeypatch.setattr(curriculum, "ROTATION", ("M03", "M04", "M05"))
+    statuses = {FRONTIER_ID: "open", "M03": "verified", "M04": "verified",
+                "M05": "verified"}
+    _pick, decision = plan_turn([], statuses, now=NOW)
+    assert decision["frontier_idle"] is False
+    assert decision["frontier_idle_reason"] is None

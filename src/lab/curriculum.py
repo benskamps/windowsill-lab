@@ -404,6 +404,19 @@ NEVER_RUN_VALUE = 5.0
 NULL_RETRY_VALUE = 3.0
 VERIFIED_CANARY_VALUE = 1.0
 
+#: When EVERY candidate on the board is a canary — a re-run of something already
+#: green — the planner is not advancing anything and should say so rather than
+#: pick the stalest one and look busy. Measured 2026-08-24: twelve consecutive
+#: passes were canaries, and in 160 passes of history a canary has changed
+#: exactly ZERO verdicts. The re-runs are not worthless, but a lane that can only
+#: do maintenance is a fact the operator needs, not a state to hide.
+#:
+#: This is the same refusal the deep lane makes with an empty queue: an idle lane
+#: reports the vacuum, it does not manufacture work. See
+#: docs/design/2026-08-24-deployment-note.md §4.2 for the outage that taught it.
+ALL_CANARY_REASON = ("every eligible candidate is a re-run of an already-verified "
+                     "milestone — the frontier has nothing runnable")
+
 #: A verified canary comes due over about a week: its staleness multiplier is
 #: log2(1 + days/CANARY_HALF_LIFE_DAYS) — ~0.19 the day after it ran, 1.0 at
 #: seven days, then slow growth.
@@ -660,8 +673,17 @@ def plan_turn(
         )
     for entry in scoreboard:
         entry.pop("_rank", None)
+    # Name the vacuum. When every candidate is a re-run of something already
+    # green the planner is advancing nothing, and the operator needs that as a
+    # fact rather than as a silence. The pick still happens — maintenance is
+    # real work and the pulse lane is where it belongs — but the receipt now
+    # carries the reason the frontier was not chosen: it had nothing runnable.
+    all_canary = bool(scoreboard) and all(
+        e.get("cls") == "verified-canary" for e in scoreboard)
     decision.update({
         "chosen": chosen, "reason": reason, "scoreboard": scoreboard[:5],
+        "frontier_idle": all_canary,
+        "frontier_idle_reason": ALL_CANARY_REASON if all_canary else None,
     })
     return chosen, decision
 
