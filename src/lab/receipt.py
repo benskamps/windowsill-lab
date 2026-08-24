@@ -36,6 +36,35 @@ def set_planned_decision(decision: dict | None) -> None:
     _PLANNED_DECISION = decision
 
 
+def paused_planned_decision():
+    """Disarm the seam for a block, then restore it.
+
+    For code that writes receipts for runs OTHER than the turn in flight. The
+    backfill in ``publish.ensure_public_receipts`` walks every dated report on
+    the box, so when the scheduler publishes with the seam armed it was stamping
+    its own selection rationale onto other runs' receipts — a decision block
+    that was never about that run. The audit then correctly refused the
+    arithmetic, `verify` failed on PLANNED, and the campaign withheld publishing
+    for three consecutive passes on 2026-08-23/24 before anyone noticed.
+
+    The backfill docstring is careful never to invent a *turn stamp* on that
+    path. This is the same care, applied to the other identity field it was
+    blind to.
+    """
+    from contextlib import contextmanager
+
+    @contextmanager
+    def _paused():
+        global _PLANNED_DECISION
+        armed = _PLANNED_DECISION
+        _PLANNED_DECISION = None
+        try:
+            yield
+        finally:
+            _PLANNED_DECISION = armed
+    return _paused()
+
+
 def clear_planned_decision() -> None:
     """Disarm the seam — the scheduler's ``finally`` companion to ``set``."""
     set_planned_decision(None)
