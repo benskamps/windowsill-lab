@@ -308,7 +308,7 @@ def epoch_scramble(t: np.ndarray, f: np.ndarray,
     return t, f[rng.permutation(len(f))]
 
 
-def scramble_placebo(curves: list[tuple], seed: int = SCRAMBLE_SEED,
+def scramble_placebo(curves: list[tuple], seed: int = SCRAMBLE_SEED, fap=None,
                      n_periods: int = a04.N_PERIODS,
                      progress=None, vet=None) -> dict:
     """Search + vet an epoch-scrambled sky and demand zero planet-candidates.
@@ -340,6 +340,22 @@ def scramble_placebo(curves: list[tuple], seed: int = SCRAMBLE_SEED,
             [seed, i]).generate_state(1)[0])
         det = a04.blind_search(ts, fs, n_periods=n_periods)
         row = {"tic": tic, "sde": det.sde, "period_days": det.period_days}
+        # The placebo's own false-alarm probability, on the SAME dual-scheme
+        # permutation null the real targets get. Without it the control could
+        # only ever answer "did a scrambled sky produce a planet-candidate",
+        # which is a much weaker question than "is the FAP calibrated at all" —
+        # and the calibration question is the one A05's headline rests on.
+        # Measured 2026-08-24: the pooled REAL control p-values reject
+        # uniformity (n=830, D=0.0798 vs 0.0473 critical, 3.6% at the floor
+        # against 0.39% expected). That excess is either astrophysics — the
+        # control subsample is real stars, and real stars vary — or a
+        # miscalibrated FAP. Only the scrambled sky can tell those apart, and
+        # its p-values were being discarded.
+        if fap is not None:
+            try:
+                row["fap"] = fap(ts, fs, det.sde)
+            except Exception as exc:      # noqa: BLE001 — a control never sinks a hunt
+                row["fap_error"] = f"{type(exc).__name__}: {exc}"
         if det.sde >= a04.SDE_THRESHOLD:
             row["vetting"] = vetter(ts, fs, det, components=components)
             if row["vetting"].get("verdict") == "planet-candidate":

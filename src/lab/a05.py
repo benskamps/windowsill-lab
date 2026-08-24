@@ -880,6 +880,10 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
     # one — a control that runs a laxer chain would grade a different pipeline.
     result.placebo = a05_sensitivity.scramble_placebo(
         placebo_curves, n_periods=n_periods,
+        # Same null, same B, same grid as a real target — a control graded on
+        # a cheaper null would be measuring a different pipeline.
+        fap=lambda ts, fs, sde: _fap_block(ts, fs, sde, B=B, seed=seed,
+                                           n_periods=n_periods),
         vet=lambda ts, fs, det, components=(): a05_vetting.extended_vet(
             ts, fs, det, components=components))
 
