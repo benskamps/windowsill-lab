@@ -712,10 +712,19 @@ def _slug_for(report: dict) -> str:
     lowercased). A legacy M01 dump carries no ``experiment`` field but has the
     Ising ``T``+``chi`` arrays → ``"m01"``. Anything else → ``"run"``.
 
+    Catalogue unknowns carry a hyphenated id (``"U-A01-hypothesis"``) and used
+    to fall into the generic ``"run"`` bucket, which is how the first ATTEMPT
+    receipt in this estate ended up named ``run-2026-08-25-0810-run.json``. They
+    now slug as ``"u-a01"``, so an attempt on the frontier is as findable in the
+    archive as any calibration rung.
+
     ``render._slug_for`` is an alias of this function so the two never drift.
     """
     exp = report.get("experiment")
     if exp:
+        m = re.match(r"U-[A-Z]\d+", exp)
+        if m:
+            return m.group(0).lower()
         m = re.match(r"[A-Z]{1,3}\d+", exp)
         if m:
             return m.group(0).lower()

@@ -161,7 +161,13 @@ catalogue of unknowns from a catalogue of wishes.
 
 **reach.** in-reach
 
-**reach evidence.** 1,400 null draws pooled from 58 hunts (2026-08-24); the largest ever reached SDE 7.00 against a promotion threshold of 8.0, so there are **zero exceedances**. An exponential tail fit extrapolates a per-curve FAP of 6.2e-5, stable to 6.1x across the fit cut, which over 9,985 real trials expects **0.61 false alarms across the entire survey** — a crossing would matter. The model-free bound (rule of three) is 2.1e-3, permitting up to 21, under which a crossing would prove nothing. **The price therefore rests entirely on a one-SDE extrapolation and is never quoted without that bound beside it.** ~325,000 pooled scrambles would replace the extrapolation with a measurement; scrambles reuse curves already on disk and are CPU work that does not compete with the GPU lane.
+**reach evidence.** Priced 2026-08-24 from 1,400 pooled null draws, then **ATTEMPTED 2026-08-25 · verdict KILLED**.
+
+The scramble campaign put the threshold region inside the sample — 84,500 null draws, max SDE 8.049 — so every crossing this survey ever made could be given a *measured* false-alarm probability instead of an extrapolated one. The decision rule was committed at 12:10Z **before any real-target disposition was examined** (`4832d91`).
+
+Result: 9,714 searched rows over **9,514 distinct targets** produced **173 crossings at SDE ≥ 8** — of which **79 are catalogued planets**, which is the pipeline recovering real signal and is reported as calibration, not discovery. Of the 94 uncatalogued crossings the strongest is **TIC 382028425, SDE 8.048**, empirical FAP 1.18e-05 from a single null exceedance, giving an expected background of **0.113** across the trials — just over the pre-registered ceiling of 0.1. It is independently dispositioned `harmonic-alias`, so it dies twice.
+
+**The claim that this survey already holds an undiscovered transit is killed.** The shelf's empty is no longer an absence of evidence; it is a measured empty with every exit counted.
 
 ## U-I01 · track I
 
