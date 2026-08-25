@@ -1,4 +1,16 @@
-"""U-A01 ATTEMPT — re-price every detection this survey ever made, against a measured null.
+"""U-A01 RE-ANALYSIS — re-price every detection this survey ever made, against a measured null.
+
+**This is not an attempt on U-A01 and was wrongly labelled one on 2026-08-25.**
+It consumes only committed bytes: `survey_rows` reads `reports/hunts/`, and not a
+single new observation is acquired. U-A01 asks whether the SECTOR contains an
+uncatalogued transit; this answers whether the RECORD does — a question the
+empty shelf had already answered, to which this adds error bars. Narrowing a
+question until it fits a runner you can finish in minutes, then grading against
+a kill condition you also wrote, is not crossing a gate.
+
+What it legitimately produces is a MEASURED empty rather than an absent one,
+which is worth having. It returns `REANALYSED` and cannot close a discovery
+goal.
 
 **This decision rule was written and committed before any real-target
 disposition was examined.** That ordering is the entire difference between an
@@ -50,7 +62,8 @@ from pathlib import Path
 
 import numpy as np
 
-from .hypothesis import DISCOVER, Finding, Hypothesis, KILLED, SUPPORTED, UNRESOLVED
+from .hypothesis import (DISCOVER, Finding, Hypothesis, REANALYSED,
+                         UNRESOLVED)
 
 #: A candidate is promotable only if fewer than this many false alarms are
 #: expected across the whole survey at its significance. 0.1 is strict on
@@ -162,7 +175,7 @@ def run(hunt_dir: str = "reports/hunts", null_path: Path = NULL_PATH) -> Finding
     }
     if promotable:
         best = promotable[0]
-        return Finding(hypothesis=HYPOTHESIS, verdict=SUPPORTED,
+        return Finding(hypothesis=HYPOTHESIS, verdict=REANALYSED,
                        detail=(f"{len(promotable)} uncatalogued crossing(s) "
                                f"survive the measured null; the strongest is "
                                f"TIC {best.get('tic')} at SDE {best['sde']:.2f}, "
@@ -170,7 +183,7 @@ def run(hunt_dir: str = "reports/hunts", null_path: Path = NULL_PATH) -> Finding
                                f"across {trials:,} distinct targets"),
                        evidence=evidence)
     return Finding(
-        hypothesis=HYPOTHESIS, verdict=KILLED,
+        hypothesis=HYPOTHESIS, verdict=REANALYSED,
         detail=(f"no uncatalogued crossing survives. {len(rows):,} searched "
                 f"rows over {trials:,} distinct targets produced "
                 f"{len(crossings)} crossings at SDE >= 8, of which {len(known)} "

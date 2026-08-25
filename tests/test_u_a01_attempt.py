@@ -11,7 +11,7 @@ import numpy as np
 import pytest
 
 from lab import u_a01_attempt as A
-from lab.hypothesis import DISCOVER, KILLED, SUPPORTED, UNRESOLVED
+from lab.hypothesis import DISCOVER, REANALYSED, UNRESOLVED
 
 
 def _null(n=50_000, seed=1):
@@ -80,7 +80,7 @@ def test_a_catalogued_planet_is_calibration_and_never_a_discovery(tmp_path):
     nl.write_text("\n".join(json.dumps({"sde": float(x)}) for x in _null()),
                   encoding="utf-8")
     f = A.run(hunt_dir=str(d), null_path=nl)
-    assert f.verdict == KILLED
+    assert f.verdict == REANALYSED
     assert f.evidence["crossings_known_planet"] == 1
     assert f.evidence["crossings_uncatalogued"] == 0
 
@@ -100,8 +100,11 @@ def test_an_empty_result_counts_every_exit(tmp_path):
             "crossings_uncatalogued", "distinct_targets"} <= set(ev)
 
 
-def test_a_genuinely_significant_uncatalogued_crossing_is_supported(tmp_path):
-    """The rule has to be able to say yes, or KILLED means nothing."""
+def test_even_a_significant_crossing_is_only_a_re_analysis(tmp_path):
+    """The rule can find something — and it still cannot call it a discovery,
+    because it consumed no new observation. This is the whole 2026-08-25
+    correction: a strong signal in the archive is a reason to GO AND LOOK, not
+    a substitute for having looked."""
     d = tmp_path / "hunts"; d.mkdir()
     (d / "h.json").write_text(json.dumps(
         {"targets": _rows(("BIG", 40.0, False))}), encoding="utf-8")
@@ -109,17 +112,20 @@ def test_a_genuinely_significant_uncatalogued_crossing_is_supported(tmp_path):
     nl.write_text("\n".join(json.dumps({"sde": float(x)}) for x in _null()),
                   encoding="utf-8")
     f = A.run(hunt_dir=str(d), null_path=nl)
-    assert f.verdict == SUPPORTED
+    assert f.verdict == REANALYSED
+    assert f.attempted_the_question is False
 
 
-def test_the_shipped_attempt_was_killed_on_its_predeclared_terms():
-    """The real result, pinned. 173 crossings, 79 catalogued, and the strongest
-    uncatalogued one landing at 0.113 expected background against a ceiling of
-    0.1 set before the data was opened."""
+def test_the_shipped_run_is_a_re_analysis_not_an_attempt():
+    """The real result, pinned, under its corrected name. 173 crossings, 79
+    catalogued, the strongest uncatalogued one at 0.113 expected background
+    against a 0.1 ceiling set before the data was opened — and zero new
+    observations, which is why it cannot be an attempt."""
     f = A.run()
     if f.verdict == UNRESOLVED:
         pytest.skip("scramble null not present in this checkout")
-    assert f.verdict == KILLED
+    assert f.verdict == REANALYSED
+    assert f.attempted_the_question is False
     assert f.evidence["crossings_known_planet"] > 0, (
         "the pipeline must be recovering real planets, or the null result "
         "means only that the search is broken")

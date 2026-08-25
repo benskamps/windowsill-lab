@@ -161,7 +161,9 @@ catalogue of unknowns from a catalogue of wishes.
 
 **reach.** in-reach
 
-**reach evidence.** Priced 2026-08-24 from 1,400 pooled null draws, then **ATTEMPTED 2026-08-25 · verdict KILLED**.
+**reach evidence.** Priced 2026-08-24 from 1,400 pooled null draws, then **RE-ANALYSED 2026-08-25 · verdict REANALYSED — NOT an attempt**.
+
+> ⚠ **Corrected 2026-08-25.** This was first recorded as an ATTEMPT and it is not one. It consumed only committed bytes; no new observation was acquired. U-A01 asks whether the *sector* holds an uncatalogued transit — this answered whether the *record* does, which the empty shelf had already said. The pipeline permitted the swap because no stage in it required going outside, which is the estate architecture audit's defect at a third radius: *the care went into the asking, and it stopped at the looking.*
 
 The scramble campaign put the threshold region inside the sample — 84,500 null draws, max SDE 8.049 — so every crossing this survey ever made could be given a *measured* false-alarm probability instead of an extrapolated one. The decision rule was committed at 12:10Z **before any real-target disposition was examined** (`4832d91`).
 
