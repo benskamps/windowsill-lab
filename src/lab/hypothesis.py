@@ -138,7 +138,9 @@ class Finding:
     def __post_init__(self) -> None:
         if self.verdict not in VERDICTS:
             raise ValueError(f"{self.verdict!r} is not one of {VERDICTS}")
-        if self.attempted_the_question and not self.new_observations:
+        if (self.hypothesis.stage == DISCOVER
+                and self.verdict in (SUPPORTED, KILLED)
+                and not self.new_observations):
             raise ValueError(
                 f"{self.hypothesis.id} claims a discovery verdict "
                 f"({self.verdict}) but records no new observations. A run that "
@@ -151,13 +153,22 @@ class Finding:
     def attempted_the_question(self) -> bool:
         """Did this run go and look, or did it read the archive again?
 
-        Only a DISCOVER-stage runner returning one of the three deciding
-        verdicts is making a claim about the world. A calibrate-stage runner
-        auditing our own arithmetic (H01) is not, and must not be forced to
-        acquire anything.
+        **The observations decide this, not the verdict.** An attempt that goes
+        outside, acquires data and still cannot decide IS an attempt — the
+        commitment is to attempt and report, not to succeed — so UNRESOLVED
+        with observations counts, exactly as the goal's own honesty note says.
+
+        And the converse is what CI caught on 2026-08-25: a DISCOVER runner that
+        cannot even obtain its data must be able to SAY SO. An earlier version
+        made UNRESOLVED require observations, which forbade a run from reporting
+        that it had none — the contract refusing the most honest thing a run can
+        report. SUPPORTED and KILLED are claims about the world and still
+        require having looked; UNRESOLVED is the ABSENCE of a claim and does not.
+
+        A calibrate-stage runner auditing our own arithmetic (H01) never
+        attempts the question and must not be forced to acquire anything.
         """
-        from_gate = self.hypothesis.stage == DISCOVER
-        return from_gate and self.verdict in (SUPPORTED, KILLED, UNRESOLVED)
+        return bool(self.hypothesis.stage == DISCOVER and self.new_observations)
 
     @property
     def decided(self) -> bool:

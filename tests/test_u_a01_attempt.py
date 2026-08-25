@@ -129,3 +129,37 @@ def test_the_shipped_run_is_a_re_analysis_not_an_attempt():
     assert f.evidence["crossings_known_planet"] > 0, (
         "the pipeline must be recovering real planets, or the null result "
         "means only that the search is broken")
+
+
+def test_a_runner_that_cannot_get_its_data_may_say_so(tmp_path):
+    """Caught by CI on 2026-08-25 and invisible locally, because this box HAS a
+    scramble null and the CI runner does not.
+
+    An earlier version of the terminus rule made UNRESOLVED a 'discovery
+    verdict' requiring new observations — which forbade a run from reporting
+    that it could not obtain any. The contract refused the most honest thing a
+    run can report. SUPPORTED and KILLED are claims about the world and still
+    require having looked; UNRESOLVED is the absence of a claim."""
+    d = tmp_path / "hunts"; d.mkdir()
+    (d / "h.json").write_text(json.dumps({"targets": _rows(("T", 9.0, False))}),
+                              encoding="utf-8")
+    thin = tmp_path / "thin.jsonl"
+    thin.write_text(json.dumps({"sde": 4.0}) + "\n", encoding="utf-8")
+    f = A.run(hunt_dir=str(d), null_path=thin)          # must not raise
+    assert f.verdict == UNRESOLVED
+    assert f.attempted_the_question is False
+    assert "below the" in f.detail
+
+
+def test_an_attempt_that_looked_and_did_not_decide_still_counts_as_an_attempt():
+    """The goal's own honesty note: the commitment is to attempt and report,
+    not to succeed. Observations decide whether it was an attempt — not the
+    verdict."""
+    from lab.hypothesis import Finding, Hypothesis, DISCOVER as D
+    h = Hypothesis(id="U-X01", track="X", stage=D, unknown_id="U-X01",
+                   question="q", why_unanswered="w", observable="o",
+                   kill_condition="k", cheapest_decisive="c",
+                   why_this_might_be_nothing="n")
+    looked = Finding(hypothesis=h, verdict=UNRESOLVED, detail="d",
+                     new_observations={"sector": "s41", "sha256": "abc"})
+    assert looked.attempted_the_question is True
