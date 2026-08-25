@@ -103,7 +103,13 @@ catalogue of unknowns from a catalogue of wishes.
 
 **if out of reach.** Report what L this box *can* equilibrate and what that L can and cannot distinguish. A measured ceiling is a contribution; a claim from an unequilibrated run is not.
 
-**importance.** 4
+**importance.** 3
+
+**status.** charted
+
+**reach.** out-of-reach
+
+**reach evidence.** Measured 2026-08-25 from `run-2026-08-24-0324-m12.json`. Two blockers, in order. **(1) The discriminating observable is not recorded**: M12 stores P(q) at one reference size (L=12) and the question is entirely about how P(0) scales with L, so the number has been generated on all four passes over L=[6,8,10,12] and discarded. That is a serialisation fix, not a compute one, and until it lands no GPU time can help. **(2) Even then the statistics are far short**: P(0) = 0.2185 ± 0.0739 at T/T_c = 0.71 — a **34% relative error** from 800 disorder realizations, against a droplet-vs-RSB effect of only **13%** across L = 6→12. That is **0.3σ**. P(0) does not self-average, so realizations are the only lever: 3σ needs ~62× more, about **11 GPU-days**. Real, priced, and not a frontier this box is close to.
 
 ## U-C01 · track C
 
@@ -129,7 +135,11 @@ catalogue of unknowns from a catalogue of wishes.
 
 **if out of reach.** Demote to a reading note and retire it from the catalogue. An open problem the lab cannot approach is not this lab's unknown; it is the field's, and listing it here inflates the gate ratio without doing any work.
 
-**importance.** 2
+**importance.** 1
+
+**status.** retired
+
+**reach evidence.** RETIRED 2026-08-25. Believed closed by Borwein, Borwein & Galway (2004). Kept in the file as a record that the lab put a wrong entry on its own map and took it off — a catalogue that only ever grows is a wish list.
 
 ## U-A01 · track A
 
@@ -169,11 +179,11 @@ catalogue of unknowns from a catalogue of wishes.
 
 **importance.** 2
 
-**status.** charted
+**status.** retired
 
 **reach.** out-of-reach
 
-**reach evidence.** `ls /dev/video*` returns nothing — there is no camera on this box (2026-08-24). The unknown cannot be attempted at all, which was worth thirty seconds to establish rather than months to plan around.
+**reach evidence.** `ls /dev/video*` returns nothing — there is no camera on this box (2026-08-24). RETIRED 2026-08-25: there is no instrument and no plan to buy one, so this is not a frontier, it is a shopping list. Track I closes at "no instrument present", a legitimate arrival by its own stated terms.
 
 ## U-P01 · track P
 
