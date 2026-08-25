@@ -232,3 +232,76 @@ def fold(seq: str, *, n_sweeps: int = 200_000, n_replicas: int = 8,
             "swap_health": "ok" if float(rate.min()) > 0.0 else
                            f"degraded — gaps never swapped: "
                            f"{[i for i, x in enumerate(rate) if x == 0.0]}"}
+
+
+def enumerate_degeneracy(seq: str, target: int | None = None) -> dict:
+    """Count EVERY conformation achieving the ground-state energy, exactly.
+
+    `enumerate_ground_state` answers *what is the minimum*; it cannot answer
+    *how many ways*, and not by omission — its bound prunes a branch that cannot
+    **beat** the incumbent (``>= best``), which discards ties by construction.
+    Degeneracy needs a bound that prunes only what cannot **reach** the target
+    (``> target``), and a target fixed in advance so the criterion never moves
+    mid-walk.
+
+    Two passes: the existing enumerator proves E*, then this walks the tree again
+    counting every conformation at E*. Both share the same symmetry quotient —
+    first step +x, first non-axial turn +y — so the count is of distinct folds
+    **up to the eight symmetries of the square**, which is the quantity
+    designability is defined on.
+
+    This is the rarest kind of number this lab can produce: **exact and provable,
+    with no statistics, no equilibration argument, and no error bar to defend.**
+    Either the tree was walked or it was not.
+    """
+    is_h = parse_sequence(seq)
+    n = len(is_h)
+    if n < 2:
+        raise ValueError("a chain needs at least two beads")
+    if target is None:
+        target = int(enumerate_ground_state(seq)["energy"])
+
+    coords = np.zeros((n, 2), dtype=int)
+    coords[1] = (1, 0)
+    occupied = {(0, 0): 0, (1, 0): 1}
+    remaining_h = np.cumsum(is_h[::-1])[::-1]
+    stats = {"count": 0, "nodes": 0}
+
+    def contacts_of(idx: int, point: tuple[int, int]) -> int:
+        if not is_h[idx]:
+            return 0
+        got = 0
+        for dx, dy in STEPS:
+            j = occupied.get((point[0] + dx, point[1] + dy))
+            if j is not None and idx - j > 1 and is_h[j]:
+                got += 1
+        return got
+
+    def walk(idx: int, e: int, axis_broken: bool) -> None:
+        stats["nodes"] += 1
+        if idx == n:
+            if e == target:
+                stats["count"] += 1
+            return
+        # Prunes only what cannot REACH the target — ties survive, which is the
+        # single line that separates counting from minimising.
+        if e - 2 * int(remaining_h[idx]) > target:
+            return
+        px, py = int(coords[idx - 1][0]), int(coords[idx - 1][1])
+        for dx, dy in STEPS:
+            point = (px + dx, py + dy)
+            if point in occupied:
+                continue
+            broken = axis_broken
+            if not axis_broken and dy != 0:
+                if dy < 0:
+                    continue
+                broken = True
+            occupied[point] = idx
+            coords[idx] = point
+            walk(idx + 1, e - contacts_of(idx, point), broken)
+            del occupied[point]
+
+    walk(2, 0, False)
+    return {"sequence": seq, "energy": target, "degeneracy": stats["count"],
+            "nodes": stats["nodes"], "unique": stats["count"] == 1}

@@ -1286,8 +1286,8 @@ def hunt_block(hunts_dir: Path | None = None) -> dict | None:
 def build_snapshot(milestones, last_run, runs, temp_c, report=None,
                    reports=None, reports_ledger=None, turns=None,
                    divergence=None, hunt=None,
-    goal: dict | None = None,
-) -> dict:
+                   goal: dict | None = None,
+                   objections: dict | None = None) -> dict:
     """Assemble the sanitized snapshot the /windowsill/ page consumes.
 
     ``turns`` (optional) is the ``turn_cadence()`` object — the pass counter and
@@ -1339,6 +1339,8 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
         snap["hunt"] = hunt
     if goal is not None:
         snap["goal"] = goal
+    if objections is not None:
+        snap["objections"] = objections
     return snap
 
 
@@ -1377,15 +1379,26 @@ def collect() -> dict:
         goal_block = goal_mod.progress()
     except Exception:  # noqa: BLE001
         pass
+    # Open objections ride the feed the public page already reads. A claim with
+    # a doubt attached publishes as disputed — the objector does not have to be
+    # right, and the reader is told a doubt exists and who holds it, which is
+    # strictly more than the reader had before.
+    objection_block = None
+    try:
+        from . import objections as obj_mod
+        objection_block = obj_mod.disputed()
+    except Exception:  # noqa: BLE001
+        pass
     if ledger is not None:
         return build_snapshot(
             parse_milestones(text), last_run, runs, cpu_temp_c(),
             reports_ledger=ledger, turns=turns, divergence=divergence,
-            hunt=hunt, goal=goal_block,
+            hunt=hunt, goal=goal_block, objections=objection_block,
         )
     return build_snapshot(
         parse_milestones(text), last_run, runs, cpu_temp_c(),
         reports=discover_runs(), hunt=hunt, goal=goal_block,
+        objections=objection_block,
     )
 
 
