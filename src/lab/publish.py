@@ -1276,7 +1276,9 @@ def hunt_block(hunts_dir: Path | None = None) -> dict | None:
 
 def build_snapshot(milestones, last_run, runs, temp_c, report=None,
                    reports=None, reports_ledger=None, turns=None,
-                   divergence=None, hunt=None) -> dict:
+                   divergence=None, hunt=None,
+    goal: dict | None = None,
+) -> dict:
     """Assemble the sanitized snapshot the /windowsill/ page consumes.
 
     ``turns`` (optional) is the ``turn_cadence()`` object — the pass counter and
@@ -1326,6 +1328,8 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
         snap["divergence"] = divergence
     if hunt is not None:
         snap["hunt"] = hunt
+    if goal is not None:
+        snap["goal"] = goal
     return snap
 
 
@@ -1353,15 +1357,26 @@ def collect() -> dict:
     except Exception:  # noqa: BLE001 — same guard: the turn layer never breaks the feed
         pass
     hunt = hunt_block()   # pure function of committed reports/hunts/*.json
+    # The declared goal rides the feed the public page already reads, rather
+    # than standing up a surface of its own. Its progress is COMPUTED from the
+    # catalogue every publish — a goal whose progress is hand-written measures
+    # the writer's mood — and it is allowed to read MISSED. Guarded because a
+    # malformed catalogue must degrade the goal block, never the whole feed.
+    goal_block = None
+    try:
+        from . import goal as goal_mod
+        goal_block = goal_mod.progress()
+    except Exception:  # noqa: BLE001
+        pass
     if ledger is not None:
         return build_snapshot(
             parse_milestones(text), last_run, runs, cpu_temp_c(),
             reports_ledger=ledger, turns=turns, divergence=divergence,
-            hunt=hunt,
+            hunt=hunt, goal=goal_block,
         )
     return build_snapshot(
         parse_milestones(text), last_run, runs, cpu_temp_c(),
-        reports=discover_runs(), hunt=hunt,
+        reports=discover_runs(), hunt=hunt, goal=goal_block,
     )
 
 

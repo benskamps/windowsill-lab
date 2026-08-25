@@ -196,3 +196,28 @@ catalogue of unknowns from a catalogue of wishes.
 **reach.** in-reach
 
 **reach evidence.** Measured 2026-08-24, three random sequences per length: L=20 at 0.28 s/seq, L=24 at 7.5 s, **L=25 at 33 s**, L=26 exceeding 80 s (timed out) — clean exponential growth, as a self-avoiding walk count demands. So a graded set of ~10 sequences fits one night up to **L ≈ 26**, and a single hero sequence to **L ≈ 30**. Beyond that, proving stops and Track P's honesty rule takes over.
+
+---
+
+## The goal these unknowns exist to serve
+
+Charting is not crossing. Every entry above has been **priced** — reach
+measured, cost stated, instrument checked — and not one has been **attempted**.
+Pricing is the half this box is good at and the half that cannot produce a
+result.
+
+So `G01` is declared in `src/lab/goal.py`, published in `pot.json` where the
+public page reads it, and dated **2026-09-24**:
+
+> Stop pricing the frontier and cross it: attempt one field-unknown and report
+> the result either way, with every track honest about where it stands.
+
+Three properties make it a commitment rather than a preference. It is
+**published**, so nobody has to be told the lab missed. Its progress is
+**computed** from this file at every publish, never written, because a goal
+whose progress is hand-edited measures the editor's mood. And it can read
+**MISSED** — a deadline that slides is a wish with a calendar next to it.
+
+A verdict of `killed` or `unresolved` meets it exactly as well as `supported`.
+The commitment is to attempt and report; a goal that only counts successes buys
+itself pressure to find them.

@@ -515,7 +515,7 @@
   "total": 40,
   "last_run": "2026-08-24T15:09:50.757005+00:00",
   "runs": 60,
-  "temp_c": 91.2,
+  "temp_c": 90.4,
   "latest_report": {
     "date": "2026-08-24",
     "milestone": "H01",
@@ -524,17 +524,12 @@
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
     "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-1109-h01.json",
     "machine": "linux-rocm",
-    "at": "2026-08-24T15:09:50.757005+00:00",
-    "group_count": 2,
-    "group_first_date": "2026-08-24",
-    "group_machines": [
-      "linux-rocm"
-    ]
+    "at": "2026-08-24T15:09:50.757005+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-24T15:09:55.885752+00:00",
+  "updated": "2026-08-25T03:01:58.942095+00:00",
   "provenance": {
-    "code_sha": "96538fa-dirty",
+    "code_sha": "6685760-dirty",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -551,12 +546,7 @@
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-24-1109-h01",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-1109-h01.json",
       "machine": "linux-rocm",
-      "at": "2026-08-24T15:09:50.757005+00:00",
-      "group_count": 2,
-      "group_first_date": "2026-08-24",
-      "group_machines": [
-        "linux-rocm"
-      ]
+      "at": "2026-08-24T15:09:50.757005+00:00"
     },
     {
       "date": "2026-08-24",
@@ -1567,8 +1557,8 @@
     }
   ],
   "turns": {
-    "count": 160,
-    "today": 5,
+    "count": 159,
+    "today": 4,
     "last_by_machine": {
       "windows-cuda": "2026-08-20T01:11:49.221742+00:00",
       "linux-rocm": "2026-08-24T15:09:50.757005+00:00"
@@ -1610,5 +1600,30 @@
         "by": "hunt-2026-08-14-s2-pilot-570.json"
       }
     ]
+  },
+  "goal": {
+    "id": "G01",
+    "statement": "Stop pricing the frontier and cross it: attempt one field-unknown and report the result either way, with every track honest about where it stands.",
+    "arrived_when": "Three things a stranger can check in pot.json: (a) every track that can carry an unknown has one, charted, with a measured reach verdict; (b) at least one `field` unknown has been ATTEMPTED \u2014 a run against the question itself, not another feasibility test; (c) that attempt has a published receipt whose verdict is supported, killed or unresolved. A verdict of `killed` or `unresolved` satisfies this goal exactly as well as `supported` \u2014 the commitment is to attempt and report, not to succeed.",
+    "why_now": "Every unknown in the catalogue has been priced and none attempted. Pricing is the half this box is good at and the half that cannot produce a result.",
+    "set_on": "2026-08-24",
+    "deadline": "2026-09-24",
+    "days_remaining": 31,
+    "state": "OPEN",
+    "conditions": {
+      "every_track_charted": false,
+      "a_field_unknown_attempted": false
+    },
+    "tracks_without_a_charted_unknown": [
+      "C",
+      "M"
+    ],
+    "unknowns_total": 7,
+    "unknowns_charted": 5,
+    "field_unknowns": 4,
+    "gate_ratio": 0.5714285714285714,
+    "attempted": [],
+    "next_reach_test": "U-M01",
+    "honesty_note": "A `killed` or `unresolved` verdict meets this goal. The commitment is to attempt and report, not to succeed \u2014 a goal that only counts successes buys itself pressure to find them."
   }
 }
