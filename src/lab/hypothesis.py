@@ -32,7 +32,18 @@ from dataclasses import dataclass, field
 SUPPORTED = "supported"
 KILLED = "killed"
 UNRESOLVED = "unresolved"
-VERDICTS = (SUPPORTED, KILLED, UNRESOLVED)
+
+#: A fourth verdict, added 2026-08-25 after the pipeline let a re-reading of the
+#: archive close a discovery goal.
+#:
+#: `REANALYSED` is what a run returns when it consumed only bytes that already
+#: existed when the hypothesis was written. It is a legitimate and often valuable
+#: result — U-A01's re-scoring put a measured false-alarm price on 173 crossings
+#: and turned an empty shelf into a *measured* empty. It is simply not an
+#: attempt on a question, and letting it count as one is how a lab crosses its
+#: own gate without going outside.
+REANALYSED = "reanalysed"
+VERDICTS = (SUPPORTED, KILLED, UNRESOLVED, REANALYSED)
 
 #: Which side of the charter's SETI gate this runner sits on — the hinge where
 #: work stops reproducing an answer we already know and starts searching for one
@@ -107,10 +118,57 @@ class Finding:
     evidence: dict = field(default_factory=dict)
     controls: dict = field(default_factory=dict)
     wall_seconds: float = 0.0
+    #: Provenance of observations that did not exist when the hypothesis was
+    #: written. Empty means the run read only the archive.
+    #:
+    #: This field exists because the estate's architecture audit found the same
+    #: defect twice at two radii — *"the care went into the measuring, it
+    #: stopped at the telling"* — and this pipeline reproduced it a third time:
+    #: every stage from proposal to publication was instrumented, and the final
+    #: hop, ACTUALLY GOING AND LOOKING, was never built. Both the feasibility
+    #: stage and the attempt stage read `reports/`, so nothing in the pipeline
+    #: could distinguish an experiment from a re-reading — which meant a
+    #: discovery goal could close, and did, without a single new observation.
+    #:
+    #: The audit's own lesson applies: *"adding checks to a pipe whose terminus
+    #: is missing is the shape of the last nine months. The fix is not another
+    #: check."* So this is not a check. It is the terminus, named.
+    new_observations: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.verdict not in VERDICTS:
             raise ValueError(f"{self.verdict!r} is not one of {VERDICTS}")
+        if (self.hypothesis.stage == DISCOVER
+                and self.verdict in (SUPPORTED, KILLED)
+                and not self.new_observations):
+            raise ValueError(
+                f"{self.hypothesis.id} claims a discovery verdict "
+                f"({self.verdict}) but records no new observations. A run that "
+                "consumed only committed bytes is a RE-ANALYSIS — say so. "
+                "Re-reading the archive with better statistics is real work and "
+                "is not an attempt on the question; the gate is crossed by "
+                "going outside, not by looking again.")
+
+    @property
+    def attempted_the_question(self) -> bool:
+        """Did this run go and look, or did it read the archive again?
+
+        **The observations decide this, not the verdict.** An attempt that goes
+        outside, acquires data and still cannot decide IS an attempt — the
+        commitment is to attempt and report, not to succeed — so UNRESOLVED
+        with observations counts, exactly as the goal's own honesty note says.
+
+        And the converse is what CI caught on 2026-08-25: a DISCOVER runner that
+        cannot even obtain its data must be able to SAY SO. An earlier version
+        made UNRESOLVED require observations, which forbade a run from reporting
+        that it had none — the contract refusing the most honest thing a run can
+        report. SUPPORTED and KILLED are claims about the world and still
+        require having looked; UNRESOLVED is the ABSENCE of a claim and does not.
+
+        A calibrate-stage runner auditing our own arithmetic (H01) never
+        attempts the question and must not be forced to acquire anything.
+        """
+        return bool(self.hypothesis.stage == DISCOVER and self.new_observations)
 
     @property
     def decided(self) -> bool:
@@ -119,7 +177,7 @@ class Finding:
         SUPPORTED and KILLED are both yes. This is the distinction the estate's
         `status` field would otherwise flatten.
         """
-        return self.verdict in (SUPPORTED, KILLED)
+        return self.verdict in (SUPPORTED, KILLED, REANALYSED)
 
     def to_report(self) -> dict:
         """A receipt in the shape the renderer and checkers already read.
@@ -145,6 +203,8 @@ class Finding:
             "evidence": self.evidence,
             "controls": self.controls,
             "wall_seconds": self.wall_seconds,
+            "new_observations": self.new_observations,
+            "attempted_the_question": self.attempted_the_question,
         }
 
     def headline(self) -> str:
@@ -152,6 +212,8 @@ class Finding:
             SUPPORTED: f"{self.hypothesis.id} ran and the claim under test survived",
             KILLED: f"{self.hypothesis.id} ran and killed the claim under test",
             UNRESOLVED: f"{self.hypothesis.id} ran and did not decide",
+            REANALYSED: (f"{self.hypothesis.id} re-read the archive — this is "
+                         f"not an attempt on the question"),
         }[self.verdict]
 
     def boundary(self) -> str:
@@ -170,4 +232,10 @@ class Finding:
             UNRESOLVED: ("Neither: the run happened and the evidence does not "
                          "decide. Nothing may be concluded from it in either "
                          "direction."),
+            REANALYSED: ("Neither, and deliberately so: this run consumed only "
+                         "bytes that already existed when the hypothesis was "
+                         "written. Re-reading the archive with better "
+                         "statistics is real work and is not an attempt on the "
+                         "question — the gate is crossed by going outside, not "
+                         "by looking again. It cannot close a discovery goal."),
         }[self.verdict]

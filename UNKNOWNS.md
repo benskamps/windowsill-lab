@@ -103,7 +103,13 @@ catalogue of unknowns from a catalogue of wishes.
 
 **if out of reach.** Report what L this box *can* equilibrate and what that L can and cannot distinguish. A measured ceiling is a contribution; a claim from an unequilibrated run is not.
 
-**importance.** 4
+**importance.** 3
+
+**status.** charted
+
+**reach.** out-of-reach
+
+**reach evidence.** Measured 2026-08-25 from `run-2026-08-24-0324-m12.json`. Two blockers, in order. **(1) The discriminating observable is not recorded**: M12 stores P(q) at one reference size (L=12) and the question is entirely about how P(0) scales with L, so the number has been generated on all four passes over L=[6,8,10,12] and discarded. That is a serialisation fix, not a compute one, and until it lands no GPU time can help. **(2) Even then the statistics are far short**: P(0) = 0.2185 ± 0.0739 at T/T_c = 0.71 — a **34% relative error** from 800 disorder realizations, against a droplet-vs-RSB effect of only **13%** across L = 6→12. That is **0.3σ**. P(0) does not self-average, so realizations are the only lever: 3σ needs ~62× more, about **11 GPU-days**. Real, priced, and not a frontier this box is close to.
 
 ## U-C01 · track C
 
@@ -129,7 +135,11 @@ catalogue of unknowns from a catalogue of wishes.
 
 **if out of reach.** Demote to a reading note and retire it from the catalogue. An open problem the lab cannot approach is not this lab's unknown; it is the field's, and listing it here inflates the gate ratio without doing any work.
 
-**importance.** 2
+**importance.** 1
+
+**status.** retired
+
+**reach evidence.** RETIRED 2026-08-25. Believed closed by Borwein, Borwein & Galway (2004). Kept in the file as a record that the lab put a wrong entry on its own map and took it off — a catalogue that only ever grows is a wish list.
 
 ## U-A01 · track A
 
@@ -151,7 +161,15 @@ catalogue of unknowns from a catalogue of wishes.
 
 **reach.** in-reach
 
-**reach evidence.** 1,400 null draws pooled from 58 hunts (2026-08-24); the largest ever reached SDE 7.00 against a promotion threshold of 8.0, so there are **zero exceedances**. An exponential tail fit extrapolates a per-curve FAP of 6.2e-5, stable to 6.1x across the fit cut, which over 9,985 real trials expects **0.61 false alarms across the entire survey** — a crossing would matter. The model-free bound (rule of three) is 2.1e-3, permitting up to 21, under which a crossing would prove nothing. **The price therefore rests entirely on a one-SDE extrapolation and is never quoted without that bound beside it.** ~325,000 pooled scrambles would replace the extrapolation with a measurement; scrambles reuse curves already on disk and are CPU work that does not compete with the GPU lane.
+**reach evidence.** Priced 2026-08-24 from 1,400 pooled null draws, then **RE-ANALYSED 2026-08-25 · verdict REANALYSED — NOT an attempt**.
+
+> ⚠ **Corrected 2026-08-25.** This was first recorded as an ATTEMPT and it is not one. It consumed only committed bytes; no new observation was acquired. U-A01 asks whether the *sector* holds an uncatalogued transit — this answered whether the *record* does, which the empty shelf had already said. The pipeline permitted the swap because no stage in it required going outside, which is the estate architecture audit's defect at a third radius: *the care went into the asking, and it stopped at the looking.*
+
+The scramble campaign put the threshold region inside the sample — 84,500 null draws, max SDE 8.049 — so every crossing this survey ever made could be given a *measured* false-alarm probability instead of an extrapolated one. The decision rule was committed at 12:10Z **before any real-target disposition was examined** (`4832d91`).
+
+Result: 9,714 searched rows over **9,514 distinct targets** produced **173 crossings at SDE ≥ 8** — of which **79 are catalogued planets**, which is the pipeline recovering real signal and is reported as calibration, not discovery. Of the 94 uncatalogued crossings the strongest is **TIC 382028425, SDE 8.048**, empirical FAP 1.18e-05 from a single null exceedance, giving an expected background of **0.113** across the trials — just over the pre-registered ceiling of 0.1. It is independently dispositioned `harmonic-alias`, so it dies twice.
+
+**The claim that this survey already holds an undiscovered transit is killed.** The shelf's empty is no longer an absence of evidence; it is a measured empty with every exit counted.
 
 ## U-I01 · track I
 
@@ -169,11 +187,11 @@ catalogue of unknowns from a catalogue of wishes.
 
 **importance.** 2
 
-**status.** charted
+**status.** retired
 
 **reach.** out-of-reach
 
-**reach evidence.** `ls /dev/video*` returns nothing — there is no camera on this box (2026-08-24). The unknown cannot be attempted at all, which was worth thirty seconds to establish rather than months to plan around.
+**reach evidence.** `ls /dev/video*` returns nothing — there is no camera on this box (2026-08-24). RETIRED 2026-08-25: there is no instrument and no plan to buy one, so this is not a frontier, it is a shopping list. Track I closes at "no instrument present", a legitimate arrival by its own stated terms.
 
 ## U-P01 · track P
 

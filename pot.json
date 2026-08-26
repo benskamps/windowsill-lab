@@ -513,23 +513,23 @@
     }
   ],
   "total": 40,
-  "last_run": "2026-08-24T15:09:50.757005+00:00",
-  "runs": 60,
-  "temp_c": 90.4,
+  "last_run": "2026-08-25T16:47:09.423575+00:00",
+  "runs": 61,
+  "temp_c": 90.9,
   "latest_report": {
-    "date": "2026-08-24",
-    "milestone": "H01",
-    "verdict": "unscored",
-    "headline": "H01 ran and the claim under test survived",
+    "date": "2026-08-25",
+    "milestone": "U-A01",
+    "verdict": "verified",
+    "headline": "U-A01 re-read the archive \u2014 this is not an attempt on the question",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-24-1109-h01.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-25-1247-u-a01.json",
     "machine": "linux-rocm",
-    "at": "2026-08-24T15:09:50.757005+00:00"
+    "at": "2026-08-25T16:47:09.423575+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-25T03:01:58.942095+00:00",
+  "updated": "2026-08-25T17:26:36.949944+00:00",
   "provenance": {
-    "code_sha": "6685760-dirty",
+    "code_sha": "36b5a87",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -538,6 +538,36 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-25",
+      "milestone": "U-A01",
+      "verdict": "verified",
+      "headline": "U-A01 re-read the archive \u2014 this is not an attempt on the question",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-25-1247-u-a01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-25-1247-u-a01.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-25T16:47:09.423575+00:00"
+    },
+    {
+      "date": "2026-08-25",
+      "milestone": "M14",
+      "verdict": "verified",
+      "headline": "2D random-bond Ising (\u00b1J, 512 disorder realizations) on the Nishimori line: measured disorder-averaged energy matches the exact \u22122\u00b7tanh(1/T) across p\u2208[0.04,0.16] to within \u0394=0.020 (L=48) \u2014 exact Nishimori-line energy reproduced. Ferro order collapses near p\u22480.103, bracketing the multicritical Nishimori point p_c\u22480.1094, T_c\u22480.9528 (precise pinning deferred \u2014 a hero run) \u00b7 2305s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-25-0008-m14",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-25-0008-m14.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-25T04:08:30.875046+00:00"
+    },
+    {
+      "date": "2026-08-25",
+      "milestone": "U-A01",
+      "verdict": "null",
+      "headline": "U-A01 attempted: the shelf is a measured empty",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-25-u-a01",
+      "receipt_url": null,
+      "machine": "linux-rocm",
+      "at": "2026-08-25T12:10:46.090391+00:00"
+    },
     {
       "date": "2026-08-24",
       "milestone": "H01",
@@ -1557,11 +1587,11 @@
     }
   ],
   "turns": {
-    "count": 159,
-    "today": 4,
+    "count": 161,
+    "today": 2,
     "last_by_machine": {
       "windows-cuda": "2026-08-20T01:11:49.221742+00:00",
-      "linux-rocm": "2026-08-24T15:09:50.757005+00:00"
+      "linux-rocm": "2026-08-25T16:47:09.423575+00:00"
     },
     "expected_interval_h": 3
   },
@@ -1608,22 +1638,42 @@
     "why_now": "Every unknown in the catalogue has been priced and none attempted. Pricing is the half this box is good at and the half that cannot produce a result.",
     "set_on": "2026-08-24",
     "deadline": "2026-09-24",
-    "days_remaining": 31,
+    "days_remaining": 30,
     "state": "OPEN",
     "conditions": {
-      "every_track_charted": false,
+      "every_track_charted": true,
       "a_field_unknown_attempted": false
     },
-    "tracks_without_a_charted_unknown": [
-      "C",
-      "M"
-    ],
-    "unknowns_total": 7,
+    "tracks_without_a_charted_unknown": [],
+    "unknowns_total": 5,
     "unknowns_charted": 5,
-    "field_unknowns": 4,
-    "gate_ratio": 0.5714285714285714,
+    "field_unknowns": 3,
+    "gate_ratio": 0.6,
     "attempted": [],
-    "next_reach_test": "U-M01",
+    "next_reach_test": null,
     "honesty_note": "A `killed` or `unresolved` verdict meets this goal. The commitment is to attempt and report, not to succeed \u2014 a goal that only counts successes buys itself pressure to find them."
+  },
+  "objections": {
+    "total": 3,
+    "open": 2,
+    "answered": 1,
+    "withdrawn": 0,
+    "disputed_claims": {
+      "U-K02": [
+        {
+          "id": "O002",
+          "voice": "ember",
+          "objection": "initial-condition dependence is unmeasured: measure_grid uses ONE seeded IC shared across all columns (the controlled-comparison rule), so the exponent drift could be an IC artifact and nothing distinguishes that from physics."
+        },
+        {
+          "id": "O003",
+          "voice": "ember",
+          "objection": "the frequency set is asserted to be the papers class term for term by the 2026-08-02 assay, but no runner re-derives that claim from committed bytes; if the class is wrong, both papers are being compared against the wrong system."
+        }
+      ]
+    },
+    "voices": [
+      "ember"
+    ]
   }
 }

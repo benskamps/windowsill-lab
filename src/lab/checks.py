@@ -4371,6 +4371,101 @@ def check_k04(report: dict) -> tuple[bool | None, str]:
     )
 
 
+def check_hypothesis(report: dict) -> tuple[bool | None, str]:
+    """Re-derive a frontier receipt's verdict instead of believing it.
+
+    Until 2026-08-25 the two runs in this estate that made a claim about the
+    WORLD — H01 and U-A01 — were the only two nothing could re-derive. Thirty-
+    three checkers existed for the calibration ladder, where the right answer is
+    already published, and none for the lane where it is not. The one place a
+    self-graded verdict could do damage was the one place nothing checked it.
+
+    So this trusts none of: the stated ``verdict``, the ``status``, the
+    ``headline``, or the ``claim_boundary``. It rebuilds the hypothesis and the
+    finding from the receipt's own bytes, which re-runs both constructors, and
+    then recomputes every derived string. A receipt edited after the fact — a
+    kill condition deleted, a stage flipped to make a re-analysis look like an
+    attempt, a verdict swapped from ``reanalysed`` to ``killed`` — fails here
+    rather than passing on its own say-so.
+
+    ``None`` means this box cannot re-derive (a runner that is not importable),
+    never a pass. ``False`` is tampering or contract violation, and is never a
+    shrug.
+    """
+    from .hypothesis import Finding, Hypothesis
+
+    block = report.get("hypothesis")
+    if not isinstance(block, dict):
+        return None, "no hypothesis block — not a frontier receipt"
+
+    # A receipt written BEFORE a contract field existed is not tampering, and
+    # grading it False would cry wolf on exactly the vocabulary that has to stay
+    # trustworthy. It cannot be re-derived under today's rule, so it is None —
+    # which the estate already reads as "this box cannot check", never as a pass.
+    # Failing an OLD entry against a NEW standard is honest; calling it fraud is
+    # not, and the difference is whether the field was ever there to violate.
+    for field_name in ("stage",):
+        if field_name not in block:
+            return None, (f"receipt predates the {field_name!r} contract "
+                          f"(written {report.get('generated_at', 'unknown')}) — "
+                          "cannot be re-derived under today's rule, and is not "
+                          "graded against it")
+
+    # 1. The six fields plus the stage rules, re-enforced. A receipt whose
+    #    kill_condition was removed after the run cannot be reconstructed.
+    try:
+        hyp = Hypothesis(
+            id=block.get("id", ""), track=block.get("track", "?"),
+            stage=block.get("stage", ""),
+            unknown_id=block.get("unknown_id", ""),
+            question=block.get("question", ""),
+            why_unanswered=block.get("why_unanswered", ""),
+            observable=block.get("observable", ""),
+            kill_condition=block.get("kill_condition", ""),
+            cheapest_decisive=block.get("cheapest_decisive", ""),
+            why_this_might_be_nothing=block.get("why_this_might_be_nothing", ""))
+    except ValueError as e:
+        return False, f"receipt does not satisfy the hypothesis contract: {e}"
+
+    # 2. The terminus. A discovery verdict with no new observations is the
+    #    2026-08-25 failure, and it must fail here even if the receipt says pass.
+    try:
+        finding = Finding(
+            hypothesis=hyp, verdict=report.get("verdict", ""),
+            detail=report.get("detail", ""),
+            evidence=report.get("evidence", {}) or {},
+            controls=report.get("controls", {}) or {},
+            new_observations=report.get("new_observations", {}) or {})
+    except ValueError as e:
+        return False, f"receipt violates the terminus rule: {e}"
+
+    # 3. Every derived string recomputed. These are the fields a reader sees.
+    for key, got in (("headline", finding.headline()),
+                     ("claim_boundary", finding.boundary()),
+                     ("status", "pass" if finding.decided else "null")):
+        stated = report.get(key)
+        if stated is not None and stated != got:
+            return False, (f"receipt's {key} does not match what its own verdict "
+                           f"produces — stated {stated!r}, re-derived {got!r}")
+
+    if report.get("attempted_the_question") not in (None, finding.attempted_the_question):
+        return False, ("receipt claims a different attempt status than its stage "
+                       "and verdict imply")
+
+    # 4. A DISCOVER receipt must name a catalogue entry that actually exists.
+    if hyp.stage == "discover":
+        from . import unknowns as unknowns_mod
+        ids = {u.id for u in unknowns_mod.load()}
+        if ids and hyp.unknown_id not in ids:
+            return False, (f"cites unknown {hyp.unknown_id!r}, which is not in "
+                           f"the catalogue")
+
+    kind = "attempt" if finding.attempted_the_question else "re-analysis"
+    return True, (f"{hyp.id} re-derived from its own bytes: a {kind} whose "
+                  f"verdict is {finding.verdict}, contract intact, "
+                  f"{len(finding.new_observations)} new-observation record(s)")
+
+
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
@@ -4384,7 +4479,9 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
     "A02": check_a02,
     "P01": check_p01, "A03": check_a03, "A04": check_a04,
           "A05": check_a05, "A07": check_a07,
-          "I01": check_i01, "CTRL": check_controls}
+          "I01": check_i01, "CTRL": check_controls,
+          # the frontier lane, graded by the same rule as the ladder
+          "H01": check_hypothesis, "U-A01": check_hypothesis}
 
 
 def _evidence_path(name: str, *cache_dirs) -> "Path | None":
