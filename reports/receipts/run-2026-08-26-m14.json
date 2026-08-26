@@ -1,0 +1,173 @@
+{
+  "L_values": [
+    8,
+    12
+  ],
+  "T_values": [
+    0.6792465437902172,
+    0.9102392266268373,
+    0.9537959755219029,
+    1.1530028727859343
+  ],
+  "abs_mag_by_L": {
+    "12": [
+      0.9686985015869141,
+      0.8484780192375183,
+      0.7400000095367432,
+      0.4973611533641815
+    ],
+    "8": [
+      0.9754948019981384,
+      0.8727474212646484,
+      0.7941015362739563,
+      0.613684892654419
+    ]
+  },
+  "binder_by_L": {
+    "12": [
+      0.661798590197983,
+      0.6462137325480897,
+      0.6035440364487368,
+      0.4660495718807901
+    ],
+    "8": [
+      0.6646665217023664,
+      0.6460378865851129,
+      0.6102402827067922,
+      0.5343884549703746
+    ]
+  },
+  "binder_crossing_p": 0.1002405311219374,
+  "calibration_points": [
+    {
+      "T": 0.6792465437902172,
+      "abs_dev": 0.0023612499237060103,
+      "energy": -1.802361249923706,
+      "energy_err": 0.010938270948827267,
+      "energy_exact": -1.8,
+      "p": 0.05
+    },
+    {
+      "T": 0.9102392266268373,
+      "abs_dev": 0.005810165405273349,
+      "energy": -1.6058101654052734,
+      "energy_err": 0.015626419335603714,
+      "energy_exact": -1.6,
+      "p": 0.1
+    },
+    {
+      "T": 0.9537959755219029,
+      "abs_dev": 0.016022579574584972,
+      "energy": -1.546377420425415,
+      "energy_err": 0.017675213515758514,
+      "energy_exact": -1.5624,
+      "p": 0.1094
+    },
+    {
+      "T": 1.1530028727859343,
+      "abs_dev": 0.013101911544799894,
+      "energy": -1.4131019115447998,
+      "energy_err": 0.017387647181749344,
+      "energy_exact": -1.4,
+      "p": 0.15
+    }
+  ],
+  "config": {
+    "L_values": [
+      8,
+      12
+    ],
+    "device": "cpu",
+    "disorder": "bimodal-pm-J",
+    "gate_L": 12,
+    "line": "nishimori",
+    "model": "random-bond-ising-2d",
+    "n_burnin": 1200,
+    "n_realizations": 16,
+    "n_sweeps": 3000,
+    "p_values": [
+      0.05,
+      0.1,
+      0.1094,
+      0.15
+    ],
+    "seed": 20260826,
+    "updater": "checkerboard-metropolis"
+  },
+  "energy_by_L": {
+    "12": [
+      -1.802361249923706,
+      -1.6058101654052734,
+      -1.546377420425415,
+      -1.4131019115447998
+    ],
+    "8": [
+      -1.7806510925292969,
+      -1.5965625047683716,
+      -1.578697919845581,
+      -1.4191666841506958
+    ]
+  },
+  "energy_err_by_L": {
+    "12": [
+      0.010938270948827267,
+      0.015626419335603714,
+      0.017675213515758514,
+      0.017387647181749344
+    ],
+    "8": [
+      0.015928898006677628,
+      0.02433837205171585,
+      0.02512001246213913,
+      0.0242219977080822
+    ]
+  },
+  "energy_exact": [
+    -1.8,
+    -1.6,
+    -1.5624,
+    -1.4
+  ],
+  "energy_resolved": true,
+  "experiment": "M14-random-bond-nishimori",
+  "gate_L": 12,
+  "generated_at": "2026-08-26T18:35:35.326214+00:00",
+  "headline": "2D random-bond Ising (±J, 16 disorder realizations) on the Nishimori line: measured disorder-averaged energy matches the exact −2·tanh(1/T) across p∈[0.05,0.15] to within Δ=0.016 (L=12) — exact Nishimori-line energy reproduced. Ferro order collapses near p≈0.150, bracketing the multicritical Nishimori point p_c≈0.1094, T_c≈0.9528 (precise pinning deferred — a hero run) · 11s",
+  "max_energy_dev": 0.016022579574584972,
+  "mnp_order_p_half": 0.1495584500557568,
+  "n_realizations": 16,
+  "on_nishimori_line": true,
+  "p_c_benchmark": 0.1094,
+  "p_values": [
+    0.05,
+    0.1,
+    0.1094,
+    0.15
+  ],
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.1",
+      "numpy": "2.5.1",
+      "torch": "2.10.0.dev20251031+rocm6.4"
+    },
+    "platform": "linux-x86_64",
+    "python": "3.14.4",
+    "source_clean": true,
+    "source_commit": "97b417a2832f2a73cb69770eade63cfb8128369e",
+    "source_diff_sha256": null,
+    "source_tree_sha256": "58a8c1d5a86ef6ee83dfdb151548b2faa77154cafd44304458cb53029df1abc1"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "a06d90a9fbc087fbd8547133752ea42e719687ec906fabaf2448c86c739dc041"
+  },
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify M14",
+    "rerun": "python -m lab.cli m14"
+  },
+  "t_c_benchmark": 0.9528,
+  "wall_seconds": 10.97843885421753
+}

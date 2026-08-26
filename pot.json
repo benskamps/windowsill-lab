@@ -513,23 +513,23 @@
     }
   ],
   "total": 40,
-  "last_run": "2026-08-26T01:12:06.187873+00:00",
-  "runs": 61,
-  "temp_c": 91.2,
+  "last_run": "2026-08-26T19:01:23.938287+00:00",
+  "runs": 62,
+  "temp_c": 91.4,
   "latest_report": {
-    "date": "2026-08-25",
-    "milestone": "A04",
-    "verdict": "unscored",
-    "headline": "blind search of 26 sector-2 targets: 2/2 known planets recovered without being told where; 3/3 injections recovered; 1 candidate(s) vetted; noise floor max SDE 6.6 vs threshold 8.0",
+    "date": "2026-08-26",
+    "milestone": "M11",
+    "verdict": "verified",
+    "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations, parallel tempering): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.483 as T falls 2.00 \u2192 0.30 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase); the same ladder without the exchange move turns over at T=0.64 \u00b7 80s on GPU",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-25-2112-a04.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-26-1501-m11.json",
     "machine": "linux-rocm",
-    "at": "2026-08-26T01:12:06.187873+00:00"
+    "at": "2026-08-26T19:01:23.938287+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-26T02:50:47.927044+00:00",
+  "updated": "2026-08-26T19:01:28.885415+00:00",
   "provenance": {
-    "code_sha": "1b02aac",
+    "code_sha": "97b417a",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -538,6 +538,26 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-26",
+      "milestone": "M11",
+      "verdict": "verified",
+      "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations, parallel tempering): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.483 as T falls 2.00 \u2192 0.30 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase); the same ladder without the exchange move turns over at T=0.64 \u00b7 80s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-26-1501-m11",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-26-1501-m11.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-26T19:01:23.938287+00:00"
+    },
+    {
+      "date": "2026-08-26",
+      "milestone": "M14",
+      "verdict": "verified",
+      "headline": "2D random-bond Ising (\u00b1J, 16 disorder realizations) on the Nishimori line: measured disorder-averaged energy matches the exact \u22122\u00b7tanh(1/T) across p\u2208[0.05,0.15] to within \u0394=0.016 (L=12) \u2014 exact Nishimori-line energy reproduced. Ferro order collapses near p\u22480.150, bracketing the multicritical Nishimori point p_c\u22480.1094, T_c\u22480.9528 (precise pinning deferred \u2014 a hero run) \u00b7 11s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-26-m14",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-26-m14.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-26T18:35:35.326214+00:00"
+    },
     {
       "date": "2026-08-25",
       "milestone": "A04",
@@ -1597,11 +1617,11 @@
     }
   ],
   "turns": {
-    "count": 162,
-    "today": 3,
+    "count": 164,
+    "today": 2,
     "last_by_machine": {
       "windows-cuda": "2026-08-20T01:11:49.221742+00:00",
-      "linux-rocm": "2026-08-26T01:12:06.187873+00:00"
+      "linux-rocm": "2026-08-26T19:01:23.938287+00:00"
     },
     "expected_interval_h": 3
   },
@@ -1648,7 +1668,7 @@
     "why_now": "Every unknown in the catalogue has been priced and none attempted. Pricing is the half this box is good at and the half that cannot produce a result.",
     "set_on": "2026-08-24",
     "deadline": "2026-09-24",
-    "days_remaining": 30,
+    "days_remaining": 29,
     "state": "OPEN",
     "conditions": {
       "every_track_charted": true,
