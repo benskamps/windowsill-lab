@@ -1609,6 +1609,84 @@ def _push_gist(gist_id: str, content: str) -> None:
     )
 
 
+#: The no-JS fallback in the shelf hero. The page fetches pot.json live, so a
+#: reader with JavaScript sees the truth — but crawlers, search engines and any
+#: model reading the page see only what is baked into the HTML.
+WEB_INDEX = Path(__file__).resolve().parents[2] / "web" / "index.html"
+
+_SHELF_SPANS = {
+    "shelf-total": lambda c: c["total"],
+    "shelf-moss-count": lambda c: c["verified"],
+    "shelf-amber-count": lambda c: c["review"],
+    "shelf-clay-count": lambda c: c["null"],
+}
+_SHELF_PLURALS = {
+    "shelf-moss-plural": lambda c: c["verified"],
+    "shelf-amber-plural": lambda c: c["review"],
+    "shelf-clay-plural": lambda c: c["null"],
+}
+
+
+def shelf_counts(snapshot: dict) -> dict:
+    """The four numbers the shelf hero states, by the page's own rule.
+
+    Mirrors `web/index.html:4636-4638` exactly — it filters **milestones** by
+    status, not runs by verdict:
+
+        verifiedList = milestones.filter(m => m.status === 'verified')
+
+    That distinction is the whole correctness of this function. A first draft
+    counted `reports` instead and would have written **100** where the page
+    means **28** — and the hero's sentence is *"N captured runs, every one with
+    a live explainer"*, with only ~27 explainer rooms in existence. Bumping the
+    number without the rooms would have converted a stale figure into an
+    overclaim, which is strictly worse.
+    """
+    rows = snapshot.get("milestones") or []
+    got = {"verified": 0, "review": 0, "null": 0}
+    for m in rows:
+        st = (m or {}).get("status")
+        if st in got:
+            got[st] += 1
+    got["total"] = got["verified"] + got["review"] + got["null"]
+    return got
+
+
+def refresh_shelf_fallback(snapshot: dict, html_path: Path | None = None) -> dict:
+    """Rewrite the no-JS numbers so the static page cannot go stale.
+
+    On 2026-08-25 the fallback read **25 captured runs, 22 verified, 3 null**
+    while the live feed carried **100, 85, 15** — understated four-fold, and
+    frozen since roughly June. The JS beside it carries the comment *"wire the
+    shelf-hero counts from the live data so they can't drift"*, which is true of
+    the rendered values and was never true of the fallback.
+
+    That mattered more than it looks: fetching the public page returns the
+    fallback, so every crawler, search index and language model reading this lab
+    saw a quarter of its work. Hand-editing the numbers would not fix it —
+    hand-edited numbers are exactly what went stale — so this runs on every
+    publish.
+    """
+    path = html_path or WEB_INDEX
+    if not path.exists():
+        return {"updated": False, "reason": "web/index.html not present"}
+    counts = shelf_counts(snapshot)
+    html = path.read_text(encoding="utf-8")
+    before = html
+    for span_id, pick in _SHELF_SPANS.items():
+        html = re.sub(rf'(<span id="{span_id}">)[^<]*(</span>)',
+                      rf'\g<1>{pick(counts)}\g<2>', html)
+    for span_id, pick in _SHELF_PLURALS.items():
+        html = re.sub(rf'(<span id="{span_id}">)[^<]*(</span>)',
+                      rf'\g<1>{"" if pick(counts) == 1 else "s"}\g<2>', html)
+    if html != before:
+        # The estate's one rule for canonical writers, pinned by
+        # tests/test_atomic_writes.py: never a bare write_text. A half-written
+        # index.html is a broken public page, and this runs on every publish.
+        atomic_write_text(path, html)
+    return {"updated": html != before, **counts}
+
+
 def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
     """Write the committed ``pot.json`` (the live feed) + a ~/.lab copy.
 
@@ -1621,6 +1699,13 @@ def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
     # stable evidence URL for each run in this very snapshot.
     ensure_public_receipts()
     snap = collect()
+    # The static page cannot be allowed to drift from the feed it advertises.
+    # See refresh_shelf_fallback: the no-JS numbers had been frozen since ~June
+    # while the live feed moved, so every crawler read a smaller lab.
+    try:
+        refresh_shelf_fallback(snap)
+    except Exception:  # noqa: BLE001 — never let the page block the feed
+        pass
     content = json.dumps(snap, indent=2) + "\n"
     atomic_write_text(POT_JSON, content, encoding="utf-8")  # canonical, committed live feed
     LAB_HOME.mkdir(parents=True, exist_ok=True)
