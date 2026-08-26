@@ -400,3 +400,64 @@ def test_the_wired_resolvers_are_the_real_ones(tmp_path, monkeypatch):
         a05_sky.sky_catalog_lookup), (
         "the sky_catalog seam is wired to something other than "
         "a05_sky.sky_catalog_lookup")
+
+
+# --- sector exhaustion (2026-08-26) -----------------------------------------
+#
+# Sector 3 consumed its page-capped enumerable window, and every slice it could
+# still draw was too small for the uniformity control to reach
+# A05_UNIFORMITY_MIN_N control p-values -- so check_a05 returned None on every
+# receipt the sector was still able to produce. Undifferentiated, that reads as
+# a grade failure: two of them set the checkpoint aside and the lane starts a
+# fresh id to repeat the loop. windowsill-hunt.service failed 11 consecutive
+# slots that way (2026-08-20 -> 2026-08-26) while the morning pulse, which
+# reads pot.json's mtime rather than unit state, reported the lane green.
+#
+# Exhaustion is the normal end of a sector. It must be named, and it must not
+# spend a grade retry on a checkpoint that has nothing wrong with it.
+
+def test_exhaustion_floor_is_derived_from_the_uniformity_gate():
+    """The floor is the control gate's own arithmetic, not a magic number."""
+    mod = _load_script()
+    floor = mod.math.ceil(
+        mod.checks.A05_UNIFORMITY_MIN_N / mod.a05.CONTROL_FRACTION)
+    assert floor == 50, (
+        "5 control p-values at a 10% control fraction needs 50 searched "
+        "targets; if either constant moves, the driver's message moves with it")
+
+
+def test_exhaustion_does_not_spend_a_grade_retry(tmp_path, monkeypatch):
+    """tally=False is the whole point: the checkpoint is healthy, the sector
+    is empty, and setting the checkpoint aside would punish the wrong thing."""
+    mod = _load_script()
+    lab_home = _isolated(mod, tmp_path, monkeypatch)
+    hunts = tmp_path / "reports" / "hunts"
+    hunts.mkdir(parents=True)
+
+    receipt = hunts / "hunt-2026-08-26-s3.json"
+    receipt.write_text("{}", encoding="utf-8")
+    hunt_id = "hunt-2026-08-26-s3"
+
+    # An exhausted sector: withheld from the ledger, but no retry consumed.
+    mod.settle_receipt(receipt, None, tally=False)
+    assert (lab_home / "ungraded" / receipt.name).exists()
+    assert mod.grade_failures(hunt_id) == 0
+
+    # A genuine ungradeable receipt still counts against the retry limit.
+    receipt.write_text("{}", encoding="utf-8")
+    mod.settle_receipt(receipt, None)
+    assert mod.grade_failures(hunt_id) == 1
+
+
+def test_driver_distinguishes_exhaustion_from_a_grade_failure():
+    """Source-level, like test_the_gate_runs_before_the_pot_is_refreshed: the
+    discrimination has to happen after the grade is in hand and before the
+    receipt is settled, or it cannot inform the tally."""
+    src = (ROOT / "scripts" / "a05_hunt.py").read_text(encoding="utf-8")
+    assert "exhausted = ok is None and counts[\"searched\"] < min_slice" in src
+    assert "tally=not exhausted" in src
+    assert "EXHAUSTED" in src and "hunt.sector" in src, \
+        "the message must name the condition and the one-line fix"
+    assert (src.index("ok, detail = checks.check_a05(report)")
+            < src.index("exhausted = ok is None")
+            < src.index("settled = settle_receipt(receipt_path"))

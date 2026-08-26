@@ -37,6 +37,7 @@ from __future__ import annotations
 import argparse
 import functools
 import json
+import math
 import os
 import platform
 import subprocess
@@ -488,7 +489,43 @@ def main() -> int:
           f"{counts['leads_awaiting_human_review']}")
     ok, detail = checks.check_a05(report)
     print(f"check_a05: {ok} — {detail}")
-    settled = settle_receipt(receipt_path, ok, dossiers=result.dossiers)
+
+    # ---- sector exhaustion, told apart from a grade failure ---------------
+    # A sector's ENUMERABLE window is page-capped on purpose --
+    # ``a04.sector_targets`` is ``max_pages x pagesize`` and says in its own
+    # docstring that the caller must not read the result as "the sector".
+    # Once a lane has consumed that window, every slice it can still draw is
+    # a handful of targets; at ``CONTROL_FRACTION`` = 0.10 a handful yields
+    # fewer than ``checks.A05_UNIFORMITY_MIN_N`` control p-values, so
+    # ``check_a05`` returns None -- *uninterpretable* -- on every receipt the
+    # sector is still able to produce.
+    #
+    # Undifferentiated, that reads as a grade failure: two of them set the
+    # checkpoint aside (``GRADE_RETRY_LIMIT``) and the lane starts a fresh id
+    # to do it again. Sector 3 ran that loop for 11 consecutive slots
+    # (2026-08-20 -> 2026-08-26) while the morning pulse -- which reads
+    # pot.json's mtime, not unit state -- reported the lane green throughout.
+    #
+    # Exhaustion is the NORMAL end of a sector, not a defect in this run or
+    # its checkpoint. Name it, name the one-line fix, and do NOT spend a grade
+    # retry on it: the receipt is still withheld (it cannot be interpreted),
+    # but the checkpoint is left healthy for whoever flips the sector.
+    min_slice = math.ceil(checks.A05_UNIFORMITY_MIN_N / a05.CONTROL_FRACTION)
+    exhausted = ok is None and counts["searched"] < min_slice
+    if exhausted:
+        print(f"sector {args.sector} EXHAUSTED: {counts['searched']} target(s) "
+              f"searched, need >= {min_slice} for the uniformity control to "
+              f"reach {checks.A05_UNIFORMITY_MIN_N} p-values at "
+              f"CONTROL_FRACTION={a05.CONTROL_FRACTION:g} — the enumerable "
+              f"window for this sector is consumed, so no slice it can still "
+              f"draw is gradeable.")
+        print(f"fix: flip the lane to a sector with headroom — "
+              f"echo <sector> > {LAB_HOME}/hunt.sector")
+        print("this is not counted as a grade failure; the checkpoint stays "
+              "healthy for the next sector.")
+
+    settled = settle_receipt(receipt_path, ok, dossiers=result.dossiers,
+                             tally=not exhausted)
     if settled != receipt_path:
         print(f"receipt -> {settled}  (ungraded: filed with the logs, "
               "not published and not aggregated)")
