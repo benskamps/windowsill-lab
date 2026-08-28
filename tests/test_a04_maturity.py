@@ -395,3 +395,83 @@ def test_a_genuinely_significant_dip_is_still_a_candidate():
     row = a04.vet_candidate(t, f, _det(3.0e-4))
     assert row["verdict"] == "planet-candidate", row
     assert row["depth_sigma"] >= a04.ODD_EVEN_SIGMA
+
+
+# --- the secondary window must match the eclipse, not a constant (2026-08-28) --
+#
+# TIC 144122210 graded its secondary at 834 ppm / 4.872 sigma against the hard
+# 5.0 gate and was minted a planet-candidate lead. It is an eclipsing binary.
+# The cause was not the threshold: the secondary was measured in a fixed
+# +-0.03-phase window (+-2.23 h at P=3.1 d) while the transit itself was 3.54 h
+# wide, so roughly a quarter of the sample sat at baseline and dragged the
+# median toward zero. Systematic, one-directional, and worst on short transits.
+
+def _eb_curve(period=3.1, half_width_phase=0.012, depth=0.024, sec_depth=0.0017,
+              n=6000, noise=0.0004, seed=7):
+    """A clean EB: narrow primary, real secondary at phase 0.5."""
+    import numpy as np
+    rng = np.random.default_rng(seed)
+    t = np.linspace(0.0, period * 12.0, n)
+    ph = np.mod(t, period) / period
+    f = np.ones(n)
+    d1 = np.abs(((ph - 0.5 + 0.5) % 1.0) - 0.5)
+    f[d1 < half_width_phase] -= depth
+    d2 = np.abs(((ph - 0.5 - 0.5 + 0.5) % 1.0) - 0.5)
+    f[d2 < half_width_phase] -= sec_depth
+    return t, f + rng.normal(0.0, noise, n), period
+
+
+def test_secondary_window_narrows_to_the_eclipse_and_recovers_its_depth():
+    """The planted secondary must be recovered near its true depth, not diluted."""
+    import numpy as np
+    from lab import a04
+    t, f, period = _eb_curve()
+    base = float(np.median(f))
+    phase = np.mod(t, period) / period
+    in_tr = np.abs(((phase - 0.5 + 0.5) % 1.0) - 0.5) < a04.VET_WINDOW_PHASE
+    depth = base - float(np.median(f[in_tr]))
+
+    noise = float(np.std(f[~in_tr]))
+    hw = a04._eclipse_half_width(phase, f, 0.5, base, in_tr, noise)
+    assert hw is not None, "half-width estimator refused on a clean planted eclipse"
+    assert hw < a04.VET_WINDOW_PHASE, f"window did not narrow: {hw} vs {a04.VET_WINDOW_PHASE}"
+
+    def _sec_depth(window):
+        sec = np.abs(((phase - 0.5 - 0.5 + 0.5) % 1.0) - 0.5) < window
+        return base - float(np.median(f[sec]))
+
+    diluted = _sec_depth(a04.VET_WINDOW_PHASE)   # the old, fixed window
+    matched = _sec_depth(hw)                      # the eclipse's own width
+    assert matched > diluted * 1.5, (
+        f"matched window did not recover the secondary: {matched:.6f} vs diluted {diluted:.6f}")
+    assert abs(matched - 0.0017) < 0.0006, f"recovered depth off: {matched:.6f}"
+
+
+def test_the_window_can_only_ever_tighten():
+    """A change to a vetting gate that can only make it stricter cannot quietly
+    promote noise to a candidate. Guard that property directly."""
+    import numpy as np
+    from lab import a04
+    # A transit that FILLS the fixed window: the estimator must not widen past it.
+    t, f, period = _eb_curve(half_width_phase=0.030)
+    base = float(np.median(f))
+    phase = np.mod(t, period) / period
+    in_tr = np.abs(((phase - 0.5 + 0.5) % 1.0) - 0.5) < a04.VET_WINDOW_PHASE
+    noise = float(np.std(f[~in_tr]))
+    hw = a04._eclipse_half_width(phase, f, 0.5, base, in_tr, noise)
+    clamped = (a04.VET_WINDOW_PHASE if hw is None
+               else min(max(hw, a04.VET_WINDOW_MIN_PHASE), a04.VET_WINDOW_PHASE))
+    assert clamped <= a04.VET_WINDOW_PHASE + 1e-12
+
+
+def test_unmeasurable_eclipse_falls_back_to_the_constant():
+    """No signal, no guess: the estimator returns None and the caller keeps the
+    old constant rather than inventing a width."""
+    import numpy as np
+    from lab import a04
+    rng = np.random.default_rng(3)
+    f = np.ones(3000) + rng.normal(0, 4e-4, 3000)
+    phase = np.linspace(0, 1, 3000)
+    in_tr = np.ones(3000, dtype=bool)
+    # Pure noise: the estimator must refuse rather than invent a width.
+    assert a04._eclipse_half_width(phase, f, 0.5, 1.0, in_tr, 4e-4) is None

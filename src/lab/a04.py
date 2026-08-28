@@ -167,6 +167,76 @@ ODD_EVEN_SIGMA = 5.0
 #: constant from here, so the repo has one convention and not two.
 MEDIAN_SIGMA_FACTOR = float(np.sqrt(np.pi / 2.0))
 VET_WINDOW_PHASE = 0.03
+#: The secondary window may never be WIDER than the eclipse it is measuring.
+#:
+#: VET_WINDOW_PHASE is a constant, and until 2026-08-28 the secondary depth was
+#: read inside it regardless of how long the transit actually lasted. At P=3.1 d
+#: that window is +-2.23 h; a 3.54 h transit has a half-width of 1.77 h. So the
+#: median was taken over a sample roughly a quarter of which sat OUTSIDE the
+#: eclipse, at baseline, dragging the measured depth toward zero. The dilution
+#: is systematic, always in the same direction, and it lands hardest on exactly
+#: the targets where a secondary matters most: short transits.
+#:
+#: PRICED. TIC 144122210 (sector 30, hunt-2026-08-28-s30) is an eclipsing binary
+#: — an F star with a ~3200 K M-dwarf companion. Its secondary graded 834 ppm at
+#: 4.872 sigma against the hard ODD_EVEN_SIGMA = 5.0 gate, and so was minted a
+#: `lead-awaiting-human-review` and put in front of a human as a planet
+#: candidate. It missed being auto-disposed an EB by 0.13 sigma. Measured in a
+#: window matched to its own duration the secondary is ~1652 ppm at ~8.9 sigma,
+#: and it is present in all 8 raw undetrended epochs. The same dilution is
+#: visible on the PRIMARY in the same receipt: vet read 1617/1746 ppm against a
+#: true depth near 24,000 ppm.
+#:
+#: The estimator below is deliberately one-directional: it can only NARROW the
+#: window toward the measured half-depth extent, never widen it past
+#: VET_WINDOW_PHASE, and it falls back to the constant whenever it cannot
+#: measure. A change to a vetting gate that can only make the gate stricter is
+#: one that cannot quietly promote noise to a candidate.
+#:
+#: Floor, so a very short eclipse cannot narrow the window to a handful of
+#: points and buy its significance back from a shrinking sample.
+VET_WINDOW_MIN_PHASE = 0.004
+#: A robust depth floor this many sigma above the out-of-transit scatter
+#: before the half-width estimator will believe it has found an eclipse.
+DEPTH_SNR_FLOOR = 3.0
+
+
+def _eclipse_half_width(phase, f, ph0, base, in_transit, noise):
+    """Phase half-width of the eclipse, from its own half-depth crossing.
+
+    No fitting and no new model: take the points already inside the fixed
+    window that sit below half depth, and read how far out in phase they
+    reach. Returns None when it cannot measure, and the caller then keeps the
+    old constant rather than guessing.
+
+    `noise` is the out-of-transit scatter the caller already computed. It is
+    required, not optional: without it this function finds a "half-width" in
+    pure noise (the 5th percentile of any sample lies below its own median), and
+    a width invented from noise is exactly the Class 6 shape this repo keeps
+    pricing. Below DEPTH_SNR_FLOOR the answer is None and the caller keeps the
+    constant.
+    """
+    import numpy as _np
+    if int(in_transit.sum()) < 10:
+        return None
+    # Do NOT use a median-over-the-window depth here. That is the very quantity
+    # this function exists to de-bias: when the eclipse fills a minority of the
+    # fixed window the median sits AT baseline, depth collapses to ~0, and a
+    # half-depth threshold then selects noise instead of the eclipse. Caught by
+    # test_secondary_window_narrows_to_the_eclipse_and_recovers_its_depth, which
+    # failed against exactly that mistake before this line was written.
+    #
+    # Use a robust FLOOR instead: the 5th percentile of the in-window flux finds
+    # the eclipse whether it fills the window or a fifth of it.
+    floor = float(_np.percentile(f[in_transit], 5.0))
+    depth_ref = base - floor
+    if not (depth_ref > DEPTH_SNR_FLOOR * max(noise, 0.0)) or not (depth_ref > 0):
+        return None
+    dphi = _np.abs(((phase - ph0 + 0.5) % 1.0) - 0.5)
+    deep = in_transit & (f < base - 0.5 * depth_ref)
+    if int(deep.sum()) < 5:
+        return None
+    return float(_np.percentile(dphi[deep], 95.0))
 
 
 #: A best period this close to a grid edge is railed, not measured.
@@ -235,7 +305,12 @@ def vet_candidate(t: np.ndarray, f: np.ndarray, det: Detection,
     sigma_diff = _median_se(n_odd, n_even)
     diff_sigma = abs(d_odd - d_even) / sigma_diff if sigma_diff > 0 else float("inf")
 
-    sec = np.abs(((phase - ph0 - 0.5 + 0.5) % 1.0) - 0.5) < VET_WINDOW_PHASE
+    # Match the secondary window to the eclipse's own measured width — see
+    # VET_WINDOW_MIN_PHASE above. Clamped so it can only ever tighten.
+    _hw = _eclipse_half_width(phase, f, ph0, base, in_transit, noise)
+    sec_window = (VET_WINDOW_PHASE if _hw is None
+                  else min(max(_hw, VET_WINDOW_MIN_PHASE), VET_WINDOW_PHASE))
+    sec = np.abs(((phase - ph0 - 0.5 + 0.5) % 1.0) - 0.5) < sec_window
     d_sec = base - float(np.median(f[sec])) if sec.sum() > 5 else float("nan")
     # Signed, deliberately: a significant phase-locked BRIGHTENING is its own
     # verdict below, so this statistic must keep its sign.
@@ -284,6 +359,10 @@ def vet_candidate(t: np.ndarray, f: np.ndarray, det: Detection,
         "depth_odd": d_odd, "depth_even": d_even,
         "odd_even_sigma": float(diff_sigma),
         "secondary_depth": float(d_sec), "secondary_sigma": float(sec_sigma),
+        # Recorded so a receipt can be audited against the window it was
+        # actually measured in. Before 2026-08-28 this was always
+        # VET_WINDOW_PHASE and the receipts could not say so.
+        "secondary_window_phase": float(sec_window),
     }
     if alias is not None:
         out_row["alias_n"] = alias[0]
