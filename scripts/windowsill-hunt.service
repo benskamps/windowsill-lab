@@ -4,4 +4,4 @@ Description=A05 blind-transit hunt (one bounded run per loam slot)
 [Service]
 Type=oneshot
 ExecStart=/usr/bin/env bash %h/projects/windowsill-lab/scripts/a05-hunt-slot.sh
-TimeoutStartSec=2h
+TimeoutStartSec=3h
