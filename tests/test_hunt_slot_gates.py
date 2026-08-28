@@ -154,3 +154,42 @@ def test_a_conflicted_pull_leaves_the_clone_on_main(slot):
     assert slot.branch() == "main"
     assert not (slot.repo / ".git" / "rebase-merge").exists()
     assert not (slot.repo / ".git" / "rebase-apply").exists()
+
+
+# --- AUTO-F7: an intended empty slice is not a failure, and silence still is --
+#
+# 2026-08-28. The 09:02 slot did exactly what it is designed to do: the runner's
+# soft minutes budget stopped the search cleanly at 192 rows, checkpointed, and
+# wrote NO receipt because a receipt for an incomplete slice would be a lie. It
+# exited 0. The wrapper then exited 1 — "no receipt path in this run's log" —
+# and systemd logged `Failed to start` on a slot that worked.
+#
+# The guard itself is right and stays: a missing receipt is what a crash, a
+# truncated log and a renamed print ALL look like, so absence may never be read
+# as success. What was missing is the third state. This is the same two-way
+# collapse `honesty_eval.py` was opened up for in warden on 2026-08-16 —
+# ABSENT, MALFORMED and PRESENT are three outcomes, not two — and the rule is
+# the same here: only the producer's OWN positive declaration, scoped to this
+# run's log window, may distinguish an intended empty slice from a silent one.
+
+def test_a_declared_budget_wall_is_a_quiet_success(slot):
+    """The runner said it stopped on budget. That is a slot doing its job."""
+    proc = slot.run("hunt-2026-08-28-s30.json", no_receipt=True, budget_wall=True)
+    assert proc.returncode == 0, "an intended empty slice must not alarm"
+    assert slot.hunt_ran()
+
+
+def test_a_declared_budget_wall_publishes_nothing(slot):
+    """Exiting green may not become a licence to publish an absent receipt."""
+    slot.run("hunt-2026-08-28-s30.json", no_receipt=True, budget_wall=True)
+    assert not any(f.startswith("reports/hunts/hunt-") for f in slot.pushed_files())
+    assert slot.is_clean(), "the next campaign pass has to find this clone clean"
+
+
+def test_a_silent_missing_receipt_is_still_a_failure(slot):
+    """THE NEGATIVE CONTROL. Same absent receipt, no declaration from the runner
+    — a crash between the search and the receipt write looks exactly like this.
+    If this ever goes green the fix has blanket-greened the gate instead of
+    opening a third state in it."""
+    proc = slot.run("hunt-2026-08-28-s30.json", no_receipt=True, budget_wall=False)
+    assert proc.returncode != 0, "absence without a declaration is still absence"

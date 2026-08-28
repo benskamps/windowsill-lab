@@ -43,6 +43,15 @@ from pathlib import Path
 root = Path.cwd()
 Path(os.environ["STUB_RAN_MARKER"]).write_text("ran", encoding="utf-8")
 
+if os.environ.get("STUB_NO_RECEIPT"):
+    # The soft-minutes budget stopped the search cleanly mid-slice. The runner
+    # checkpoints and writes NO receipt for an incomplete slice, by design, and
+    # exits 0. STUB_BUDGET_WALL controls whether it says so out loud.
+    if os.environ.get("STUB_BUDGET_WALL"):
+        print("[budget] soft wall reached with 192 rows checkpointed; rerun the "
+              "same command to resume - no receipt is written for an incomplete slice")
+    sys.exit(0)
+
 receipt = root / "reports" / "hunts" / os.environ["STUB_RECEIPT"]
 receipt.parent.mkdir(parents=True, exist_ok=True)
 receipt.write_text(json.dumps({"experiment": "a05-survey-hunt", "schema": 1}),
@@ -119,7 +128,7 @@ class Slot:
         self.ran_marker = tmp_path / "runner-ran"
 
     def run(self, receipt, grade="True", dossier=None, crash_after_receipt=False,
-            trailing_lines=0, exit_code=0):
+            trailing_lines=0, exit_code=0, no_receipt=False, budget_wall=False):
         self.ran_marker.unlink(missing_ok=True)
         env = {
             "PATH": shim_path(self.bash, self.tmp_path),
@@ -139,6 +148,10 @@ class Slot:
             env["STUB_DOSSIER"] = dossier
         if crash_after_receipt:
             env["STUB_CRASH_AFTER_RECEIPT"] = "1"
+        if no_receipt:
+            env["STUB_NO_RECEIPT"] = "1"
+        if budget_wall:
+            env["STUB_BUDGET_WALL"] = "1"
         return subprocess.run([self.bash, str(SLOT_SH)], env=env,
                               capture_output=True, text=True, timeout=300)
 

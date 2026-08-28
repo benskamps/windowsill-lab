@@ -204,6 +204,23 @@ if [ "$rc" -ne 0 ]; then
   exit "$rc"
 fi
 if [ -z "$receipt" ] || [ ! -f "$receipt" ]; then
+  # THE THIRD STATE. A missing receipt is what a crash, a truncated log and a
+  # renamed print ALL look like, so absence may never be read as success — that
+  # guard stays, below. But it is ALSO what the soft minutes budget looks like:
+  # the runner stops the search cleanly mid-slice, checkpoints, writes no
+  # receipt because one for an incomplete slice would be a lie, and returns 0
+  # (a05_hunt.py:462-466). On 2026-08-28 the 09:02 slot did exactly that with
+  # 192 rows banked and the unit logged `Failed to start` on a slot that worked.
+  #
+  # Only the runner's OWN positive declaration, scoped to THIS run's log window
+  # by the window rule above, may separate the two. Absence still cannot vouch
+  # for itself: no token, no green. Same shape as opening `honesty_eval.py`'s
+  # two-way collapse into ABSENT / MALFORMED / PRESENT (warden, 2026-08-16).
+  if printf '%s\n' "$run_log" | grep -q '^\[budget\] soft wall reached'; then
+    echo "$(date -Is) runner stopped on its soft budget and banked a checkpoint — no receipt is due; resuming next slot" >>"$log"
+    restore_pot
+    exit 0
+  fi
   echo "$(date -Is) no receipt path in this run's log — nothing staged" >>"$log"
   restore_pot
   exit 1
