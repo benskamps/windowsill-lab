@@ -513,23 +513,23 @@
     }
   ],
   "total": 40,
-  "last_run": "2026-08-29T13:00:25.070058+00:00",
+  "last_run": "2026-08-29T19:00:40.120336+00:00",
   "runs": 65,
-  "temp_c": 88.6,
+  "temp_c": 88.5,
   "latest_report": {
     "date": "2026-08-29",
-    "milestone": "M10",
+    "milestone": "M13",
     "verdict": "verified",
-    "headline": "Antiferromagnetic Ising (L=128): staggered \u03c7_s peaks at T_N=2.291 vs Onsager exact 2.2692 (rel. err 0.9%); C-peak cross-check 2.274; uniform \u27e8|m|\u27e9 stays \u22640.003 \u00b7 23s on CPU",
+    "headline": "Frustrated triangular Ising antiferromagnet (L=96): no ordering transition, a macroscopically degenerate ground state. Integrating C(T)/T from S(\u221e)=ln2 down gives a residual entropy S0/N = 0.3223 k_B vs Wannier's exact 0.3383 (\u0394=0.0160); ground-state energy -1.0000 per spin (exact \u22121) \u2014 residual S0/N \u2248 0.3223 k_B \u2014 Wannier reproduced \u00b7 37s",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-29-0900-m10.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-29-1500-m13.json",
     "machine": "linux-rocm",
-    "at": "2026-08-29T13:00:25.070058+00:00"
+    "at": "2026-08-29T19:00:40.120336+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-29T13:00:28.877428+00:00",
+  "updated": "2026-08-29T19:00:43.781234+00:00",
   "provenance": {
-    "code_sha": "6419d79",
+    "code_sha": "1f1ccaa",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -538,6 +538,16 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-29",
+      "milestone": "M13",
+      "verdict": "verified",
+      "headline": "Frustrated triangular Ising antiferromagnet (L=96): no ordering transition, a macroscopically degenerate ground state. Integrating C(T)/T from S(\u221e)=ln2 down gives a residual entropy S0/N = 0.3223 k_B vs Wannier's exact 0.3383 (\u0394=0.0160); ground-state energy -1.0000 per spin (exact \u22121) \u2014 residual S0/N \u2248 0.3223 k_B \u2014 Wannier reproduced \u00b7 37s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-29-1500-m13",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-29-1500-m13.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-29T19:00:40.120336+00:00"
+    },
     {
       "date": "2026-08-29",
       "milestone": "M10",
@@ -1687,11 +1697,11 @@
     }
   ],
   "turns": {
-    "count": 171,
-    "today": 3,
+    "count": 172,
+    "today": 4,
     "last_by_machine": {
       "windows-cuda": "2026-08-20T01:11:49.221742+00:00",
-      "linux-rocm": "2026-08-29T13:00:25.070058+00:00"
+      "linux-rocm": "2026-08-29T19:00:40.120336+00:00"
     },
     "expected_interval_h": 3
   },
