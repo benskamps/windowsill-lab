@@ -1746,13 +1746,13 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 11456,
-    "above_threshold": 107,
+    "targets_searched": 11621,
+    "above_threshold": 108,
     "dispositions": {
       "eclipsing-binary-secondary": 17,
       "harmonic-alias": 15,
       "eclipsing-binary-odd-even": 16,
-      "low-significance": 15,
+      "low-significance": 16,
       "phased-brightening": 2,
       "toi-known-fp": 2,
       "known-planet": 3,
