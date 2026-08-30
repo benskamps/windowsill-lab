@@ -824,3 +824,51 @@ def test_next_dry_run_runs_nothing_and_writes_nothing(monkeypatch, capsys, tmp_p
     assert "skipped I01" in out and "no-camera" in out   # disclosed in dry-run
     assert "would run `lab run`" in out                  # wrapped to M01
     assert sorted(p.name for p in receipts.iterdir()) == before
+
+
+# ── the orphaned-runner guard (2026-08-30) ──────────────────────────────────
+# K04, C05 and P01 had registered, ungated runners and no rotation slot, so they
+# were structurally unpickable and had produced ZERO reports. The new-milestone
+# checklist covers RUNNERS, cli, the checks registry, MILESTONES, the pot splice
+# and the web GARDEN_SPECS count — but not ROTATION, and no test asserted the
+# relationship, so all three passed CI while being uncallable. Meanwhile M01 was
+# re-measured 18 times. These tests make that omission impossible.
+
+def test_rotation_covers_every_runner():
+    """A registered runner is either rotated or excluded WITH A STATED REASON."""
+    orphans = (set(curriculum.RUNNERS)
+               - set(curriculum.ROTATION)
+               - set(curriculum.ROTATION_EXCLUDED))
+    assert not orphans, (
+        f"runner(s) {sorted(orphans)} are registered but neither in ROTATION nor "
+        f"in ROTATION_EXCLUDED. A runner in neither map can never be dispatched "
+        f"and will silently produce nothing. Add it to the rotation, or exclude "
+        f"it with the reason."
+    )
+
+
+def test_rotation_and_exclusions_are_disjoint():
+    """Nothing may be both rotated and excluded — that reads as a ruling reversal."""
+    both = set(curriculum.ROTATION) & set(curriculum.ROTATION_EXCLUDED)
+    assert not both, f"{sorted(both)} appear in BOTH ROTATION and ROTATION_EXCLUDED"
+
+
+def test_every_exclusion_names_a_real_runner():
+    """An exclusion for a runner that no longer exists is stale documentation."""
+    ghosts = set(curriculum.ROTATION_EXCLUDED) - set(curriculum.RUNNERS)
+    assert not ghosts, (
+        f"ROTATION_EXCLUDED names {sorted(ghosts)}, which have no registered "
+        f"runner — the exclusion is stale and should be deleted"
+    )
+
+
+def test_exclusion_reasons_are_substantive():
+    """A reason has to say something; an empty string is not a ruling."""
+    thin = [k for k, v in curriculum.ROTATION_EXCLUDED.items() if len(v.strip()) < 25]
+    assert not thin, f"exclusion reason too thin to be a ruling: {thin}"
+
+
+def test_newly_admitted_runners_are_in_rotation():
+    """The three admitted 2026-08-30 after being timed out-of-rotation."""
+    for mid in ("K04", "C05", "P01"):
+        assert mid in curriculum.ROTATION, f"{mid} was admitted; it must stay rotated"
