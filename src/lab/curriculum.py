@@ -144,11 +144,42 @@ def runner_for(milestone_id: str) -> str | None:
 # wall-clock class as K02's hero ladder, which the planner's cost divisor
 # already prices correctly. Its verdict is a live literature adjudication
 # (Daido vs Hong), so a rare re-measure is meaningful, not receipt spam.
+# K04, C05 and P01 joined 2026-08-30. Their runners had been merged and
+# registered — K04 on 08-22 (#126), C05 on 08-22 (#123) — and then never given a
+# rotation slot, so they were structurally unpickable and had produced ZERO
+# reports each. Admission is by SAFETY, so each was timed once out-of-rotation
+# against an isolated LAB_HOME before being added, not admitted on taste:
+#   K04   11.1 s  almost-sure synchronization reproduced
+#   A07   24.4 s  Kepler III + Laplace resonance from live JPL Horizons
+#   C05   58.8 s  24/24 windows byte-identical, deep window calibrated
+#   A02  126.5 s  variable-star light curve + period — A04's MAST class
+#   P01  145.5 s  HP lattice fold (the one committed receipt said ~133 s)
+# All five are inside M18's 227 s class, well under K02's ~63 min hero ladder.
+# None was admitted on taste; each ran once against an isolated LAB_HOME first.
 ROTATION: tuple[str, ...] = (
     "M01", "M02", "M03", "M04", "M05", "M06", "M07", "M08", "M09", "M10",
     "M11", "M13", "M14", "M15", "M17", "M18", "K01", "K02", "K03", "C01",
-    "A01", "A03", "A04", "I01",
+    "A01", "A03", "A04", "K04", "A07", "C05", "A02", "P01", "I01",
 )
+# NOTE: I01 stays LAST. It is the hardware-gated member, and three tests in
+# tests/test_next.py exercise skip-and-wrap through that final position
+# (they assert ROTATION[-1] == "I01" explicitly). New members go BEFORE it.
+# Appending after I01 reds those three; that is the suite doing its job.
+
+# Every registered runner that is NOT in ROTATION, with the reason. This exists
+# because the omission above was invisible: the new-milestone checklist covers
+# RUNNERS, cli, the checks registry, MILESTONES, the pot splice and the web
+# GARDEN_SPECS count — and not ROTATION. So a runner could be built, tested,
+# merged and pass CI while remaining permanently uncallable. Three did.
+# `test_rotation_covers_every_runner` now fails if a runner appears in neither
+# map, which makes the omission impossible rather than merely fixed.
+ROTATION_EXCLUDED: dict[str, str] = {
+    "A05": "the frontier branch owns the open bench — rotation must never "
+           "double-dispatch it (it has its own windowsill-hunt.timer)",
+    "M12": "wall-clock class — PT2H-exceeding full run; hand-run, see the "
+           "2026-08-01 rotation doc",
+    "M16": "wall-clock class — null-spam quick variant; hand-run, same doc",
+}
 
 
 def _i01_hardware_gate() -> str | None:
