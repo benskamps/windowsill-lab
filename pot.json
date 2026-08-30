@@ -513,23 +513,23 @@
     }
   ],
   "total": 40,
-  "last_run": "2026-08-30T13:01:01.837301+00:00",
+  "last_run": "2026-08-30T21:05:23.725318+00:00",
   "runs": 66,
-  "temp_c": 83.1,
+  "temp_c": 91.8,
   "latest_report": {
     "date": "2026-08-30",
-    "milestone": "A01",
+    "milestone": "P01",
     "verdict": "verified",
-    "headline": "TESS recovered WASP-18 b: P=0.94145236 d, depth=1.022% from 177 timed transits",
+    "headline": null,
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-30-0901-a01.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-30-1705-p01.json",
     "machine": "linux-rocm",
-    "at": "2026-08-30T13:01:01.837301+00:00"
+    "at": "2026-08-30T21:05:23.725318+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-30T13:01:05.542377+00:00",
+  "updated": "2026-08-30T21:05:33.361483+00:00",
   "provenance": {
-    "code_sha": "7417f35",
+    "code_sha": "fc89b80",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -538,6 +538,56 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-30",
+      "milestone": "P01",
+      "verdict": "verified",
+      "headline": null,
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-30-1705-p01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-30-1705-p01.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-30T21:05:23.725318+00:00"
+    },
+    {
+      "date": "2026-08-30",
+      "milestone": "A02",
+      "verdict": "verified",
+      "headline": null,
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-30-1702-a02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-30-1702-a02.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-30T21:02:53.349387+00:00"
+    },
+    {
+      "date": "2026-08-30",
+      "milestone": "C05",
+      "verdict": "verified",
+      "headline": "BBP windows at 24 positions across 12000 hex digits: 24/24 byte-identical with the Machin expansion; deep window at 10,000,000 self-consistent in 51.48s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-30-1701-c05",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-30-1701-c05.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-30T21:01:17.304313+00:00"
+    },
+    {
+      "date": "2026-08-30",
+      "milestone": "A07",
+      "verdict": "verified",
+      "headline": "four moons, one law: T^2/a^3 spread 2.08e-04, GM_Jupiter 1.268e+08 vs 1.267e+08 km^3/s^2; Laplace residual 1.2e-05 (Callisto substituted: 0.28)",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-30-1700-a07",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-30-1700-a07.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-30T21:00:17.755234+00:00"
+    },
+    {
+      "date": "2026-08-30",
+      "milestone": "K04",
+      "verdict": "verified",
+      "headline": "Mirollo\u2013Strogatz fireflies (N=100, b=3, \u03b5=0.001): 200/200 random initial conditions reached unison (median 167 / max 228 events vs bound 5000); \u03b5=0 control held 100 clusters of 100 \u00b7 3s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-30-1700-k04",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-30-1700-k04.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-30T21:00:06.417217+00:00"
+    },
     {
       "date": "2026-08-30",
       "milestone": "A01",
@@ -821,7 +871,7 @@
     {
       "date": "2026-08-22",
       "milestone": "A07",
-      "verdict": "unscored",
+      "verdict": "null",
       "headline": "four moons, one law: T^2/a^3 spread 2.08e-04, GM_Jupiter 1.268e+08 vs 1.267e+08 km^3/s^2; Laplace residual 1.2e-05 (Callisto substituted: 0.28)",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-22-1730-a07",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-22-1730-a07.json",
@@ -1737,11 +1787,11 @@
     }
   ],
   "turns": {
-    "count": 176,
-    "today": 3,
+    "count": 181,
+    "today": 8,
     "last_by_machine": {
       "windows-cuda": "2026-08-20T01:11:49.221742+00:00",
-      "linux-rocm": "2026-08-30T13:01:01.837301+00:00"
+      "linux-rocm": "2026-08-30T21:05:23.725318+00:00"
     },
     "expected_interval_h": 3
   },

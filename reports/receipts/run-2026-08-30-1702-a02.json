@@ -1,0 +1,373 @@
+{
+  "band_cpd": [
+    0.05,
+    120.0
+  ],
+  "control_margin_required": 3.0,
+  "counts": {
+    "control_clear": 6,
+    "declared": 6,
+    "measured": 6,
+    "within_resolution": 6
+  },
+  "experiment": "A02-variable-star-recovery",
+  "generated_at": "2026-08-30T21:02:53.349387+00:00",
+  "milestone": "A02",
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.1",
+      "numpy": "2.5.1",
+      "torch": "2.10.0.dev20251031+rocm6.4"
+    },
+    "platform": "linux-x86_64",
+    "python": "3.14.4",
+    "source_clean": true,
+    "source_commit": "fc89b804f017a51ba6a484fafb3857cdc50e3993",
+    "source_diff_sha256": null,
+    "source_tree_sha256": "bc4445385617a7483a2701c7fdb7c98924f7fd8fce7781015ef39f573adf1fe4"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "a0a36468ae390b1fc398ddf6d79f93c76dd02c88993b695888042845a6d6e205"
+  },
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify A02",
+    "rerun": "python -m lab.cli a02"
+  },
+  "schema": 1,
+  "targets": [
+    {
+      "abs_error_days": 0.0004208817521186292,
+      "band_cpd": [
+        0.05,
+        120.0
+      ],
+      "baseline_days": 26.809666387817742,
+      "blazhko": true,
+      "cadences": 12851,
+      "control_clear": true,
+      "control_margin": 19.49987309751636,
+      "control_peak_amplitude": 0.06107762202008404,
+      "control_seed": 1000,
+      "frequency_cpd": 1.7656797536736915,
+      "grid_frequency_cpd": 1.7657990455600103,
+      "harmonic": null,
+      "ident": "RR Lyr",
+      "noise_floor": 0.004054786546736305,
+      "outcome": "measured",
+      "peak_amplitude": 1.1910058784897095,
+      "peak_over_floor": 293.7283787350901,
+      "period_days": 0.5663541182478814,
+      "photometry": {
+        "cache_file": "tess2019198215352-s0014-0000000159717514-0150-s_lc.fits",
+        "sha256": "895c061c77d5cece1b2856dc9883e12a0701d0c343a2bc53a235d39f1de38a94"
+      },
+      "published_period_days": 0.566775,
+      "rel_error": 0.0007425905379006293,
+      "resolution_beat_factor": 28.468846101816517,
+      "resolution_days": 0.011982017828128144,
+      "sector": 14,
+      "sectors": [
+        14,
+        40,
+        41
+      ],
+      "tic": "159717514",
+      "vsx": {
+        "auid": "000-BCG-719",
+        "name": "RR Lyr",
+        "period_days": 0.566775,
+        "provenance": {
+          "cache_file": "vsx-RR_Lyr.json",
+          "ident": "RR Lyr",
+          "sha256": "6b86e6059212aa6b35cb9b8ff177fb7a8be788c4bf9c21e16acf6fac8b795277",
+          "source": "AAVSO VSX api.object"
+        },
+        "type": "RRAB/BL"
+      },
+      "within_resolution": true
+    },
+    {
+      "abs_error_days": 9.557149608263593e-06,
+      "band_cpd": [
+        0.05,
+        120.0
+      ],
+      "baseline_days": 22.100384430254508,
+      "blazhko": false,
+      "cadences": 12828,
+      "control_clear": true,
+      "control_margin": 24.09662535980669,
+      "control_peak_amplitude": 0.00041465385341051024,
+      "control_seed": 1001,
+      "frequency_cpd": 5.249888308812304,
+      "grid_frequency_cpd": 5.249004585762165,
+      "harmonic": null,
+      "ident": "beta Cep",
+      "noise_floor": 1.327154159111276e-05,
+      "outcome": "measured",
+      "peak_amplitude": 0.009991758559633267,
+      "peak_over_floor": 752.870982699117,
+      "period_days": 0.19048024285039172,
+      "photometry": {
+        "cache_file": "tess2019253231442-s0016-0000000321818578-0152-s_lc.fits",
+        "sha256": "de7bf40c29bdd9bbbcb138249d69b69d604c2bcfb592676fde507a725b1c2276"
+      },
+      "published_period_days": 0.1904898,
+      "rel_error": 5.017145069323184e-05,
+      "resolution_beat_factor": 171.79686677826402,
+      "resolution_days": 0.0016418883580307986,
+      "sector": 16,
+      "sectors": [
+        16,
+        17,
+        18,
+        19,
+        24,
+        25,
+        26,
+        52,
+        55,
+        57,
+        58,
+        59,
+        60,
+        77,
+        78,
+        84,
+        85,
+        86
+      ],
+      "tic": "321818578",
+      "vsx": {
+        "auid": "000-BCN-968",
+        "name": "bet Cep",
+        "period_days": 0.1904898,
+        "provenance": {
+          "cache_file": "vsx-beta_Cep.json",
+          "ident": "beta Cep",
+          "sha256": "065b9ec2103e84cd1b33690926bccdc0a069883094b60bf2000f218178367a74",
+          "source": "AAVSO VSX api.object"
+        },
+        "type": "BCEP"
+      },
+      "within_resolution": true
+    },
+    {
+      "abs_error_days": 1.2756615288822548e-06,
+      "band_cpd": [
+        0.05,
+        120.0
+      ],
+      "baseline_days": 26.850413364336873,
+      "blazhko": false,
+      "cadences": 18351,
+      "control_clear": true,
+      "control_margin": 28.60279338482931,
+      "control_peak_amplitude": 0.008052643583814105,
+      "control_seed": 1002,
+      "frequency_cpd": 7.41474412307328,
+      "grid_frequency_cpd": 7.413015135647342,
+      "harmonic": null,
+      "ident": "XX Cyg",
+      "noise_floor": 0.00043805622061224465,
+      "outcome": "measured",
+      "peak_amplitude": 0.23032810062950626,
+      "peak_over_floor": 525.7957535852147,
+      "period_days": 0.13486642066152887,
+      "photometry": {
+        "cache_file": "tess2019198215352-s0014-0000000233310793-0150-s_lc.fits",
+        "sha256": "2e4da3a827475c688d7577bcdf8abf80af9b54615a1b1cb5c037ddff151d5c01"
+      },
+      "published_period_days": 0.134865145,
+      "rel_error": 9.45879329223466e-06,
+      "resolution_beat_factor": 531.0226098615609,
+      "resolution_days": 0.0006774051143670439,
+      "sector": 14,
+      "sectors": [
+        14,
+        15,
+        16,
+        17,
+        19,
+        41,
+        54,
+        55,
+        56,
+        57,
+        60
+      ],
+      "tic": "233310793",
+      "vsx": {
+        "auid": "000-BCK-301",
+        "name": "XX Cyg",
+        "period_days": 0.134865145,
+        "provenance": {
+          "cache_file": "vsx-XX_Cyg.json",
+          "ident": "XX Cyg",
+          "sha256": "18cf12734df3217a89a1507679b3384e4b4416e0cdf4c053ca5ad4624508436b",
+          "source": "AAVSO VSX api.object"
+        },
+        "type": "SXPHE"
+      },
+      "within_resolution": true
+    },
+    {
+      "abs_error_days": 5.607939182472599e-09,
+      "band_cpd": [
+        0.05,
+        120.0
+      ],
+      "baseline_days": 25.082330709441976,
+      "blazhko": false,
+      "cadences": 16966,
+      "control_clear": true,
+      "control_margin": 19.918059327872054,
+      "control_peak_amplitude": 0.004136661094678426,
+      "control_seed": 1003,
+      "frequency_cpd": 8.96265316624093,
+      "grid_frequency_cpd": 8.964642047831232,
+      "harmonic": null,
+      "ident": "AI Vel",
+      "noise_floor": 0.00016771287242790643,
+      "outcome": "measured",
+      "peak_amplitude": 0.08239426110310505,
+      "peak_over_floor": 491.2816762978244,
+      "period_days": 0.11157410439206082,
+      "photometry": {
+        "cache_file": "tess2021014023720-s0034-0000000081709032-0204-s_lc.fits",
+        "sha256": "cbf6972ad6a5de13057fd74b7ded814a269c7b5ef67b4e2d325ab54e97d736e5"
+      },
+      "published_period_days": 0.11157411,
+      "rel_error": 5.02620113436047e-08,
+      "resolution_beat_factor": 88502.52832357715,
+      "resolution_days": 0.0004963167963336792,
+      "sector": 34,
+      "sectors": [
+        34,
+        35,
+        36
+      ],
+      "tic": "81709032",
+      "vsx": {
+        "auid": "000-BBP-354",
+        "name": "AI Vel",
+        "period_days": 0.11157411,
+        "provenance": {
+          "cache_file": "vsx-AI_Vel.json",
+          "ident": "AI Vel",
+          "sha256": "b489384ca94a24e94b2d27dd3d53fd21dadbafc48f578212591c63fea7bf4e94",
+          "source": "AAVSO VSX api.object"
+        },
+        "type": "HADS(B)"
+      },
+      "within_resolution": true
+    },
+    {
+      "abs_error_days": 2.646876493123118e-07,
+      "band_cpd": [
+        0.05,
+        120.0
+      ],
+      "baseline_days": 27.40529948687299,
+      "blazhko": false,
+      "cadences": 18283,
+      "control_clear": true,
+      "control_margin": 27.2974892137319,
+      "control_peak_amplitude": 0.005167352058941516,
+      "control_seed": 1004,
+      "frequency_cpd": 18.193494208142095,
+      "grid_frequency_cpd": 18.19247643008451,
+      "harmonic": null,
+      "ident": "SX Phe",
+      "noise_floor": 0.00032635695780823065,
+      "outcome": "measured",
+      "peak_amplitude": 0.14105573709251135,
+      "peak_over_floor": 432.21305297065726,
+      "period_days": 0.05496470268764931,
+      "photometry": {
+        "cache_file": "tess2018234235059-s0002-0000000224285325-0121-s_lc.fits",
+        "sha256": "28387e336b45df059197fa8790e65ae1de63c3b39b833cc54819dad6e83893f7"
+      },
+      "published_period_days": 0.054964438,
+      "rel_error": 4.815616404779975e-06,
+      "resolution_beat_factor": 416.48115395938254,
+      "resolution_days": 0.00011023741762438799,
+      "sector": 2,
+      "sectors": [
+        2,
+        29,
+        36,
+        105
+      ],
+      "tic": "224285325",
+      "vsx": {
+        "auid": "000-BCW-822",
+        "name": "SX Phe",
+        "period_days": 0.054964438,
+        "provenance": {
+          "cache_file": "vsx-SX_Phe.json",
+          "ident": "SX Phe",
+          "sha256": "c4fc4d65079cd31f4f56302f0378876352f030f5bb35b068d01999449a674c0c",
+          "source": "AAVSO VSX api.object"
+        },
+        "type": "SXPHE(B)"
+      },
+      "within_resolution": true
+    },
+    {
+      "abs_error_days": 4.868116130624101e-07,
+      "band_cpd": [
+        0.05,
+        120.0
+      ],
+      "baseline_days": 27.334584486384983,
+      "blazhko": false,
+      "cadences": 17299,
+      "control_clear": true,
+      "control_margin": 28.522076266916358,
+      "control_peak_amplitude": 0.004847746226534086,
+      "control_seed": 1005,
+      "frequency_cpd": 11.62566536077749,
+      "grid_frequency_cpd": 11.625079919637885,
+      "harmonic": null,
+      "ident": "AE UMa",
+      "noise_floor": 0.00026782105972256035,
+      "outcome": "measured",
+      "peak_amplitude": 0.13826778759586117,
+      "peak_over_floor": 516.2692871841174,
+      "period_days": 0.08601658218838694,
+      "photometry": {
+        "cache_file": "tess2020020091053-s0021-0000000357132618-0167-s_lc.fits",
+        "sha256": "0078c25eedccdd005303311983a086c4cbe0d368a8a767a637907831a62dc829"
+      },
+      "published_period_days": 0.086017069,
+      "rel_error": 5.659476877344077e-06,
+      "resolution_beat_factor": 556.0269906456601,
+      "resolution_days": 0.0002706803962224514,
+      "sector": 21,
+      "sectors": [
+        21,
+        48,
+        50
+      ],
+      "tic": "357132618",
+      "vsx": {
+        "auid": "000-BCX-409",
+        "name": "AE UMa",
+        "period_days": 0.086017069,
+        "provenance": {
+          "cache_file": "vsx-AE_UMa.json",
+          "ident": "AE UMa",
+          "sha256": "10c3ab2faba62f4d5a5a3ead907d567065cf31c98e2a45544d3b73fafb2df929",
+          "source": "AAVSO VSX api.object"
+        },
+        "type": "SXPHE(B)"
+      },
+      "within_resolution": true
+    }
+  ]
+}
