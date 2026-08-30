@@ -1746,25 +1746,26 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 11283,
-    "above_threshold": 104,
+    "targets_searched": 11456,
+    "above_threshold": 107,
     "dispositions": {
       "eclipsing-binary-secondary": 17,
       "harmonic-alias": 15,
       "eclipsing-binary-odd-even": 16,
-      "low-significance": 14,
+      "low-significance": 15,
       "phased-brightening": 2,
       "toi-known-fp": 2,
       "known-planet": 3,
       "recovery-or-known": 9,
       "stellar-pulsation": 12,
       "insufficient-coverage": 3,
-      "lead-awaiting-human-review": 7,
+      "lead-awaiting-human-review": 8,
       "centroid-shift": 3,
-      "ctoi-known": 1
+      "ctoi-known": 1,
+      "companion-too-large": 1
     },
     "known_recovered": 9,
-    "leads_awaiting_human_review": 7,
+    "leads_awaiting_human_review": 8,
     "planets_discovered": 0,
     "last_hunt": {
       "date": "2026-08-30",
