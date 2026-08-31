@@ -513,23 +513,23 @@
     }
   ],
   "total": 40,
-  "last_run": "2026-08-31T13:00:38.677329+00:00",
+  "last_run": "2026-08-31T19:01:36.593758+00:00",
   "runs": 67,
-  "temp_c": 91.1,
+  "temp_c": 91.9,
   "latest_report": {
     "date": "2026-08-31",
-    "milestone": "M05",
+    "milestone": "K01",
     "verdict": "verified",
-    "headline": "Triangular-lattice 2D Ising (L=129): \u03c7 peaks at T_c=3.678 vs exact 4/ln3 = 3.6410 (rel. err 1.0%); C-peak cross-check 3.656 \u00b7 35s on GPU",
+    "headline": "Kuramoto synchronization (N=2000, \u03b3=0.5): \u03c7=N\u00b7Var(r) peaks at K_c=0.9353 vs exact 2\u03b3=1.0000 (rel. err 6.5%); ordered branch \u221a(1\u2212K_c/K) matched to 1.5e-04 over 7 couplings \u00b7 94s",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-31-0900-m05.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-31-1501-k01.json",
     "machine": "linux-rocm",
-    "at": "2026-08-31T13:00:38.677329+00:00"
+    "at": "2026-08-31T19:01:36.593758+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-08-31T13:00:47.822462+00:00",
+  "updated": "2026-08-31T19:01:46.218026+00:00",
   "provenance": {
-    "code_sha": "6d418fd",
+    "code_sha": "783ab08",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -538,6 +538,16 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-08-31",
+      "milestone": "K01",
+      "verdict": "verified",
+      "headline": "Kuramoto synchronization (N=2000, \u03b3=0.5): \u03c7=N\u00b7Var(r) peaks at K_c=0.9353 vs exact 2\u03b3=1.0000 (rel. err 6.5%); ordered branch \u221a(1\u2212K_c/K) matched to 1.5e-04 over 7 couplings \u00b7 94s",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-31-1501-k01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-31-1501-k01.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-31T19:01:36.593758+00:00"
+    },
     {
       "date": "2026-08-31",
       "milestone": "M05",
@@ -1817,11 +1827,11 @@
     }
   ],
   "turns": {
-    "count": 184,
-    "today": 2,
+    "count": 185,
+    "today": 3,
     "last_by_machine": {
       "windows-cuda": "2026-08-20T01:11:49.221742+00:00",
-      "linux-rocm": "2026-08-31T13:00:38.677329+00:00"
+      "linux-rocm": "2026-08-31T19:01:36.593758+00:00"
     },
     "expected_interval_h": 3
   },
