@@ -1856,15 +1856,15 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 11985,
-    "above_threshold": 111,
+    "targets_searched": 12162,
+    "above_threshold": 113,
     "dispositions": {
       "eclipsing-binary-secondary": 17,
       "harmonic-alias": 15,
       "eclipsing-binary-odd-even": 17,
-      "low-significance": 16,
+      "low-significance": 17,
       "phased-brightening": 2,
-      "toi-known-fp": 2,
+      "toi-known-fp": 3,
       "known-planet": 3,
       "recovery-or-known": 10,
       "stellar-pulsation": 12,
@@ -1880,8 +1880,8 @@
     "last_hunt": {
       "date": "2026-09-01",
       "sector": 30,
-      "n": 189,
-      "wall": 8058.670016288757,
+      "n": 177,
+      "wall": 5999.755713224411,
       "provenance": "a05"
     },
     "claim_boundary": "Per-target statistics over a predeclared consistent-hash slice of one sector's 2-minute SPOC targets: each graded number is an empirical permutation FAP bounded by (1+k)/(B+1), each above-threshold detection carries a machine disposition from a closed vocabulary, and each Stage-2 host carries its own measured injection depth limit. The survey claims completeness of DISPOSITION over that sample \u2014 every hit named, no hit promoted \u2014 not completeness of detection, not an occurrence rate, and no discovery: the terminal machine state is lead-awaiting-human-review, nothing is submitted anywhere on the strength of this receipt, and Gumbel tails plus survey-level sums are reported, never graded.",
