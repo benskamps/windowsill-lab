@@ -615,6 +615,7 @@
     .archive[open] > summary::before { content:'▾ '; }
     .archive > summary:hover { color:var(--text-secondary); }
     .arc-list { padding:0.2rem 0.8rem 0.7rem; }
+    .arc-note { padding:0.35rem 0.8rem 0; color:var(--text-muted); font:normal 0.72rem/1.5 var(--font-mono); }
     .arc-row { display:flex; align-items:baseline; gap:0.55rem; padding:0.28rem 0;
                font-size:0.74rem; color:var(--text-secondary); border-top:1px solid var(--border); }
     .arc-row:first-child { border-top:none; }
@@ -1358,6 +1359,9 @@
 
     <details class="archive" id="archive" hidden>
       <summary id="archive-summary">every run</summary>
+      <!-- The lab publishes two totals and they are not the same total. This
+           line is where they are reconciled, in words, once. -->
+      <p class="arc-note" id="arc-note" hidden></p>
       <div class="arc-list" id="arc-list"></div>
     </details>
 
@@ -3885,7 +3889,19 @@
     // procedural seed stays byte-for-byte unchanged. textContent (never raw
     // HTML) + the same /^https?:\/\//i href-guard the milestone leaves use.
     var ARC_GLYPH = { verified:'●', review:'◆', null:'◑', unscored:'○', unreadable:'⚠' };
-    function drawRunList(reports, archiveUrl, milestones, divergence) {
+
+    // Truthful totals: a collapsed row stands for group_count runs, so the run
+    // count sums the groups — rows would undercount the record. Pure, so the
+    // number the page states can be re-derived from the feed by a test.
+    function runsOnRecord(reports) {
+      var total = 0;
+      (reports || []).forEach(function (r) {
+        total += (r && typeof r.group_count === 'number' && r.group_count >= 2)
+          ? r.group_count : 1;
+      });
+      return total;
+    }
+    function drawRunList(reports, archiveUrl, milestones, divergence, turns) {
       var box = $('archive'), list = $('arc-list');
       if (!box || !list) return;
       if (!Array.isArray(reports) || !reports.length) { box.hidden = true; return; }
@@ -4021,13 +4037,7 @@
         list.appendChild(row);
       });
 
-      // Truthful totals: a collapsed row stands for group_count runs, so the
-      // run count sums the groups — rows would undercount the record.
-      var totalRuns = 0;
-      reports.forEach(function (r) {
-        totalRuns += (r && typeof r.group_count === 'number' && r.group_count >= 2)
-          ? r.group_count : 1;
-      });
+      var totalRuns = runsOnRecord(reports);
       if (typeof archiveUrl === 'string' && /^https?:\/\//i.test(archiveUrl)) {
         var all = document.createElement('a');
         all.className = 'arc-all';
@@ -4037,9 +4047,27 @@
         all.textContent = 'see all ' + totalRuns + ' runs in the archive ↗';
         list.appendChild(all);
       }
+      // The two totals this page publishes, reconciled once, where a reader can
+      // see both. THE COUNT OF RECORD IS RUNS: a run is a report the lab kept,
+      // and the archive holds every one of them. The legend beside the sill
+      // counts TURNS — scheduled passes that filed a turn receipt — which is a
+      // smaller set, because a kept run does not always have one. Neither
+      // number is wrong; publishing them a page apart with no definitions is.
+      var note = $('arc-note');
+      if (note) {
+        var turnCount = turns && typeof turns.count === 'number' ? turns.count : null;
+        var line = 'On record counts runs: every report the lab kept.';
+        if (turnCount !== null) {
+          line += ' The turns counter beside the sill counts scheduled passes'
+            + ' that filed a receipt — ' + turnCount
+            + (turnCount <= totalRuns ? ' of these ' + totalRuns + '.' : '.');
+        }
+        note.textContent = line;
+        note.hidden = false;
+      }
       var sum = $('archive-summary');
       if (sum) {
-        sum.textContent = 'every run · ' + totalRuns + ' on record';
+        sum.textContent = 'every run · ' + totalRuns + ' runs on record';
         // The one case where which machine ran a turn is the story: the boxes
         // are splitting along machine lines on the same experiment. Stated
         // plainly, no colour and no icon — an alarm would overclaim, and
@@ -4762,7 +4790,7 @@
         $('m-runs').textContent = turnCount;
         if (runsLabel) {
           runsLabel.textContent = 'turns';
-          runsLabel.title = 'one turn = one scheduled pass, whichever machine took it';
+          runsLabel.title = 'one turn = one scheduled pass that filed a receipt, whichever machine took it';
         }
       } else {
         $('m-runs').textContent = state.runs != null ? state.runs : '—';
@@ -4844,7 +4872,7 @@
       }
 
       // The honest every-run ledger — hidden unless the feed carries reports[].
-      drawRunList(state.reports, state.archive_url, milestones, state.divergence);
+      drawRunList(state.reports, state.archive_url, milestones, state.divergence, state.turns);
       // The hunt ledger — hidden unless the feed carries a hunt block.
       drawHunt(state.hunt);
       setFooterStatus(freshness, state, open);

@@ -212,3 +212,42 @@ test("the sill and the conservatory draw the same row of pots", () => {
   assert.ok(PAGE.includes("Below: " + word + " pots on one windowsill"),
     `the so-what strip does not say "${word} pots" for ${SPECS.length} cards`);
 });
+
+/* ── Two run totals, both true, defined where they are printed ───────────── */
+
+const { runsOnRecord } = evaluate(["runsOnRecord"]);
+
+test("the archive's total expands every collapsed streak", () => {
+  const rows = FEED.reports || [];
+  assert.ok(rows.length, "the committed feed carries no run ledger");
+  const collapsed = rows.filter((r) => r.group_count >= 2);
+  assert.ok(collapsed.length, "no streak is collapsed; this total cannot drift here");
+  assert.ok(runsOnRecord(rows) > rows.length,
+    "the total is counting rows, which undercounts the record");
+  assert.equal(runsOnRecord([]), 0);
+  assert.equal(runsOnRecord(null), 0);
+  assert.equal(runsOnRecord([{}, { group_count: 1 }, { group_count: 4 }]), 6);
+});
+
+test("turns are a subset of runs, and the page says which is which", () => {
+  // Two numbers a page apart, 192 against 195, with no definition on either.
+  // They count different things: a run is a report the lab kept, a turn is a
+  // scheduled pass that filed a receipt, and every turn leaves a run behind.
+  const runs = runsOnRecord(FEED.reports);
+  const turns = FEED.turns && FEED.turns.count;
+  assert.equal(typeof turns, "number");
+  assert.ok(turns <= runs, `${turns} turns against ${runs} runs on record`);
+  assert.ok(PAGE.includes("'every run · ' + totalRuns + ' runs on record'"),
+    "the archive summary no longer names what it counts");
+  assert.ok(PAGE.includes("On record counts runs: every report the lab kept."),
+    "the two totals are published with no definition between them");
+  assert.ok(PAGE.includes("one turn = one scheduled pass that filed a receipt"),
+    "the turns counter no longer defines a turn");
+});
+
+test("NEGATIVE: the two totals are genuinely different numbers", () => {
+  // If they ever coincide, the test above passes for free and the reconciling
+  // sentence is describing a distinction the feed no longer shows.
+  assert.notEqual(FEED.turns.count, runsOnRecord(FEED.reports),
+    "turns and runs now agree; the page's reconciliation may be stale");
+});
