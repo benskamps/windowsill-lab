@@ -300,3 +300,43 @@ test("a feed without these fields renders nothing at all", () => {
   assert.ok(PAGE.includes('<section class="commitment" id="commitment" hidden'),
     "the block must start hidden, so an older feed shows nothing");
 });
+
+/* ── The shelf hero: a door that does not oversell the rooms ─────────────── */
+
+// The shelf's counters are the lab's CLOSED LEDGER (verified + review + null),
+// which is not the shelf page's room count: on 2026-09-02 that was 27 captured
+// runs, 24 with rooms, against 28 closed milestones. The block's own comment
+// has said so since the room audit — but the comment sat directly above a
+// kicker reading "every run, a room of its own", which is the exact universal
+// the audit removed from the sentence below it. A comment cannot hold a claim
+// down; this test can.
+const SHELF_HERO = (() => {
+  const open = PAGE.indexOf('<a class="shelf-hero"');
+  const close = PAGE.indexOf("</a>", open);
+  return open === -1 || close === -1 ? "" : PAGE.slice(open, close);
+})();
+
+test("the shelf hero promises a room for most runs, never for every one", () => {
+  assert.notEqual(SHELF_HERO, "", "the page no longer has a .shelf-hero block");
+  const universal = SHELF_HERO.match(/\bevery (?:run|one|experiment)\b/i);
+  assert.equal(universal, null,
+    `the shelf hero claims a room for ${universal && universal[0]} — the shelf page's own total is lower`);
+  assert.ok(/\bmost\b/.test(SHELF_HERO),
+    "the shelf hero no longer hedges its room count at all");
+});
+
+test("the shelf counters are the closed ledger, and say so in that order", () => {
+  const closed = FEED.milestones.filter((m) => ["verified", "review", "null"].includes(m.status));
+  const byStatus = (s) => FEED.milestones.filter((m) => m.status === s).length;
+  const shown = (id) => {
+    const m = SHELF_HERO.match(new RegExp(`id="${id}"[^>]*>(\\d+)<`));
+    return m ? Number(m[1]) : null;
+  };
+  assert.equal(shown("shelf-total"), closed.length,
+    "the shelf total is not the count of closed milestones in the feed");
+  assert.equal(shown("shelf-moss-count"), byStatus("verified"));
+  assert.equal(shown("shelf-amber-count"), byStatus("review"));
+  assert.equal(shown("shelf-clay-count"), byStatus("null"));
+  assert.equal(shown("shelf-moss-count") + shown("shelf-amber-count") + shown("shelf-clay-count"),
+    shown("shelf-total"), "the three dot counters do not sum to the shelf total");
+});
