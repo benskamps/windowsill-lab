@@ -102,3 +102,59 @@ test("the strip labels its two denominators apart", () => {
   assert.ok(PAGE.includes('id="hunt-stars"'),
     "the distinct-star count has no line of its own");
 });
+
+/* ── The curriculum rail: a finished ladder says so ──────────────────────── */
+
+const { curriculumFrontier } = evaluate(["curriculumStage", "curriculumFrontier"]);
+
+test("the shipped feed has no phase left to point at", () => {
+  const f = curriculumFrontier(FEED.milestones);
+  assert.equal(f.complete, true,
+    "M01-M18 are no longer all closed — the completed state is untested here");
+  assert.equal(f.stage, 0, "a complete rail must not nominate a current phase");
+});
+
+test("the frontier line names the open milestone from the feed", () => {
+  const f = curriculumFrontier(FEED.milestones);
+  const open = FEED.milestones.find((m) => m.status === "open");
+  assert.ok(open, "the feed carries no open milestone");
+  assert.equal(f.moved_to.id, open.id);
+  assert.ok(!/^M\d\d$/.test(f.moved_to.id),
+    "the bench is back on the physics rail; the rail should be pointing at it");
+});
+
+test("an unfinished rail still marks exactly one phase current", () => {
+  // The negative control: the old behaviour must survive for a lab whose
+  // physics ladder is still climbing, or this change would strand every fork.
+  const climbing = FEED.milestones.map((m) =>
+    m.id === "M15" ? { ...m, status: "open" } : m);
+  const f = curriculumFrontier(climbing);
+  assert.equal(f.complete, false);
+  assert.equal(f.stage, 4);
+  const pending = curriculumFrontier(FEED.milestones.map((m) =>
+    m.id === "M07" ? { ...m, status: "pending" } : m));
+  assert.equal(pending.stage, 2, "a waiting rung sets the stage where it sits");
+});
+
+test("a feed with no physics rungs at all draws no rail state", () => {
+  const f = curriculumFrontier(FEED.milestones.filter((m) => !/^M\d\d$/.test(m.id)));
+  assert.deepEqual(f, { stage: 0, complete: false });
+  assert.deepEqual(curriculumFrontier([]), { stage: 0, complete: false });
+  assert.deepEqual(curriculumFrontier(null), { stage: 0, complete: false });
+});
+
+test("a complete rail with nowhere to move degrades to a sentence, not a crash", () => {
+  const nothingOpen = FEED.milestones.map((m) =>
+    m.status === "open" ? { ...m, status: "pending" } : m)
+    .filter((m) => /^M\d\d$/.test(m.id));
+  const f = curriculumFrontier(nothingOpen);
+  assert.equal(f.complete, true);
+  assert.equal(f.moved_to, null);
+});
+
+test("the rail carries a place to say where the frontier went", () => {
+  assert.ok(PAGE.includes('id="phase-frontier"'));
+  assert.ok(/aria-current/.test(PAGE), "the rail lost its step semantics entirely");
+  assert.ok(!/data-curriculum-phase="4"[^\n]*aria-current/.test(PAGE),
+    "phase 04 is hard-coded as the current step in the markup");
+});

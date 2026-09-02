@@ -706,6 +706,7 @@
     .phase-rail strong { display:block; margin-top:2rem; color:var(--text-secondary); font-size:0.96rem; font-weight:520; }
     .phase-rail li.reached strong { color:var(--text); }
     .phase-rail em { display:block; margin-top:0.35rem; color:var(--text-muted); font:normal 0.67rem/1.45 var(--font-mono); }
+    .phase-frontier { margin-top:1.1rem; color:var(--text-muted); line-height:1.6; font-size:0.85rem; }
 
     .garden-row {
       list-style:none; display:grid; grid-template-columns:repeat(3,1fr); gap:0;
@@ -1378,6 +1379,10 @@
         <li data-curriculum-phase="3"><span>03</span><strong>Push the edge</strong><em>M11–M14 · disorder</em></li>
         <li data-curriculum-phase="4"><span>04</span><strong>Ask open questions</strong><em>M15–M18 · non-equilibrium</em></li>
       </ol>
+      <!-- Where the frontier went, once all four phases are behind it. Filled
+           from the feed's own open milestone; hidden while the rail still has a
+           phase to point at. -->
+      <p class="phase-frontier" id="phase-frontier" hidden></p>
     </section>
 
     <section class="garden" aria-labelledby="garden-title">
@@ -4188,19 +4193,48 @@
       return 4;
     }
 
+    // The rail has a finished state, and it is not "phase 04 forever".
+    // M01-M18 are all closed, so the old rule — the last closed milestone sets
+    // the stage — left `aria-current="step"` sitting on "Ask open questions" as
+    // though the lab were still working through it, months after it stopped.
+    // A curriculum with nothing left to reach is COMPLETE: every phase reached,
+    // nothing current, and one line saying where the frontier actually went.
+    function curriculumFrontier(milestones) {
+      var rungs = (milestones || []).filter(function (m) { return curriculumStage(m); });
+      if (!rungs.length) return { stage: 0, complete: false };
+      var current = rungs.find(function (m) { return m.status === 'open'; })
+        || rungs.find(function (m) { return m.status === 'review'; })
+        || rungs.find(function (m) { return m.status === 'pending'; });
+      if (current) return { stage: curriculumStage(current), complete: false };
+      // Nothing on the rail is open, in review or waiting: the ladder it draws
+      // is finished. The bench has moved to some other track, and the page says
+      // which one rather than pointing at a phase nobody is standing in.
+      var elsewhere = (milestones || []).find(function (m) {
+        return m && m.status === 'open' && !curriculumStage(m);
+      }) || null;
+      return { stage: 0, complete: true, moved_to: elsewhere };
+    }
+
     function paintCurriculum(milestones) {
-      var physics = (milestones || []).filter(function (m) { return curriculumStage(m); });
-      var current = physics.find(function (m) { return m.status === 'open'; })
-        || physics.find(function (m) { return m.status === 'review'; })
-        || physics.slice().reverse().find(isClosed);
-      var stage = curriculumStage(current);
+      var frontier = curriculumFrontier(milestones);
+      var stage = frontier.stage;
       document.querySelectorAll('[data-curriculum-phase]').forEach(function (li) {
         var n = Number(li.getAttribute('data-curriculum-phase'));
-        li.classList.toggle('reached', !!stage && n < stage);
-        li.classList.toggle('current', !!stage && n === stage);
-        if (stage && n === stage) li.setAttribute('aria-current', 'step');
+        li.classList.toggle('reached', frontier.complete || (!!stage && n < stage));
+        li.classList.toggle('current', !frontier.complete && !!stage && n === stage);
+        if (!frontier.complete && stage && n === stage) li.setAttribute('aria-current', 'step');
         else li.removeAttribute('aria-current');
       });
+      var line = $('phase-frontier');
+      if (!line) return;
+      if (!frontier.complete) { line.textContent = ''; line.hidden = true; return; }
+      var moved = frontier.moved_to;
+      line.textContent = moved
+        ? ('All four phases are behind the lab. The bench moved off this ladder: '
+           + moved.id + ', ' + (moved.short_label || moved.title || 'the open question')
+           + ', is the question open now.')
+        : 'All four phases are behind the lab, and no other track has an open question yet.';
+      line.hidden = false;
     }
 
     // Six tracks (src/lab/publish.py TRACKS), six cards. `coherence` reuses the
