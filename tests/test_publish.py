@@ -989,3 +989,41 @@ def test_no_result_in_the_shipped_feed_carries_inline_emphasis():
             assert "**" not in value, f"{m['id']} {field}: {value[:80]}"
             assert not _re.search(r"(?<!\*)\*(?!\s)[^*\n]+?(?<!\s)\*(?!\*)", value), \
                 f"{m['id']} {field}: {value[:80]}"
+
+
+def test_the_shelf_counters_on_the_page_equal_the_shipped_feed():
+    """The four hand-maintained counters froze for two months once, while the
+    live feed moved — every crawler and model reading this lab saw a quarter of
+    its work. `publish()` now rewrites them from the same numbers it writes to
+    pot.json (refresh_shelf_fallback), so the page cannot drift again; this is
+    the assertion that the shipped pair actually agree.
+
+    tests/test_shelf_fallback.py owns the rewriter's behaviour. This one lives
+    here because publish's suite is what CI runs on the stdlib lane."""
+    from pathlib import Path as _Path
+    root = _Path(__file__).resolve().parents[1]
+    pot, page = root / "pot.json", root / "web" / "index.html"
+    if not (pot.exists() and page.exists()):
+        pytest.skip("not a full checkout")
+    want = publish.shelf_counts(json.loads(pot.read_text(encoding="utf-8")))
+    body = page.read_text(encoding="utf-8")
+    for span, key in (("shelf-total", "total"), ("shelf-moss-count", "verified"),
+                      ("shelf-amber-count", "review"), ("shelf-clay-count", "null")):
+        m = _re.search(rf'<span id="{span}">([^<]*)</span>', body)
+        assert m, f"the page lost its {span} anchor"
+        assert m.group(1) == str(want[key]), (
+            f"{span} says {m.group(1)}, the feed says {want[key]}")
+
+
+def test_the_feed_matches_the_ladder_it_is_parsed_from():
+    """pot.json's milestone block is a pure function of MILESTONES.md. A
+    committed feed that disagrees with the committed ladder means somebody
+    edited one and not the other."""
+    from pathlib import Path as _Path
+    root = _Path(__file__).resolve().parents[1]
+    pot, ladder = root / "pot.json", root / "MILESTONES.md"
+    if not (pot.exists() and ladder.exists()):
+        pytest.skip("not a full checkout")
+    feed = json.loads(pot.read_text(encoding="utf-8"))
+    assert feed["milestones"] == parse_milestones(ladder.read_text(encoding="utf-8"))
+    assert feed["total"] == len(feed["milestones"])
