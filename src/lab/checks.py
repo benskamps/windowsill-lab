@@ -3925,6 +3925,70 @@ def audit_planned_decisions(reports: list[dict], records=None) -> dict | None:
                        f"the strictly-older receipts ledger")}
 
 
+# Phrases a MACHINE writes about its own result. A checker passing is the first
+# half of a promotion; none of these sentences is the second half.
+_MACHINE_ONLY_PHRASES = ("awaiting human review", "machine gate passed")
+# What a promotion looks like on the record: a verb and the day a person did it
+# ("promoted 2026-08-14 — Ben delegated approval…", "reviewed 2026-08-02 — …").
+_PROMOTION_RE = re.compile(r"\b(?:promoted|reviewed)\s+\d{4}-\d{2}-\d{2}")
+
+
+def promotion_gaps(milestones: list[dict]) -> list[tuple[str, str]]:
+    """``[x]`` milestones whose own result still says no human has read them.
+
+    A02 sat at ``[x]`` for ten days carrying the words *machine gate PASSED,
+    awaiting human review* — the green leaf and the receipt under it disagreed,
+    and the receipt was the honest one. The ladder's own legend already has the
+    state for that: ``[?]`` is measured and machine-checked, waiting for a
+    person.
+
+    Text, not sentiment: a milestone is flagged only when it BOTH says a machine
+    phrase and carries no dated promotion line. Returns ``(id, phrase)`` pairs.
+    """
+    gaps: list[tuple[str, str]] = []
+    for m in milestones or []:
+        if (m or {}).get("status") != "verified":
+            continue
+        result = str(m.get("result") or "")
+        if _PROMOTION_RE.search(result):
+            continue
+        low = result.lower()
+        said = next((p for p in _MACHINE_ONLY_PHRASES if p in low), None)
+        if said:
+            gaps.append((str(m.get("id", "?")), said))
+    return gaps
+
+
+def audit_promotions(milestones: list[dict] | None = None) -> dict | None:
+    """The cross-cutting verify() row: a green leaf is a promotion, not a pass.
+
+    ``lab verify`` re-derives the NUMBER under every verified milestone. It had
+    no opinion about the sentence beside the number, so a milestone could report
+    its own un-promoted state in public and still wear green. This closes that:
+    a ``[x]`` whose result says *awaiting human review* or *machine gate PASSED*
+    with no dated promotion line fails the gate, and the fix is to mark it
+    ``[?]`` (or to record who promoted it, and when).
+
+    ``None`` when nothing is verified — no row rather than a vacuous all-clear.
+    """
+    if milestones is None:
+        text = MILESTONES_MD.read_text(encoding="utf-8") if MILESTONES_MD.exists() else ""
+        milestones = parse_milestones(text)
+    verified = [m for m in milestones if (m or {}).get("status") == "verified"]
+    if not verified:
+        return None
+    gaps = promotion_gaps(milestones)
+    if gaps:
+        named = "; ".join(f"{mid} still says “{phrase}”" for mid, phrase in gaps)
+        return {"id": "PROMOTION", "status": "fail",
+                "detail": (f"{len(gaps)} verified milestone(s) carry no human "
+                           f"promotion — {named}. Mark them [?] until a person "
+                           "promotes them.")}
+    return {"id": "PROMOTION", "status": "pass",
+            "detail": (f"{len(verified)} verified milestone(s); none reports "
+                       "itself as still awaiting human review")}
+
+
 # milestone id → check. Add entries as milestones land; the rest report
 # "unchecked" so the gap is visible rather than silently assumed.
 def check_k03(report: dict) -> tuple[bool | None, str]:
@@ -4601,4 +4665,9 @@ def verify(ids: list[str] | None = None) -> list[dict]:
         planned_row = audit_planned_decisions(reports)
         if planned_row is not None:
             results.append(planned_row)
+        # The other half of "verified means checked": the number re-derives AND
+        # a person promoted it. Graded over the ladder, not over the reports.
+        promotion_row = audit_promotions(ms)
+        if promotion_row is not None:
+            results.append(promotion_row)
     return results

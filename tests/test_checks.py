@@ -101,11 +101,16 @@ def test_verify_uses_public_receipts_in_a_clean_checkout(tmp_path, monkeypatch):
     monkeypatch.setattr(checks, "LAB_HOME", lab_home)
     monkeypatch.setattr(checks, "MILESTONES_MD", milestones)
 
-    assert checks.verify() == [{
+    rows = checks.verify()
+    assert rows[0] == {
         "id": "M01",
         "status": "pass",
         "detail": checks.check_m01(_ising_report(round(ONSAGER_TC, 1)))[1],
-    }]
+    }
+    # An unfiltered run also carries the cross-cutting promotion row (see
+    # audit_promotions): this ladder's one [x] does not claim to be unreviewed.
+    assert [r["id"] for r in rows[1:]] == ["PROMOTION"]
+    assert rows[1]["status"] == "pass"
 
 
 def test_report_order_uses_generated_at_within_one_day(tmp_path, monkeypatch):
@@ -1513,3 +1518,81 @@ def test_a_real_crash_is_still_a_failure():
 
     status, detail = checks._grade(broken, [{"experiment": "anything"}])
     assert status == "fail" and "ValueError" in detail
+
+
+# ── a green leaf is a promotion, not a machine pass ─────────────────────────
+#
+# A02 shipped as `[x]` for ten days while its own published result read
+# "machine gate PASSED, awaiting human review". The leaf said a human had read
+# it; the receipt under the leaf said nobody had, and the receipt was right.
+# `lab verify` re-derived A02's six periods happily, because it grades the
+# NUMBER and had no opinion about the sentence beside it.
+
+_MACHINE_ONLY = ("measured 2026-08-23, machine gate PASSED, awaiting human "
+                 "review; the AAVSO half is untouched")
+_PROMOTED = ("measured 2026-08-07; machine check passed; promoted 2026-08-14 "
+             "— Ben delegated approval, substance reviewed elsewhere")
+
+
+def test_a_verified_milestone_that_says_it_is_unreviewed_fails_the_gate():
+    row = checks.audit_promotions([
+        {"id": "A02", "status": "verified", "result": _MACHINE_ONLY},
+        {"id": "M18", "status": "verified", "result": _PROMOTED},
+    ])
+    assert row["id"] == "PROMOTION" and row["status"] == "fail"
+    assert "A02" in row["detail"] and "M18" not in row["detail"]
+    assert "[?]" in row["detail"], "the fix must be named, not just the fault"
+
+
+def test_a_machine_gate_alone_is_not_a_promotion():
+    """The second phrase, on its own line of defence: a milestone can announce
+    its machine gate without ever using the word 'awaiting'."""
+    row = checks.audit_promotions([
+        {"id": "A07", "status": "verified",
+         "result": "measured 2026-08-22, machine gate PASSED — all four periods recovered"},
+    ])
+    assert row["status"] == "fail" and "A07" in row["detail"]
+
+
+def test_the_review_state_is_where_those_milestones_belong():
+    """`[?]` carrying the same words is the ladder working as designed, not a
+    finding — the gate must not fire on it, or the honest state becomes the
+    expensive one."""
+    assert checks.audit_promotions([
+        {"id": "A02", "status": "review", "result": _MACHINE_ONLY},
+        {"id": "M18", "status": "verified", "result": _PROMOTED},
+    ])["status"] == "pass"
+
+
+def test_a_dated_promotion_line_clears_the_same_words():
+    """A milestone may keep the machine's own sentence in its receipt as long as
+    a person's promotion is on the record beside it — the audit reads text, and
+    the promotion line is the text that settles it."""
+    both = _MACHINE_ONLY + "; promoted 2026-09-01 — Ben read the six periods"
+    assert checks.audit_promotions(
+        [{"id": "A02", "status": "verified", "result": both}])["status"] == "pass"
+    assert checks.promotion_gaps(
+        [{"id": "A02", "status": "verified", "result": both}]) == []
+
+
+def test_no_verified_milestones_means_no_row():
+    """Vacuous by absence — the same discipline the PLANNED row uses. A
+    permanent all-clear for a check with nothing to check is surface spam."""
+    assert checks.audit_promotions([{"id": "A05", "status": "open"}]) is None
+    assert checks.audit_promotions([]) is None
+
+
+def test_the_shipped_ladder_passes_its_own_promotion_gate():
+    """Non-hermetic, and the one that would have caught A02: the committed
+    MILESTONES.md is the source of truth `lab publish` reads, so the gate runs
+    against it with no arguments."""
+    row = checks.audit_promotions()
+    assert row is not None and row["status"] == "pass", row
+
+
+def test_verify_carries_the_promotion_row():
+    """Wiring, at the one call site — a check nothing calls is a comment."""
+    rows = verify()
+    assert any(r["id"] == "PROMOTION" for r in rows), [r["id"] for r in rows]
+    # ...and never on a filtered run, which grades named milestones only
+    assert not any(r["id"] == "PROMOTION" for r in verify(["M01"]))
