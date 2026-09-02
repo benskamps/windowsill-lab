@@ -1906,7 +1906,7 @@
     "expected_interval_h": 3
   },
   "hunt": {
-    "targets_searched": 12162,
+    "targets_searched": 12329,
     "above_threshold": 113,
     "dispositions": {
       "eclipsing-binary-secondary": 17,
@@ -1928,14 +1928,14 @@
     "leads_awaiting_human_review": 9,
     "planets_discovered": 0,
     "last_hunt": {
-      "date": "2026-09-01",
+      "date": "2026-09-02",
       "sector": 30,
-      "n": 177,
-      "wall": 5999.755713224411,
+      "n": 167,
+      "wall": 9161.951627731323,
       "provenance": "a05"
     },
     "claim_boundary": "Per-target statistics over a predeclared consistent-hash slice of one sector's 2-minute SPOC targets: each graded number is an empirical permutation FAP bounded by (1+k)/(B+1), each above-threshold detection carries a machine disposition from a closed vocabulary, and each Stage-2 host carries its own measured injection depth limit. The survey claims completeness of DISPOSITION over that sample \u2014 every hit named, no hit promoted \u2014 not completeness of detection, not an occurrence rate, and no discovery: the terminal machine state is lead-awaiting-human-review, nothing is submitted anywhere on the strength of this receipt, and Gumbel tails plus survey-level sums are reported, never graded.",
-    "as_of": "2026-09-01",
+    "as_of": "2026-09-02",
     "superseded": [
       {
         "file": "hunt-2026-08-14-s2-pilot-158.json",
