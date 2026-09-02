@@ -967,13 +967,19 @@
       <p class="sowhat-read">Below: six pots on one windowsill, one for each science. Every leaf is one real experiment — green means a person checked it, amber is waiting for one, grey is a miss we kept on purpose. And the pots wear the work: the glaze climbs as a track climbs, the scratches count its runs, the chips are its failures.</p>
     </section>
 
-    <!-- The shelf hero: every captured run now has a live explainer room on the
-         public site. Deliberately the page's loudest link — the rooms are the
-         instrument's most legible artifact, so their door sits right where the
-         ambition lands, before the reader reaches the plants. -->
+    <!-- The shelf hero: the door to the public explainer rooms. Deliberately the
+         page's loudest link — the rooms are the instrument's most legible
+         artifact, so their door sits right where the ambition lands, before the
+         reader reaches the plants.
+         The counters are the LAB'S CLOSED LEDGER (verified + review + null
+         milestones), which is not the same set as the shelf's rooms — the shelf
+         page counts captured runs and states its own room total, and on
+         2026-09-02 that was 27 runs / 24 rooms against 28 closed milestones. So
+         the copy says "experiments on the record" and "most", never "runs, every
+         one": the page must not promise a room the shelf does not have. -->
     <a class="shelf-hero" href="https://www.brokenbranch.dev/windowsill/experiments/">
       <p class="shelf-kicker">The experiment shelf · every run, a room of its own</p>
-      <p class="shelf-line"><strong><span id="shelf-total">28</span> captured runs, every one with a live explainer</strong> — the real update rules running in your browser, with the receipts beside them. <span id="shelf-moss-count">25</span> <span class="shelf-dot moss" role="img" aria-label="verified runs"></span> run<span id="shelf-moss-plural">s</span> reproduced their targets, <span id="shelf-amber-count">1</span> <span class="shelf-dot amber" role="img" aria-label="runs in review"></span> run<span id="shelf-amber-plural"></span> remain in review, <span id="shelf-clay-count">2</span> <span class="shelf-dot clay" role="img" aria-label="null runs"></span> run<span id="shelf-clay-plural">s</span> refused their own measurement and were kept for the lesson.</p>
+      <p class="shelf-line"><strong><span id="shelf-total">28</span> experiments on the record, most with a live explainer room</strong> — the real update rules running in your browser, with the receipts beside them. <span id="shelf-moss-count">25</span> <span class="shelf-dot moss" role="img" aria-label="verified"></span> experiment<span id="shelf-moss-plural">s</span> reproduced their targets, <span id="shelf-amber-count">1</span> <span class="shelf-dot amber" role="img" aria-label="in review"></span> experiment<span id="shelf-amber-plural"></span> waiting on a human read, <span id="shelf-clay-count">2</span> <span class="shelf-dot clay" role="img" aria-label="null"></span> experiment<span id="shelf-clay-plural">s</span> refused their own measurement and stayed on the record for the lesson.</p>
       <p class="shelf-cta">walk the shelf →</p>
     </a>
 
@@ -1527,7 +1533,7 @@
         discovery</em>, and the misses stay in the record beside the wins. So far
         <span id="ex-verified">several</span> milestones are verified — beginning with the 2D Ising
         critical point and climbing through finite-size scaling, critical exponents, other lattices
-        and models, and on toward spin glasses — out of a roughly 31-step curriculum that climbs in four phases: verify famous exact
+        and models, and on toward spin glasses — out of a <span id="ex-total">40</span>-step curriculum whose physics ladder climbs in four phases: verify famous exact
         results, map textbook-known territory, push corners last explored in the 1990s on big
         computer clusters a single modern chip now out-muscles, then reach genuinely open questions.
         A companion track points the same patient machine outward into <b>citizen science</b> —
@@ -1565,12 +1571,15 @@
 
       <p class="ex-foot">The live feed, the source, and the full curriculum live at
       <a href="https://github.com/benskamps/windowsill-lab">windowsill-lab</a>; the rest of the lab
-      is at <a href="/labs/">the lab</a>.</p>
+      is at <a href="https://www.brokenbranch.dev/labs/">the lab</a>.</p>
     </div>
 
     <div class="footer" style="margin-top:10px">
       <span>windowsill · part of the Broken Branch labs</span>
-      <a href="/labs/">the lab ↗</a>
+      <!-- Absolute, like the crumbs at the top: this file is also a DOWNLOADABLE
+           instrument (`lab web`), where a root-relative /labs/ resolves to the
+           local filesystem root and dead-ends. -->
+      <a href="https://www.brokenbranch.dev/labs/">the lab ↗</a>
     </div>
   </main>
 
@@ -2430,7 +2439,11 @@
   (function () {
     'use strict';
     var SVGNS = 'http://www.w3.org/2000/svg';
-    var reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // Guarded like the physics panel's own read below: a browser without
+    // matchMedia would otherwise throw here and take the entire scene script
+    // with it, leaving a blank sill instead of a still one.
+    var reduce = false;
+    try { reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) {}
     var $ = function (id) { return document.getElementById(id); };
     var GF = window.GrowthForms;   // the inlined growth-form registry above
     var PT = window.Pots;          // the inlined pot registry above
@@ -2632,7 +2645,7 @@
     // No snapshot means no scientific assertions. The procedural fallback is
     // deliberately a seed, not an old milestone list pretending to be current.
     var DEFAULT_MILESTONES = [];
-    var DEFAULT_TOTAL = 31;       // physics ladder + the four citizen-science tracks
+    var DEFAULT_TOTAL = 40;       // the whole ladder: physics + every other track
 
     function isClosed(m) {
       return m && (m.status === 'verified' || m.status === 'review' || m.status === 'null');
@@ -4665,9 +4678,15 @@
         if (runsLabel) { runsLabel.textContent = 'days tended'; runsLabel.removeAttribute('title'); }
       }
 
-      // Feed-drive the explainer's verified count so the prose can't drift stale.
+      // Feed-drive the explainer's verified count AND the ladder length so the
+      // prose can't drift stale. The hand-written "roughly 31-step curriculum"
+      // had gone stale by nine rungs before this span existed.
       var exV = $('ex-verified');
       if (exV) exV.textContent = verifiedList.length;
+      var exT = $('ex-total');
+      if (exT && typeof total === 'number' && isFinite(total) && total > 0) {
+        exT.textContent = total;
+      }
 
       // Wire the shelf-hero counts from the live data so they can't drift.
       var shelfTotal = verifiedList.length + reviewList.length + nullList.length;
