@@ -158,3 +158,57 @@ test("the rail carries a place to say where the frontier went", () => {
   assert.ok(!/data-curriculum-phase="4"[^\n]*aria-current/.test(PAGE),
     "phase 04 is hard-coded as the current step in the markup");
 });
+
+/* ── The conservatory: one card per track the feed can carry ─────────────── */
+
+const SPECS = new Function(
+  PAGE.slice(PAGE.indexOf("var GARDEN_SPECS = ["),
+             PAGE.indexOf("];", PAGE.indexOf("var GARDEN_SPECS = [")) + 2) +
+  "\nreturn GARDEN_SPECS;")();
+
+test("every track in the feed has a card", () => {
+  // The defect: GARDEN_SPECS hard-coded six tracks while the feed carried
+  // seven, so P01 — a whole science — was on the record and off the shelf.
+  const tracks = [...new Set(FEED.milestones.map((m) => m.track))];
+  const carded = new Set(SPECS.map((s) => s.track));
+  const missing = tracks.filter((t) => !carded.has(t));
+  assert.deepEqual(missing, [], `no card for: ${missing.join(", ")}`);
+});
+
+test("the seventh card is the folding track, and it is not empty", () => {
+  const misc = SPECS.find((s) => s.track === "misc");
+  assert.ok(misc, "the misc card is gone again");
+  assert.equal(misc.form, "sprout", "misc must reuse the default seedling");
+  const rungs = FEED.milestones.filter((m) => m.track === "misc");
+  assert.ok(rungs.length, "the misc card would stand over an empty track");
+  assert.ok(rungs.every((m) => /^P\d\d$/.test(m.id)),
+    "misc now holds a track that is not the folding one; the card's label lies");
+});
+
+test("the heading counts the cards instead of repeating a number", () => {
+  assert.ok(PAGE.includes("countWord(GARDEN_SPECS.length) +\n" +
+    "          ' instruments. One standard of proof.'"),
+    "the conservatory heading is hand-written again");
+  const { countWord } = new Function(
+    PAGE.slice(PAGE.indexOf("var COUNT_WORDS = ["),
+               PAGE.indexOf("}", PAGE.indexOf("function countWord(")) + 1) +
+    "\nreturn { countWord: countWord };")();
+  // ...and the no-JS fallback in the markup says the same thing the JS would.
+  assert.ok(PAGE.includes('<h2 id="garden-title">' + countWord(SPECS.length) +
+    " instruments. One standard of proof.</h2>"),
+    "the static heading and the rendered heading disagree");
+  assert.equal(countWord(99), "99", "an unnamed count must still be honest");
+});
+
+test("the sill and the conservatory draw the same row of pots", () => {
+  // drawSillGarden and drawGarden both walk GARDEN_SPECS, so the static
+  // sentence above the scene must count the same list. It has no JS behind it,
+  // which is exactly why it needs a test.
+  const { countWord } = new Function(
+    PAGE.slice(PAGE.indexOf("var COUNT_WORDS = ["),
+               PAGE.indexOf("}", PAGE.indexOf("function countWord(")) + 1) +
+    "\nreturn { countWord: countWord };")();
+  const word = countWord(SPECS.length).toLowerCase();
+  assert.ok(PAGE.includes("Below: " + word + " pots on one windowsill"),
+    `the so-what strip does not say "${word} pots" for ${SPECS.length} cards`);
+});

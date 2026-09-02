@@ -1027,3 +1027,22 @@ def test_the_feed_matches_the_ladder_it_is_parsed_from():
     feed = json.loads(pot.read_text(encoding="utf-8"))
     assert feed["milestones"] == parse_milestones(ladder.read_text(encoding="utf-8"))
     assert feed["total"] == len(feed["milestones"])
+
+
+def test_the_misc_track_is_only_the_folding_ladder():
+    """`misc` is the producer's fallback for a track letter TRACKS has no name
+    for, and right now that is only `P` — the folding problem (TRACKS.md). The
+    page's seventh conservatory card is labelled "Folding" on that basis. A
+    second unnamed letter landing in the same bucket would put a milestone under
+    a label that does not describe it, so the card and this assertion move
+    together, or `P` gets its own entry in TRACKS."""
+    from pathlib import Path as _Path
+    root = _Path(__file__).resolve().parents[1]
+    ladder = root / "MILESTONES.md"
+    if not ladder.exists():
+        pytest.skip("not a full checkout")
+    misc = [m for m in parse_milestones(ladder.read_text(encoding="utf-8"))
+            if m["track"] == "misc"]
+    assert misc, "the misc track is empty; the page's seventh card stands over nothing"
+    assert all(m["id"].startswith("P") for m in misc), \
+        [m["id"] for m in misc if not m["id"].startswith("P")]

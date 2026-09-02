@@ -965,7 +965,7 @@
     <section class="sowhat" aria-label="what this instrument is for">
       <p class="sowhat-goal"><strong>The goal is a measurement nobody has made yet, given away free.</strong></p>
       <p class="sowhat-who">A fleet of AI agents wrote this instrument and keeps it running; a human signs every promotion, and the receipt names who read the evidence. Two home machines take the turns.</p>
-      <p class="sowhat-read">Below: six pots on one windowsill, one for each science. Every leaf is one real experiment — green means a person checked it, amber is waiting for one, grey is a miss we kept on purpose. And the pots wear the work: the glaze climbs as a track climbs, the scratches count its runs, the chips are its failures.</p>
+      <p class="sowhat-read">Below: seven pots on one windowsill, one for each science. Every leaf is one real experiment — green means a person checked it, amber is waiting for one, grey is a miss we kept on purpose. And the pots wear the work: the glaze climbs as a track climbs, the scratches count its runs, the chips are its failures.</p>
     </section>
 
     <!-- The shelf hero: the door to the public explainer rooms. Deliberately the
@@ -1388,7 +1388,7 @@
     <section class="garden" aria-labelledby="garden-title">
       <div class="section-intro">
         <span class="section-kicker">The conservatory</span>
-        <h2 id="garden-title">Six instruments. One standard of proof.</h2>
+        <h2 id="garden-title">Seven instruments. One standard of proof.</h2>
         <p>Height tracks how far each track has climbed. Amber waits for review; grey keeps the boundary visible.</p>
       </div>
       <ul class="garden-row" id="garden-row"></ul>
@@ -4237,18 +4237,35 @@
       line.hidden = false;
     }
 
-    // Six tracks (src/lab/publish.py TRACKS), six cards. `coherence` reuses the
-    // FERN on purpose — a coherence ladder is a convergence ladder, and a seventh
-    // plant nobody asked for would misdescribe the climb. Its POT is what tells
-    // it apart from physics, which is the whole reason the pot layer exists.
+    // One card per track the feed can carry (src/lab/publish.py TRACKS, plus its
+    // `misc` fallback). `coherence` reuses the FERN on purpose — a coherence
+    // ladder is a convergence ladder, and a plant nobody asked for would
+    // misdescribe the climb. Its POT is what tells it apart from physics, which
+    // is the whole reason the pot layer exists.
+    //
+    // The last card was missing for as long as the folding track existed. The
+    // producer has no letter for `P` (TRACKS.md: "Track P — the folding
+    // problem"), so P01 publishes under the `misc` fallback with the default
+    // sprout, and a hard-coded row of six left a whole science off the shelf
+    // while its milestone sat in the feed. The row is the length of this list
+    // now, and the heading counts it rather than repeating a number by hand.
     var GARDEN_SPECS = [
       { track:'physics', form:'fern', label:'Physics', domain:'matter · disorder · time', expected:18 },
       { track:'coherence', form:'fern', label:'Coherence', domain:'clocks · agreement · sharpness', expected:4 },
       { track:'compute', form:'vine', label:'Compute', domain:'proofs · exact arithmetic', expected:5 },
       { track:'astronomy', form:'creeper', label:'Astronomy', domain:'public light · long baselines', expected:7 },
       { track:'instrument', form:'succulent', label:'Instruments', domain:'dark noise · patient counts', expected:3 },
-      { track:'boinc', form:'moss', label:'Distributed compute', domain:'shared cycles · long projects', expected:2 }
+      { track:'boinc', form:'moss', label:'Distributed compute', domain:'shared cycles · long projects', expected:2 },
+      { track:'misc', form:'sprout', label:'Folding', domain:'chains · proven ground states', expected:1 }
     ];
+
+    // The heading says how many cards there are, in words, so the two cannot
+    // drift. Beyond the words it has, it counts in digits rather than lying.
+    var COUNT_WORDS = ['no', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven',
+                       'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve'];
+    function countWord(n) {
+      return COUNT_WORDS[n] || String(n);
+    }
 
     function gardenStatus(m, open) {
       if (open) return { key:'open', label:open.runner_available ? 'runner ready' : 'on the bench' };
@@ -4272,6 +4289,11 @@
       if (!row) return [];
       row.textContent = '';
       if (!_gardenPainted) row.removeAttribute('data-ready');
+      var heading = $('garden-title');
+      if (heading) {
+        heading.textContent = countWord(GARDEN_SPECS.length) +
+          ' instruments. One standard of proof.';
+      }
       var summary = [];
 
       GARDEN_SPECS.forEach(function (spec, index) {
