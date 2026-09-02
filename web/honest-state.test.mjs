@@ -1,0 +1,104 @@
+/*
+ * Node test for the page's own honesty layer (web/index.html). No DOM, no
+ * framework — plain `node --test`, the lane pots.test.mjs, growth-forms.test.mjs
+ * and centre-plant.test.mjs run in.
+ *
+ *   node --test web/honest-state.test.mjs
+ *
+ * WHAT THIS FILE GUARDS. The lab's rule is that a published number is a checked
+ * claim, not a mood. The page is the surface where that rule is easiest to
+ * break by accident: a counter drawn from one denominator beside a counter
+ * drawn from another, a rail parked on a phase that finished, a card row that
+ * hard-codes how many sciences exist. Each test below runs the page's own
+ * function against the page's own committed feed, so it fails on behaviour
+ * rather than on a spelling.
+ */
+import test from "node:test";
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+
+const PAGE = readFileSync(new URL("./index.html", import.meta.url), "utf8");
+const FEED = JSON.parse(readFileSync(new URL("../pot.json", import.meta.url), "utf8"));
+
+/* Lift a top-level `function name(...) { ... }` out of the page by brace
+ * matching, so the test exercises the code that actually ships rather than a
+ * copy of it. (Same helper as centre-plant.test.mjs, deliberately duplicated:
+ * these files have no build step and no module system between them.) */
+function lift(name) {
+  const start = PAGE.indexOf("function " + name + "(");
+  assert.notEqual(start, -1, `index.html no longer defines ${name}()`);
+  let depth = 0, i = PAGE.indexOf("{", start);
+  const open = i;
+  for (; i < PAGE.length; i++) {
+    if (PAGE[i] === "{") depth++;
+    else if (PAGE[i] === "}" && --depth === 0) break;
+  }
+  assert.ok(i > open, `could not brace-match ${name}()`);
+  return PAGE.slice(start, i + 1);
+}
+
+function evaluate(names, extra) {
+  const body = names.map(lift).join("\n") + "\n" + (extra || "") +
+    "\nreturn { " + names.map((n) => `${n}: ${n}`).join(", ") + " };";
+  return new Function(body)();
+}
+
+/* ── The hunt strip: one denominator ─────────────────────────────────────── */
+
+const { huntCounters } = evaluate(["huntCounters"]);
+
+test("the strip's figures are all counts of the same events", () => {
+  const hunt = FEED.hunt;
+  assert.ok(hunt, "the committed feed carries no hunt block to check");
+  const c = huntCounters(hunt);
+  assert.equal(c.impostors + c.known + c.leads + c.unresolved, c.events,
+    `the strip prints ${c.impostors}+${c.known}+${c.leads}+${c.unresolved} ` +
+    `against ${c.events} events`);
+});
+
+test("NEGATIVE: the star count is a different number, and is kept out", () => {
+  // The defect this file exists for. The strip printed `known_recovered` — 9
+  // distinct stars across every run — in a row of event counts, so the visible
+  // numbers summed to 119 against 113 events. If these two ever coincide the
+  // assertion above passes for free, so say the gap out loud.
+  const c = huntCounters(FEED.hunt);
+  assert.notEqual(c.known, FEED.hunt.known_recovered,
+    "the star count and the known-planet event count are the same number here; " +
+    "this test can no longer tell one denominator from two");
+  assert.equal(c.known, FEED.hunt.dispositions["known-planet"]);
+});
+
+test("the page's lead count agrees with the publisher's own counter", () => {
+  // The page derives leads from the histogram so the arithmetic closes; the
+  // publisher derives the same number from the receipts. Drift between them is
+  // a producer/page disagreement, which is exactly what a feed contract is for.
+  const c = huntCounters(FEED.hunt);
+  assert.equal(c.leads, FEED.hunt.leads_awaiting_human_review);
+});
+
+test("a missing or empty hunt block counts to zero, not to NaN", () => {
+  for (const empty of [null, undefined, {}, { dispositions: {} }]) {
+    const c = huntCounters(empty);
+    assert.deepEqual(c, { events: 0, impostors: 0, unresolved: 0, known: 0, leads: 0 });
+  }
+});
+
+test("an unknown verdict lands in impostors and keeps the sum closed", () => {
+  // The vocabulary is the receipt's, not the page's. A verdict the page has
+  // never seen must still be counted somewhere, or the arithmetic silently
+  // loses events.
+  const c = huntCounters({
+    above_threshold: 5,
+    dispositions: { "harmonic-alias": 2, "low-significance": 1, "known-planet": 1,
+                    "a-verdict-from-the-future": 1 },
+  });
+  assert.equal(c.impostors + c.known + c.leads + c.unresolved, c.events);
+  assert.equal(c.impostors, 3);
+});
+
+test("the strip labels its two denominators apart", () => {
+  assert.ok(PAGE.includes("<span>events on known planets</span>"),
+    "the strip still calls an event count 'known planets re-found'");
+  assert.ok(PAGE.includes('id="hunt-stars"'),
+    "the distinct-star count has no line of its own");
+});

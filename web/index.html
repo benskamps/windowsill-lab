@@ -1411,7 +1411,7 @@
           <li><b id="hunt-searched">—</b><span>stars searched blind</span></li>
           <li><b id="hunt-events">—</b><span>threshold-crossing events</span></li>
           <li><b id="hunt-impostors">—</b><span>impostors unmasked</span></li>
-          <li><b id="hunt-known">—</b><span>known planets re-found</span></li>
+          <li><b id="hunt-known">—</b><span>events on known planets</span></li>
           <li><b id="hunt-leads">—</b><span>leads awaiting human review</span></li>
           <li class="hunt-zero"><b id="hunt-planets">0</b><span>planets discovered</span></li>
         </ul>
@@ -1421,6 +1421,7 @@
           <span class="hunt-ledger-label">machine disposition</span>
           <ul id="hunt-dispositions"></ul>
           <p class="hunt-ledger-note" id="hunt-unresolved" hidden></p>
+          <p class="hunt-ledger-note" id="hunt-stars" hidden></p>
         </div>
         <div class="hunt-story">
           <h3>For forty minutes this was a planet.</h3>
@@ -4526,39 +4527,57 @@
         + d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
     }
 
+    // ── The hunt strip's arithmetic, in one pure function ──────────────────
+    // Every figure the strip prints beside the event count is a count of the
+    // SAME things: threshold-crossing events, taken from the one dispositions
+    // histogram, so impostors + known + leads + unresolved === events.
+    //
+    // `hunt.known_recovered` is deliberately not here. It counts distinct STARS
+    // carrying a recovered known planet across every run, which on the
+    // 2026-09-01 feed is 9 against 3 `known-planet` events — and printing it in
+    // the strip made the visible numbers sum to 119 against 113. It is a real
+    // figure with a different denominator, so it gets its own line under the
+    // ledger instead of a slot in an arithmetic it does not belong to.
+    //
+    // An impostor is an event the machine POSITIVELY unmasked, so
+    // `low-significance` (an unresolved weak signal) never counts as one, and
+    // neither do `known-planet` or the open lead states.
+    function huntCounters(hunt) {
+      var disp = (hunt && hunt.dispositions) || {};
+      var out = { events: Number(hunt && hunt.above_threshold) || 0,
+                  impostors: 0, unresolved: 0, known: 0, leads: 0 };
+      Object.keys(disp).forEach(function (verdict) {
+        var n = Number(disp[verdict]) || 0;
+        if (verdict === 'low-significance') out.unresolved += n;
+        else if (verdict === 'known-planet') out.known += n;
+        else if (verdict === 'lead-awaiting-human-review'
+                 || verdict === 'planet-candidate') out.leads += n;
+        else out.impostors += n;
+      });
+      return out;
+    }
+
     // ── The hunt ledger: committed survey receipts, dated, never "live" ─────
     // Renders pot.json's `hunt` block. Everything here is display of numbers
     // the PUBLISHER re-derived from committed receipts; the only figures this
-    // function computes are the impostor and unresolved counts, and both come
-    // straight off the dispositions histogram: an impostor is an event the
-    // machine POSITIVELY unmasked, so `low-significance` (an unresolved weak
-    // signal) never counts as one, and neither do `known-planet` or the open
-    // lead states. The arithmetic stays legible because the histogram covers
-    // every event — its buckets (impostors + known + leads + unresolved) sum
-    // to the event count — and the unresolved count gets its own ledger note.
+    // function computes are the strip counters above, and they come straight
+    // off the dispositions histogram. The unresolved count and the distinct-star
+    // count each get their own ledger note, so nothing unexplained is left over.
     // The section stays hidden without a hunt block — a feed from before the
     // survey era degrades cleanly.
     function drawHunt(hunt) {
       var box = $('hunt');
       if (!box) return;
       if (!hunt || typeof hunt !== 'object' || !hunt.as_of) { box.hidden = true; return; }
-      var above = Number(hunt.above_threshold) || 0;
-      var known = Number(hunt.known_recovered) || 0;
-      var leads = Number(hunt.leads_awaiting_human_review) || 0;
-      var disp = hunt.dispositions || {};
-      var impostors = 0, unresolved = 0;
-      Object.keys(disp).forEach(function (verdict) {
-        var n = Number(disp[verdict]) || 0;
-        if (verdict === 'low-significance') { unresolved += n; return; }
-        if (verdict === 'known-planet' || verdict === 'lead-awaiting-human-review'
-            || verdict === 'planet-candidate') return;
-        impostors += n;
-      });
+      var counters = huntCounters(hunt);
+      var above = counters.events;
+      var unresolved = counters.unresolved;
+      var stars = Number(hunt.known_recovered) || 0;
       $('hunt-searched').textContent = String(Number(hunt.targets_searched) || 0);
       $('hunt-events').textContent = String(above);
-      $('hunt-impostors').textContent = String(impostors);
-      $('hunt-known').textContent = String(known);
-      $('hunt-leads').textContent = String(leads);
+      $('hunt-impostors').textContent = String(counters.impostors);
+      $('hunt-known').textContent = String(counters.known);
+      $('hunt-leads').textContent = String(counters.leads);
       // Rendered from the feed's hard-pinned counter (the producer assigns it
       // from a literal 0; no machine path can raise it) — never computed here.
       $('hunt-planets').textContent = String(Number(hunt.planets_discovered) || 0);
@@ -4599,6 +4618,22 @@
         } else {
           note.textContent = '';
           note.hidden = true;
+        }
+      }
+      // The distinct-star count, named as a star count. It is aggregated per
+      // TIC across every accepted receipt, so it is not one of the events above
+      // and must never be added to them.
+      var starNote = $('hunt-stars');
+      if (starNote) {
+        if (stars > 0) {
+          starNote.textContent = stars + ' star' + (stars === 1 ? '' : 's')
+            + ' carr' + (stars === 1 ? 'ies' : 'y') + ' a known planet the search'
+            + ' recovered, counted once each across every run — a star count,'
+            + ' not one of the ' + above + ' events.';
+          starNote.hidden = false;
+        } else {
+          starNote.textContent = '';
+          starNote.hidden = true;
         }
       }
       // The claim boundary ships verbatim from the newest receipt — the page
