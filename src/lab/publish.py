@@ -175,6 +175,41 @@ def _parenthetical_groups(text: str) -> list[str]:
 
 _BOLD_LEAD_RE = re.compile(r"^\*\*(?P<bold>.+?)\*\*")
 
+# Inline emphasis, stripped at the producer. MILESTONES.md is markdown and its
+# receipts are written in it; the page renders every result through
+# ``textContent``, on purpose — a feed that could inject markup into the page
+# would be a feed that could inject anything. So 17 results reached the public
+# page wearing their own asterisks: "the **absence** of order", "a *third*
+# known planet". Adding a renderer to the page would trade a cosmetic defect
+# for a class of injection bug, so the emphasis comes off HERE, once, in the
+# one place that already owns the difference between the ladder's source text
+# and the published feed.
+#
+# Bold first, then italic: with the ``**`` pairs gone, a lone ``*`` can only be
+# the italic delimiter it looks like. Both require the span to be non-empty and
+# to touch its markers, so ``2 * 3 * 4`` (an arithmetic line, not emphasis) is
+# left exactly as written. Underscores are NOT touched — this ladder is full of
+# ``T_c``, ``t_w`` and ``_neighbor_sum``, and treating those as emphasis would
+# corrupt the physics to tidy the prose.
+_BOLD_RE = re.compile(r"\*\*(?!\s)(.+?)(?<!\s)\*\*", re.S)
+_ITALIC_RE = re.compile(r"(?<!\*)\*(?!\s)([^*\n]+?)(?<!\s)\*(?!\*)")
+_ESCAPED_STAR = "\x00star\x00"
+
+
+def strip_emphasis(text: str) -> str:
+    """``**bold**`` / ``*italic*`` → the words inside, everything else verbatim.
+
+    A backslash-escaped ``\\*`` is a literal asterisk in the source (K02's
+    ``r\\*``) and must never pair with a real delimiter, so it is held aside
+    while the emphasis comes off and restored as the bare character it means.
+    """
+    if not text or "*" not in text:
+        return text
+    held = text.replace("\\*", _ESCAPED_STAR)
+    held = _BOLD_RE.sub(r"\1", held)
+    held = _ITALIC_RE.sub(r"\1", held)
+    return held.replace(_ESCAPED_STAR, "*")
+
 
 def _title_for(body: str) -> str:
     """The milestone's short title, from the head of its prose.
@@ -194,8 +229,11 @@ def _title_for(body: str) -> str:
         # clause boundary is. Require the span to look like a phrase, and to be
         # the reason the naive split would have cut early.
         if len(bold.split()) >= 3 and re.search(r"[.:?]", bold):
-            return bold
-    return re.split(r"[.:]", body, maxsplit=1)[0].replace("**", "").strip()
+            return strip_emphasis(bold)
+    head = re.split(r"[.:]", body, maxsplit=1)[0]
+    # ``.replace`` after the strip, not instead of it: a split can cut a bold
+    # span in half and leave one dangling marker, which pairs with nothing.
+    return strip_emphasis(head).replace("**", "").strip()
 
 
 def parse_milestones(text: str) -> list[dict]:
@@ -265,7 +303,11 @@ def parse_milestones(text: str) -> list[dict]:
                     "", chosen,
                 ).strip()
                 if result:
-                    ms["result"] = result
+                    # The ladder is markdown; the feed is not (see
+                    # strip_emphasis). The page renders this through
+                    # textContent, so asterisks left here reach a reader as
+                    # asterisks.
+                    ms["result"] = strip_emphasis(result)
 
         # Merge the durable plain-language story layer (src/lab/stories.py) — the
         # public copy, kept beside the curriculum so the page never has to infer

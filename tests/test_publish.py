@@ -914,3 +914,78 @@ def test_the_seam_is_restored_after_a_pause():
         assert receipt_mod._PLANNED_DECISION is decision
     finally:
         receipt_mod.clear_planned_decision()
+
+
+# ── the ladder is markdown; the feed is not ─────────────────────────────────
+#
+# MILESTONES.md is written in markdown and its receipts are written in it too.
+# The page renders every result through `textContent` on purpose — a feed that
+# could inject markup could inject anything — so 17 results reached readers
+# wearing their own asterisks: "the **absence** of order", "a *third* known
+# planet". The strip belongs at the producer, in the one place that already
+# owns the difference between the source text and the published feed.
+import re as _re
+
+from lab.publish import strip_emphasis
+
+
+def test_bold_and_italic_come_off_the_words_stay():
+    assert strip_emphasis("the **absence** of order") == "the absence of order"
+    assert strip_emphasis("a *third* known planet") == "a third known planet"
+    assert strip_emphasis("**Boundary:** a deterministic SAMPLE") == \
+        "Boundary: a deterministic SAMPLE"
+
+
+def test_arithmetic_is_not_emphasis():
+    """The delimiters must touch their span. `2 * 3 * 4` is a multiplication a
+    physicist wrote, and eating the numbers between the stars would be a worse
+    bug than the asterisks it is fixing."""
+    for line in ("800 realizations x 2 * 3 * 4 sweeps", "a * b", "chi ~ |K|^-g *"):
+        assert strip_emphasis(line) == line
+
+
+def test_subscripts_survive():
+    """Underscores are physics here — T_c, t_w, _neighbor_sum — never emphasis."""
+    line = "the saved C(t_w+dt,t_w) table; `check_m16` re-derives T_c from _neighbor_sum"
+    assert strip_emphasis(line) == line
+
+
+def test_an_escaped_star_stays_a_star_and_pairs_with_nothing():
+    r"""K02 writes the interior peak as ``r\*``. A literal asterisk must not
+    pair with a real delimiter three clauses later and swallow the text in
+    between."""
+    assert strip_emphasis(r"peak at r\*≈0.40 and fitted **chi(r)**") == \
+        "peak at r*≈0.40 and fitted chi(r)"
+
+
+def test_nothing_to_do_is_returned_untouched():
+    assert strip_emphasis("") == ""
+    assert strip_emphasis("plain prose, no markers") == "plain prose, no markers"
+
+
+EMPHATIC = """
+- [x] **M09** — 2D Heisenberg. (done 2026-06-25 — the *absence* of order reproduced, with **uniform-on-sphere** spins)
+- [?] **A02** — Recover a variable star. (measured 2026-08-23 — **six known variables** recovered blind) {venue=AAVSO}
+"""
+
+
+def test_results_reach_the_feed_with_no_markup_left():
+    ms = {m["id"]: m for m in parse_milestones(EMPHATIC)}
+    assert "*" not in ms["M09"]["result"], ms["M09"]["result"]
+    assert "absence of order" in ms["M09"]["result"]
+    assert "uniform-on-sphere spins" in ms["M09"]["result"]
+    assert ms["A02"]["result"] == "six known variables recovered blind"
+
+
+def test_no_result_in_the_shipped_feed_carries_inline_emphasis():
+    """Non-hermetic, and the one that matters: the committed ladder is what
+    `lab publish` parses, so every result it yields must already be plain."""
+    from pathlib import Path as _Path
+    root = _Path(__file__).resolve().parents[1]
+    text = (root / "MILESTONES.md").read_text(encoding="utf-8")
+    for m in parse_milestones(text):
+        for field in ("title", "result"):
+            value = m.get(field) or ""
+            assert "**" not in value, f"{m['id']} {field}: {value[:80]}"
+            assert not _re.search(r"(?<!\*)\*(?!\s)[^*\n]+?(?<!\s)\*(?!\*)", value), \
+                f"{m['id']} {field}: {value[:80]}"
