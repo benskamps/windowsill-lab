@@ -168,6 +168,19 @@
       border-left:2px solid var(--clay); padding-left:0.8rem;
     }
 
+    /* The standing commitment, straight off the feed: the goal the lab set
+       itself, the clock on it, and the doubts filed against its claims. */
+    .commitment { max-width:760px; margin-bottom:1.6rem; }
+    .commitment p { margin:0; }
+    .commitment-goal {
+      font-size:clamp(0.94rem, 1.8vw, 1.06rem); line-height:1.55;
+      color:var(--text-secondary);
+    }
+    .commitment-state {
+      margin-top:0.4rem; color:var(--text-muted);
+      font:normal 0.75rem/1.6 var(--font-mono);
+    }
+
     /* The shelf hero: the door to the public explainer rooms. A band, not a
        button — it borrows the pots' clay and sits between the ambition and
        the sill, so the reader meets the goal and then the door to the rooms
@@ -967,6 +980,16 @@
       <p class="sowhat-goal"><strong>The goal is a measurement nobody has made yet, given away free.</strong></p>
       <p class="sowhat-who">A fleet of AI agents wrote this instrument and keeps it running; a human signs every promotion, and the receipt names who read the evidence. Two home machines take the turns.</p>
       <p class="sowhat-read">Below: seven pots on one windowsill, one for each science. Every leaf is one real experiment — green means a person checked it, amber is waiting for one, grey is a miss we kept on purpose. And the pots wear the work: the glaze climbs as a track climbs, the scratches count its runs, the chips are its failures.</p>
+    </section>
+
+    <!-- The standing commitment. The feed has carried `goal` and `objections`
+         since 2026-08-24 and the page rendered neither, which meant the one
+         part of the record that can embarrass the lab was the one part nobody
+         could see. Every figure here is the feed's own; the block hides itself
+         when the fields are absent, so an older feed degrades to nothing. -->
+    <section class="commitment" id="commitment" hidden aria-label="the goal this lab set itself">
+      <p class="commitment-goal" id="commitment-goal"></p>
+      <p class="commitment-state" id="commitment-state"></p>
     </section>
 
     <!-- The shelf hero: the door to the public explainer rooms. Deliberately the
@@ -4649,6 +4672,67 @@
     // count each get their own ledger note, so nothing unexplained is left over.
     // The section stays hidden without a hunt block — a feed from before the
     // survey era degrades cleanly.
+    // ── The standing commitment: the goal, its clock, and the open doubts ──
+    // pot.json has carried `goal` and `objections` since 2026-08-24 and the page
+    // showed neither — the honesty layer was published and invisible. These are
+    // the feed's own numbers and the feed's own words: the goal statement is
+    // printed verbatim, and nothing here is computed from anything else.
+    //
+    // Every line is optional. A feed without a goal, or without objections, or
+    // from before either existed, renders the lines it can and hides the block
+    // when it can render none.
+    function commitmentLines(goal, objections) {
+      var out = { statement: null, state: [] };
+      if (goal && typeof goal.statement === 'string' && goal.statement) {
+        out.statement = goal.statement;
+      }
+      if (goal && typeof goal.days_remaining === 'number' && isFinite(goal.days_remaining)) {
+        var d = Math.round(goal.days_remaining);
+        out.state.push(d > 0 ? d + ' day' + (d === 1 ? '' : 's') + ' left'
+          : (d === 0 ? 'due today'
+             : Math.abs(d) + ' day' + (d === -1 ? '' : 's') + ' past the deadline'));
+      }
+      if (goal) {
+        var conditions = goal.conditions || {};
+        var attempted = typeof conditions.a_field_unknown_attempted === 'boolean'
+          ? conditions.a_field_unknown_attempted
+          : (Array.isArray(goal.attempted) ? goal.attempted.length > 0 : null);
+        if (attempted !== null) {
+          out.state.push(attempted ? 'a field unknown has been attempted'
+                                   : 'no field unknown attempted yet');
+        }
+      }
+      if (objections && typeof objections.open === 'number') {
+        var open = objections.open;
+        var total = typeof objections.total === 'number' ? objections.total : null;
+        out.state.push(open + (total === null ? '' : ' of ' + total)
+          + ' objection' + ((total === null ? open : total) === 1 ? '' : 's')
+          + ' still open');
+      }
+      return out;
+    }
+
+    function drawCommitment(goal, objections) {
+      var box = $('commitment');
+      if (!box) return;
+      var lines = commitmentLines(goal, objections);
+      var statement = $('commitment-goal');
+      var state = $('commitment-state');
+      if (statement) {
+        statement.textContent = lines.statement || '';
+        statement.hidden = !lines.statement;
+      }
+      if (state) {
+        // Sentence case, one line: "22 days left · no field unknown attempted
+        // yet · 4 of 6 objections still open."
+        state.textContent = lines.state.length
+          ? lines.state.join(' · ').replace(/^./, function (c) { return c.toUpperCase(); }) + '.'
+          : '';
+        state.hidden = !lines.state.length;
+      }
+      box.hidden = !(lines.statement || lines.state.length);
+    }
+
     function drawHunt(hunt) {
       var box = $('hunt');
       if (!box) return;
@@ -4873,6 +4957,7 @@
 
       // The honest every-run ledger — hidden unless the feed carries reports[].
       drawRunList(state.reports, state.archive_url, milestones, state.divergence, state.turns);
+      drawCommitment(state.goal, state.objections);
       // The hunt ledger — hidden unless the feed carries a hunt block.
       drawHunt(state.hunt);
       setFooterStatus(freshness, state, open);

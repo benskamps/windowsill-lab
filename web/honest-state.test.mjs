@@ -251,3 +251,52 @@ test("NEGATIVE: the two totals are genuinely different numbers", () => {
   assert.notEqual(FEED.turns.count, runsOnRecord(FEED.reports),
     "turns and runs now agree; the page's reconciliation may be stale");
 });
+
+/* ── The standing commitment: published, and now visible ─────────────────── */
+
+const { commitmentLines } = evaluate(["commitmentLines"]);
+
+test("the block states the feed's goal in the feed's own words", () => {
+  const lines = commitmentLines(FEED.goal, FEED.objections);
+  assert.equal(lines.statement, FEED.goal.statement,
+    "the page paraphrases the goal instead of quoting it");
+});
+
+test("the clock, the attempt and the open doubts all reach the page", () => {
+  const lines = commitmentLines(FEED.goal, FEED.objections);
+  const said = lines.state.join(" · ");
+  assert.match(said, new RegExp(`\\b${FEED.goal.days_remaining} days left\\b`));
+  assert.match(said, /no field unknown attempted yet/);
+  assert.equal(FEED.goal.conditions.a_field_unknown_attempted, false,
+    "a field unknown has been attempted — this assertion is now the wrong one");
+  assert.match(said, new RegExp(
+    `\\b${FEED.objections.open} of ${FEED.objections.total} objections still open\\b`));
+});
+
+test("an attempted goal says so, and a passed deadline is not hidden", () => {
+  const done = commitmentLines(
+    { statement: "s", days_remaining: -3, conditions: { a_field_unknown_attempted: true } },
+    { open: 1, total: 1 });
+  assert.deepEqual(done.state,
+    ["3 days past the deadline", "a field unknown has been attempted",
+     "1 of 1 objection still open"]);
+  assert.deepEqual(commitmentLines({ days_remaining: 0 }, null).state, ["due today"]);
+  assert.deepEqual(commitmentLines({ days_remaining: 1 }, null).state, ["1 day left"]);
+});
+
+test("the attempt falls back to the attempted list when no condition is set", () => {
+  assert.deepEqual(commitmentLines({ attempted: [] }, null).state,
+    ["no field unknown attempted yet"]);
+  assert.deepEqual(commitmentLines({ attempted: ["U-K01"] }, null).state,
+    ["a field unknown has been attempted"]);
+});
+
+test("a feed without these fields renders nothing at all", () => {
+  for (const empty of [[null, null], [undefined, undefined], [{}, {}]]) {
+    const lines = commitmentLines(empty[0], empty[1]);
+    assert.equal(lines.statement, null);
+    assert.deepEqual(lines.state, []);
+  }
+  assert.ok(PAGE.includes('<section class="commitment" id="commitment" hidden'),
+    "the block must start hidden, so an older feed shows nothing");
+});
