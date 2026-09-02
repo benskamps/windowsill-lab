@@ -92,6 +92,12 @@ _MILESTONE_RE = re.compile(
 _TAG_RE = re.compile(r"\{([^}]*)\}\s*$")
 TRACKS = {"M": "physics", "K": "coherence", "C": "compute", "A": "astronomy",
           "I": "instrument", "B": "boinc"}
+# The bucket every unmapped id letter falls into. It is not a hypothetical: the
+# folding ladder (TRACKS.md, "Track P — the folding problem") has no letter in
+# TRACKS, so P01 publishes here — a real track, in the schema's own `track`
+# enum, owed a pot on the shelf like any other. Named once so the page's card
+# list and the producer cannot drift about what the fallback is called.
+DEFAULT_TRACK_NAME = "misc"
 
 # Growth forms — the feed contract's render-strategy hint (see BACKLOG.md §"Growth
 # forms"). The hard constraint is *homogeneous*: same clay pot, same palette, same
@@ -122,7 +128,8 @@ DEFAULT_GROWTH_FORM = "sprout"
 
 def _track_for(mid: str) -> str:
     prefix = re.match(r"[A-Z]+", mid)
-    return TRACKS.get(prefix.group()[0], "misc") if prefix else "misc"
+    return (TRACKS.get(prefix.group()[0], DEFAULT_TRACK_NAME) if prefix
+            else DEFAULT_TRACK_NAME)
 
 
 def growth_form_for(track: str | None) -> str:
@@ -131,7 +138,7 @@ def growth_form_for(track: str | None) -> str:
     default seedling (``sprout``), so the windowsill page never has to special-case
     a form it doesn't recognise. The single source-of-truth rule both the producer
     (``parse_milestones``) and any consumer should use, so the two never drift."""
-    return GROWTH_FORMS.get(track or "misc", DEFAULT_GROWTH_FORM)
+    return GROWTH_FORMS.get(track or DEFAULT_TRACK_NAME, DEFAULT_GROWTH_FORM)
 
 
 def _parse_tags(body: str) -> tuple[str, dict]:

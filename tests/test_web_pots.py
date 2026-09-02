@@ -62,6 +62,21 @@ def _rules(css: str):
     return re.findall(r"([^{}]+)\{([^{}]*)\}", css)
 
 
+def _feed_tracks():
+    """Every track the FEED can carry — the named ones plus the `misc` fallback.
+
+    `publish.TRACKS` maps a milestone's id letter to a track name and has no
+    letter for `P`, so the folding ladder (TRACKS.md, "Track P — the folding
+    problem") publishes under `misc`. `misc` is therefore not a hypothetical: it
+    is a real track with a real milestone in it, and it is in the schema's own
+    `track` enum. The page owes it a pot like any other — it did not have one
+    until 2026-09-02, and P01 sat in the feed with no card on the shelf.
+    """
+    from lab import publish
+
+    return sorted(set(publish.TRACKS.values()) | {publish.DEFAULT_TRACK_NAME})
+
+
 def _garden_specs(html: str):
     """``GARDEN_SPECS`` as ``[(track, expected)]``, read from the page."""
     block = html.split("var GARDEN_SPECS = [", 1)[1].split("];", 1)[0]
@@ -163,12 +178,11 @@ def test_the_conservatory_shows_every_track_it_claims_to():
     no card at all. The pot layer makes the taxonomy load-bearing, so this is
     the assertion that keeps the two in step."""
     html = _page()
-    from lab import publish
 
     specs = html.split("var GARDEN_SPECS = [", 1)[1].split("];", 1)[0]
-    for track in publish.TRACKS.values():
+    for track in _feed_tracks():
         assert f"track:'{track}'" in specs, f"no conservatory card for track {track!r}"
-    assert "Six instruments. One standard of proof." in html
+    assert f"{_NUMBER_WORD[len(_feed_tracks())]} instruments. One standard of proof." in html
     # coherence deliberately reuses the fern — the POT is what separates them
     assert "{ track:'coherence', form:'fern'" in specs
     assert "{ track:'physics', form:'fern'" in specs
@@ -198,16 +212,23 @@ def test_the_so_what_strip_sits_immediately_before_the_windowsill():
     before_scene, sep, _ = strip.partition('<div class="scene" id="scene">')
     assert sep, "the so-what strip is not above the scene"
     assert "</section>" in before_scene
-    # nothing but the strip stands between it and the sill
-    assert "<section" not in before_scene.split("</section>", 1)[1]
+    # Only the strip's own commitment block stands between it and the sill: the
+    # goal the lab set itself, its clock, and the doubts filed against it, all
+    # from the feed. Anything else arriving here is a new interruption.
+    after_strip = before_scene.split("</section>", 1)[1]
+    assert re.findall(r'<section class="([a-z-]+)"', after_strip) == ["commitment"], (
+        "something other than the commitment block now stands between the "
+        "so-what strip and the sill"
+    )
 
-    # the three rungs, in order: what it is FOR, who does it and who gates it,
-    # and how to read what you are about to see.
+    # the rungs, in order: what it is FOR, who does it and who gates it, how to
+    # read what you are about to see, and what the lab is on the hook for.
     goal = html.index("The goal is a measurement nobody has made yet, given away free.")
     who = html.index("A fleet of AI agents wrote this instrument and keeps it running")
-    read = html.index("Below: six pots on one windowsill, one for each science.")
+    read = html.index("Below: seven pots on one windowsill, one for each science.")
+    commitment = html.index('<section class="commitment"')
     scene = html.index('<div class="scene" id="scene">')
-    assert goal < who < read < scene
+    assert goal < who < read < commitment < scene
 
 
 def test_the_so_what_strip_makes_the_pots_legible_before_they_are_seen():
@@ -264,7 +285,7 @@ def test_the_sill_shows_every_track_at_once():
     # ...and the centre one is the full-size #plant, so the union is every track
     shelf = html.split("function drawSillGarden(", 1)[1].split("\n    }", 1)[0]
     assert "host.appendChild(outer)" in shelf
-    assert len(publish.TRACKS) == len(
+    assert len(_feed_tracks()) == len(
         html.split("var GARDEN_SPECS = [", 1)[1].split("];", 1)[0].split("{ track:")
     ) - 1
 
@@ -400,9 +421,9 @@ def test_the_shelf_holds_one_pot_per_track_and_the_heading_says_so():
     html = _page()
     tracks = [track for track, _ in _garden_specs(html)]
     assert tracks, "GARDEN_SPECS did not parse"
-    assert sorted(tracks) == sorted(publish.TRACKS.values()), (
+    assert sorted(tracks) == _feed_tracks(), (
         f"the shelf and the track taxonomy disagree: {sorted(tracks)} vs "
-        f"{sorted(publish.TRACKS.values())}"
+        f"{_feed_tracks()}"
     )
     assert len(tracks) == len(set(tracks)), "a track has two pots"
     # centre + flanks == one pot per track, which is what the harness reports.

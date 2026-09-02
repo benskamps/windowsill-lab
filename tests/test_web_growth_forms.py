@@ -147,7 +147,7 @@ def test_the_page_carries_its_own_host_gated_analytics_beacon():
 def test_conservatory_is_feed_driven_and_opens_real_field_notes():
     """Every specimen must report the feed, not repeat decorative sample plants."""
     html = PAGE.read_text(encoding="utf-8")
-    assert "Six instruments. One standard of proof." in html
+    assert "Seven instruments. One standard of proof." in html
     assert "function drawGarden(milestones, reports)" in html
     assert "count:closed.length, total:total" in html
     assert "reportForMilestone(reports, latest && latest.id)" in html
@@ -257,18 +257,21 @@ def test_scene_svg_role_keeps_leaf_and_bud_buttons_exposed():
 def test_meta_descriptions_enumerate_every_track():
     """Search results and social unfurls must describe the page they open.
 
-    The count is the number of TRACKS in ``publish.TRACKS`` (physics, coherence,
-    compute, astronomy, instrument, boinc) — it went four → five → six as tracks
-    landed, so this asserts the current count and that no stale one survives.
+    The count is every track the FEED can carry — ``publish.TRACKS`` plus the
+    ``misc`` fallback the folding ladder publishes under. It went four → five →
+    six → seven as tracks landed, so this asserts the current count and that no
+    stale one survives.
     """
     html = PAGE.read_text(encoding="utf-8")
     for stale in ("four kinds of patient science", "Four quiet plants",
                   "five kinds of patient science", "Five quiet plants",
-                  "Five instruments."):
+                  "Five instruments.",
+                  "six kinds of patient science", "Six quiet plants",
+                  "Six instruments."):
         assert stale not in html, f"stale track count on the page: {stale!r}"
-    assert "six kinds of patient science" in html
-    assert "Six quiet plants" in html
-    assert "Six instruments. One standard of proof." in html
+    assert "seven kinds of patient science" in html
+    assert "Seven quiet plants" in html
+    assert "Seven instruments. One standard of proof." in html
 
 
 def test_the_centre_plant_grows_only_the_bench_track():
