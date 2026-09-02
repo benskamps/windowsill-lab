@@ -163,6 +163,7 @@
       font-size:clamp(0.98rem, 1.9vw, 1.12rem); line-height:1.5;
       color:var(--text-secondary); margin-bottom:0.55rem;
     }
+    .sowhat-now { margin-top:.35rem; font-family:var(--mono, ui-monospace, monospace); font-size:0.78rem; color:var(--text-secondary, inherit); }
     .sowhat-read {
       font-size:0.83rem; line-height:1.62; color:var(--text-muted);
       border-left:2px solid var(--clay); padding-left:0.8rem;
@@ -978,7 +979,8 @@
          discipline at the claims: that ordering IS the honesty. -->
     <section class="sowhat" aria-label="what this instrument is for">
       <p class="sowhat-goal"><strong>The goal is a measurement nobody has made yet, given away free.</strong></p>
-      <p class="sowhat-who">A fleet of AI agents wrote this instrument and keeps it running; a human signs every promotion, and the receipt names who read the evidence. Two home machines take the turns.</p>
+      <p class="sowhat-who">A fleet of AI agents wrote this instrument and keeps it running; a human signs every promotion, and the receipt names who read the evidence. Two machines in a house take the turns, one every three hours, around the clock.</p>
+      <p class="sowhat-now" id="sowhat-now" hidden></p>
       <p class="sowhat-read">Below: seven pots on one windowsill, one for each science. Every leaf is one real experiment — green means a person checked it, amber is waiting for one, grey is a miss we kept on purpose. And the pots wear the work: the glaze climbs as a track climbs, the scratches count its runs, the chips are its failures.</p>
     </section>
 
@@ -4602,6 +4604,17 @@
         : ' · last confirmed ' + ago(state.last_run)));
       var quiet = quietMachineClause(freshness, state);
       if (quiet) el.appendChild(document.createTextNode(quiet));
+      // The first viewport says what is running right now, from the feed alone:
+      // last turn, what is on the bench, and whether one machine has gone quiet.
+      var now = $('sowhat-now');
+      if (now) {
+        if (freshness === 'offline' || !state.last_run) { now.hidden = true; now.textContent = ''; }
+        else {
+          var bench = open && open.id ? open.id + ' on the bench' : 'nothing on the bench';
+          now.textContent = 'Right now: last turn ' + ago(state.last_run) + ', ' + bench + (quiet ? quiet.replace(/^ · /, ', ') : '') + '.';
+          now.hidden = false;
+        }
+      }
     }
 
     // One declared machine has gone quiet while the other keeps watering, so
