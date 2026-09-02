@@ -88,6 +88,10 @@ def test_publish_writes_the_pinned_pot_layout(tmp_path, monkeypatch):
     dest = tmp_path / "pot.json"
     monkeypatch.setattr(publish, "POT_JSON", dest)
     monkeypatch.setattr(publish, "LAB_HOME", tmp_path / "lab")
+    # publish() also rewrites the page's shelf counters from the snapshot
+    # it writes (refresh_shelf_fallback). Redirect that too, or a fixture
+    # snapshot scribbles zeros over the SHIPPED web/index.html mid-suite.
+    monkeypatch.setattr(publish, "WEB_INDEX", tmp_path / "index.html")
     monkeypatch.setattr(publish, "ensure_public_receipts", lambda *a, **k: [])
     monkeypatch.setattr(publish, "collect", lambda: FIXTURE)
     publish.publish(quiet=True)
@@ -140,6 +144,10 @@ def test_committed_pot_matches_the_publishers_serialization(tmp_path, monkeypatc
     dest = tmp_path / "pot.json"
     monkeypatch.setattr(publish, "POT_JSON", dest)
     monkeypatch.setattr(publish, "LAB_HOME", tmp_path / "lab")
+    # publish() also rewrites the page's shelf counters from the snapshot
+    # it writes (refresh_shelf_fallback). Redirect that too, or a fixture
+    # snapshot scribbles zeros over the SHIPPED web/index.html mid-suite.
+    monkeypatch.setattr(publish, "WEB_INDEX", tmp_path / "index.html")
     monkeypatch.setattr(publish, "ensure_public_receipts", lambda *a, **k: [])
     monkeypatch.setattr(publish, "collect", lambda: json.loads(text))
     publish.publish(quiet=True)

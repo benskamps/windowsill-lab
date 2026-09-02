@@ -145,6 +145,10 @@ def test_torn_pot_write_leaves_the_committed_feed_intact(tmp_path, monkeypatch):
 
     monkeypatch.setattr(publish, "POT_JSON", dest)
     monkeypatch.setattr(publish, "LAB_HOME", tmp_path / "lab")
+    # publish() also rewrites the page's shelf counters from the snapshot
+    # it writes (refresh_shelf_fallback). Redirect that too, or a fixture
+    # snapshot scribbles zeros over the SHIPPED web/index.html mid-suite.
+    monkeypatch.setattr(publish, "WEB_INDEX", tmp_path / "index.html")
     monkeypatch.setattr(publish, "ensure_public_receipts", lambda *a, **k: [])
     monkeypatch.setattr(publish, "collect",
                         lambda: {"schema": "windowsill.pot.v5", "junk": "q" * 400})

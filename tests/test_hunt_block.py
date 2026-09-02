@@ -436,7 +436,14 @@ def test_page_has_the_counter_strip_with_the_correct_terms():
     # a planet and not a candidate.
     assert "threshold-crossing events" in html
     assert "impostors unmasked" in html
-    assert "known planets re-found" in html
+    # An EVENT count, labelled as one. The strip used to print
+    # `hunt.known_recovered` here — distinct stars across every run, 9 against 3
+    # known-planet events — so the visible figures summed to 119 against 113.
+    assert "events on known planets" in html
+    assert "known planets re-found" not in html, \
+        "an event count is wearing a star count's label again"
+    # ...and the star count keeps its own line, under the ledger.
+    assert 'id="hunt-stars"' in html
     assert "leads awaiting human review" in html
 
 
@@ -472,12 +479,16 @@ def test_page_impostors_derive_from_the_histogram_not_by_subtraction():
     html = _page()
     assert "above - known - leads" not in html, \
         "impostors must come from the dispositions histogram, not subtraction"
-    assert "if (verdict === 'low-significance') { unresolved += n; return; }" in html
-    assert "verdict === 'known-planet'" in html
-    assert "verdict === 'lead-awaiting-human-review'" in html
+    # Every bucket is assigned in one pass over the histogram, in huntCounters —
+    # a pure function the node suite runs against the committed feed to prove
+    # impostors + known + leads + unresolved === events.
+    assert "function huntCounters(hunt) {" in html
+    assert "if (verdict === 'low-significance') out.unresolved += n;" in html
+    assert "else if (verdict === 'known-planet') out.known += n;" in html
+    assert "|| verdict === 'planet-candidate') out.leads += n;" in html
+    assert "else out.impostors += n;" in html
     # And the unresolved count is surfaced as a ledger note, so the strip's
-    # arithmetic (impostors + known + leads + unresolved = events) stays
-    # legible to a reader.
+    # arithmetic stays legible to a reader.
     assert 'id="hunt-unresolved"' in html
     assert "never as impostors." in html
 
