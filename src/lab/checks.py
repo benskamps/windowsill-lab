@@ -389,11 +389,41 @@ K02_KC_TOL = 0.10
 # This is K02's headline after the 2026-08-02 literature assay
 # (docs/assays/2026-08-02-k02-literature-crosscheck.md) retired the previous one. The
 # benchmark is owned here and never read from the report:
-#   Hong et al. 2015 Eq. (4.3), for the REGULAR (deterministic-quantile) Lorentzian —
-#   this engine's exact published configuration, their §IV A — gives β/ν̄_c = 0.39(2)
-#   over N = 200…12800.
+#   Hong et al. 2015 Eq. (4.3) gives β/ν̄_c = 0.39(2) over N = 200-12800, on the
+#   REGULAR (deterministic-quantile) frequency set — and that set is GAUSSIAN.
+#
+# THE DISTRIBUTION DOES NOT MATCH THIS ENGINE, and until 2026-09-04 this comment
+# claimed it did ("the REGULAR Lorentzian — this engine's exact published
+# configuration"). It is not. Their SS IV Eq. (4.1) defines the regular class it
+# measures with g(ω) = (1/sqrt(2pi)) e^(-ω^2/2), and every exponent in SS IV sits
+# on that Gaussian. Their ENTIRE regular-Lorentzian content is one sentence at the
+# end of SS IV A — "We also considered the regular Lorentzian distribution ... We
+# find a similar behavior again with ν̄ = 5/4" — which gives ν̄ ALONE: no
+# β/ν̄_c, no error bar. Quoted verbatim and sha256-pinned in evidence/literature/.
+#
+# This engine builds regular-quantile LORENTZIAN frequencies (kuramoto.py:102-120,
+# Daido's construction). So there is NO published regular-Lorentzian β/ν̄_c to
+# grade against, and 0.39(2) is the nearest neighbour rather than the matching cell.
+#
+# The number is KEPT and only the label corrected, deliberately. Hong reports
+# "similar behavior" for the Lorentzian, so 0.39(2) is a defensible cross-distribution
+# proxy and there is nothing truer to move it to — inventing a Lorentzian value
+# would be the same error in the opposite direction. What was wrong was the CLAIM of
+# an exact configuration match, and this repo's own assay rule is that an exponent
+# comparison is meaningless until the configuration class is matched. It is not
+# matched; the receipt now says so instead of asserting the reverse.
+#
+# Second citation in this module to fail an evidence check: the DAIDO rivals were
+# sourced to Prog. Theor. Phys. 75, 1460 (1986), which gives the SAME exponent on
+# both sides (its Eq. 7); the asymmetric pair is 81, 727 (1989). Treat every other
+# citation here as unverified until it has bytes under evidence/literature/.
 K02_CRITICAL_EXPONENT = 0.39
 K02_CRITICAL_EXPONENT_ERR = 0.02
+#: What the benchmark was measured on, as opposed to what this engine runs. Carried
+#: into the receipt so a reader meets the mismatch beside the number instead of
+#: having to find this comment.
+K02_CRITICAL_EXPONENT_CLASS = "regular-quantile Gaussian (Hong et al. 2015 Sec. IV, Eq. 4.3)"
+K02_ENGINE_CLASS = "regular-quantile Lorentzian"
 # The tolerance is set to bracket the LITERATURE's own spread for this sampling class,
 # not this run's luck. Park & Park 2024 Eq. (20) revise the asymptotic value to
 # 0.325(15) while noting the effective exponent sits near 0.37 until N ≳ 2^15; K02's
@@ -1936,8 +1966,10 @@ def check_k02(report: dict) -> tuple[bool | None, str]:
     the direction r\\*(N) happened to move would be a tolerance written after the fact.
     **The headline is a calibration, not a discovery.** After the 2026-08-02 literature
     assay, K02's load-bearing number is the coherence at the *exact* critical coupling,
-    ``r(K_c, N) ~ N^(−β/ν̄_c)``, graded against the published **0.39(2)** for this
-    engine's exact configuration. It is re-fitted here from the per-rung values rather
+    ``r(K_c, N) ~ N^(−β/ν̄_c)``, graded against the published **0.39(2)**, which is
+    Hong's regular-**Gaussian** value — the nearest published neighbour, not this
+    engine's own cell. The frequency CONSTRUCTION is theirs term for term; the
+    EXPONENT is not measured on it. See K02_CRITICAL_EXPONENT_CLASS. It is re-fitted here from the per-rung values rather
     than read from the report. The estimator it replaced — the Beta fit's ``p/(p+q)`` —
     is demoted and deliberately **not** graded: it is a ratio of parameters that
     themselves track N inside a misspecified family.
@@ -2212,7 +2244,8 @@ def check_k02(report: dict) -> tuple[bool | None, str]:
     calibration = (
         f"r(K_c,N) ~ N^−{exponent:.3f} vs published β/ν̄_c = {K02_CRITICAL_EXPONENT}"
         f"({int(K02_CRITICAL_EXPONENT_ERR * 100)}) [Hong et al. 2015 Eq. 4.3, regular "
-        f"Lorentzian] (tol ±{K02_CRITICAL_TOL})"
+        f"GAUSSIAN; this engine is regular LORENTZIAN, for which no β/ν̄_c is "
+        f"published] (tol ±{K02_CRITICAL_TOL})"
         if math.isfinite(exponent) else "r(K_c,N) calibration unavailable"
     )
     detail = (

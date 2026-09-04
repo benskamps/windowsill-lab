@@ -17,7 +17,10 @@ range and with far longer runs. Specifically:
   Eq. (4.1)'s "regular" frequency set and Park & Park 2024 Eq. (9)'s "equally spaced"
   (ES, s = ½) case. Hong et al. §IV A then treat the **regular Lorentzian**
   explicitly — their ``ω_j = γ tan[jπ/N − (N+1)π/(2N)]`` is this module's frequency
-  set term for term.
+  set term for term. **But only the CONSTRUCTION is theirs.** Their regular
+  Lorentzian gets one sentence and one number, ν̄ ≈ 5/4; every EXPONENT in §IV,
+  0.39(2) included, is measured on the regular **Gaussian** of their Eq. (4.1).
+  There is no published regular-Lorentzian β/ν̄_c to grade against.
 * **The estimator is standard.** ``χ = N·Var_t(r)`` is Park & Park Eq. (6) and Hong
   et al.'s "dynamic fluctuations of the order parameter".
 * **The regular-vs-random sampling distinction is the field's organizing axis**, not
