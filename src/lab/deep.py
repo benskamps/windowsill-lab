@@ -73,9 +73,24 @@ def _drop_first(path: Path, job: str) -> None:
     path.write_text("\n".join(kept) + ("\n" if kept else ""), encoding="utf-8")
 
 
-def _log(message: str) -> None:
-    LAB_HOME.mkdir(parents=True, exist_ok=True)
-    with LOG.open("a", encoding="utf-8") as fh:
+def _log(message: str, queue: Path = None) -> None:
+    """Append one line to the lane's log, beside the queue it is describing.
+
+    The ``queue`` argument is how the log follows a redirected lane. ``run_next``
+    already lets a caller point ``queue`` and ``done`` at a temp directory, but
+    the log was bound to the module-level ``LOG`` at import — so every test that
+    exercised this lane appended to the REAL ``~/.lab/deep.log``, outside the
+    repo entirely, mixing test noise into the operator's record of what actually
+    ran overnight. It had 456 lines when this was found and its newest entries
+    were written by a test suite.
+
+    Deriving the log from the queue rather than adding a third override is the
+    point: a caller cannot now redirect the lane and forget the log, because
+    there is nothing separate left to forget.
+    """
+    path = LOG if queue is None else queue.parent / LOG.name
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as fh:
         fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} {message}\n")
 
 
@@ -89,14 +104,15 @@ def run_next(queue: Path = None, done: Path = None, runner=None) -> dict:
     done = done or DONE
     jobs = read_queue(queue)
     if not jobs:
-        _log("deep: queue empty — nothing worth a night; NOT inventing work")
+        _log("deep: queue empty — nothing worth a night; NOT inventing work",
+             queue)
         return {"outcome": "idle", "job": None,
                 "detail": "the queue is empty. An idle lane reports the vacuum; "
                           "it does not manufacture work to look busy."}
 
     job = jobs[0]
     argv = job.split()
-    _log(f"deep: start · {job}")
+    _log(f"deep: start · {job}", queue)
     t0 = time.time()
     if runner is None:
         proc = subprocess.run([sys.executable, "-m", "lab.cli", *argv],
@@ -107,13 +123,16 @@ def run_next(queue: Path = None, done: Path = None, runner=None) -> dict:
     minutes = (time.time() - t0) / 60.0
 
     verdict = "ok" if code == 0 else f"exit:{code}"
-    _log(f"deep: {verdict} · {minutes:.1f} min · {job}")
+    _log(f"deep: {verdict} · {minutes:.1f} min · {job}", queue)
     # Only a finished job leaves the queue. A crash keeps its place, because the
     # usual cause is a transient (a cold cache, a network blip) and silently
     # discarding the night's work would hide it.
     if code == 0:
         _drop_first(queue, job)
-        LAB_HOME.mkdir(parents=True, exist_ok=True)
+        # done.parent, not LAB_HOME: the caller may have redirected `done`, and
+        # creating the real lab home anyway is the same mistake one directory
+        # over — harmless here only because the directory usually exists.
+        done.parent.mkdir(parents=True, exist_ok=True)
         with (done).open("a", encoding="utf-8") as fh:
             fh.write(f"{time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())} "
                      f"{minutes:.1f}min {job}\n")

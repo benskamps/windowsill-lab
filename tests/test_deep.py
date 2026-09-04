@@ -91,3 +91,44 @@ def test_the_shipped_queue_is_readable_and_its_first_job_is_a_real_command(tmp_p
         return                      # an empty queue is legitimate
     head = jobs[0].split()[0]
     assert head in set(curriculum.RUNNERS.values()) | {"frontier", "publish", "verify"}, head
+
+
+# ── the lane must not write outside the tree it was pointed at ───────────────
+
+def test_a_redirected_lane_writes_nothing_to_the_real_lab_home(tmp_path):
+    """Running the deep lane under test must leave the operator's log alone.
+
+    `run_next` has always let a caller redirect `queue` and `done`, but `_log`
+    read a module-level LOG bound to LAB_HOME at import — so every test that
+    exercised this lane appended to the REAL ~/.lab/deep.log, outside the repo
+    entirely. It held 456 lines when this was found, its newest written by a
+    test suite, and it is the operator's record of what actually ran overnight.
+
+    Asserted on the real LAB_HOME rather than on the redirect: a test that only
+    checks the temp copy passes just as happily while the live file grows.
+    """
+    from lab import deep
+    from lab.labhome import LAB_HOME as REAL_HOME
+
+    watched = [REAL_HOME / name for name in
+               ("deep.log", "deep-queue.txt", "deep-done.log")]
+    before = {p: (p.read_bytes() if p.exists() else None) for p in watched}
+
+    queue = tmp_path / "deep-queue.txt"
+    queue.write_text("m01\n", encoding="utf-8")
+    done = tmp_path / "deep-done.log"
+    deep.run_next(queue=queue, done=done, runner=lambda argv: 0)
+
+    # the empty-queue branch logs too, and it is the one a bare run hits most
+    deep.run_next(queue=tmp_path / "absent-queue.txt", done=done,
+                  runner=lambda argv: 0)
+
+    moved = [str(p) for p in watched
+             if (p.read_bytes() if p.exists() else None) != before[p]]
+    assert not moved, f"the lane wrote outside its redirect: {moved}"
+
+    # and it did write, where it was told to
+    assert (tmp_path / "deep.log").exists(), "the redirected log was never written"
+    body = (tmp_path / "deep.log").read_text(encoding="utf-8")
+    assert "deep: start · m01" in body
+    assert "queue empty" in body
