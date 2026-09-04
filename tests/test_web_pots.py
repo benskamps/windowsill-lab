@@ -204,31 +204,46 @@ def test_the_pots_add_no_animation_lane():
 
 
 def test_the_so_what_strip_sits_immediately_before_the_windowsill():
-    """The reader should meet the ambition and then, in the same breath, the
-    plants doing the work — so the strip is the last thing before the scene."""
-    html = _page()
-    assert '<section class="sowhat"' in html
-    strip = html.split('<section class="sowhat"', 1)[1]
-    before_scene, sep, _ = strip.partition('<div class="scene" id="scene">')
-    assert sep, "the so-what strip is not above the scene"
-    assert "</section>" in before_scene
-    # Only the strip's own commitment block stands between it and the sill: the
-    # goal the lab set itself, its clock, and the doubts filed against it, all
-    # from the feed. Anything else arriving here is a new interruption.
-    after_strip = before_scene.split("</section>", 1)[1]
-    assert re.findall(r'<section class="([a-z-]+)"', after_strip) == ["commitment"], (
-        "something other than the commitment block now stands between the "
-        "so-what strip and the sill"
-    )
+    """The reading key is the last thing before the sill, and the measurement
+    comes before the governance.
 
-    # the rungs, in order: what it is FOR, who does it and who gates it, how to
-    # read what you are about to see, and what the lab is on the hook for.
+    Rewritten 2026-09-04. Four cold readers scored the old page 4–5/10 for the
+    same reason: the first screen was an ambition, a governance sentence and a
+    colour key — four sentences about how results are reviewed, before a
+    stranger had seen one. The instrument panel (the Onsager triptych and the
+    three cross-checking curves — the page's actual argument) sat five screens
+    down behind a second fetch. It now sits immediately after the ambition
+    line, and the reading key moved DOWN to stand against the plant it decodes.
+
+    The `<section class="sowhat">` wrapper is gone with it: its four rungs no
+    longer sit in one block, so the ordering is asserted directly instead.
+    """
+    html = _page()
+    assert '<section class="sowhat"' not in html, (
+        "the four rungs are one block again — the measurement has to sit between "
+        "the ambition and the governance line, not after both")
+
+    # the rungs, in order: what it is FOR, the measurement itself, who does it
+    # and who gates it, what the lab is on the hook for, the door to the rooms,
+    # then how to read what you are about to see — against the plant it decodes.
     goal = html.index("The goal is a measurement nobody has made yet, given away free.")
-    who = html.index("A fleet of AI agents wrote this instrument and keeps it running")
-    read = html.index("Below: seven pots on one windowsill, one for each science.")
+    panel = html.index('<section class="instrument-panel"')
+    who = html.index("AI agents wrote this instrument and keep it running")
     commitment = html.index('<section class="commitment"')
+    shelf = html.index('<a class="shelf-hero"')
+    read = html.index("Below: seven pots on one windowsill, one for each science.")
     scene = html.index('<div class="scene" id="scene">')
-    assert goal < who < read < commitment < scene
+    assert goal < panel < who < commitment < shelf < read < scene
+
+    # The panel is no longer `hidden`: it must not depend on a second fetch
+    # resolving to exist at all. Its cold-load state is labelled instead.
+    assert '<section class="instrument-panel" id="instrument-panel" data-state="waiting"' in html
+    assert "panel.removeAttribute('data-state');" in html
+
+    # Nothing new gets to interrupt between the reading key and the sill.
+    between = html[read:scene]
+    assert re.findall(r'<section class="([a-z-]+)"', between) == [], (
+        "something now stands between the reading key and the sill")
 
 
 def test_the_so_what_strip_makes_the_pots_legible_before_they_are_seen():
@@ -240,17 +255,32 @@ def test_the_so_what_strip_makes_the_pots_legible_before_they_are_seen():
 
 
 def test_the_strip_states_the_ambition_without_adding_a_new_hedge():
-    """The balance the 2026-08-06 framing pass fought for is unchanged: the
-    ambition is at the top, the discipline stays where the claims get made.
-    Neither half may quietly migrate into the other."""
+    """The ambition line still states the goal and hedges nothing.
+
+    Amended 2026-09-04. The old rule — no hedge anywhere above the sill — was
+    written when nothing above the sill made a CLAIM. The measurement panel now
+    does: it prints "this run measured 2.30". A claim that travels without its
+    boundary is the overclaim this repo exists not to make, so the panel's own
+    intro carries "A calibration, not a discovery: nothing on this page is
+    claimed as a new result", linked to the fuller statement at #journey.
+
+    What must stay unhedged is the ambition line itself: it is a stated goal,
+    not a claimed result, which is the whole reason it is allowed to lead.
+    """
     html = _page()
-    strip = html.split('<section class="sowhat"', 1)[1].split("</section>", 1)[0]
+    goal_line = html.split('<p class="sowhat-goal">', 1)[1].split("</p>", 1)[0]
     for hedge in ("not a new result", "destination, not the status",
                   "does not jump from a pretty simulation", "no claim is made"):
-        assert hedge not in strip, f"the so-what strip re-hedged: {hedge!r}"
-    # ...and the disclaimers are all still on the page, further down
-    assert "That is the destination, not the status." in html
-    assert "does not jump from a pretty simulation to a discovery claim" in html
+        assert hedge not in goal_line, f"the ambition line re-hedged: {hedge!r}"
+
+    # The claim above the fold carries its boundary in the same paragraph.
+    panel_intro = html.split('<h2 id="instrument-panel-title">', 1)[1].split("</p>", 1)[0]
+    assert "A calibration, not a discovery:" in panel_intro
+    assert "nothing on this page is claimed as a new result" in panel_intro
+    assert 'href="#journey"' in panel_intro, "the boundary must link to its full statement"
+
+    # ...and the full disclaimer is still on the page, where the claims get made.
+    assert "That is the destination, not the status:" in html
 
 
 def test_the_design_addendum_ships_with_the_layer():
