@@ -1,0 +1,280 @@
+{
+  "all_overlaps_agree": true,
+  "all_windows_match": true,
+  "calibration_passed": true,
+  "claim_boundary": "Two independent algorithms (Machin integer arctan; BBP digit extraction) agree byte-for-byte on sampled 8-digit windows across the first 12000 hex digits of pi, and adjacent deep windows are self-consistent. The deep extraction at position 10,000,000 is graded ONLY by that overlap — no independent expansion reaches it on this machine, so no claim of external verification is made there. No new mathematics is claimed anywhere: every digit of pi computed here has been known for decades; the measurement is of this machine's arithmetic.",
+  "deep": {
+    "adjacent_digits": "863EFED8",
+    "adjacent_overlap_agree": true,
+    "digits": "7AF5863E",
+    "position": 10000000,
+    "wall_seconds": 51.17
+  },
+  "experiment": "C05-bbp-digit-extraction",
+  "generated_at": "2026-09-03T19:00:55.840517+00:00",
+  "headline": "BBP windows at 24 positions across 12000 hex digits: 24/24 byte-identical with the Machin expansion; deep window at 10,000,000 self-consistent in 51.17s",
+  "known_prefix_match": true,
+  "n_hex_digits": 12000,
+  "overlap_pairs": [
+    {
+      "agree": true,
+      "position": 0,
+      "shared_from_d": "6A88",
+      "shared_from_d4": "6A88"
+    },
+    {
+      "agree": true,
+      "position": 32,
+      "shared_from_d": "3822",
+      "shared_from_d4": "3822"
+    },
+    {
+      "agree": true,
+      "position": 332,
+      "shared_from_d": "C5D1",
+      "shared_from_d4": "C5D1"
+    },
+    {
+      "agree": true,
+      "position": 1179,
+      "shared_from_d": "D660",
+      "shared_from_d4": "D660"
+    },
+    {
+      "agree": true,
+      "position": 1755,
+      "shared_from_d": "818A",
+      "shared_from_d4": "818A"
+    },
+    {
+      "agree": true,
+      "position": 2096,
+      "shared_from_d": "6FB5",
+      "shared_from_d4": "6FB5"
+    }
+  ],
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.1",
+      "numpy": "2.5.1",
+      "torch": "2.10.0.dev20251031+rocm6.4"
+    },
+    "platform": "linux-x86_64",
+    "python": "3.14.4",
+    "source_clean": true,
+    "source_commit": "957155dd37688d779345682449baca91c9f07b5c",
+    "source_diff_sha256": null,
+    "source_tree_sha256": "ad59c51443fe1de1c9e1b2b29281d8a5a95b166f2576261a02f81fac36dbdfb3"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "planned": {
+      "chosen": "C05",
+      "planner": "v1",
+      "reason": "planner v1: C05 verified-canary (score 0.64) beats A02 verified-canary (0.64)",
+      "scoreboard": [
+        {
+          "cls": "verified-canary",
+          "mid": "C05",
+          "score": 0.641
+        },
+        {
+          "cls": "verified-canary",
+          "mid": "A02",
+          "score": 0.6408
+        },
+        {
+          "cls": "verified-canary",
+          "mid": "M01",
+          "score": 0.6189
+        }
+      ]
+    },
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "64e7a3a7e68a15e4325eb15d340b3be0b1950748af3ecc04c1d49c88897e6b04"
+  },
+  "reference_method": "Machin 1706 arctan formula, integer-scaled (pi/4 = 4*arctan(1/5) - arctan(1/239))",
+  "reference_prefix_sha256": "7b116a08853262be94dc8aa720900d02fff6e4aa264818f1831ee6c6429badae",
+  "reference_prefix_text": "243F6A8885A308D313198A2E03707344A4093822299F31D0082EFA98EC4E6C89452821E638D01377BE5466CF34E90C6CC0AC29B7C97C50DD3F84D5B5B54709179216D5D98979FB1BD1310BA698DFB5AC2FFD72DBD01ADFB7B8E1AFED6A267E96BA7C9045F12C7F9924A19947B3916CF70801F2E2858EFC16636920D871574E69A458FEA3F4933D7E0D95748F728EB658718BCD5882154AEE7B54A41DC25A59B59C30D5392AF26013C5D1B023286085F0CA417918B8DB38EF8E79DCB0603A180E6C9E0E8BB01E8A3ED71577C1BD314B2778AF2FDA55605C60E65525F3AA55AB945748986263E8144055CA396A2AAB10B6B4CC5C341141E8CEA15486AF7C72E993B3EE1411636FBC2A2BA9C55D741831F6CE5C3E169B87931EAFD6BA336C24CF5C7A325381289586773B8F48986B4BB9AFC4BFE81B6628219361D809CCFB21A991487CAC605DEC8032EF845D5DE98575B1DC262302EB651B8823893E81D396ACC50F6D6FF383F442392E0B4482A484200469C8F04A9E1F9B5E21C66842F6E96C9A670C9C61ABD388F06A51A0D2D8542F68960FA728AB5133A36EEF0B6C137A3BE4BA3BF0507EFB2A98A1F1651D39AF017666CA593E82430E888CEE8619456F9FB47D84A5C33B8B5EBEE06F75D885C12073401A449F56C16AA64ED3AA62363F77061BFEDF72429B023D37D0D724D00A1248DB0FEAD349F1C09B075372C980991B7B25D479D8F6E8DEF7E3FE501AB6794C3B976CE0BD04C006BAC1A94FB6409F60C45E5C9EC2196A246368FB6FAF3E6C53B51339B2EB3B52EC6F6DFC511F9B30952CCC814544AF5EBD09BEE3D004DE334AFD660F2807192E4BB3C0CBA85745C8740FD20B5F39B9D3FBDB5579C0BD1A60320AD6A100C6402C7279679F25FEFB1FA3CC8EA5E9F8DB3222F83C7516DFFD616B152F501EC8AD0552AB323DB5FAFD23876053317B483E00DF829E5C57BBCA6F8CA01A87562EDF1769DBD542A8F6287EFFC3AC6732C68C4F5573695B27B0BBCA58C8E1FFA35DB8F011A010FA3D98FD2183B84AFCB56C2DD1D35B9A53E479B6F84565D28E49BC4BFB9790E1DDF2DAA4CB7E3362FB1341CEE4C6E8EF20CADA36774C01D07E9EFE2BF11FB495DBDA4DAE909198EAAD8E716B93D5A0D08ED1D0AFC725E08E3C5B2F8E7594B78FF6E2FBF2122B648888B812900DF01C4FAD5EA0688FC31CD1CFF191B3A8C1AD2F2F2218BE0E1777EA752DFE8B021FA1E5A0CC0FB56F74E818ACF3D6CE89E299B4A84FE0FD13E0B77CC43B81D2ADA8D9165FA2668095770593CC7314211A1477E6AD206577B5FA86C75442F5FB9D35CFEBCDAF0C7B3E89A0D6411BD3AE1E7E4900250E2D2071B35E226800BB57B8E0AF2464369BF009B91E5563911D59DFA6AA78C14389D95A537F207D5BA202E5B9C5832603766295CFA911C819684E734A41B3472DCA7B14A94A",
+  "reference_sha256": "7dd3673cf17cef891417667fcfb739bef02d18ab8144df81e0dc8d47b26191c6",
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify C05",
+    "rerun": "python -m lab.cli c05"
+  },
+  "sample_seed": 20260822,
+  "status": "pass",
+  "wall_seconds": 51.46659827232361,
+  "window": 8,
+  "windows": [
+    {
+      "bbp": "243F6A88",
+      "match": true,
+      "position": 0,
+      "reference": "243F6A88",
+      "wall_seconds": 0.0
+    },
+    {
+      "bbp": "A4093822",
+      "match": true,
+      "position": 32,
+      "reference": "A4093822",
+      "wall_seconds": 0.0
+    },
+    {
+      "bbp": "6013C5D1",
+      "match": true,
+      "position": 332,
+      "reference": "6013C5D1",
+      "wall_seconds": 0.0003
+    },
+    {
+      "bbp": "34AFD660",
+      "match": true,
+      "position": 1179,
+      "reference": "34AFD660",
+      "wall_seconds": 0.0013
+    },
+    {
+      "bbp": "F74E818A",
+      "match": true,
+      "position": 1755,
+      "reference": "F74E818A",
+      "wall_seconds": 0.002
+    },
+    {
+      "bbp": "08BA6FB5",
+      "match": true,
+      "position": 2096,
+      "reference": "08BA6FB5",
+      "wall_seconds": 0.0024
+    },
+    {
+      "bbp": "A5B429D6",
+      "match": true,
+      "position": 2327,
+      "reference": "A5B429D6",
+      "wall_seconds": 0.0027
+    },
+    {
+      "bbp": "E830F54D",
+      "match": true,
+      "position": 2362,
+      "reference": "E830F54D",
+      "wall_seconds": 0.0028
+    },
+    {
+      "bbp": "45EEE2B6",
+      "match": true,
+      "position": 3760,
+      "reference": "45EEE2B6",
+      "wall_seconds": 0.0046
+    },
+    {
+      "bbp": "D97857FA",
+      "match": true,
+      "position": 4411,
+      "reference": "D97857FA",
+      "wall_seconds": 0.0054
+    },
+    {
+      "bbp": "36FCCC83",
+      "match": true,
+      "position": 5578,
+      "reference": "36FCCC83",
+      "wall_seconds": 0.0071
+    },
+    {
+      "bbp": "F0BE8C4A",
+      "match": true,
+      "position": 5850,
+      "reference": "F0BE8C4A",
+      "wall_seconds": 0.0075
+    },
+    {
+      "bbp": "CA5B5D83",
+      "match": true,
+      "position": 6171,
+      "reference": "CA5B5D83",
+      "wall_seconds": 0.008
+    },
+    {
+      "bbp": "126905B2",
+      "match": true,
+      "position": 8114,
+      "reference": "126905B2",
+      "wall_seconds": 0.0112
+    },
+    {
+      "bbp": "B74E6132",
+      "match": true,
+      "position": 8304,
+      "reference": "B74E6132",
+      "wall_seconds": 0.0116
+    },
+    {
+      "bbp": "CAB6E3DC",
+      "match": true,
+      "position": 8641,
+      "reference": "CAB6E3DC",
+      "wall_seconds": 0.0121
+    },
+    {
+      "bbp": "EDA17DFC",
+      "match": true,
+      "position": 9356,
+      "reference": "EDA17DFC",
+      "wall_seconds": 0.0132
+    },
+    {
+      "bbp": "F18A8C73",
+      "match": true,
+      "position": 9956,
+      "reference": "F18A8C73",
+      "wall_seconds": 0.0142
+    },
+    {
+      "bbp": "1E90DC60",
+      "match": true,
+      "position": 10327,
+      "reference": "1E90DC60",
+      "wall_seconds": 0.0148
+    },
+    {
+      "bbp": "F7680E5F",
+      "match": true,
+      "position": 10551,
+      "reference": "F7680E5F",
+      "wall_seconds": 0.0152
+    },
+    {
+      "bbp": "EB78FB32",
+      "match": true,
+      "position": 10577,
+      "reference": "EB78FB32",
+      "wall_seconds": 0.0156
+    },
+    {
+      "bbp": "B70BB69C",
+      "match": true,
+      "position": 11090,
+      "reference": "B70BB69C",
+      "wall_seconds": 0.0163
+    },
+    {
+      "bbp": "F6B4A582",
+      "match": true,
+      "position": 11444,
+      "reference": "F6B4A582",
+      "wall_seconds": 0.0167
+    },
+    {
+      "bbp": "28F3754D",
+      "match": true,
+      "position": 11992,
+      "reference": "28F3754D",
+      "wall_seconds": 0.0176
+    }
+  ]
+}

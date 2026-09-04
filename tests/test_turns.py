@@ -562,9 +562,13 @@ def test_the_concept_line_is_on_the_page():
     html = WEB.read_text(encoding="utf-8")
     assert "A fleet of AI agents wrote this instrument and keeps it running" in html
     assert "a human decides what earns a leaf" in html
-    assert "Two home machines take the turns" in html
+    assert "Two machines in a house take the turns" in html
     for stale in ("A home machine keeps a night shift.",
-                  "Two home machines tend one small lab in turns."):
+                  "Two home machines tend one small lab in turns.",
+                  # 5d2494f's predecessor. Retired into the blocklist rather
+                  # than deleted, so the wording this test spent two days red
+                  # asking for cannot quietly come back.
+                  "Two home machines take the turns"):
         assert stale not in html, f"stale concept line on the page: {stale!r}"
 
 
