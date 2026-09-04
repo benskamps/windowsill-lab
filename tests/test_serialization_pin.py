@@ -36,7 +36,7 @@ from pathlib import Path
 
 import pytest
 
-from lab import publish, receipt
+from lab import archive, publish, receipt
 
 
 REPO = Path(__file__).resolve().parents[1]
@@ -92,6 +92,13 @@ def test_publish_writes_the_pinned_pot_layout(tmp_path, monkeypatch):
     # it writes (refresh_shelf_fallback). Redirect that too, or a fixture
     # snapshot scribbles zeros over the SHIPPED web/index.html mid-suite.
     monkeypatch.setattr(publish, "WEB_INDEX", tmp_path / "index.html")
+    # And publish() calls archive.write_index(), which writes
+    # ``REPORTS_DIR/index.html``. archive.py binds that name at import
+    # (`from .publish import ... REPORTS_DIR ...`), so redirecting
+    # publish.REPORTS_DIR does NOT reach it — the rebind has to happen on the
+    # archive module itself or the suite rewrites the COMMITTED
+    # reports/index.html from a fixture snapshot, every run.
+    monkeypatch.setattr(archive, "REPORTS_DIR", tmp_path / "reports")
     monkeypatch.setattr(publish, "ensure_public_receipts", lambda *a, **k: [])
     monkeypatch.setattr(publish, "collect", lambda: FIXTURE)
     publish.publish(quiet=True)
@@ -148,6 +155,13 @@ def test_committed_pot_matches_the_publishers_serialization(tmp_path, monkeypatc
     # it writes (refresh_shelf_fallback). Redirect that too, or a fixture
     # snapshot scribbles zeros over the SHIPPED web/index.html mid-suite.
     monkeypatch.setattr(publish, "WEB_INDEX", tmp_path / "index.html")
+    # And publish() calls archive.write_index(), which writes
+    # ``REPORTS_DIR/index.html``. archive.py binds that name at import
+    # (`from .publish import ... REPORTS_DIR ...`), so redirecting
+    # publish.REPORTS_DIR does NOT reach it — the rebind has to happen on the
+    # archive module itself or the suite rewrites the COMMITTED
+    # reports/index.html from a fixture snapshot, every run.
+    monkeypatch.setattr(archive, "REPORTS_DIR", tmp_path / "reports")
     monkeypatch.setattr(publish, "ensure_public_receipts", lambda *a, **k: [])
     monkeypatch.setattr(publish, "collect", lambda: json.loads(text))
     publish.publish(quiet=True)
@@ -206,3 +220,48 @@ def test_committed_feeds_are_not_key_sorted(path, kwargs):
     """The feeds really are insertion-ordered — so the round-trip pins bite."""
     text = (REPO / path).read_text(encoding="utf-8")
     assert _reserialize(text, sort_keys=True, **kwargs) + "\n" != text
+
+
+# ── the suite must not rewrite the artifacts it is pinning ───────────────────
+
+def test_the_suite_leaves_the_committed_artifacts_alone(tmp_path, monkeypatch):
+    """Running the pins must not REWRITE the files they pin.
+
+    This suite drives the real ``publish.publish`` twice. Every path it writes
+    has to be redirected, and one was not: ``publish()`` calls
+    ``archive.write_index()``, which writes ``REPORTS_DIR/index.html``, and
+    ``archive`` binds ``REPORTS_DIR`` at import time. So a run of the test
+    suite regenerated the COMMITTED ``reports/index.html`` from whatever
+    fixture snapshot was in hand — on this branch, rolling a 202-run archive
+    index back to 197 — and left it dirty in the working tree for whoever ran
+    `git add -A` next.
+
+    Asserted on bytes rather than on mtime: an atomic write with identical
+    content is harmless, and a test that fires on that would be noise.
+    """
+    committed = {
+        p: p.read_bytes()
+        for p in (REPO / "pot.json",
+                  REPO / "physics-latest.json",
+                  REPO / "reports" / "index.html",
+                  REPO / "web" / "index.html")
+        if p.exists()
+    }
+    assert committed, "nothing to guard — the paths moved"
+
+    dest = tmp_path / "pot.json"
+    monkeypatch.setattr(publish, "POT_JSON", dest)
+    monkeypatch.setattr(publish, "LAB_HOME", tmp_path / "lab")
+    monkeypatch.setattr(publish, "WEB_INDEX", tmp_path / "index.html")
+    monkeypatch.setattr(archive, "REPORTS_DIR", tmp_path / "reports")
+    monkeypatch.setattr(publish, "ensure_public_receipts", lambda *a, **k: [])
+    monkeypatch.setattr(publish, "collect", lambda: FIXTURE)
+    publish.publish(quiet=True)
+
+    changed = [str(p.relative_to(REPO)) for p, before in committed.items()
+               if p.read_bytes() != before]
+    assert not changed, (
+        "publish() under test rewrote committed artifacts: "
+        + ", ".join(changed)
+        + " — every path it writes must be redirected at the module that "
+          "BINDS the name, not only at publish")
