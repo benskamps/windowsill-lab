@@ -1,0 +1,76 @@
+{
+  "id": "daido-1989-ptp81-727",
+  "citation": {
+    "authors": "H. Daido",
+    "title": "Intrinsic Fluctuation and Its Critical Scaling in a Class of Populations of Oscillators with Distributed Frequencies",
+    "venue": "Progress of Theoretical Physics 81, 727 (1989)",
+    "doi": "10.1143/PTP.81.727"
+  },
+  "reached": "primary-full-text",
+  "how_reached": "Full five-page scan read page by page via the OUP article-pdf route.",
+  "urls": [
+    "https://academic.oup.com/ptp/article/81/4/727/1857362",
+    "https://academic.oup.com/ptp/article-pdf/81/4/727/5255143/81-4-727.pdf"
+  ],
+  "retrieved": "2026-09-03",
+  "why_this_source": "This is where the asymmetry actually first appears — the paper the catalogue should have been citing, and the only primary Daido text in this pass that carries both sides of the pair.",
+  "observable": "FLUCTUATION. sigma = lim sqrt(N) <|Z - <Z>|^2>^(1/2) under a long time average. Note the square root: Daido's exponents are on sigma, the modern literature's are on chi = sigma^2.",
+  "frequency_class": "REGULAR / deterministic-quantile, Lorentzian half-width gamma = 1e-3, random initial conditions only.",
+  "quotes": [
+    {
+      "locator": "p. 727, text preceding and including Eq. (2)",
+      "quote": "On the other hand, for finite-size systems, it was found numerically that Z exhibits persistent fluctuation whose magnitude σ, defined by σ=lim_{N→∞}√N⟨|Z−⟨Z⟩|²⟩^{1/2}, behaves as   σ(ε)∝|ε−ε_c|^{−γ′}   (2)   near the threshold ε_c.",
+      "bears_on": "THE OBSERVABLE, in Daido's own words: a dynamic fluctuation of the order parameter, and defined on sqrt(N*Var), not on N*Var."
+    },
+    {
+      "locator": "p. 729, Eq. (12) and following sentence",
+      "quote": "σ(ε)≅f̃(0)√(ε_c/|b|)(ε_c−ε)^{−1/2} ,   (12)   where b=(2/π²)∫₀^∞ dy f̃′(y)/y with f̃′≡df̃/dy. Therefore γ′=1/2 for ε<ε_c.",
+      "bears_on": "SUBCRITICAL: gamma' = 1/2 on sigma, exact. Squared into chi units this is the modern gamma' = 1."
+    },
+    {
+      "locator": "p. 730, Eq. (17) and following sentence",
+      "quote": "σ(ε)∝(ε−ε_c)^{−1/8}   (17)   near ε_c. Namely, γ′=1/8 for ε>ε_c.",
+      "bears_on": "SUPERCRITICAL: gamma' = 1/8 on sigma. Squared into chi units this is the modern gamma = 1/4. Note Daido labels BOTH sides gamma'."
+    },
+    {
+      "locator": "p. 730, right column",
+      "quote": "Remarkably the critical exponent γ′ is not the same for below and above ε_c. When compared to previous numerical results,⁵⁾ the theory is consistent with γ′=0.123±0.003 for ε>ε_c while it disagrees with γ′=0.126±0.009 for ε<ε_c.",
+      "bears_on": "Daido's OWN numerics were symmetric at ~1/8 on sigma (~1/4 on chi), statistically indistinguishable from what Hong et al. later measure. The asymmetry is his perturbation theory disagreeing with his own data."
+    },
+    {
+      "locator": "p. 730, right column",
+      "quote": "The reason for the discrepancy of the result in Ref. 5) with the theory in the subcritical regime is now clear: As is evident in Fig. 1(a), the finite-size effect is so strong there that N=1600 chosen in Ref. 5) was still too small.",
+      "bears_on": "Daido's stated reason for preferring the subcritical theory over his own measurement. This is exactly the claim Hong et al. later overturn at larger N."
+    },
+    {
+      "locator": "p. 730, Eq. (18)",
+      "quote": "A finite-size scaling analysis has been performed with N larger than in Ref. 5) to get conclusive evidence for σ which is expected to fit   σ=N^{1/4}Ψ(|ε−ε_c|N^s) ,   (18)   where s=2, Ψ(x)∼x^{−1/8}(x≫1) for ε>ε_c (as first proposed and verified in Ref. 5)), and s=1/2, Ψ(x)∼x^{−1/2}(x≫1) for ε<ε_c.",
+      "bears_on": "Daido's FSS ansatz, and the origin of the nu-bar ~ 1/2 and nu-bar' ~ 2 that Hong et al. reject."
+    },
+    {
+      "locator": "p. 730, right column",
+      "quote": "Evidence is presented in Fig. 1 which was obtained for f̃(Δ)=(γ/π)(Δ²+γ²)^{−1} with γ=10^{−3}, and for fairly random initial conditions.",
+      "bears_on": "Distribution axis: Lorentzian, and a reminder that gamma here is the half-width."
+    },
+    {
+      "locator": "p. 727, footnote",
+      "quote": "*) While numerical simulations in Refs. 4) and 5) are for a discrete-time model, their results may be viewed as virtually for the model (1) owing to the small width of f(Ω) adopted.",
+      "bears_on": "Model-class caveat: Daido's numerical evidence is a discrete-time circle-map system, transferred to the ODE by an argument, not by measurement."
+    },
+    {
+      "locator": "p. 731, reference list",
+      "quote": "4) H. Daido, Prog. Theor. Phys. 75 (1986), 1460.   5) H. Daido, J. of Phys. A20 (1987), L629.   6) H. Daido, preprint (July 1988).",
+      "bears_on": "Daido cites PTP 75, 1460 (1986) as the numerical antecedent, not as the source of the asymmetric exponents."
+    }
+  ],
+  "numbers": [
+    "FLUCTUATION | regular Lorentzian | SUBcritical | Eq. (12): gamma' = 1/2 on sigma, exact (analytic, no error bar). ==> 1 on chi.",
+    "FLUCTUATION | regular Lorentzian | SUPERcritical | Eq. (17): gamma' = 1/8 on sigma, approximate. ==> 1/4 on chi.",
+    "FLUCTUATION | regular Lorentzian | Daido's own numerics (from J. Phys. A 20, L629 (1987)): 0.123 +/- 0.003 above, 0.126 +/- 0.009 below, on sigma. ==> 0.246(6) and 0.252(18) on chi — symmetric.",
+    "FSS | Eq. (18): sigma = N^(1/4) Psi(|eps - eps_c| N^s), s = 2 above, s = 1/2 below."
+  ],
+  "caveats": [
+    "A Note added in proof flags an inconsistency in the A_+ approximation but states 'The result (17), however, remains unchanged'.",
+    "Daido uses the single symbol gamma' for the exponent on BOTH sides; the modern gamma/gamma' split is a later relabelling."
+  ]
+}

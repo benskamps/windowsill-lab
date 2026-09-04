@@ -128,7 +128,7 @@ class XYRunResult:
 # (STR-3): the square lattice is bipartite, so a site on colour ``a`` has all
 # four neighbours on colour ``b`` and vice-versa; updating one colour while the
 # other is held fixed is exact for the XY model too.
-from .ising import _checkerboard_masks
+from .ising import _checkerboard_masks, snapshot_indices
 
 
 def _neighbor_angle_sums(theta: torch.Tensor):
@@ -444,7 +444,12 @@ def run(cfg: XYRunConfig) -> XYRunResult:
         else np.full(cfg.n_temps, np.nan)
     )
 
-    pick_idx = [0, cfg.n_temps // 2, cfg.n_temps - 1]
+    # NO peak observable, deliberately and permanently. These snapshots are θ
+    # ANGLES, not spins, and the XY model's BKT transition is topological — it
+    # has no symmetry-breaking order parameter and no diverging χ' peak to point
+    # at. The legacy positional midpoint is therefore the honest pick here, and
+    # ``snapshot_indices(n, None)`` reproduces it exactly.
+    pick_idx = snapshot_indices(cfg.n_temps)
     snapshots = {f"T={T_np[i]:.3f}": theta[i].cpu().numpy() for i in pick_idx}
 
     return XYRunResult(

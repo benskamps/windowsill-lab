@@ -74,7 +74,7 @@ from dataclasses import dataclass, asdict
 import numpy as np
 import torch
 
-from .ising import _neighbor_sum, _checkerboard_masks
+from .ising import _neighbor_sum, _checkerboard_masks, snapshot_indices
 
 
 @dataclass
@@ -230,7 +230,15 @@ def run(cfg: AFMRunConfig) -> AFMRunResult:
     # the square FM + triangular + 3D engines). Peaks at T_N — the thermal cross-check.
     specific_heat = (cfg.L * cfg.L) * energy.var(dim=0, unbiased=False).numpy() / (T_np ** 2)
 
-    pick_idx = [0, cfg.n_temps // 2, cfg.n_temps - 1]
+    # No peak observable: this engine has no ``chi_abs`` at all, and handing it the
+    # uniform susceptibility would be the wrong peak twice over — the AFM order
+    # parameter is the STAGGERED m_s, and the uniform ⟨|m|⟩ stays ≈0 through T_N by
+    # construction. ``chi_staggered`` is the observable that locates T_N, but only
+    # while J < 0: the J=+1 cross-check lever recovers the ferromagnet, where m_s
+    # is the quantity that stays ≈0 and the staggered peak means nothing. A
+    # sign-conditional pick is a decision about M10's picture, not a bug fix, so
+    # this stays on the legacy midpoint until that decision is made.
+    pick_idx = snapshot_indices(cfg.n_temps)
     snapshots = {f"T={T_np[i]:.3f}": spins[i].cpu().numpy() for i in pick_idx}
 
     return AFMRunResult(

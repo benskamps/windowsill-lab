@@ -9,6 +9,18 @@ properties that make it a commitment instead:
 2. **Its progress is computed, never written.** Every number below is derived
    from `UNKNOWNS.md` and the receipt ledger at publish time. A goal whose
    progress is hand-edited measures the editor's mood.
+
+   That claim was false where it mattered most for the goal's first ten days.
+   The attempt condition read `"ATTEMPTED" in u.reach_evidence` — a
+   case-sensitive, unanchored substring search against one physical line of a
+   markdown file the grading agent edits — sitting directly under this
+   paragraph. It was repaired on 2026-09-03: the attempt half is now joined out
+   of the committed receipts by `archive.attempt_ledger`. The lever it removed
+   was not a forgery anyone had to intend. Rewording U-A01's own correction
+   from "verdict REANALYSED — NOT an attempt" to "— NOT ATTEMPTED" flipped this
+   goal from OPEN to MET, which means the grader paid the lab for saying the
+   thing more clearly. A number that moves when you improve a sentence is not
+   computed; it is transcribed.
 3. **It can fail.** After the deadline an unmet goal reads MISSED and stays
    that way. A deadline that slides is a wish with a calendar next to it.
 
@@ -80,12 +92,51 @@ GOAL = Goal(
 )
 
 
-def progress(unknowns=None, today: date | None = None) -> dict:
+def _attempt_ledger(field) -> dict:
+    """The receipt ledger, or an empty one carrying the reason it is empty.
+
+    ``archive.attempt_ledger`` already promises never to raise; this guards the
+    IMPORT as well, because the failure this whole module is built around is
+    ``publish.py``'s bare ``except Exception: pass`` around ``progress()``,
+    which deletes the ``goal`` key from ``pot.json`` and blanks the lab's public
+    commitment from a pass that exits 0. An unmet goal published with its reason
+    beats a met goal, and both beat no goal at all.
+    """
+    try:
+        from . import archive
+        return archive.attempt_ledger(field)
+    except Exception as e:  # noqa: BLE001 — fail CLOSED, and say so out loud
+        # ``strerror``, not ``str(e)``, for the same reason as
+        # ``archive._why``: this string is PUBLISHED into ``pot.json``, and an
+        # OSError renders the absolute filename it touched. The archive's own
+        # helper cannot be reached from here — the failure being caught may be
+        # the import of the module that holds it.
+        return {"attempts": [], "undecidable": [], "refused": [],
+                "unreadable": [],
+                "error": f"{type(e).__name__}: "
+                         f"{getattr(e, 'strerror', None) or e}"}
+
+
+def progress(unknowns=None, today: date | None = None,
+             ledger: dict | None = None) -> dict:
     """Where the goal stands, derived — never asserted.
 
     ``attempted`` deliberately does not count feasibility tests. A lab that
     scores its own reach measurements as attempts on the question can hit this
     goal without ever asking one.
+
+    It also, since 2026-09-03, does not count PROSE. The condition used to read
+    ``"ATTEMPTED" in u.reach_evidence`` — a substring search against a markdown
+    line the grading agent writes — so this module's own docstring claim that
+    progress is "computed, never written" was false at the one place it mattered
+    most. The attempt half is now joined out of ``reports/receipts/`` by
+    ``archive.attempt_ledger``, which re-derives each receipt through
+    ``checks.check_hypothesis`` rather than believing it. Nothing anybody can
+    type into ``UNKNOWNS.md`` moves this number in either direction.
+
+    ``ledger`` is for tests and for a caller that has already paid for the scan;
+    left None it is derived. A ledger that could not be read yields no attempts,
+    which is the fail-closed direction: a goal this box cannot verify is not met.
     """
     cat = U.load() if unknowns is None else unknowns
     today = today or date.today()
@@ -96,10 +147,18 @@ def progress(unknowns=None, today: date | None = None) -> dict:
     missing = sorted(tracks - charted_tracks)
 
     field = [u for u in live if u.crosses_the_gate]
-    # An attempt is a run against the QUESTION. Reach verdicts are not attempts,
-    # so nothing here can be satisfied by more pricing.
-    attempted = [u for u in field if u.status == U.CHARTED
-                 and u.reach == U.IN_REACH and "ATTEMPTED" in u.reach_evidence]
+    # An attempt is a run against the QUESTION, and the only thing that can say
+    # one happened is a receipt. Reach verdicts are not attempts, so nothing
+    # here can be satisfied by more pricing; and no field of the catalogue is
+    # consulted at all beyond WHICH unknowns cross the gate, so nothing here can
+    # be satisfied by better wording either.
+    if ledger is None:
+        ledger = _attempt_ledger(field)
+    field_ids = {u.id for u in field}
+    attempts = [a for a in ledger.get("attempts") or ()
+                if a.get("unknown_id") in field_ids]
+    attempted = sorted({str(a["unknown_id"]) for a in attempts})
+    attempt_receipts = sorted({str(a.get("receipt", "")) for a in attempts})
 
     conditions = {
         "every_track_charted": not missing,
@@ -128,7 +187,19 @@ def progress(unknowns=None, today: date | None = None) -> dict:
         "unknowns_charted": len([u for u in live if u.status == U.CHARTED]),
         "field_unknowns": len(field),
         "gate_ratio": U.gate_ratio(live)["ratio"],
-        "attempted": [u.id for u in attempted],
+        "attempted": attempted,
+        # The receipts the flag above stands on, named so a stranger can open
+        # them. A boolean nobody can check is the thing this goal replaced.
+        "attempt_receipts": attempt_receipts,
+        # And what the grader could NOT read. A gap is published rather than
+        # rounded to zero: a ledger with a refused receipt in it is a different
+        # public fact from a ledger with none, and both read OPEN.
+        "attempt_ledger_gaps": {
+            "undecidable": list(ledger.get("undecidable") or ()),
+            "refused": list(ledger.get("refused") or ()),
+            "unreadable": list(ledger.get("unreadable") or ()),
+            "error": str(ledger.get("error") or ""),
+        },
         "next_reach_test": (lambda n: n.id if n else None)(U.next_to_test(live)),
         "honesty_note": (
             "A `killed` or `unresolved` verdict meets this goal. The commitment "

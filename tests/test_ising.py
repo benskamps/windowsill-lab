@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 import torch
 
-from lab.ising import RunConfig, _initial_spins, run
+from lab.ising import RunConfig, _initial_spins, run, snapshot_indices
 from lab.ising_tri import TriRunConfig
 from lab.ising_tri import run as run_tri
 from lab.potts import PottsRunConfig
@@ -625,3 +625,108 @@ def test_sg_tiny_gpu_run_smoke():
     assert r.q2_mean.shape == (5,) and (r.q2_mean >= -1e-9).all()
     assert r.pq.shape == (5, cfg.n_qbins)
     assert np.isfinite(r.binder).all()
+
+
+# ── The gallery's middle frame is the run's own χ' peak, not the midpoint ────
+
+
+def test_cpu_run_snapshots_land_on_this_runs_chi_peak_and_declare_its_temperature():
+    """An end-to-end pick, from a real (tiny) sweep rather than a synthetic curve.
+
+    ``snapshot_indices`` is unit-tested on its own; what this pins is the wiring:
+    the engine hands it THIS run's ``chi_abs``, keys the snapshots off what comes
+    back, and declares the middle frame's temperature as ``snapshot_peak_t`` so
+    the receipt → feed → caption chain names the frame that was actually drawn
+    instead of re-deriving one.
+
+    ``expected`` is re-derived with the same helper the engine calls, so this
+    test can only catch a revert to the literal ``[0, n//2, n-1]`` while the
+    fixture's χ' peak actually sits somewhere else. On this grid that is luck,
+    not design: at ``seed=42`` the peak lands on index 2 and the test bites, but
+    9 of the 12 neighbouring seeds put it exactly on the midpoint, where every
+    assertion below still passes on fully reverted code. So the fixture's
+    discriminating power is asserted FIRST — if a future edit to L, n_temps,
+    n_sweeps or the seed drifts the peak onto the midpoint, this fails loudly
+    instead of quietly becoming a tautology. Same rule ``test_mutation`` applies
+    to the milestone checkers: a check that cannot be made to fail is not a check.
+    """
+    cfg = RunConfig(L=12, n_temps=7, n_burnin=10, n_sweeps=40, sample_every=5,
+                    device="cpu")
+    r = run(cfg)
+
+    legacy = [0, cfg.n_temps // 2, cfg.n_temps - 1]
+    expected = snapshot_indices(cfg.n_temps, r.chi_abs)
+    assert expected != legacy, (
+        f"fixture no longer discriminates: chi_abs peaks at index {expected[1]}, "
+        f"which is the positional midpoint — this test would pass on reverted code"
+    )
+    assert sorted(r.snapshots) == sorted(f"T={r.T[i]:.3f}" for i in expected)
+    # ...and, said the other way round, NOT the frame the old literal picked.
+    assert sorted(r.snapshots) != sorted(f"T={r.T[i]:.3f}" for i in legacy)
+    assert r.snapshot_peak_t == float(f"{r.T[expected[1]]:.3f}")
+    # And the declared temperature is one the gallery can actually show.
+    assert f"T={r.snapshot_peak_t:.3f}" in r.snapshots
+    # A sweep whose χ' peaks in the interior must NOT be showing the midpoint.
+    peak = int(np.argmax(r.chi_abs))
+    if 0 < peak < cfg.n_temps - 1:
+        assert expected[1] == peak
+
+
+def test_to_json_carries_snapshot_peak_t_for_the_receipt_chain():
+    cfg = RunConfig(L=8, n_temps=5, n_burnin=5, n_sweeps=20, sample_every=5,
+                    device="cpu")
+    payload = run(cfg).to_json()
+    assert "snapshot_peak_t" in payload
+    assert isinstance(payload["snapshot_peak_t"], float)
+    assert f"T={payload['snapshot_peak_t']:.3f}" in payload["snapshots"]
+
+
+def test_snapshot_peak_t_is_spelled_the_same_way_as_the_snapshot_key():
+    """One temperature, one spelling — the declared value indexes the frame.
+
+    The grid is float32, so the raw peak temperature prints as 2.299999952316284
+    while its snapshot key is ``T=2.300`` and the feed packs it under ``"2.3"``.
+    Publishing the raw float would hand the page a number that does not select
+    the lattice it names, which is the same class of drift as the caption bug
+    this field exists to close.
+    """
+    cfg = RunConfig(L=8, n_temps=21, n_burnin=5, n_sweeps=20, sample_every=5,
+                    device="cpu")
+    r = run(cfg)
+    assert r.snapshot_peak_t == round(r.snapshot_peak_t, 3)
+    assert f"T={r.snapshot_peak_t:.3f}" in r.snapshots
+
+
+def test_a_recorded_sick_sweep_does_not_move_the_gallerys_middle_frame():
+    """Negative control: the picker has no equilibrium gate, so pin what saves it.
+
+    ``snapshot_indices`` takes the RAW argmax of χ'. It never consults
+    ``m01_quality``, which the rest of the feed does use — that is why the feed
+    publishes ``chi_peak_t`` (equilibrium-qualified) beside ``raw_chi_peak_t``
+    (the bare argmax) at all. So a metastable sweep whose χ' spike is a domain
+    artefact deep in the ordered phase could in principle put the gallery's
+    "near the tipping point" frame on the artefact — reintroducing the exact
+    wrong-caption bug this helper was written to close, on the sick path.
+
+    On the one such sweep the repo has actually recorded (campaign pass 43,
+    2026-07-29 — the monotone-metastable shelf, graded ``invalid`` with indices
+    0/2/3/4 excluded), it does not: the spike sits on the COLDEST index, and the
+    endpoint guard sends the pick back to the legacy midpoint untouched. Pinned
+    here so that guard is a checked property of the recorded incident rather
+    than a coincidence nobody measured — and so the next harvested fixture with
+    an INTERIOR artefact peak fails here first, where the fix is cheap.
+    """
+    import json
+    from pathlib import Path
+
+    sick = json.loads(
+        (Path(__file__).resolve().parent / "golden" / "sick-sweeps"
+         / "2026-07-29-pass43-monotone-metastable.json").read_text(encoding="utf-8")
+    )
+    n_temps = len(sick["T"])
+    chi_abs = sick["chi_abs"]
+
+    # The artefact really is the argmax — this fixture exercises the risk.
+    assert int(np.argmax(chi_abs)) == 0
+    # ...and the endpoint guard, not luck, is what holds the picture still.
+    assert snapshot_indices(n_temps, chi_abs) == [0, n_temps // 2, n_temps - 1]

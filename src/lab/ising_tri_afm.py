@@ -52,6 +52,7 @@ from dataclasses import dataclass, asdict
 import numpy as np
 import torch
 
+from .ising import snapshot_indices
 from .ising_tri import _neighbor_sum, _color_masks
 
 
@@ -190,7 +191,11 @@ def run(cfg: TriAFMRunConfig) -> TriAFMRunResult:
     specific_heat = (cfg.L * cfg.L) * energy.var(dim=0, unbiased=False).numpy() / (T_np ** 2)
     abs_mag = unif.abs().mean(dim=0).numpy()
 
-    pick_idx = [0, n_temps // 2, n_temps - 1]
+    # NO peak observable, and there never can be one: the frustrated triangular
+    # antiferromagnet has no finite-T ordering transition, so there is no critical
+    # frame to find. C(T) has a broad hump, not a divergence, and picking its
+    # argmax would invent a transition this engine exists to show does not happen.
+    pick_idx = snapshot_indices(n_temps)
     snapshots = {f"T={T_np[i]:.3f}": spins[i].cpu().numpy() for i in pick_idx}
 
     return TriAFMRunResult(

@@ -44,6 +44,8 @@ from dataclasses import dataclass, asdict
 import numpy as np
 import torch
 
+from .ising import snapshot_indices
+
 
 @dataclass
 class Wolff3DConfig:
@@ -305,7 +307,10 @@ def wolff_run(cfg: Wolff3DConfig) -> Wolff3DResult:
     specific_heat = (N) * energy.var(dim=0, unbiased=False).numpy() / (T_np ** 2)
     mean_cluster_fraction = cluster_frac.mean(dim=0).numpy()
 
-    pick_idx = [0, cfg.n_temps // 2, cfg.n_temps - 1]
+    # Middle frame = this run's own χ' peak, never the sweep's positional midpoint
+    # (see ``ising.snapshot_indices``): the gallery captions that frame critical,
+    # so the frame has to be the one the measurement calls critical.
+    pick_idx = snapshot_indices(cfg.n_temps, chi_abs)
     # 3D lattices are large; store a single mid-plane (z=L//2) slice per picked
     # temperature so the snapshot stays JSON-light while remaining a real view.
     mid = cfg.L // 2
