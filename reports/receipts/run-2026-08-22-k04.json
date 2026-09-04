@@ -1,0 +1,73 @@
+{
+  "b": 3.0,
+  "claim_boundary": "The graded claim is the Mirollo–Strogatz almost-sure synchronization theorem, measured over 200 random initial conditions of one fixed configuration (N=100, b=3, ε=0.001, all-to-all): every trial must reach unison within a generous event bound, and the uncoupled control must not. Sync-TIME behaviour vs N and ε is reported, never graded — the theorem guarantees convergence, not a rate, and no equation-level published rate for this configuration is adopted here. Nothing is claimed about non-identical oscillators, delayed or local coupling, or the inhibitory case.",
+  "config": {
+    "b": 3.0,
+    "eps": 0.001,
+    "max_events": 5000,
+    "n": 20,
+    "null_event_budget": 2000,
+    "null_trials": 20,
+    "seed": 42,
+    "trials": 5
+  },
+  "eps": 0.001,
+  "events": [
+    344,
+    244,
+    264,
+    269,
+    154
+  ],
+  "events_max": 344,
+  "events_median": 264.0,
+  "experiment": "K04-firefly-synchronization",
+  "headline": "Mirollo–Strogatz fireflies (N=20, b=3, ε=0.001): 5/5 random initial conditions reached unison (median 264 / max 344 events vs bound 5000); ε=0 control held 20 clusters of 20 · 0s",
+  "is_calibration": false,
+  "ladder_eps": {},
+  "ladder_n": {},
+  "largest_cascades": [
+    20,
+    20,
+    20,
+    20,
+    20
+  ],
+  "max_events_bound": 5000,
+  "n": 20,
+  "null_clusters": [
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20,
+    20
+  ],
+  "null_event_budget": 2000,
+  "null_trials": 20,
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "dd5e50dae58d907bb65af7d6bfe64e21a8914f41b98393ff4fdf9b2e5cb14edc"
+  },
+  "seed": 42,
+  "status": "null",
+  "synced": 5,
+  "trials": 5,
+  "wall_seconds": 0.36263513565063477
+}
