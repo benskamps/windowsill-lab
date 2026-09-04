@@ -560,15 +560,34 @@ def test_the_concept_line_is_on_the_page():
     who promotes a result would overclaim, so the two travel together.
     """
     html = WEB.read_text(encoding="utf-8")
-    assert "A fleet of AI agents wrote this instrument and keeps it running" in html
+    assert "AI agents wrote this instrument and keep it running" in html
     assert "a human decides what earns a leaf" in html
-    assert "Two machines in a house take the turns" in html
+    # The machines got their own rung in the 2026-09-04 voice pass: the fact was
+    # the buried tail of a governance sentence, and it is now a line of its own
+    # WITH its exception rendered beside it (see drawMachines / #sowhat-boxes).
+    assert "Two computers in a house work the same experiment ladder" in html
+    # Amended later the same day: the hero may claim the SCHEDULE, never the
+    # delivered rate. Three hours between turns is eight a day; the feed last
+    # carried eight on 2026-08-13 with both boxes running, and about four since
+    # windows-cuda went quiet. Naming the quiet box explains the shortfall; it
+    # does not license asserting the rate. Guarded in web/honest-state.test.mjs
+    # by "no line on the page asserts a delivered cadence".
+    assert "a turn scheduled every three hours, around the clock" in html
+    assert 'id="sowhat-boxes"' in html, (
+        "the hero asserts a cadence with no element to render the quiet box")
     for stale in ("A home machine keeps a night shift.",
                   "Two home machines tend one small lab in turns.",
                   # 5d2494f's predecessor. Retired into the blocklist rather
                   # than deleted, so the wording this test spent two days red
                   # asking for cannot quietly come back.
-                  "Two home machines take the turns"):
+                  "Two home machines take the turns",
+                  # Retired 2026-09-04: correct as far as it went, but it stated
+                  # a cadence with no room for the box that had been quiet since
+                  # 20 Aug. The replacement carries the exception.
+                  "Two machines in a house take the turns",
+                  # Retired hours later on 2026-09-04: it asserted a DELIVERED
+                  # rate the feed has not carried since 2026-08-13.
+                  "one turn every three hours, around the clock"):
         assert stale not in html, f"stale concept line on the page: {stale!r}"
 
 
@@ -591,12 +610,19 @@ def test_the_page_states_the_goal_and_not_only_the_disclaimer():
 
     # "for all": the result is a gift to the commons, with the mechanism named.
     assert "MIT-licensed" in html
-    assert "the commons is the destination" in html
+    assert "The commons is the destination, not a byproduct." in html
 
-    # The ambition never gets to masquerade as an achievement.
-    assert "That is the destination, not the status." in html
-    assert "Nothing on this page is claimed as a\n        new result" in html
-    assert "does not jump from a pretty simulation to a discovery claim" in html
+    # The ambition never gets to masquerade as an achievement. The 2026-09-04
+    # voice pass compressed three restatements of this into one — and, more
+    # importantly, moved a copy of the boundary UP into the measurement panel,
+    # so a reader cannot meet the 2.30 result without meeting its scope in the
+    # same paragraph. Both homes are asserted here.
+    assert "That is the destination, not the status:" in html
+    assert "nothing on this page is claimed as a\n        new result" in html
+    assert "A calibration, not a discovery:" in html
+    assert 'nothing on this page is claimed as a new result</a>' in html
+    # ...and the retired third restatement does not creep back.
+    assert "does not jump from a pretty simulation to a discovery claim" not in html
 
 
 def test_machine_marks_are_archive_only():

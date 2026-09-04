@@ -225,9 +225,33 @@ def test_triptych_states_disclose_missing_or_carried_snapshots():
     (feed's snapshots_date differs from the run date) names its producing run."""
     html = PAGE.read_text(encoding="utf-8")
     assert 'id="triptych-missing"' in html
-    assert "omitted its lattice snapshots" in html
+    # Each state must name the condition that ACTUALLY produced it, which means
+    # tracking which branch of physics_feed.py builds the feed it is reading.
+    #
+    # triptych-missing renders on `!snapKeys.length` — no lattice frames reached
+    # the feed at all. That is the run packing none AND _attested_raw_snapshots()
+    # recovering none AND both carry-forward paths returning None. A digest
+    # mismatch is only one of those; on a fresh clone with no previous feed no
+    # digest is ever consulted. So the copy names the absence, not a mismatch.
+    assert "No lattice frames reached this run" in html
+    assert "held back rather than shown unattested" in html
+    assert "omitted its lattice snapshots" not in html
+    # ...and it must not blame a digest check that may never have run.
+    assert "could not be verified against the digest its" not in html
+
     assert 'id="ip-lattice-dims">128' not in html
     assert 'id="ip-lattice-src"' in html
+    # ip-lattice-src's carried branch keys on `m.snapshots_date`, and
+    # physics_feed.py sets snapshots_date ONLY inside _carried_stale_snapshots()
+    # — the else-branch whose own comment reads "Attestation failed or absent".
+    # When attestation SUCCEEDS (_attested_packed_snapshots) no snapshots_date is
+    # written and the page prints "straight from the run". So a sentence claiming
+    # the lattices "verified against their recorded digest" would render on, and
+    # only on, the path where they did not. It is the inversion of the truth.
+    assert "carried forward and labelled, because the newest receipt" in html
+    assert "could not attest lattices of its own" in html
+    assert "the latest whose lattices verified against their recorded digest" not in html
+    assert "the latest whose receipt recorded lattices" not in html
 
 
 def test_measurement_panel_names_its_compatible_calibration_not_the_latest_turn():
@@ -235,12 +259,22 @@ def test_measurement_panel_names_its_compatible_calibration_not_the_latest_turn(
 
     Calling it “the latest committed run” made an August 1 M01 panel sound like
     the August 13 M15 heartbeat shown directly above it.
+
+    Amended 2026-09-04. The distinction is unchanged and still stated — but it
+    is now a parenthetical at the foot of the panel intro rather than the
+    panel's headline and two of its three sentences. The headline is the
+    measurement. The panel also moved above the plant, so the copy says "below"
+    where it used to say "above".
     """
     html = PAGE.read_text(encoding="utf-8")
-    assert "latest compatible calibration" in html
-    assert "live plant above follows the newest turn" in html
+    assert "The plant below follows the newest" in html
+    assert "this panel holds the newest calibration" in html
+    # The parenthetical used to claim the panel carried this run's own
+    # lattices; #ip-lattice-src contradicts that whenever frames are carried
+    # forward from an earlier receipt. The distinction is still stated here.
+    assert "lattice frames name the run they came from" in html
     assert "the same committed heartbeat report the plant grows from" not in html
-    assert "In the compatible calibration plotted above it landed" in html
+    assert "In the calibration plotted above it landed at" in html
     assert "Last run it landed" not in html
     assert "snapshots_date" in html
 

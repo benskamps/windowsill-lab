@@ -149,11 +149,16 @@
     .phase-mood { font-family:var(--font-mono); font-size:0.85rem; color:var(--text-secondary); }
     .phase-mood .mood { color:var(--leaf); }
 
-    /* The so-what strip: the last thing read before the sill. It steps down
-       in size so the ambition lands first and the reading instructions land
-       last, right against the plants they describe. */
-    .sowhat { max-width:760px; margin-bottom:1.6rem; }
-    .sowhat p { margin:0; }
+    /* The hero lines, no longer one wrapper. They step down in size and are
+       now interleaved with what they describe: ambition, then the measurement
+       panel, then the machine, then the shelf, and the reading key last of all
+       — right against the plants it decodes. */
+    .sowhat-goal, .sowhat-machines, .sowhat-who, .sowhat-now, .sowhat-read { max-width:760px; }
+    .sowhat-machines {
+      font-size:clamp(0.98rem, 1.9vw, 1.12rem); line-height:1.5;
+      color:var(--text-secondary); margin-bottom:0.4rem;
+    }
+    .sowhat-machines b { color:var(--text); font-weight:520; }
     .sowhat-goal {
       font-size:clamp(1.45rem, 3.4vw, 2.1rem); line-height:1.18;
       letter-spacing:-0.02em; margin-bottom:0.62rem;
@@ -166,7 +171,7 @@
     .sowhat-now { margin-top:.35rem; font-family:var(--mono, ui-monospace, monospace); font-size:0.78rem; color:var(--text-secondary, inherit); }
     .sowhat-read {
       font-size:0.83rem; line-height:1.62; color:var(--text-muted);
-      border-left:2px solid var(--clay); padding-left:0.8rem;
+      border-left:2px solid var(--clay); padding-left:0.8rem; margin-bottom:1rem;
     }
 
     /* The standing commitment, straight off the feed: the goal the lab set
@@ -678,12 +683,14 @@
     .hunt-strip li + li { padding-left:1rem; }
     .hunt-strip b { display:block; font-size:clamp(1.4rem, 2.6vw, 2.2rem); font-weight:520; color:var(--text-secondary); font-variant-numeric:tabular-nums; }
     .hunt-strip span { display:block; margin-top:0.4rem; font:0.67rem/1.45 var(--font-mono); color:var(--text-muted); }
-    /* The zero is the design centerpiece: the biggest number on the strip is
-       the one the machine is forbidden to raise. */
-    .hunt-zero { background:rgba(255,255,255,0.02); }
-    .hunt-zero b { font-size:clamp(2rem, 3.6vw, 3rem); color:var(--text); }
+    /* All six counters at one scale. The zero stays in the strip, unchanged
+       and true; it no longer outweighs the 12,494-star survey beside it. A real
+       result is stated plainly, once, at the size of its neighbours — an absence
+       is not dressed as a virtue. */
+    .hunt-zero b { color:var(--text); }
     .hunt-zero span { color:var(--text-secondary); }
-    .hunt-cols { display:grid; grid-template-columns:1fr 1.4fr; gap:1.5rem; margin-top:1.5rem; align-items:start; }
+    .hunt-cols { display:block; margin-top:1.5rem; }
+    .hunt-story { margin-top:1.75rem; padding-top:1.25rem; border-top:1px solid var(--border); }
     .hunt-ledger { border:1px solid var(--border); border-radius:6px; background:rgba(255,255,255,0.015); padding:0.7rem 0.9rem; }
     .hunt-ledger-label { display:block; font:0.64rem var(--font-mono); letter-spacing:0.06em; text-transform:uppercase; color:var(--text-muted); }
     .hunt-ledger ul { list-style:none; margin-top:0.45rem; }
@@ -703,7 +710,6 @@
       .hunt-strip li { border-bottom:1px solid var(--border); padding-left:0; }
       .hunt-strip li + li { padding-left:0; }
       .hunt-strip li:nth-child(2n) { padding-left:1rem; }
-      .hunt-cols { grid-template-columns:1fr; }
     }
 
     .section-intro { display:grid; grid-template-columns:minmax(120px, 0.65fr) 1.5fr 1fr; gap:1.5rem; align-items:start; }
@@ -859,7 +865,6 @@
       .topbar { flex-direction:column; align-items:flex-start; gap:0.15rem; margin-bottom:0.4rem; }
       .label { font-size:clamp(3rem, 15vw, 4.8rem); }
       .phase-mood { font-size:0.72rem; }
-      .sowhat { margin-bottom:1rem; }
       .sowhat-read { font-size:0.78rem; }
       .scene { border-radius:12px; }
       .scene-notes { position:static; width:100%; padding:0.7rem; background:var(--room-2); }
@@ -878,9 +883,27 @@
     /* ── Look through the instrument — the real measurements, plotted ──────────
        The plant is the calm face; this panel is what the machine actually
        measured, drawn straight from physics-latest.json (the six curves + the
-       three bit-packed lattice snapshots). Hidden until the feed loads, so a
-       box with no data degrades to the calm scene above. */
-    .instrument-panel { width:100%; max-width:900px; margin:4rem auto 0; }
+       three bit-packed lattice snapshots). No longer hidden until the feed
+       loads — it is the page's argument and it sat past where a stranger
+       leaves — so `data-state="waiting"` has to carry what `hidden` used to. */
+    .instrument-panel { width:100%; max-width:900px; margin:2.6rem 0 2.4rem; }
+    /* Cold load: three labelled placeholders, not three unexplained black
+       squares sitting under a provenance claim. render() drops the attribute
+       the moment it paints. */
+    .instrument-panel[data-state="waiting"] .lattice { background:repeating-linear-gradient(45deg,rgba(255,255,255,0.02) 0 6px,transparent 6px 12px); }
+    .instrument-panel[data-state="waiting"] .lf-say::after { content:" · waiting for the feed"; color:var(--text-muted); }
+    /* The headline states a measured number. While the panel was `hidden` that
+       number could not be read without the data behind it; un-hiding the panel
+       handed a no-JS reader "this run measured 2.30" over three blank canvases,
+       under a sentence promising every mark is plotted from the receipt. The
+       static values ARE the last published run (physics-latest.json, committed
+       beside this page, and guarded against drift by honest-state.test.mjs) —
+       so say which run a reader is looking at rather than let it read live. */
+    .instrument-panel[data-state="waiting"] #instrument-panel-title::after {
+      content:" — from the last published run; the live feed has not loaded yet";
+      display:block; margin-top:0.35rem;
+      font:0.72rem/1.5 var(--font-mono); font-weight:400; color:var(--text-muted);
+    }
     .ip-reveal { animation: ip-rise 0.8s cubic-bezier(0.22,0.61,0.36,1) both; }
     @keyframes ip-rise { from { opacity:0; transform:translateY(16px); } to { opacity:1; transform:none; } }
     .triptych {
@@ -968,21 +991,113 @@
       <h1 class="label"><span class="sky" id="sky">☀</span>windowsill</h1>
       <div class="phase-mood"><span id="phase">day</span> · <span id="season">spring</span> · feels <span class="mood" id="mood">—</span></div>
     </div>
-    <!-- The so-what strip. Three rungs, biggest first, read in the order they
-         land: what this is FOR, who does it and who gates it, and what you are
-         about to look at. It sits immediately before the sill because the
-         reader should meet the ambition and then, in the same breath, the
-         plants doing the work. No new hedge is introduced here — the
-         discipline ("that is the destination, not the status", "does not jump
-         from a pretty simulation to a discovery claim") keeps its place further
-         down, where the claims actually get made. Ambition at the top,
-         discipline at the claims: that ordering IS the honesty. -->
-    <section class="sowhat" aria-label="what this instrument is for">
-      <p class="sowhat-goal"><strong>The goal is a measurement nobody has made yet, given away free.</strong></p>
-      <p class="sowhat-who">A fleet of AI agents wrote this instrument and keeps it running; a human signs every promotion, and the receipt names who read the evidence. Two machines in a house take the turns, one every three hours, around the clock.</p>
-      <p class="sowhat-now" id="sowhat-now" hidden></p>
-      <p class="sowhat-read">Below: seven pots on one windowsill, one for each science. Every leaf is one real experiment — green means a person checked it, amber is waiting for one, grey is a miss we kept on purpose. And the pots wear the work: the glaze climbs as a track climbs, the scratches count its runs, the chips are its failures.</p>
+    <!-- The ambition. One line, verbatim, and still the largest sentence in
+         the text column. It is a stated goal rather than a claimed result,
+         which is why it is allowed to lead. The picture arrives on line five. -->
+    <p class="sowhat-goal"><strong>The goal is a measurement nobody has made yet, given away free.</strong></p>
+
+    <!-- THE MEASUREMENT. Moved up from five screens down, and no longer
+         `hidden`: the Onsager triptych plus three cross-checking curves IS the
+         page's argument, and it sat behind a second fetch past the point where
+         a stranger leaves. `data-state="waiting"` gives the three canvases a
+         labelled placeholder instead of three unexplained black squares on a
+         cold load; render() clears it when it paints. -->
+    <section class="instrument-panel" id="instrument-panel" data-state="waiting" aria-labelledby="instrument-panel-title">
+      <div class="section-intro">
+        <span class="section-kicker">The measurement</span>
+        <h2 id="instrument-panel-title">T<sub>c</sub>&nbsp;=&nbsp;<span id="ip-h2-exact">2.269</span>, solved by hand in 1944.
+        This run measured <span id="ip-h2-peak">2.30</span>.</h2>
+        <p><span id="ip-h2-spec">128×128 magnets, 21 temperatures from 1.5 to 3.5, 23.2 seconds on a consumer
+        GPU</span> &mdash; in the model&rsquo;s own units, not degrees. Every mark below is plotted straight from that
+        run&rsquo;s <a id="ip-source-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">committed
+        receipt</a> &mdash; nothing is redrawn by hand, and you can diff it yourself. A calibration, not a discovery:
+        <a href="#journey">nothing on this page is claimed as a new result</a>. (The plant below follows the newest
+        turn; this panel holds the newest calibration. Its three lattice frames name the run they came from, which is
+        not always this one &mdash; see the line beneath them, and the provenance at the panel&rsquo;s foot.)</p>
+      </div>
+
+      <figure class="triptych" id="triptych-fig" aria-label="2D Ising spin lattice at three temperatures">
+        <figure class="lattice-fig">
+          <canvas class="lattice" id="lat-cold" width="128" height="128" role="img"
+                  aria-label="A grid of magnets below the tipping point: one colour floods almost the whole frame, with a few small islands of the other."></canvas>
+          <figcaption><span class="lf-t" id="lf-cold-t">T = —</span><span class="lf-say">ordered · one domain wins</span></figcaption>
+        </figure>
+        <figure class="lattice-fig">
+          <canvas class="lattice" id="lat-crit" width="128" height="128" role="img"
+                  aria-label="The same grid at the nearest saved temperature to the tipping point: patches of both colours at mixed sizes, coarser and more ragged than the hot frame, with neither colour taking the sheet."></canvas>
+          <figcaption><span class="lf-t" id="lf-crit-t">T = —</span><span class="lf-say">nearest saved frame to T<sub>c</sub></span></figcaption>
+        </figure>
+        <figure class="lattice-fig">
+          <canvas class="lattice" id="lat-hot" width="128" height="128" role="img"
+                  aria-label="The same grid above the tipping point: the two colours are scattered evenly, with no patch bigger than a few squares — thermal noise."></canvas>
+          <figcaption><span class="lf-t" id="lf-hot-t">T = —</span><span class="lf-say">disordered · thermal noise</span></figcaption>
+        </figure>
+      </figure>
+      <!-- Dims and provenance are feed-driven: ip-lattice-dims from snapshot_L,
+           ip-lattice-src named from snapshots_date when the lattices were
+           carried forward from an earlier run's receipt. -->
+      <p class="triptych-note" id="triptych-note">Left, the sheet is cold and almost everything agrees. Right, it is
+      hot and nothing does. The middle frame is the nearest of the three to the exact tipping point Lars Onsager solved
+      by hand in 1944 &mdash; <code>T<sub>c</sub> = 2.269</code> &mdash; and it is the only one that looks like neither:
+      patches of both colours at mixed sizes, instead of one colour winning or none. How close that middle frame
+      really sits to the tipping point depends on which temperatures the run saved a picture of; its caption gives
+      the number, so you can judge the gap yourself. Each
+      frame is <b id="ip-lattice-dims">&mdash;</b> magnets, <span id="ip-lattice-src">straight from the run</span>.</p>
+      <p class="triptych-note" id="triptych-missing" hidden>No lattice frames reached this run&rsquo;s feed &mdash; none of its own, and none an earlier
+      run could attest &mdash; so the three-frame view is held back rather than shown unattested. The curves below are this run&rsquo;s own measurements.</p>
+
+      <div class="plots">
+        <figure class="plot-fig" id="plot-chi">
+          <div class="plot-mount" id="mount-chi"></div>
+          <figcaption><b>Susceptibility &chi;(T) &mdash; how twitchy the sheet is.</b> The peak is where the smallest
+          nudge in temperature causes the biggest change in behaviour. The equilibrium-qualified peak is
+          <b id="ip-chi-peak">T&nbsp;&asymp;&nbsp;—</b>, against Onsager&rsquo;s exact <span id="ip-chi-exact">2.269</span>. The sweep steps in
+          <span id="ip-chi-step">0.1</span>, so its peak can only be reported to the nearest grid point &mdash; a spacing coarser than the
+          upward shift a finite <span id="ip-chi-l">128&times;128</span> sheet produces. This run calibrates against Onsager to that
+          resolution; it does not resolve that shift. <span id="ip-chi-note">Reading the quality guard…</span></figcaption>
+        </figure>
+        <figure class="plot-fig" id="plot-mag">
+          <div class="plot-mount" id="mount-mag"></div>
+          <figcaption><b>Magnetization |m|(T) &mdash; how much the sheet agrees with itself.</b> The measured
+          points (dots) fall on the exact curve (line), computed from the formula rather than fitted to these
+          dots. The exact result is C.&nbsp;N.&nbsp;Yang&rsquo;s, published in 1952, building on Onsager&rsquo;s
+          1944 solution of the lattice. Their agreement is the calibration. Per-point uncertainties are the receipt&rsquo;s own <code>abs_mag_err</code> &mdash; the largest, <b id="ip-mag-err">0.004</b>, is smaller than these dots.</figcaption>
+        </figure>
+        <figure class="plot-fig" id="plot-heat">
+          <div class="plot-mount" id="mount-heat"></div>
+          <figcaption><b>Specific heat C(T) &mdash; how much heat the sheet drinks.</b> A different measurement entirely &mdash; heat, not magnetism &mdash; and its peak has to land near the
+          same temperature. Two different measurements landing
+          in the same place, to the resolution of this grid, is the instrument checking itself.</figcaption>
+        </figure>
+      </div>
+
+      <!-- E2's other half. Hoisting the panel into the first screen turned this
+           line from one nobody ever saw (the panel was `hidden` until the feed
+           landed) into first-screen copy on every cold load and every JS-less
+           read. A loading message does not belong there, and neither does a
+           hand-typed run stamp that nothing rewrites: this names what the line
+           carries, which is true before and after the fetch. -->
+      <p class="instrument-prov" id="instrument-prov">Provenance arrives with the feed: run date, lattice size, seed, device, wall clock, commit, and the equilibrium guard&rsquo;s verdict.</p>
     </section>
+
+    <!-- THE MACHINE. The concrete, checkable fact, lifted out of the tail of a
+         governance sentence. It is asserted here WITH its exception: the page
+         claimed "two machines take the turns, one every three hours" while
+         windows-cuda's last turn was 2026-08-20 and linux-rocm carried every
+         recent receipt. Asserting a cadence in the hero means owing the reader
+         the gap in the same breath, so drawMachines() rewrites both spans from
+         turns.last_by_machine using the same eight-declared-intervals test
+         quietMachineClause() already applies — a single skipped turn never
+         fires it. The static text is the fallback, dated to what it says.
+         It claims the SCHEDULE ("a turn scheduled every three hours"), never a
+         delivered rate: three hours between turns is 8 a day, and the feed has
+         carried about 4 a day since windows-cuda went quiet — 8 was last
+         delivered on 2026-08-13, with both boxes running. The schedule is the
+         lab's declared turns.expected_interval_h; the shortfall is exactly what
+         #sowhat-boxes names in the next breath. -->
+    <p class="sowhat-machines" id="sowhat-machines">Two computers in a house work the same experiment ladder, <b>a turn scheduled every three hours, around the clock</b> — <span id="sowhat-turns">199 turns</span> so far. <span id="sowhat-boxes">linux-rocm took the last turn; windows-cuda has been quiet since 20 Aug.</span></p>
+    <p class="sowhat-who">AI agents wrote this instrument and keep it running; a human signs every promotion, and the receipt names who read the evidence — an agent cannot decide that a result is true.</p>
+    <p class="sowhat-now" id="sowhat-now" hidden></p>
 
     <!-- The standing commitment. The feed has carried `goal` and `objections`
          since 2026-08-24 and the page rendered neither, which meant the one
@@ -1006,9 +1121,11 @@
          one": the page must not promise a room the shelf does not have. -->
     <a class="shelf-hero" href="https://www.brokenbranch.dev/windowsill/experiments/">
       <p class="shelf-kicker">The experiment shelf · the rooms behind the runs</p>
-      <p class="shelf-line"><strong><span id="shelf-total">28</span> experiments on the record, most with a live explainer room</strong> — the real update rules running in your browser, with the receipts beside them. <span id="shelf-moss-count">23</span> <span class="shelf-dot moss" role="img" aria-label="verified"></span> experiment<span id="shelf-moss-plural">s</span> reproduced their targets, <span id="shelf-amber-count">3</span> <span class="shelf-dot amber" role="img" aria-label="in review"></span> experiment<span id="shelf-amber-plural">s</span> waiting on a human read, <span id="shelf-clay-count">2</span> <span class="shelf-dot clay" role="img" aria-label="null"></span> experiment<span id="shelf-clay-plural">s</span> refused their own measurement and stayed on the record for the lesson.</p>
+      <p class="shelf-line"><strong><span id="shelf-total">28</span> experiments on the record, and most open into a live room</strong> — the real update rule running in your browser, receipt beside it. <span id="shelf-moss-count">23</span> <span class="shelf-dot moss" role="img" aria-label="verified"></span> reproduced their targets, <span id="shelf-amber-count">3</span> <span class="shelf-dot amber" role="img" aria-label="in review"></span> awaiting a human read, <span id="shelf-clay-count">2</span> <span class="shelf-dot clay" role="img" aria-label="null"></span> came back null.</p>
       <p class="shelf-cta">walk the shelf →</p>
     </a>
+
+    <p class="sowhat-read">Below: seven pots on one windowsill, one for each science. Every leaf is one real experiment — green means a person checked it, amber is waiting for one, grey is a miss and it stays on the plant. And the pots wear the work: the glaze climbs as a track climbs, the scratches count its runs, the chips are its failures.</p>
 
     <div class="scene" id="scene">
       <!-- role=group, not img: an img role makes every SVG child presentational,
@@ -1279,81 +1396,12 @@
       <a id="record-explainer" href="https://www.brokenbranch.dev/windowsill/experiments/">live explainer</a>
     </div>
 
-    <!-- Look through the instrument: the real measurements from the newest
-         compatible physics-latest.json calibration. The live plant may have
-         advanced to a newer curriculum turn whose receipt does not contain the
-         lattice snapshots and curves this panel needs. Hidden until the feed
-         loads — progressive enhancement over the calm scene. -->
-    <section class="instrument-panel" id="instrument-panel" hidden aria-labelledby="instrument-panel-title">
-      <div class="section-intro">
-        <span class="section-kicker">The measurement</span>
-        <h2 id="instrument-panel-title">Look through the instrument</h2>
-        <p>The plant is the calm face. This panel replays the
-        <a id="ip-source-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">latest compatible calibration</a>
-        that includes the lattice snapshots and response curves below. The live plant above follows the newest turn;
-        this panel stays on the newest compatible calibration until another one replaces it. Nothing here is redrawn by hand.</p>
-      </div>
-
-      <figure class="triptych" id="triptych-fig" aria-label="2D Ising spin lattice at three temperatures">
-        <figure class="lattice-fig">
-          <canvas class="lattice" id="lat-cold" width="128" height="128" role="img"
-                  aria-label="A grid of magnets below the tipping point: one colour floods almost the whole frame, with a few small islands of the other."></canvas>
-          <figcaption><span class="lf-t" id="lf-cold-t">T = —</span><span class="lf-say">ordered · one domain wins</span></figcaption>
-        </figure>
-        <figure class="lattice-fig">
-          <canvas class="lattice" id="lat-crit" width="128" height="128" role="img"
-                  aria-label="The same grid at the sweep temperature nearest the tipping point: patches of both colours across many scales at once, from single squares to blotches spanning the frame."></canvas>
-          <figcaption><span class="lf-t" id="lf-crit-t">T = —</span><span class="lf-say">near the tipping point</span></figcaption>
-        </figure>
-        <figure class="lattice-fig">
-          <canvas class="lattice" id="lat-hot" width="128" height="128" role="img"
-                  aria-label="The same grid above the tipping point: the two colours are scattered evenly, with no patch bigger than a few squares — thermal noise."></canvas>
-          <figcaption><span class="lf-t" id="lf-hot-t">T = —</span><span class="lf-say">disordered · thermal noise</span></figcaption>
-        </figure>
-      </figure>
-      <!-- Dims and provenance are feed-driven: ip-lattice-dims from snapshot_L,
-           ip-lattice-src named from snapshots_date when the lattices were
-           carried forward from an earlier run's receipt. -->
-      <p class="triptych-note" id="triptych-note">Each frame is <b id="ip-lattice-dims">&mdash;</b> magnets, <span id="ip-lattice-src">straight from the run</span>.
-      Left, the sheet is cold and almost everything agrees. Right, it is hot and nothing does. The middle frame sits
-      nearest the exact tipping point Lars Onsager solved by hand in 1944 &mdash; <code>T<sub>c</sub> = 2.269</code>,
-      in the model&rsquo;s own units, not degrees &mdash; and it is the only one that looks like neither: patches of
-      agreement across many scales at once. That is what a tipping point looks like from the inside.</p>
-      <p class="triptych-note" id="triptych-missing" hidden>This run&rsquo;s receipt omitted its lattice snapshots, so the three-frame
-      lattice view is out until a run records them again &mdash; the curves below still plot this run&rsquo;s measurements.</p>
-
-      <div class="plots">
-        <figure class="plot-fig" id="plot-chi">
-          <div class="plot-mount" id="mount-chi"></div>
-          <figcaption><b>Susceptibility &chi;(T) &mdash; how twitchy the sheet is.</b> The peak is where the smallest
-          nudge in temperature causes the biggest change in behaviour. The equilibrium-qualified peak is
-          <b id="ip-chi-peak">T&nbsp;&asymp;&nbsp;—</b>. Onsager&rsquo;s exact answer is 2.269, and on a sheet this
-          size the peak is expected to land a little above it. <span id="ip-chi-note">Reading the quality guard…</span></figcaption>
-        </figure>
-        <figure class="plot-fig" id="plot-mag">
-          <div class="plot-mount" id="mount-mag"></div>
-          <figcaption><b>Magnetization |m|(T) &mdash; how much the sheet agrees with itself.</b> The measured
-          points (dots) fall on the exact curve (line), computed from the formula rather than fitted to these
-          dots. The exact result is C.&nbsp;N.&nbsp;Yang&rsquo;s, published in 1952, building on Onsager&rsquo;s
-          1944 solution of the lattice. Their agreement is the calibration; uncertainty remains in the receipt.</figcaption>
-        </figure>
-        <figure class="plot-fig" id="plot-heat">
-          <div class="plot-mount" id="mount-heat"></div>
-          <figcaption><b>Specific heat C(T) &mdash; how much heat the sheet drinks.</b> A separately measured
-          response that has to peak near the temperature the magnetism found. Two different measurements landing
-          in the same place is the instrument checking itself.</figcaption>
-        </figure>
-      </div>
-
-      <p class="instrument-prov" id="instrument-prov">reading the instrument&hellip;</p>
-    </section>
-
     <aside class="portable-release" aria-labelledby="portable-title">
       <span class="release-mark" aria-hidden="true">M14</span>
       <div>
         <span class="section-kicker">A result you can take home</span>
         <h2 id="portable-title">Eight saved measurements. One exact identity. No network required.</h2>
-        <p>The M14 receipt independently regrades the persisted Nishimori-line energies at <code>L=24</code>. It claims statistical agreement—not a new proof, a simulation rerun, or a precise multicritical point.</p>
+        <p>Eight persisted energies at <code>L=24</code>, regraded offline against the Nishimori identity <code>E/N = &minus;2 tanh(1/T)</code>. Largest deviation <code>0.0151</code>, against a declared gate of <code>0.05</code>. It is a statistical agreement of saved measurements with an exact identity &mdash; it does not rerun the simulation or locate the multicritical point.</p>
         <div class="release-proof" role="group" aria-label="portable release boundary">
           <span><strong>PASS</strong> · strict regrade</span>
           <span>8 aggregate points</span>
@@ -1397,10 +1445,9 @@
         <h2 id="journey-title">Trust first. Then harder questions.</h2>
         <p>The point of the ladder is the top of it: a measurement nobody has made yet — a small,
         real addition to physics, published free for anyone to check, reuse, or run again on their
-        own machine. That is the destination, not the status. Nothing on this page is claimed as a
-        new result, and the lab does not jump from a pretty simulation to a discovery claim: it earns
-        the last stage by climbing the first three in public, misses included. That climb is also the
-        only reason you would have to believe the last one, if it ever arrives.</p>
+        own machine. That is the destination, not the status: nothing on this page is claimed as a
+        new result. The lab earns the top of the ladder by climbing the first three rungs in public,
+        misses included &mdash; which is the only reason anyone would believe the fourth.</p>
       </div>
       <ol class="phase-rail" id="phase-rail">
         <li data-curriculum-phase="1"><span>01</span><strong>Verify the instrument</strong><em>M01–M05 · exact answers</em></li>
@@ -1418,7 +1465,7 @@
       <div class="section-intro">
         <span class="section-kicker">The conservatory</span>
         <h2 id="garden-title">Seven instruments. One standard of proof.</h2>
-        <p>Height tracks how far each track has climbed. Amber waits for review; grey keeps the boundary visible.</p>
+        <p>Height tracks how far each track has climbed. Amber waits for a human read; grey is a null.</p>
       </div>
       <ul class="garden-row" id="garden-row"></ul>
     </section>
@@ -1431,13 +1478,13 @@
     <section class="hunt" id="hunt" hidden aria-labelledby="hunt-title">
       <div class="section-intro">
         <span class="section-kicker">The hunt</span>
-        <h2 id="hunt-title">Stars searched, alarms priced, and a zero kept on purpose.</h2>
+        <h2 id="hunt-title">Stars searched blind. Every alarm on the record.</h2>
         <p>The astronomy track keeps a running ledger of its blind planet search.
         Each number is re-derived from the committed run receipts, never copied
         from a run's own summary, and the strongest verdict the machine can hand
-        out is a lead for a human to review. The zero at the end of the strip is
-        the headline: nothing here counts as found until human review and
-        independent follow-up say so.</p>
+        out is a lead for a human to review. Nothing here counts as found until human
+        review and independent follow-up say so &mdash; which is why the last cell of
+        the strip reads zero.</p>
       </div>
       <p class="hunt-asof" id="hunt-asof">as of the last published run</p>
       <div role="group" aria-label="hunt counters, as of the last published run">
@@ -1457,6 +1504,10 @@
           <p class="hunt-ledger-note" id="hunt-unresolved" hidden></p>
           <p class="hunt-ledger-note" id="hunt-stars" hidden></p>
         </div>
+        <blockquote class="hunt-boundary">
+          <span class="hunt-ledger-label">claim boundary — verbatim from the newest receipt</span>
+          <p id="hunt-boundary"></p>
+        </blockquote>
         <div class="hunt-story">
           <h3>For forty minutes this was a planet.</h3>
           <p>On the first pilot hunt — 158 stars searched blind — one signal
@@ -1478,16 +1529,13 @@
             apparent "secondary" is a 13σ phase-locked <em>brightening</em>,
             impossible for an occultation and natural for a pulsating star.
             Machine disposition: <code>harmonic-alias</code>. Sources:
-            <code>reports/hunts/hunt-2026-08-14-s2-pilot-158.json</code>;
+            <code>reports/hunts/hunt-2026-08-14-s2-pilot-158.json</code>, superseded by
+            <code>hunt-2026-08-14-s2-pilot-570.json</code>;
             event count and odd/even statistic from
             <code>docs/investigations/2026-08-14-a04-discovery-pilot-summary.json</code>.</p>
           </details>
         </div>
       </div>
-      <blockquote class="hunt-boundary">
-        <span class="hunt-ledger-label">claim boundary — verbatim from the newest receipt</span>
-        <p id="hunt-boundary"></p>
-      </blockquote>
       <p class="hunt-credit">The search itself is box least squares — Kovács,
       Zucker &amp; Mazeh (2002). The agents build, run, and grade the
       instrument; the math is classical.</p>
@@ -1502,19 +1550,18 @@
       <h2 class="ex-h">What am I looking at?</h2>
       <p>A small garden on a windowsill, wired to real work. Two quiet computers take turns
       simulating physics, checking arithmetic, reading public telescope archives, or listening
-      through hardware sensors — a turn every few hours, around the clock. Whichever
+      through hardware sensors — on a three-hour schedule, around the clock, <span id="ex-turns">199</span> turns in. Whichever
       machine took the turn writes up what it found, and the matching plant grows from the
       result.</p>
       <p>Every layer underneath was written by <b>AI agents</b>: the GPU physics, the checker that
       independently re-derives each result, the scheduler, the report format, the published feed, the
       tests — and this page you're reading. Agents also design the experiments and draft the write-ups.
       One person set the direction and holds the gate.</p>
-      <p>That gate is the part worth understanding, because it is what keeps this a lab instead of a
-      demo. An agent cannot decide that a result is true. A deterministic check has to pass first —
+      <p>The gate is the part worth understanding. An agent cannot decide that a result is true. A deterministic check has to pass first —
       that earns an amber leaf — and then a promotion signed by a person turns it green. Reading the
       evidence is sometimes delegated to another agent, and every receipt names who did it. When a run
-      misses, the miss is kept on the plant as a grey folded leaf rather than quietly deleted. The milestone counts under the sill are the whole lab's, across
-      every science, and they include the nulls on purpose.</p>
+      misses, the miss stays on the plant as a grey folded leaf, with its receipt. The milestone counts under the sill are the whole lab's, across
+      every science, nulls included.</p>
       <p>The lower leaves are calibration: phase transitions and magnetic models whose answers are
       known well enough to expose a bad instrument. Higher leaves move into disorder and dynamics,
       where the claims must get narrower as the questions get harder. Tap any leaf—or use the
@@ -1525,7 +1572,7 @@
       <dl class="read-list">
         <div><dt>green leaf</dt><dd>a machine-checked result promoted onto the permanent record by a person, with the receipt naming who read the evidence.</dd></div>
         <div><dt>amber leaf</dt><dd>a measurement whose checker passed, waiting for a human to read the evidence before it can turn green.</dd></div>
-        <div><dt>grey folded leaf</dt><dd>an experiment that missed. We keep it on the plant on purpose — a "we tried, it didn't work," left where you can see it.</dd></div>
+        <div><dt>grey folded leaf</dt><dd>an experiment that missed. It stays on the plant, and its field note says why.</dd></div>
         <div><dt>the soft growing tip</dt><dd>the question at the front of the curriculum. Its field note says whether code exists to run it yet.</dd></div>
         <div><dt>stem height</dt><dd>how far the plant has climbed through its list of experiments — taller means more done.</dd></div>
         <div><dt>dark, damp soil</dt><dd>a fresh run just finished and watered it. The soil slowly dries until the next turn.</dd></div>
@@ -1548,8 +1595,7 @@
       kept null, the whole instrument and this page are public and MIT-licensed: you can read how a
       result was reached, re-derive it from the saved measurements, fork the lab onto your own GPU, or
       point it at a question you care about instead. A small new result anyone can check and build on
-      is worth more than a private one, so the commons is the destination and not a byproduct — and
-      one home machine finding one such thing is a better use of an idle GPU than another benchmark.</p>
+      is worth more than a private one. The commons is the destination, not a byproduct.</p>
 
       <details class="curious">
         <summary>For the curious — the real names and numbers</summary>
@@ -1559,8 +1605,8 @@
         <b>Lars Onsager in 1944</b> — so the plant's first job is calibration: prove the computer can
         be trusted by re-finding that number on its own. Each calibration turn sweeps across temperatures and
         watches for the moment the magnets line up, where a measurement called the <b>magnetic
-        susceptibility</b> spikes. In the compatible calibration plotted above it landed near <code>2.30 ± 0.05</code> — a clean match —
-        in well under a minute on the GPU (the graphics chip that also runs video games). That steady re-check is the lab's <b>heartbeat</b> — most turns it
+        susceptibility</b> spikes. In the calibration plotted above it landed at <code>2.30 ± 0.05</code> against Onsager&rsquo;s
+        <code>2.2692</code>, in <code id="ex-wall">23.2 seconds</code> on the GPU (the graphics chip that also runs video games). That steady re-check is the lab's <b>heartbeat</b> — most turns it
         re-proves it can still find an answer we already trust, while the curriculum's frontier climbs
         on ahead of it. The counter under the plant counts turns — one scheduled pass, whichever
         machine took it; before July 2026 it counted nights. The ethos:
@@ -1592,8 +1638,7 @@
         original provenance gaps rather than being retroactively restamped. A small <b>versioned JSON feed</b>
         (<code>pot.json</code> — a published contract this very page reads) is updated; and the plant
         you're looking at is drawn straight from that feed. Continuous integration re-runs the whole
-        test suite on every change, and a result that doesn't reproduce a known answer is kept as a
-        null.</p>
+        test suite on every change.</p>
         <p>The two machines are different on purpose — one Windows/CUDA, one Linux/ROCm — and each
         run's receipt records which box ran it, its exact environment, and the commands to re-run it.
         The lab began as one machine's night shift; a second machine joined in July 2026, and the two
@@ -3580,7 +3625,7 @@
     }
 
     // A milestone organ: green = human-promoted, amber = machine-checked and
-    // awaiting review, folded grey = a null kept on the books. The node's `t`
+    // awaiting review, folded grey = a null. The node's `t`
     // (0 soil → 1 tip) drives the age taper — a real plant keeps its oldest,
     // largest organs low and reaching outward, its youngest small and upright
     // near the growing tip — and the node's `out` frame decides which way the
@@ -3728,7 +3773,7 @@
       if (m.venue) meta.push(m.venue);
       if (m.doi) meta.push('doi:' + m.doi);
       var tail = m.result ? ' — ' + m.result
-        : (nul ? ' — failed calibration (null, kept on the books)' : ' ✓');
+        : (nul ? ' — failed calibration' : ' ✓');
       var titleText = (m.id ? m.id + ' · ' : '') + (m.title || '') + tail +
         (meta.length ? ' · ' + meta.join(' · ') : '') + (safeUrl ? ' ↗' : '');
       var tEl = document.createElementNS(SVGNS, 'title');
@@ -3753,7 +3798,7 @@
     var FN_STATUS = {
       verified: 'verified',
       review: 'machine-checked · awaiting human review',
-      'null': 'null · no claim (kept on the books)',
+      'null': 'null · no claim',
       open: 'on the bench',
       pending: 'ahead · unscored',
     };
@@ -3822,7 +3867,7 @@
       else _setHidden(why, true);
 
       // The receipt: the technical result, the public record (venue/doi/link).
-      var tech = m.result || (status === 'null' ? 'failed calibration (null, kept on the books)' : '');
+      var tech = m.result || (status === 'null' ? 'failed calibration' : '');
       var meta = [];
       if (m.venue) meta.push(m.venue);
       if (m.doi) meta.push('doi:' + m.doi);
@@ -3908,7 +3953,7 @@
     // ── The archive: a calm collapsed every-run ledger ──────────────────────
     // The seedling shows the milestone story (the stem). This surfaces the
     // honest run-by-run back-room from state.reports[]: ~8 newest rows (a
-    // verified green leaf, a folded grey null kept WITH its numbers, a plain
+    // verified green leaf, a folded grey null WITH its numbers, a plain
     // bud for unscored), each deep-linking its report, then a "see all" link to
     // the archive index. Hidden entirely when reports[] is absent/empty, so the
     // procedural seed stays byte-for-byte unchanged. textContent (never raw
@@ -4032,7 +4077,7 @@
         var h = document.createElement('span');
         h.className = 'arc-head';
         h.textContent = r.headline || (verdict === 'null'
-          ? 'failed calibration (kept on the books)' : '—');
+          ? 'failed calibration' : '—');
         row.appendChild(h);
 
         // Only http(s) hrefs become links — never javascript:/data:/file: URLs.
@@ -4324,7 +4369,7 @@
       if (open) return { key:'open', label:open.runner_available ? 'runner ready' : 'on the bench' };
       if (!m) return { key:'pending', label:'not started' };
       if (m.status === 'review') return { key:'review', label:'in review' };
-      if (m.status === 'null') return { key:'null', label:'boundary kept' };
+      if (m.status === 'null') return { key:'null', label:'null' };
       return { key:'verified', label:'calibrated' };
     }
 
@@ -4536,7 +4581,7 @@
         if (promoted) tally.push(promoted + ' green');
         if (reviews) tally.push(reviews + ' amber');
         if (nulls) tally.push(nulls + ' grey');
-        leafText.textContent = tally.length ? tally.join(' · ') : 'no measured leaves';
+        leafText.textContent = tally.length ? tally.join(' · ') : 'nothing measured yet';
         foot.appendChild(leafText);
         var nextText = document.createElement('span');
         nextText.className = 'next';
@@ -4619,8 +4664,13 @@
 
     // One declared machine has gone quiet while the other keeps watering, so
     // the feed still looks fresh and nothing else on the page would say so.
-    // NAMELESS above the fold — which box it is, is a ledger fact one scroll
-    // down, on the rows themselves. Duration only; no colour, no dot, no name.
+    // Duration only here; no colour, no dot, no name. This clause used to be the
+    // ONLY place the gap appeared, on the deliberate ground that which box it is
+    // was a ledger fact one scroll down. That call was right while the cadence
+    // was the buried tail of a governance sentence, and wrong the moment the
+    // cadence became a headline: drawMachines() now names the quiet box in the
+    // hero, in the same breath as the claim. This line stays as the footer's
+    // shorter echo.
     // Both boxes quiet is already the '◌ feed quiet' story, so it stays silent
     // there rather than saying the same thing twice.
     function quietMachineClause(freshness, state) {
@@ -4725,6 +4775,34 @@
       return out;
     }
 
+    // The hero asserts a two-machine cadence. Asserting it without rendering
+    // the exception would be a straight overclaim: on the committed feed
+    // windows-cuda's last turn is 2026-08-20 against linux-rocm's today. This
+    // reuses quietMachineClause()'s eight-declared-intervals test, so a single
+    // skipped turn or a deliberate pause never fires it.
+    function drawMachines(state) {
+      var turnsEl = $('sowhat-turns'), boxEl = $('sowhat-boxes'), exTurns = $('ex-turns');
+      var turns = state.turns || {}, iv = turnInterval(state);
+      if (turnsEl && typeof turns.count === 'number') turnsEl.textContent = turns.count + ' turns';
+      if (exTurns && typeof turns.count === 'number') exTurns.textContent = turns.count;
+      var last = turns.last_by_machine;
+      if (!boxEl || !last || typeof last !== 'object') return;
+      var names = Object.keys(last).sort(), limit = iv ? 8 * iv : null, live = [], quiet = [];
+      names.forEach(function (n) {
+        var stamp = last[n];
+        var age = stamp ? (labNowMs() - new Date(stamp).getTime()) / 3600000 : null;
+        if (stamp == null || (limit !== null && isFinite(age) && age > limit)) {
+          var d = stamp ? new Date(stamp) : null;
+          quiet.push(n + (d && !isNaN(d.getTime())
+            ? ' has been quiet since ' + d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
+            : ' has not taken a turn yet'));
+        } else live.push(n);
+      });
+      boxEl.textContent = quiet.length
+        ? (live.length ? live.join(' and ') + ' took the last turn; ' : '') + quiet.join('; ') + '.'
+        : 'both boxes are taking their turns.';
+    }
+
     function drawCommitment(goal, objections) {
       var box = $('commitment');
       if (!box) return;
@@ -4755,6 +4833,15 @@
       var unresolved = counters.unresolved;
       var stars = Number(hunt.known_recovered) || 0;
       $('hunt-searched').textContent = String(Number(hunt.targets_searched) || 0);
+      // The headline is the survey, not the absence. "Every alarm on the record"
+      // is the receipt's own claim_boundary standard — completeness of
+      // DISPOSITION over this sample — printed verbatim in the blockquote below.
+      // It says "on the record", not "named": 17 low-significance events carry a
+      // disposition but stay unresolved, and #hunt-unresolved says so below.
+      var ht = $('hunt-title');
+      if (ht && typeof hunt.targets_searched === 'number') {
+        ht.textContent = hunt.targets_searched.toLocaleString() + ' stars searched blind. Every alarm on the record.';
+      }
       $('hunt-events').textContent = String(above);
       $('hunt-impostors').textContent = String(counters.impostors);
       $('hunt-known').textContent = String(counters.known);
@@ -4873,7 +4960,7 @@
       var growth = [];
       if (verifiedList.length) growth.push(verifiedList.length + ' promoted');
       if (reviewList.length) growth.push(reviewList.length + ' in review');
-      if (nullList.length) growth.push(nullList.length + ' null kept');
+      if (nullList.length) growth.push(nullList.length + ' null');
       if (open && open.id) growth.push(open.id + (open.runner_available ? ' runner ready' : ' on bench'));
       $('m-growth').textContent = growth.length ? growth.join(' · ') : 'awaiting a snapshot';
       $('m-watered').textContent = state.last_run ? ago(state.last_run) : '—';
@@ -4910,16 +4997,10 @@
       if (shelfTotalEl) shelfTotalEl.textContent = shelfTotal;
       var shelfMossCount = $('shelf-moss-count');
       if (shelfMossCount) shelfMossCount.textContent = verifiedList.length;
-      var shelfMossPl = $('shelf-moss-plural');
-      if (shelfMossPl) shelfMossPl.textContent = verifiedList.length === 1 ? '' : 's';
       var shelfAmberCount = $('shelf-amber-count');
       if (shelfAmberCount) shelfAmberCount.textContent = reviewList.length;
-      var shelfAmberPl = $('shelf-amber-plural');
-      if (shelfAmberPl) shelfAmberPl.textContent = reviewList.length === 1 ? '' : 's';
       var shelfClayCount = $('shelf-clay-count');
       if (shelfClayCount) shelfClayCount.textContent = nullList.length;
-      var shelfClayPl = $('shelf-clay-plural');
-      if (shelfClayPl) shelfClayPl.textContent = nullList.length === 1 ? '' : 's';
 
       var rep = state.latest_report, rbox = $('report');
       if (rbox && rep && rep.headline) {
@@ -4970,6 +5051,7 @@
 
       // The honest every-run ledger — hidden unless the feed carries reports[].
       drawRunList(state.reports, state.archive_url, milestones, state.divergence, state.turns);
+      drawMachines(state);
       drawCommitment(state.goal, state.objections);
       // The hunt ledger — hidden unless the feed carries a hunt block.
       drawHunt(state.hunt);
@@ -5433,6 +5515,31 @@
       var tc = feed.onsager_tc || 2.269185;
       var T = m.T;
       var quality = m01Quality(m);
+      // The panel's headline is written from the SAME quality object the chi plot
+      // uses, so the loudest number on the page cannot disagree with the plot
+      // under it — and when the guard finds no qualified peak the headline says
+      // so rather than printing a number the plot will not back.
+      var _cfgH = m.config || {};
+      setHTML('ip-h2-exact', tc.toFixed(3));
+      setText('ip-h2-peak', quality.peak == null ? 'no qualified peak' : quality.peak.toFixed(2));
+      // The chi caption's numbers come from the same run as the curve beneath
+      // it. Hardcoded, they would leave prose contradicting the plot the
+      // moment the grid, the lattice or the exact value changed -- and in the
+      // guard-failed state, a caption naming a peak the headline just withdrew.
+      setText('ip-chi-exact', tc.toFixed(3));
+      if (T.length > 1) setText('ip-chi-step', String(Math.round((T[1] - T[0]) * 1000) / 1000));
+      if (_cfgH.L) setText('ip-chi-l', _cfgH.L + '×' + _cfgH.L);
+      var _spec = [];
+      if (_cfgH.L) _spec.push(_cfgH.L + '×' + _cfgH.L + ' magnets');
+      _spec.push(T.length + ' temperatures from ' + T[0] + ' to ' + T[T.length - 1]);
+      if (m.wall_seconds) _spec.push(m.wall_seconds.toFixed(1) + ' seconds on a consumer GPU');
+      setText('ip-h2-spec', _spec.join(', '));
+      // Two prose numbers elsewhere on the page quote this same run; wire them
+      // rather than leave a hand-typed figure to go stale against the receipt.
+      if (m.wall_seconds) setText('ex-wall', m.wall_seconds.toFixed(1) + ' seconds');
+      if (Array.isArray(m.abs_mag_err) && m.abs_mag_err.length) {
+        setText('ip-mag-err', Math.max.apply(null, m.abs_mag_err.map(Number)).toFixed(3));
+      }
       _quality = { quality: quality, tc: tc, date: m.date || null };
       applyHeadlineQuality();
 
@@ -5458,7 +5565,7 @@
         setText('lf-hot-t', 'T = ' + hot);
         setText('ip-lattice-dims', m.snapshot_L + '×' + m.snapshot_L);
         setText('ip-lattice-src', (m.snapshots_date && m.snapshots_date !== m.date)
-          ? 'from the ' + m.snapshots_date + ' run — the latest whose receipt recorded lattices'
+          ? 'from the ' + m.snapshots_date + ' run — carried forward and labelled, because the newest receipt could not attest lattices of its own'
           : 'straight from the run');
       }
 
@@ -5541,10 +5648,14 @@
       if (cfg.seed != null) bits.push('seed ' + cfg.seed);
       if (cfg.device) bits.push(cfg.device.toUpperCase());
       if (m.wall_seconds) bits.push(Math.round(m.wall_seconds) + 's');
-      if (prov.code_sha) bits.push('commit ' + prov.code_sha);
+      // The feed writes `source_commit`; `code_sha` is the older key. Reading only
+      // the older one meant this chip — the page's whole "diff it yourself" affordance
+      // — has silently never rendered.
+      var sha = prov.code_sha || prov.source_commit;
+      if (sha) bits.push('commit ' + String(sha).slice(0, 7));
       bits.push('quality ' + quality.status);
       if (quality.excluded.length) bits.push(quality.excluded.length + ' sample(s) excluded');
-      setText('instrument-prov', bits.join('  ·  ') + '  ·  the measured points above are read straight from the committed report — diff it yourself.');
+      setText('instrument-prov', bits.join('  ·  '));
       if (m.generated_from || feed.generated_from) {
         var link = document.getElementById('ip-source-link');
         if (link) link.href = 'https://github.com/benskamps/windowsill-lab/blob/main/' + (feed.generated_from || m.source_report);
@@ -5553,6 +5664,7 @@
       // Reveal animation on the first render only; refreshed feeds swap the
       // plots in place without replaying the entrance.
       if (panel.hidden && !reduce) panel.classList.add('ip-reveal');
+      panel.removeAttribute('data-state');
       panel.hidden = false;
     }
 

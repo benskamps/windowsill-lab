@@ -447,19 +447,40 @@ def test_page_has_the_counter_strip_with_the_correct_terms():
     assert "leads awaiting human review" in html
 
 
-def test_page_planets_discovered_zero_is_the_prominent_stat():
-    """Honesty as the design centerpiece: the zero renders at the largest size
-    on the strip, and its markup defaults to 0 before any feed arrives."""
+def test_page_planets_discovered_zero_is_stated_plainly_at_one_scale():
+    """The zero is a real result, stated once, at the size of its neighbours.
+
+    Inverted 2026-09-04 on Ben's ruling: *"no more apologies for 0s."* The zero
+    is true — no machine path can raise it, and drawHunt still reads it straight
+    from `hunt.planets_discovered`. What changed is its billing. It used to be
+    set at clamp(2rem…3rem) against the strip's clamp(1.4rem…2.2rem), so **0**
+    rendered LARGER than the 12,494 stars searched beside it, under an h2 that
+    called it "a zero kept on purpose" and an intro that called it "the
+    headline". That is dressing an absence as a virtue, three times, ahead of
+    the survey that is the actual work.
+
+    So: same markup, same default, same unraisable value — one scale, and the
+    headline is the survey. The caveat that makes the zero mean something
+    ("nothing here counts as found until human review and independent follow-up
+    say so") is asserted verbatim below, where it is now the assertion rather
+    than the justification for a promotion.
+    """
     html = _page()
     assert '<li class="hunt-zero"><b id="hunt-planets">0</b><span>planets discovered</span></li>' in html
     zero_rule = html.split(".hunt-zero b {", 1)[1].split("}", 1)[0]
-    strip_rule = html.split(".hunt-strip b {", 1)[1].split("}", 1)[0]
-    def _max_rem(rule):
-        import re as _re
-        m = _re.search(r"clamp\(([\d.]+)rem[^)]*?([\d.]+)rem\)", rule)
-        return float(m.group(2))
-    assert _max_rem(zero_rule) > _max_rem(strip_rule), \
-        "the zero must be the biggest number on the strip"
+    assert "font-size" not in zero_rule, \
+        "the zero is being sized against the counters beside it again"
+    # ...and the strip's one shared size still exists for it to inherit.
+    assert "clamp(" in html.split(".hunt-strip b {", 1)[1].split("}", 1)[0]
+
+    # The ceremony around it is gone; the caveat that gives it meaning is not.
+    for applause in ("a zero kept on purpose",
+                     "The zero at the end of the strip is",
+                     "the headline: nothing here counts as found"):
+        assert applause not in html, f"the zero is being applauded again: {applause!r}"
+    assert ("Nothing here counts as found until human\n        review and "
+            "independent follow-up say so") in html
+    assert "the strongest verdict the machine can hand\n        out is a lead for a human to review" in html
 
 
 def test_page_ledger_is_labeled_machine_disposition_and_renders_verbatim():
