@@ -671,3 +671,51 @@ def test_the_shipped_grid_beats_the_resolution_gate_at_every_rung_it_was_designe
             K02_R_STAR_SCATTER,
         )
         assert abs(rung["r_mean"][i] - K02_RUN01_R_STAR) > floor
+
+
+# ── the benchmark's provenance, which was wrong until 2026-09-04 ─────────────
+
+def test_the_benchmark_names_the_distribution_it_was_measured_on():
+    """0.39(2) is Hong's regular-GAUSSIAN value; this engine is regular-Lorentzian.
+
+    Until 2026-09-04 checks.py called it "the REGULAR (deterministic-quantile)
+    Lorentzian -- this engine's exact published configuration". It is not.
+    Their Eq. (4.1) defines the regular class they measure with a Gaussian
+    g(omega), and every exponent in their Sec. IV sits on it. Their ENTIRE
+    regular-Lorentzian content is one sentence giving nu-bar ~= 5/4 and nothing
+    else -- no beta/nu-bar_c, no error bar. Quoted and sha256-pinned under
+    evidence/literature/.
+
+    The NUMBER is kept on purpose: Hong reports "similar behavior" for the
+    Lorentzian, so 0.39(2) is a defensible cross-distribution proxy and there is
+    nothing truer to move it to. What must not come back is the CLAIM of an exact
+    configuration match -- so this asserts the claim, not the value.
+    """
+    from lab import checks
+
+    assert checks.K02_CRITICAL_EXPONENT == 0.39
+    assert checks.K02_CRITICAL_EXPONENT_ERR == 0.02
+    assert "Gaussian" in checks.K02_CRITICAL_EXPONENT_CLASS
+    assert "Lorentzian" in checks.K02_ENGINE_CLASS
+    assert checks.K02_CRITICAL_EXPONENT_CLASS != checks.K02_ENGINE_CLASS, (
+        "the benchmark's class and the engine's class are not the same cell; "
+        "collapsing them is the defect this test exists for")
+
+
+def test_the_shipped_calibration_line_does_not_claim_the_lorentzian():
+    """The label is not a comment -- it rides every K02 receipt and the nightly log.
+
+    Asserted on the function's own source, because a corrected comment sitting
+    above a stale f-string would leave the false claim shipping every six hours,
+    which is exactly how it survived from the 2026-08-02 assay until now.
+    """
+    import inspect
+
+    from lab import checks
+
+    src = inspect.getsource(checks.check_k02)
+    assert "GAUSSIAN" in src, (
+        "the shipped calibration line must name the benchmark's own class")
+    assert "Eq. 4.3, regular Lorentzian]" not in src, (
+        "the false regular-Lorentzian attribution is shipping again")
+    assert "this engine's exact published configuration" not in src
