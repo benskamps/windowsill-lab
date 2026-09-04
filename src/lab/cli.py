@@ -366,17 +366,8 @@ def _hunt_status_for_dispatch() -> dict | None:
     lane = curriculum.hunt_lane()
     if lane is None:
         return None
-    # A sector whose enumerable window is consumed is dropped here even though
-    # its committed counters still show coverage. It has to be: those counters
-    # can only move when a receipt COMMITS, an exhausted sector can no longer
-    # produce a gradeable one, and the pick below is a `max()` over exactly
-    # those counters — so without this line the sector with the most remaining
-    # coverage on paper is re-picked every slot until someone notices by hand.
-    # See ``curriculum.exhausted_sectors`` for the 112 slots that bought this
-    # comment.
-    used_up = curriculum.exhausted_sectors()
     per_sector = {s: n for s, n in status["per_sector"].items()
-                  if s in lane and n > 0 and s not in used_up}
+                  if s in lane and n > 0}
     remaining = sum(per_sector.values())
     if remaining <= 0:
         return None

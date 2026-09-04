@@ -210,8 +210,12 @@ def _i01_hardware_gate() -> str | None:
     )
 
 
-def hunt_lane() -> tuple[int, ...] | None:
-    """This box's assigned survey sectors, or ``None`` when unassigned.
+def hunt_lane_assigned() -> tuple[int, ...] | None:
+    """The sectors this box is ASSIGNED, before subtracting the used-up ones.
+
+    Callers almost always want ``hunt_lane``. This one exists so the A05 gate
+    can tell "you were never given a lane" apart from "you were given one and
+    have finished it" — two very different things to print at 3 a.m.
 
     The A05 sector split (2026-08-14 handoff: win = 2,29 · loam = 3,30) is
     box-local configuration, exactly like I01's frame stack: the env var
@@ -237,6 +241,25 @@ def hunt_lane() -> tuple[int, ...] | None:
     except ValueError:
         return None
     return sectors or None
+
+
+def hunt_lane() -> tuple[int, ...] | None:
+    """This box's HUNTABLE survey sectors, or ``None`` when it has none left.
+
+    Assignment minus exhaustion. A sector whose enumerable window is consumed
+    is not part of this box's lane any more, and subtracting it HERE rather
+    than at the dispatch site is deliberate: ``_hunt_status_for_dispatch``
+    picks with ``max()`` over committed coverage, and every other caller that
+    asks "what may this box hunt" would otherwise have to remember to subtract
+    for itself. One concept, one place, and a stubbed ``hunt_lane`` in a test
+    stays hermetic instead of reaching for the developer's real ``~/.lab``.
+    """
+    assigned = hunt_lane_assigned()
+    if assigned is None:
+        return None
+    used_up = exhausted_sectors()
+    live = tuple(s for s in assigned if s not in used_up)
+    return live or None
 
 
 def exhausted_sectors() -> frozenset[int]:
@@ -299,6 +322,27 @@ def _a05_survey_gate() -> str | None:
     """
     lane = hunt_lane()
     if lane is None:
+        # Assigned a lane and finished it is a DIFFERENT problem from never
+        # having been given one, and it takes a different fix: this box needs
+        # new sky, not configuration. Printing "no assigned survey sectors" at
+        # a box that has two would send the reader to a file that is already
+        # correct — the same wrong-pointer that cost 112 slots.
+        #
+        # Proven, not inferred from ``lane is None``: a caller that has
+        # deliberately stubbed the lane away means "unassigned", and this must
+        # not talk over it by re-reading the config behind its back. Distinct
+        # from the ``lane-exhausted`` below, which is about committed coverage
+        # counters rather than a consumed enumeration window.
+        assigned = hunt_lane_assigned()
+        used_up = exhausted_sectors()
+        if assigned and used_up and all(s in used_up for s in assigned):
+            return (
+                "lane-consumed: every assigned sector "
+                f"({', '.join(str(s) for s in assigned)}) has had its "
+                "enumerable window consumed — assign a sector with headroom "
+                "in LAB_HOME/hunt-sectors, or drop a line from "
+                "LAB_HOME/hunt-exhausted to search one again"
+            )
         return (
             "no-lane: this box has no assigned survey sectors — set "
             "WINDOWSILL_HUNT_SECTORS or write LAB_HOME/hunt-sectors "
