@@ -13,12 +13,18 @@ This file pins the layout that exists today. It changes nothing: the goldens
 below were read off the current serializers and off the artifacts already
 committed to the repo.
 
-Four DIFFERENT layouts are in force and each is deliberate:
+Five DIFFERENT layouts are in force and each is deliberate:
 
   ``pot.json``            indent=2, INSERTION order, ensure_ascii, "\\n"
   ``physics-latest.json`` indent=2, INSERTION order, ensure_ascii, "\\n"
   public receipts         indent=2, SORTED keys, ensure_ascii=False, "\\n"
   hunt receipts           indent=1, INSERTION order, ensure_ascii, no newline
+  selftest receipts       indent=2, INSERTION order, ensure_ascii, "\\n"
+
+The selftest receipts (``reports/receipts/selftest-<date>-<hhmm>-<machine>.json``,
+new 2026-09-04) share the pot's layout rather than the sorted public-receipt one
+on purpose: ``lab.selftest`` writes the same record to the box's scratch file and
+to the ledger, and one serializer for one record is one thing to keep pinned.
 
 The receipts are sorted ON PURPOSE — that is their spec, and this file pins it
 sorted. Only the pot and the feeds are insertion-ordered, and those are the
@@ -184,6 +190,44 @@ def test_committed_receipts_match_the_receipt_serialization():
         if expected != text:
             bad.append(path.name)
     assert not bad, f"receipts whose bytes disagree with receipt_text: {bad[:5]}"
+
+
+def test_committed_selftest_receipts_match_their_serialization():
+    """The test-suite verdicts on the ledger, pinned like everything else.
+
+    These are a NEW committed artifact family (2026-09-04): a per-machine
+    ``tests`` map in pot.json is derived from them, so they accrete forever and
+    a serializer change would rewrite every one of them on its next run — a
+    whole-file diff on each and a guaranteed conflict with the other box, which
+    is exactly the wedge this file exists to prevent.
+
+    Tolerates an empty set: on a fresh branch no box has taken a test turn yet,
+    and a pin that FAILED before the first artifact exists would just be noise.
+    """
+    from lab import selftest
+
+    found = sorted((REPO / "reports" / "receipts").glob(selftest.RECEIPT_GLOB))
+    bad = []
+    for path in found:
+        text = path.read_text(encoding="utf-8")
+        if _reserialize(text, indent=2) + "\n" != text:
+            bad.append(path.name)
+    assert not bad, f"selftest receipts whose bytes disagree with write_receipt: {bad[:5]}"
+
+
+def test_the_selftest_receipt_writer_produces_the_pinned_layout(tmp_path):
+    """The golden-byte half: catches a serializer change before any artifact
+    has been regenerated to match it."""
+    from lab import selftest
+
+    path = selftest.write_receipt(
+        tmp_path, dict(FIXTURE), date="2026-09-04", turn="0312",
+        prov={"platform": "linux-x86_64", "dependencies": {"torch": "2.1+rocm6"}})
+    text = path.read_text(encoding="utf-8")
+    assert text == json.dumps(json.loads(text), indent=2) + "\n"
+    assert text != json.dumps(json.loads(text), indent=2, sort_keys=True) + "\n"
+    assert "\\u2014" in text            # ensure_ascii, like the pot
+    assert path.name == "selftest-2026-09-04-0312-linux-rocm.json"
 
 
 def test_committed_hunt_receipts_match_the_hunt_serialization():

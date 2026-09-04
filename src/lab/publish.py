@@ -595,6 +595,7 @@ def turn_cadence() -> dict:
     box is a fact worth publishing, not a blank.
     """
     from .archive import machine_of  # one pinned derivation, imported not copied
+    from .selftest import stamp_is_datable  # one pinned clock bound, likewise
 
     turns: dict = {"count": 0, "today": 0}
     if not RECEIPTS_DIR.exists():
@@ -622,6 +623,20 @@ def turn_cadence() -> dict:
             continue
         stamp = data.get("generated_at")
         if not (isinstance(stamp, str) and stamp):
+            continue
+        # A stamp implausibly far ahead of now is not "newer", it is UNDATABLE.
+        # `stamp > prior` is a bare wall-clock comparison with no upper bound:
+        # it accepts a receipt stamped 2099 exactly as readily as one stamped a
+        # minute ago, and once accepted, every real turn filed afterwards loses
+        # the comparison — that machine's `last_by_machine` row is pinned to a
+        # record nothing can supersede, for good. One box back from sleep with a
+        # bad RTC, one VM restored from a snapshot, one timezone bug is enough.
+        # And the row is what the page's freshness clause reads, so the failure
+        # mode is a permanently fresh-looking box that has stopped filing turns.
+        # `stamp_is_datable` (lab/selftest.py) owns the bound and the reasoning
+        # for why it is one hour; the SAME defect in the staleness test is why
+        # the selftest block demotes a future stamp rather than aging it.
+        if not stamp_is_datable(stamp):
             continue
         prior = last_by_machine[machine]
         if prior is None or stamp > prior:
@@ -1336,7 +1351,8 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
                    reports=None, reports_ledger=None, turns=None,
                    divergence=None, hunt=None,
                    goal: dict | None = None,
-                   objections: dict | None = None) -> dict:
+                   objections: dict | None = None,
+                   tests: dict | None = None) -> dict:
     """Assemble the sanitized snapshot the /windowsill/ page consumes.
 
     ``turns`` (optional) is the ``turn_cadence()`` object — the pass counter and
@@ -1345,6 +1361,20 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
     absent and the page degrades to its legacy constants without them.
     ``hunt`` (optional) is the ``hunt_block()`` aggregate of the committed
     survey receipts; omitted when absent and the page hides its hunt section.
+
+    ``tests`` (optional) is the ``selftest.tests_by_machine()`` object — a
+    PER-MACHINE map, one row per declared box: when its suite last ran, how it
+    graded, and whether the GPU-gated tests executed. It sits alongside ``turns``
+    because ``turns`` is the precedent twice over — this feed already carries
+    operational facts, and ``turns.last_by_machine`` already solved "a
+    per-machine fact needs a per-machine slot" in the strong way. A single
+    ``tests`` object here would be last-writer-wins across two boxes that both
+    publish this feed, which is how one machine's red suite got erased by the
+    other's green within hours. Unlike the blocks above it is passed on EVERY
+    publish, never omitted, and every declared machine always has a row: a feed
+    with no ``tests`` key — or a map with a machine simply missing from it — is
+    exactly the blind spot this closes, so the honest ``status: "unknown"`` shape
+    is published instead of nothing.
 
     ``reports_ledger`` (new) is the archive's sanitized every-run ledger
     (``archive.run_ledger()`` — rows of ``{date, milestone, verdict, headline,
@@ -1382,6 +1412,8 @@ def build_snapshot(milestones, last_run, runs, temp_c, report=None,
         snap["reports"] = rows
     if turns is not None:
         snap["turns"] = turns
+    if tests is not None:
+        snap["tests"] = tests
     if divergence:
         snap["divergence"] = divergence
     if hunt is not None:
@@ -1417,6 +1449,44 @@ def collect() -> dict:
     except Exception:  # noqa: BLE001 — same guard: the turn layer never breaks the feed
         pass
     hunt = hunt_block()   # pure function of committed reports/hunts/*.json
+    # Whether the TEST SUITE ran, which until 2026-09-04 this feed never said —
+    # so "did a box publish a receipt" was the estate's only proxy for it, and a
+    # sibling agent reading that proxy reported a two-week test outage that had
+    # not happened. See lab/selftest.py for the full story.
+    #
+    # PER MACHINE, and derived from the COMMITTED receipt ledger — the same
+    # shape and the same source as `turns.last_by_machine` above, deliberately.
+    # The first cut of this block filled ONE slot from this box's
+    # ~/.lab/selftest-latest.json. Both machines publish this feed, so that made
+    # the test verdict last-writer-wins on shared mutable state: win's red suite
+    # was overwritten by loam's green a few hours later, and loam's by win's. A
+    # per-machine map over an append-only ledger has no such slot to fight over,
+    # and it moves the block from box-local state to committed state — which
+    # helps CI's "pot.json is a pure function of committed state" gate rather
+    # than threatening it (see .github/workflows/ci.yml: that gate compares only
+    # the `milestones` array today, but this block is now re-derivable from the
+    # repo alone, which the old one was not).
+    #
+    # The fallback is seeded BEFORE the try, not inside an except that leaves it
+    # None: every other optional block here degrades by vanishing, and a vanished
+    # key is precisely the blind spot. This one degrades to an honest "unknown"
+    # PER DECLARED MACHINE even if importing the module fails outright — a map
+    # that silently drops a box reads as "fine" for that box.
+    tests = {
+        machine: {
+            "status": "unknown",
+            "detail": "the test-status reader could not be loaded — treat as unmeasured",
+            "at": None, "machine": machine,
+            "passed": None, "failed": None, "skipped": None,
+            "gpu_tests_ran": False,
+        }
+        for machine in CADENCE.get("machines", []) if isinstance(machine, str)
+    }
+    try:
+        from . import selftest
+        tests = selftest.tests_by_machine(RECEIPTS_DIR, CADENCE.get("machines", []))
+    except Exception:  # noqa: BLE001 — an unmeasured suite publishes as unknown, never as absent
+        pass
     # The declared goal rides the feed the public page already reads, rather
     # than standing up a surface of its own. Its progress is COMPUTED from the
     # catalogue every publish — a goal whose progress is hand-written measures
@@ -1443,11 +1513,12 @@ def collect() -> dict:
             parse_milestones(text), last_run, runs, cpu_temp_c(),
             reports_ledger=ledger, turns=turns, divergence=divergence,
             hunt=hunt, goal=goal_block, objections=objection_block,
+            tests=tests,
         )
     return build_snapshot(
         parse_milestones(text), last_run, runs, cpu_temp_c(),
         reports=discover_runs(), hunt=hunt, goal=goal_block,
-        objections=objection_block,
+        objections=objection_block, tests=tests,
     )
 
 

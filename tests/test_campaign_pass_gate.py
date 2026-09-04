@@ -79,6 +79,24 @@ def main():
     if "verify" in argv:
         return int(os.environ.get("STUB_VERIFY_RC", "0"))
 
+    if "selftest" in argv:
+        # The real one runs pytest, writes a SCRATCH record under LAB_HOME, and
+        # — on the ONE pass per UTC day it is due — files its verdict as a
+        # committed receipt under reports/receipts/, because ~/.lab is box-local
+        # and a verdict that never leaves the box is one the shared feed cannot
+        # carry. Not-due is the common case (a box takes ~4 passes a day), so
+        # the default here writes nothing; STUB_SELFTEST_RECEIPT stands in for
+        # the due pass.
+        rc = int(os.environ.get("STUB_SELFTEST_RC", "0"))
+        if os.environ.get("STUB_SELFTEST_RECEIPT"):
+            receipts = root / "reports" / "receipts"
+            receipts.mkdir(parents=True, exist_ok=True)
+            (receipts / "selftest-2026-09-04-0312-linux-rocm.json").write_text(
+                json.dumps({"schema": "windowsill.selftest-receipt.v1",
+                            "selftest": {"status": "fail" if rc else "pass"}}),
+                encoding="utf-8")
+        return rc
+
     return 0
 
 
@@ -112,7 +130,8 @@ class Campaign:
         self.tmp_path, self.repo, self.origin = tmp_path, repo, origin
         self.home, self.stubpath, self.bash = home, stubpath, bash
 
-    def run_pass(self, next_rc=0, verify_rc=0, seed_base=1000):
+    def run_pass(self, next_rc=0, verify_rc=0, selftest_rc=0, seed_base=1000,
+                 selftest_receipt=False, dry=False):
         """One real pass of the loop. MAX_ITERS=1 exits before any sleep."""
         env = dict(os.environ,
                    HOME=str(self.home),
@@ -127,9 +146,13 @@ class Campaign:
                    LAB_CAMPAIGN_MAX_ITERS="1",
                    LAB_CAMPAIGN_INTERVAL="1",
                    STUB_NEXT_RC=str(next_rc),
-                   STUB_VERIFY_RC=str(verify_rc))
+                   STUB_VERIFY_RC=str(verify_rc),
+                   STUB_SELFTEST_RC=str(selftest_rc),
+                   STUB_SELFTEST_RECEIPT="1" if selftest_receipt else "")
         env.pop("LAB_CAMPAIGN_HOURS", None)
         env.pop("LAB_CAMPAIGN_DRY", None)
+        if dry:
+            env["LAB_CAMPAIGN_DRY"] = "1"
         proc = subprocess.run([self.bash, str(CAMPAIGN_SH)], env=env,
                               capture_output=True, text=True, timeout=300)
         log = self.home / "campaign.log"
@@ -253,6 +276,99 @@ def test_a_successful_pass_still_commits_and_publishes(campaign):
     assert campaign.heartbeat()
 
 
+def test_a_red_test_suite_never_costs_the_pass_its_publish(campaign):
+    """The loam twin of the win drive test — the pytest turn cannot withhold.
+
+    ``lab next`` and ``lab verify`` are the science gates and they withhold; the
+    suite runs AFTER the commit and push and answers a different question. The
+    string pins in test_campaign_maturity.py say ``withhold_pass`` is not
+    reachable from the tail; this proves it by failing the step for real and
+    reading the ledger, the heartbeat and the loop's own exit status back out.
+    """
+    before = campaign.commit_count()
+    proc = campaign.run_pass(selftest_rc=1)
+
+    assert proc.returncode == 0, proc.campaign_log
+    assert campaign.commit_count() == before + 1, \
+        "a red suite unpublished a run that graded clean:\n" + proc.campaign_log
+    assert campaign.head_subject().startswith("campaign: pass 1 ")
+    assert "reports/receipts/run-seed1001.json" in campaign.pushed_files()
+    assert campaign.heartbeat(), "a red suite swallowed the freshness heartbeat"
+    assert campaign.is_runnable(), "a red suite left the clone unrunnable — lane frozen"
+    assert "selftest reported a FAILURE" in proc.campaign_log
+    assert "publish above stands" in proc.campaign_log
+
+
+def test_the_test_verdict_reaches_the_committed_ledger(campaign):
+    """The verdict has to LEAVE THE BOX, and only a commit does that.
+
+    pot.json's `tests` block is a per-machine map derived from the committed
+    selftest receipts — the same shape and the same source as
+    turns.last_by_machine — precisely because the box-local file it used to be
+    derived from is ONE mutable slot two machines both write, where one box's
+    red suite is erased by the other's green within hours.
+
+    Nothing else in the pass stages this receipt: `git add -A -- reports/` ran
+    before the selftest step, so without its own commit it sits untracked until
+    a later pass sweeps it — or until `withhold_pass` runs
+    `git clean -qfd -- reports/` and deletes it.
+    """
+    proc = campaign.run_pass(selftest_receipt=True)
+    receipt = "reports/receipts/selftest-2026-09-04-0312-linux-rocm.json"
+    assert receipt in campaign.files_at_head(), \
+        "the test verdict never reached the ledger:\n" + proc.campaign_log
+    assert receipt in campaign.pushed_files(), \
+        "the test verdict was committed but never pushed:\n" + proc.campaign_log
+    assert campaign.is_runnable(), "the receipt commit left the clone dirty"
+
+
+def test_the_receipt_commit_touches_nothing_but_the_receipts_directory(campaign):
+    """It runs after the science commit and must not be able to move the feed.
+
+    A commit that could reach pot.json here would be a second, ungraded
+    publisher of the science feed sitting in the pass's tail.
+    """
+    campaign.run_pass(selftest_receipt=True)
+    subject = campaign.head_subject()
+    assert subject.startswith("selftest: "), subject
+    touched = _git(campaign.repo, "show", "--name-only", "--format=", "HEAD").split()
+    assert touched == ["reports/receipts/selftest-2026-09-04-0312-linux-rocm.json"], touched
+
+
+def test_a_withheld_science_pass_still_files_its_test_verdict(campaign):
+    """The two signals are independent, and this is the erasure hole it closes.
+
+    A refused pass runs `withhold_pass`, which ends in
+    `git clean -qfd -- reports/`. An untracked selftest receipt sitting there is
+    collateral — the verdict deleted before anything could read it. The selftest
+    step runs after the withhold and commits its own receipt, so a refused
+    science run and a green suite stay two facts rather than collapsing into one.
+    """
+    before = campaign.commit_count()
+    proc = campaign.run_pass(verify_rc=1, selftest_receipt=True)
+    assert "verify failed; publishing withheld" in proc.campaign_log
+    assert campaign.commit_count() == before + 1, \
+        "the withheld pass swallowed the test verdict too:\n" + proc.campaign_log
+    assert campaign.head_subject().startswith("selftest: ")
+    assert "reports/receipts/selftest-2026-09-04-0312-linux-rocm.json" in \
+        campaign.files_at_head()
+    # ...and the science feed is still exactly where the withhold left it.
+    assert "reports/receipts/run-seed1001.json" not in campaign.files_at_head()
+
+
+def test_a_not_due_pass_commits_nothing_extra(campaign):
+    """The common case: ~3 of every 4 passes are not this box's test turn.
+
+    The receipt commit must be silent then — no empty commit, no ledger noise,
+    nothing for the next pass's "pre-existing staged changes" guard to trip on.
+    """
+    before = campaign.commit_count()
+    campaign.run_pass()                       # not due ⇒ no receipt written
+    assert campaign.commit_count() == before + 1     # the science pass only
+    assert campaign.head_subject().startswith("campaign: pass 1 ")
+    assert campaign.is_runnable()
+
+
 def test_a_failed_verify_still_withholds_the_commit(campaign):
     """Pre-existing behaviour this change must not disturb: a red re-grade
     withholds the publish and restores the campaign-owned paths."""
@@ -261,3 +377,52 @@ def test_a_failed_verify_still_withholds_the_commit(campaign):
     assert campaign.commit_count() == before
     assert campaign.is_runnable()
     assert not campaign.heartbeat()
+
+
+# --- the review's two: DRY stays local, and a failed receipt commit unwedges ---
+
+def test_a_dry_pass_never_pushes_the_test_verdict(campaign):
+    """`LAB_CAMPAIGN_DRY` is documented at the top of campaign.sh as
+    "run+render locally, leave unstaged, skip commit/push".
+
+    The science path honours it by resetting what it staged. The selftest step
+    was added AFTER that branch, outside it — so a dry pass would git add,
+    commit and PUSH a receipt to origin/main out of a run whose entire contract
+    is that it publishes nothing.
+    """
+    before = campaign.commit_count()
+    proc = campaign.run_pass(selftest_receipt=True, dry=True)
+    assert campaign.commit_count() == before, (
+        "a DRY pass committed:\n" + proc.campaign_log)
+    assert not any(f.startswith("reports/receipts/selftest-")
+                   for f in campaign.pushed_files()), campaign.pushed_files()
+    assert campaign.is_runnable(), "a DRY pass left the clone unrunnable"
+
+
+def test_a_receipt_commit_that_fails_leaves_the_lane_runnable(campaign):
+    """The wedge. `git add` stages the receipt; if the commit then fails, the
+    index stays loaded — and this loop's own top-of-pass guard treats a loaded
+    index as a reason to skip the ENTIRE pass ("refusing to run or alter the
+    index"), every pass, forever. One failed commit would silently halt the
+    science lane; the science commit's own failure path resets for exactly this
+    reason, and this step must too.
+
+    Driven with a pre-commit hook that rejects only the receipt-only commit —
+    the most likely real cause (a hook, a signing key, a locked index).
+    """
+    hooks = campaign.repo / ".git" / "hooks"
+    hooks.mkdir(parents=True, exist_ok=True)
+    (hooks / "pre-commit").write_text(
+        "#!/bin/sh\n"
+        "git diff --cached --name-only | grep -q 'receipts/selftest-' && exit 1\n"
+        "exit 0\n",
+        encoding="utf-8", newline="\n")
+    (hooks / "pre-commit").chmod(0o755)
+
+    proc = campaign.run_pass(selftest_receipt=True)
+    assert "could not be committed" in proc.campaign_log, proc.campaign_log
+    assert campaign.is_runnable(), (
+        "a failed receipt commit left the index loaded — the next pass will "
+        "refuse to run at all:\n" + proc.campaign_log)
+    staged = _git(campaign.repo, "diff", "--cached", "--name-only")
+    assert staged == "", f"still staged: {staged!r}"

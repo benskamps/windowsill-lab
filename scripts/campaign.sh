@@ -375,6 +375,78 @@ while :; do
         fi
       fi
     fi
+    # The test suite's own turn — LAST in the pass, and deliberately harmless.
+    # Until 2026-09-04 no scheduled job on either box ran pytest at all: this loop
+    # ran `lab next` + `lab verify` and stopped, the Windows nightly was the same
+    # shape, and the only automated pytest anywhere was CI on push. Meanwhile
+    # pot.json — the estate's whole model of windowsill health — carried no test
+    # status, so "did a box publish a receipt" stood in for "did the tests run".
+    # Reading the first as the second is how a two-week hole in committed
+    # receipts got reported as a two-week test outage that never happened.
+    #
+    # AFTER the experiment and the publish, and its exit status is logged but
+    # never acted on. This pass has its own gates (the `lab next` / `lab verify`
+    # withholds above); the test signal is a DIFFERENT signal and must never be
+    # able to revert or withhold a run that already graded clean. A red suite is
+    # recorded in the feed's `tests` block and logged here — that is all it does.
+    #
+    # --if-due owns the cadence so this line does not: one pass per box per UTC
+    # day, picked from the UTC hour, no new entry in the env block above. It also
+    # covers plain-interval mode (HOURS unset ⇒ a pass every 30 min), where the
+    # window alone would fire twelve times — see lab/selftest.py:DUE_UTC_HOURS.
+    if ! "$PY" -m lab.cli selftest --if-due >> "$LOG" 2>&1; then
+      log "campaign: pass $iter — selftest reported a FAILURE; recorded in the feed, publish above stands"
+    fi
+    # ...and the verdict has to LEAVE THIS BOX or it is not a signal. `lab
+    # selftest` files reports/receipts/selftest-<date>-<hhmm>-<machine>.json,
+    # and nothing else stages it: this pass already ran its own
+    # `git add -A -- reports/` further up, and withhold_pass runs
+    # `git clean -qfd -- reports/`, so a receipt left untracked here is
+    # DELETED by the next refused pass — the verdict erased before anyone
+    # reads it. Commit it now, in its own commit, touching nothing but the
+    # receipt itself.
+    #
+    # Still NOT a gate, and it cannot become one: this runs after the science
+    # commit and push, it stages nothing but its own receipt, and every
+    # failure below is a log line. A push that loses a race waits for the next pass
+    # — safe_pull_rebase rebases the local commit and the next push carries
+    # it, which is the same recovery the science commit already relies on.
+    #
+    # Scoped to selftest-*.json, not to the directory: on the two branches where
+    # staging or committing the science paths FAILED, `git reset` leaves the
+    # pass's untracked debris behind, and a receipt is immutable evidence — a
+    # torn run-*.json swept in here would land on the ledger under a "selftest:"
+    # subject. The glob can only ever match what this step wrote.
+    # DRY never touches the remote. `LAB_CAMPAIGN_DRY` is documented at the top
+    # of this file as "run+render locally, leave unstaged, skip commit/push", and
+    # the science path above honours it by resetting whatever it staged. Without
+    # this branch the receipt step below would git add + commit + PUSH to
+    # origin/main out of a run whose entire contract is that it publishes nothing.
+    if [ -n "${LAB_CAMPAIGN_DRY:-}" ]; then
+      log "campaign: pass $iter — DRY, selftest receipt (if any) left uncommitted"
+    elif ls reports/receipts/selftest-*.json >/dev/null 2>&1 \
+       && git add -- 'reports/receipts/selftest-*.json' >/dev/null 2>&1 \
+       && ! git diff --cached --quiet -- 'reports/receipts/selftest-*.json' 2>/dev/null; then
+      if git commit -q --only -m "selftest: $(date -u +%F) pass $iter" -- 'reports/receipts/selftest-*.json' >/dev/null 2>&1; then
+        if git push -q >/dev/null 2>&1; then
+          log "campaign: pass $iter — selftest receipt committed and pushed"
+        else
+          log "campaign: pass $iter — selftest receipt committed; push deferred to the next pass"
+        fi
+      else
+        # UNSTAGE, always. The `git add` above put the receipt in the index, and
+        # this loop's own top-of-pass guard treats a pre-loaded index as a reason
+        # to skip the ENTIRE pass ("pre-existing staged changes; refusing to run
+        # or alter the index") — so one failed commit here would halt the
+        # science lane on every pass from then on, silently, until a human
+        # noticed. The science commit's own failure path resets for exactly this
+        # reason. Losing this receipt to a later `git clean` costs ONE verdict,
+        # which the feed then publishes as `unknown`; a wedged lane costs every
+        # pass after it, and publishes nothing at all.
+        git reset -q -- 'reports/receipts/selftest-*.json' >/dev/null 2>&1 || true
+        log "campaign: pass $iter — selftest receipt could not be committed; unstaged, it stays in the worktree"
+      fi
+    fi
   fi
 
   [ "$MAX_ITERS" -gt 0 ] && [ "$passes" -ge "$MAX_ITERS" ] && { log "campaign: reached max_iters=$MAX_ITERS"; break; }

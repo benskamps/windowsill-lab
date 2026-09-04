@@ -25,6 +25,11 @@
         }
       }
     },
+    "tests": {
+      "type": "object",
+      "description": "v5 (2026-09-04) — did the TEST SUITE run on each box, and did it exercise everything? A MAP keyed by machine (windows-cuda / linux-rocm), keyed and derived exactly like `turns.last_by_machine`: from the COMMITTED selftest receipts in reports/receipts/ (selftest-<date>-<hhmm>-<machine>.json), never from a publishing box's local state. That is the point of the shape. A single `tests` object here would be one slot for a two-box fact on a feed BOTH boxes publish, so one machine's red suite would be erased by the other's green within hours — last-writer-wins on shared mutable state, which is the green-while-dead class this block exists to retire. Sits alongside `turns` because both are operational facts about the instrument rather than scientific ones. ABSENT IS NOT PASSING, per machine: every DECLARED machine always has a row, a box that has never reported reads 'unknown' rather than being missing (a missing key reads as 'fine'), an unreadable receipt reads 'unknown', and a run older than the cadence reads 'stale' with its own grade demoted to recorded_status. Added without a schema_version bump because the whole block is optional and a consumer that ignores it degrades exactly as before.",
+      "additionalProperties": { "$ref": "#/definitions/testsRow" }
+    },
     "divergence": {
       "type": "array",
       "description": "v5 — milestones whose verdicts partition perfectly along machine lines over the last 48h. Usually absent; present only when the machines are systematically disagreeing.",
@@ -67,6 +72,32 @@
     "reason": { "type": "string" }
   },
   "definitions": {
+    "testsRow": {
+      "type": "object",
+      "description": "one declared machine's newest committed test verdict",
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["pass", "fail", "error", "stale", "unknown"],
+          "description": "the CURRENT reading for THIS machine. 'pass'/'fail' only for a fresh run; 'error' when pytest could not produce a readable result; 'stale' when this box's newest receipt is too old to speak for now; 'unknown' when this box has filed nothing readable — including a box that has never filed at all."
+        },
+        "recorded_status": {
+          "type": "string",
+          "enum": ["pass", "fail", "error"],
+          "description": "present only alongside status 'stale' — how the old run graded when it ran. Deliberately NOT surfaced as `status`, so a stale green cannot be read as a current one."
+        },
+        "detail": { "type": "string", "description": "one human line: what ran, what did not, and why the status is what it is" },
+        "at": { "type": ["string", "null"], "description": "when this machine's recorded run finished (ISO 8601, UTC). null when nothing has been recorded." },
+        "machine": { "type": ["string", "null"], "pattern": "^[a-z][a-z0-9-]{0,23}$", "description": "which box this row is about — the map key, restated. Derived through archive.machine_of from the receipt's own provenance, never from the receipt's filename and never from the record's self-reported label, so a box that mislabels itself cannot file under its sibling's name." },
+        "passed": { "type": ["integer", "null"], "minimum": 0 },
+        "failed": { "type": ["integer", "null"], "minimum": 0 },
+        "skipped": { "type": ["integer", "null"], "minimum": 0 },
+        "gpu_tests_ran": {
+          "type": "boolean",
+          "description": "THE POINT OF THIS ROW: the ~8 CUDA-gated tests have no scheduled runner, so a green CPU-only suite (CI reports 24 skipped; a real CUDA box reports 16) must not read the same as one that exercised them. Measured from that run's own per-test report, not inferred from a torch flag, and false whenever the answer is not a measured yes."
+        }
+      }
+    },
     "milestone": {
       "type": "object",
       "required": ["id", "status"],

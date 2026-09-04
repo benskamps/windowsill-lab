@@ -37,6 +37,14 @@ for rel in ("pot.json", "physics-latest.json", "reports/latest.html"):
     p = pathlib.Path(rel)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(stamp, encoding="utf-8")
+# On the ONE pass a day it is due, `lab selftest` also files its verdict as a
+# committed receipt (the feed's `tests` map is derived from those, per box).
+# Off by default: not-due is the common case.
+if cmd == "selftest" and os.environ.get("STUB_SELFTEST_RECEIPT"):
+    r = pathlib.Path("reports/receipts")
+    r.mkdir(parents=True, exist_ok=True)
+    (r / "selftest-2026-09-04-0312-windows-cuda.json").write_text(
+        '{"schema": "windowsill.selftest-receipt.v1"}', encoding="utf-8")
 sys.exit(int(os.environ.get("STUB_RC_" + cmd.upper(), "0")))
 '''
 
@@ -88,6 +96,7 @@ def _drive(tmp_path, repo, monkeypatch, **rcs):
            "PYTHONPATH": str(stub.parent),
            "LAB_NIGHTLY_LOG": str(log),
            "LAB_STATE_DIR": str(state),
+           **({"STUB_SELFTEST_RECEIPT": "1"} if rcs.pop("receipt", None) else {}),
            **{f"STUB_RC_{k.upper()}": str(v) for k, v in rcs.items()}}
     out = subprocess.run(
         [PWSH, "-NoLogo", "-NoProfile", "-NonInteractive", "-File", str(script)],
@@ -152,6 +161,95 @@ def test_win_nightly_publishes_and_beats_when_the_run_grades_clean(tmp_path, mon
     assert _git(repo, "rev-parse", "origin/main").stdout.strip() == _head(repo)
     assert (state / "nightly.published").exists(), \
         "no heartbeat after a real publish:\n" + log
+
+
+@pytest.mark.skipif(PWSH is None, reason="pwsh unavailable")
+def test_win_nightly_keeps_its_publish_when_the_test_suite_reds(tmp_path, monkeypatch):
+    """A red suite is RECORDED, never a veto — driven, not grepped.
+
+    ``test_setup.py`` pins the SHAPE of the pytest step (last, and no ``exit 1``
+    after it). This file exists because shape assertions were not enough once
+    before — see the module docstring — and the selftest step is the first thing
+    in this script whose non-zero exit is deliberately ignored, so "ignored" has
+    to be demonstrated by an actual failing exit rather than by the absence of a
+    substring.
+
+    Two things must hold, and only one of them is about the git ledger:
+
+      * the commit, the push and the ``nightly.published`` heartbeat all survive
+        a red suite, because ``lab verify`` already graded this run clean and a
+        unit-test failure is a different question;
+      * the SCRIPT still exits 0. The task XML carries
+        ``<RestartOnFailure><Interval>PT5M</Interval><Count>2</Count>``, so a
+        non-zero exit here would re-run the entire nightly — experiment, publish
+        and push — twice more, five minutes apart, because a unit test failed.
+    """
+    repo = _nightly_clone(tmp_path)
+    before = _head(repo)
+    out, log, state = _drive(tmp_path, repo, monkeypatch,
+                             next=0, verify=0, publish=0, selftest=1)
+
+    assert out.returncode == 0, \
+        "a red suite failed the whole nightly (RestartOnFailure re-runs it):\n" + log
+    assert _head(repo) != before, "a red suite cost the run its publish:\n" + log
+    assert _git(repo, "log", "-1", "--pretty=%s").stdout.strip().startswith("nightly: ")
+    assert _git(repo, "rev-parse", "origin/main").stdout.strip() == _head(repo)
+    assert (state / "nightly.published").exists(), \
+        "a red suite swallowed the heartbeat the estate watcher reads:\n" + log
+    assert "publish above stands" in log, log
+
+
+@pytest.mark.skipif(PWSH is None, reason="pwsh unavailable")
+def test_win_nightly_commits_the_test_verdict_and_nothing_else(tmp_path, monkeypatch):
+    """The verdict has to reach the LEDGER, driven through the real script.
+
+    pot.json's `tests` block is a per-machine map derived from the committed
+    selftest receipts, so a receipt that stays in the worktree is a verdict the
+    feed cannot carry — and the first cut of this deriving it from box-local
+    ~/.lab state instead is exactly why one machine's red suite was erased by
+    the other's green within hours.
+
+    Nothing else in this script stages it: `git add -A reports/` ran before the
+    selftest step. So the step commits its own receipt, and that commit must be
+    scoped to reports/receipts — anything wider would make it a second, ungraded
+    publisher of the science feed sitting in the tail (the stub deliberately
+    rewrites pot.json on the selftest call, so an unscoped commit would show).
+    """
+    repo = _nightly_clone(tmp_path)
+    out, log, state = _drive(tmp_path, repo, monkeypatch,
+                             next=0, verify=0, publish=0, selftest=0, receipt=True)
+
+    assert out.returncode == 0, log
+    subject = _git(repo, "log", "-1", "--pretty=%s").stdout.strip()
+    assert subject.startswith("selftest: "), f"{subject!r}\n{log}"
+    touched = _git(repo, "show", "--name-only", "--format=", "HEAD").stdout.split()
+    assert touched == ["reports/receipts/selftest-2026-09-04-0312-windows-cuda.json"], \
+        f"{touched}\n{log}"
+    assert _git(repo, "rev-parse", "origin/main").stdout.strip() == _head(repo), \
+        "the verdict was committed but never pushed:\n" + log
+    # The science commit under it is untouched and still says what it said.
+    parent = _git(repo, "log", "-1", "--pretty=%s", "HEAD~1").stdout.strip()
+    assert parent.startswith("nightly: "), parent
+
+
+@pytest.mark.skipif(PWSH is None, reason="pwsh unavailable")
+def test_win_nightly_files_its_verdict_even_when_the_suite_is_red(tmp_path, monkeypatch):
+    """A red suite is RECORDED, and recording it is the whole point.
+
+    The exit code is ignored (the test above this one proves the publish
+    survives); this proves the FACT survives too — a red suite that filed no
+    receipt would publish as `unknown` for this box, which reads as "we never
+    measured" rather than "it failed".
+    """
+    repo = _nightly_clone(tmp_path)
+    out, log, state = _drive(tmp_path, repo, monkeypatch,
+                             next=0, verify=0, publish=0, selftest=1, receipt=True)
+
+    assert out.returncode == 0, log
+    assert "publish above stands" in log, log
+    assert _git(repo, "log", "-1", "--pretty=%s").stdout.strip().startswith("selftest: ")
+    assert "reports/receipts/selftest-2026-09-04-0312-windows-cuda.json" in \
+        _git(repo, "ls-tree", "-r", "--name-only", "origin/main").stdout
 
 
 def test_both_nightly_templates_regrade_before_publishing():
