@@ -567,6 +567,96 @@ def test_hunt_lane_env_wins_and_malformed_reads_unassigned(monkeypatch,
     assert curriculum.hunt_lane() == (3, 30)       # file fallback
 
 
+def test_exhausted_sectors_reads_the_box_local_record(monkeypatch, tmp_path):
+    """The record dispatch consults, and the ways it is allowed to be wrong."""
+    from lab import curriculum
+    from lab import labhome
+    monkeypatch.setattr(labhome, "LAB_HOME", tmp_path)
+    assert curriculum.exhausted_sectors() == frozenset()   # no file → none
+    (tmp_path / "hunt-exhausted").write_text(
+        "2\n\n# 29 is fine, this comment is not a sector\n30  \n",
+        encoding="utf-8")
+    assert curriculum.exhausted_sectors() == frozenset({2, 30})
+    # A malformed line is skipped, never read as "the whole lane is used up":
+    # a box that silently stops hunting is a worse failure than one that
+    # searches a sector twice.
+    (tmp_path / "hunt-exhausted").write_text("2\nnot-a-sector\n",
+                                             encoding="utf-8")
+    assert curriculum.exhausted_sectors() == frozenset({2})
+
+
+def test_hunt_lane_subtracts_an_exhausted_sector(monkeypatch, tmp_path):
+    """The 112-slot livelock, as a test.
+
+    Sector 2 kept the largest REMAINING count in win's lane — its committed
+    counters cannot move, because the only receipts it can still produce are
+    withheld — so dispatch's ``max()`` re-picked it every slot. Subtracting at
+    the lane means no caller has to know that.
+    """
+    from lab import curriculum, labhome
+    monkeypatch.setattr(labhome, "LAB_HOME", tmp_path)
+    monkeypatch.setenv("WINDOWSILL_HUNT_SECTORS", "2,29")
+
+    assert curriculum.hunt_lane() == (2, 29)          # nothing used up yet
+
+    (tmp_path / "hunt-exhausted").write_text("2\n", encoding="utf-8")
+    assert curriculum.hunt_lane_assigned() == (2, 29)  # assignment is unchanged
+    assert curriculum.hunt_lane() == (29,)             # the lane rolled forward
+
+    # Every assigned sector used up reads as no huntable lane — NOT as an
+    # unassigned box, which is a different problem with a different fix.
+    (tmp_path / "hunt-exhausted").write_text("2\n29\n", encoding="utf-8")
+    assert curriculum.hunt_lane() is None
+    assert curriculum.hunt_lane_assigned() == (2, 29)
+
+
+def test_dispatch_picks_the_rolled_lane_not_the_used_up_sector(monkeypatch):
+    """And dispatch, which never learns about exhaustion, still does the right
+    thing: sector 2 has 20x the remaining coverage and is not picked."""
+    from lab import cli, curriculum
+    monkeypatch.setattr(cli, "_hunt_status",
+                        lambda: {"remaining_targets": 1400,
+                                 "sectors": [2, 29],
+                                 "per_sector": {2: 1337, 29: 63}})
+    monkeypatch.setattr(curriculum, "hunt_lane", lambda: (29,))
+    rolled = cli._hunt_status_for_dispatch()
+    assert rolled["sectors"] == [29]
+    assert max(rolled["per_sector"], key=lambda s: rolled["per_sector"][s]) == 29
+    assert rolled["remaining_targets"] == 63
+
+    monkeypatch.setattr(curriculum, "hunt_lane", lambda: None)
+    assert cli._hunt_status_for_dispatch() is None
+
+
+def test_the_gate_tells_an_exhausted_lane_apart_from_an_unassigned_one(
+        monkeypatch, tmp_path):
+    """Two different problems, two different fixes, two different sentences.
+
+    Printing 'no assigned survey sectors' at a box that has two would send the
+    reader to a file that is already correct — the same wrong-pointer that
+    cost 112 slots the first time.
+    """
+    from lab import curriculum, labhome
+    monkeypatch.setattr(labhome, "LAB_HOME", tmp_path)
+
+    monkeypatch.delenv("WINDOWSILL_HUNT_SECTORS", raising=False)
+    assert "no-lane" in (curriculum._a05_survey_gate() or "")
+
+    monkeypatch.setenv("WINDOWSILL_HUNT_SECTORS", "2,29")
+    (tmp_path / "hunt-exhausted").write_text("2\n29\n", encoding="utf-8")
+    reason = curriculum._a05_survey_gate() or ""
+    assert "lane-consumed" in reason
+    assert "no-lane" not in reason
+    assert "hunt-exhausted" in reason        # names the file that undoes it
+
+    # A caller that stubs the lane away means "unassigned" and must not be
+    # talked over: with only SOME of the assigned sectors used up, the gate
+    # says no-lane rather than re-reading the config behind the stub's back.
+    (tmp_path / "hunt-exhausted").write_text("2\n", encoding="utf-8")
+    monkeypatch.setattr(curriculum, "hunt_lane", lambda: None)
+    assert "no-lane" in (curriculum._a05_survey_gate() or "")
+
+
 def test_a05_gate_reasons(monkeypatch):
     from lab import cli, curriculum
     monkeypatch.setattr(curriculum, "hunt_lane", lambda: None)
