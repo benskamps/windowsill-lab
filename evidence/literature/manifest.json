@@ -1,0 +1,65 @@
+{
+  "pass": "u-k02-prior-art",
+  "date": "2026-09-03",
+  "assay": "docs/assays/2026-09-03-u-k02-prior-art-pinned.md",
+  "algorithm": "sha256 over newline-normalized bytes (CRLF -> LF)",
+  "note": "Each hash is over the file's bytes with CRLF newlines normalized to LF, which is the form git stores. Hashing the raw working-tree bytes instead would pin a Windows checkout only: core.autocrlf rewrites line endings on the way in and out, so a raw-byte pin written here reads DRIFT on every Linux checkout of the same commit and the receipt would fire eight false alarms rather than catch one real edit. Recompute and compare before citing anything here; a mismatch means the record drifted and the citation is unpinned.",
+  "files": [
+    {
+      "path": "daido-1986-ptp75-1460.json",
+      "bytes": 3426,
+      "sha256": "65b6a283f9a11e681ab7446952e5e5e1f257977dfbb981054aa233501f31a22b",
+      "reached": "primary-full-text",
+      "citation": "Progress of Theoretical Physics 75, 1460 (1986)"
+    },
+    {
+      "path": "daido-1989-ptp81-727.json",
+      "bytes": 5825,
+      "sha256": "c8d2e2fd6e6ccf02bc9024c2571edc6677b6dbd72bf4679426bebe11ea2bce0e",
+      "reached": "primary-full-text",
+      "citation": "Progress of Theoretical Physics 81, 727 (1989)"
+    },
+    {
+      "path": "daido-1990-jsp60-753.json",
+      "bytes": 2658,
+      "sha256": "2d758aa6f26ab1f614e46a1f7b83de2999d066ebac07356600509e711aae6004",
+      "reached": "abstract-only",
+      "citation": "Journal of Statistical Physics 60, 753 (1990)"
+    },
+    {
+      "path": "hong-chate-tang-park-2015-pre92-022122.json",
+      "bytes": 10324,
+      "sha256": "5e218187b7575207c8579dd976aed80cf5287b2460995c540f90a5757ad7269e",
+      "reached": "primary-full-text",
+      "citation": "Physical Review E 92, 022122 (2015)"
+    },
+    {
+      "path": "tang-2011-jstat-p01034.json",
+      "bytes": 2055,
+      "sha256": "7bcdceb67c4ac37ef023dbb7b90ae77db97b9e8594bd75b4e67dc273bf8a2624",
+      "reached": "primary-full-text",
+      "citation": "J. Stat. Mech. (2011) P01034"
+    },
+    {
+      "path": "yoon-etal-2015-pre91-032814.json",
+      "bytes": 3898,
+      "sha256": "e856b37a17d11723b35b610fecb6792d5c6b00379eba81209cc09b21cbd5c082",
+      "reached": "primary-full-text",
+      "citation": "Physical Review E 91, 032814 (2015)"
+    },
+    {
+      "path": "park-park-2024-pre110-034216.json",
+      "bytes": 4471,
+      "sha256": "fbd91e9e9fe7ff9f0a22cc6bc204cc7febeb92114f0ed3568ffe8cfe3c437060",
+      "reached": "primary-full-text",
+      "citation": "Physical Review E 110, 034216 (2024)"
+    },
+    {
+      "path": "daido-2015-pre91-012925.json",
+      "bytes": 2286,
+      "sha256": "92c4fa6b652c072197a944d19a4b7d5df1aacdedb2414cecbe9ad0b8cad4b16b",
+      "reached": "abstract-only",
+      "citation": "Physical Review E 91, 012925 (2015)"
+    }
+  ]
+}

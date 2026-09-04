@@ -1,0 +1,38 @@
+{
+  "id": "daido-2015-pre91-012925",
+  "citation": {
+    "authors": "H. Daido",
+    "title": "Susceptibility of large populations of coupled oscillators",
+    "venue": "Physical Review E 91, 012925 (2015)",
+    "doi": "10.1103/PhysRevE.91.012925"
+  },
+  "reached": "abstract-only",
+  "how_reached": "journals.aps.org returns HTTP 403; the abstract was reached through PubMed (PMID 25679699). Full text not read.",
+  "urls": [
+    "https://journals.aps.org/pre/abstract/10.1103/PhysRevE.91.012925",
+    "https://pubmed.ncbi.nlm.nih.gov/25679699/"
+  ],
+  "retrieved": "2026-09-03",
+  "why_this_source": "This record exists to stop a conflation. There are two Daido susceptibilities thirty years apart. This is the FIELD-response one, it is the reference Hong et al. cite for gamma_sus = 1, and it does NOT carry the 1/4-vs-1 asymmetry.",
+  "observable": "FIELD RESPONSE. How phase order responds to a synchronizing periodic force from outside.",
+  "frequency_class": "Not a frequency-class paper. Its 'nonrandom' / 'most random' axis is about the INTERACTIONS (uniform K vs random J_ij), not about the frequencies.",
+  "quotes": [
+    {
+      "locator": "title, publisher metadata",
+      "quote": "Susceptibility of large populations of coupled oscillators.",
+      "bears_on": "The reference Hong et al. cite for gamma_sus = gamma'_sus = 1 is a separate, later Daido paper about response to an external force."
+    },
+    {
+      "locator": "abstract, via PubMed",
+      "quote": "the susceptibility diverges at the critical point in the nonrandom case with Widom's equality satisfied, while it exhibits a cusp in the most random case",
+      "bears_on": "Widom's equality with beta = 1/2 and delta = 3 gives gamma = 1, which is consistent with the gamma_sus = 1 Hong et al. attribute to this paper — but the value itself was not read here."
+    }
+  ],
+  "numbers": [
+    "NOT EXTRACTED. No exponent value was read from this paper; only the abstract was reached."
+  ],
+  "caveats": [
+    "Do NOT read 'nonrandom case' / 'most random case' as regular vs random FREQUENCIES. Misreading it that way is a direct route to a confident and wrong published claim.",
+    "A citation to 'Daido's susceptibility exponent' with no year is ambiguous between two different physical objects."
+  ]
+}

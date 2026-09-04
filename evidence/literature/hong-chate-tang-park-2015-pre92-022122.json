@@ -1,0 +1,89 @@
+{
+  "id": "hong-chate-tang-park-2015-pre92-022122",
+  "citation": {
+    "authors": "H. Hong, H. Chaté, L.-H. Tang, H. Park",
+    "title": "Finite-size scaling, dynamic fluctuations, and hyperscaling relation in the Kuramoto model",
+    "venue": "Physical Review E 92, 022122 (2015)",
+    "arxiv": "1503.06393",
+    "doi": "10.1103/PhysRevE.92.022122"
+  },
+  "reached": "primary-full-text",
+  "how_reached": "arXiv:1503.06393v3 read in full, twice, through two independent renderings that agree throughout: the arXiv PDF (text extraction) and the ar5iv LaTeXML HTML. The APS published PDF is paywalled and was not opened.",
+  "urls": [
+    "https://arxiv.org/abs/1503.06393",
+    "https://arxiv.org/pdf/1503.06393",
+    "https://ar5iv.labs.arxiv.org/html/1503.06393",
+    "https://doi.org/10.1103/PhysRevE.92.022122"
+  ],
+  "retrieved": "2026-09-03",
+  "why_this_source": "The comparator U-K02 is posed against, and the source of the sentence the catalogue was over-reading.",
+  "observable": "FLUCTUATION, exclusively. chi is defined once, in Eq. (3.6), as N[<(Delta - <Delta>)^2>] with <.> a steady-state time average and [.] a sample average. There is no pinning field anywhere in the paper. The paper gives the FIELD-response exponents a different symbol and a different value in the same paragraph.",
+  "frequency_class": "Two classes, both on a unit-variance GAUSSIAN g. RANDOM = i.i.d. draws (Sec. III). REGULAR = deterministic quantiles (j - 0.5)/N (Sec. IV, Eq. 4.1). A regular LORENTZIAN was spot-checked in two sentences for nu-bar only.",
+  "quotes": [
+    {
+      "locator": "Sec. III B, Eq. (3.6) (arXiv PDF numbering; Eq. (10) in the ar5iv sequential rendering)",
+      "quote": "Now, we consider the dynamic (temporal) fluctuations of the order parameter by measuring the quantity [15]\n\nchi(K,N) == N [ <(Delta - <Delta>)^2> ] = N [ <Delta^2> - <Delta>^2 ]\n\nwhere <.> denotes time average in the steady state of a given sample and [.] sample average, respectively.",
+      "bears_on": "THE CRUX. gamma and gamma' are attached to this object, not to d<r>/dh."
+    },
+    {
+      "locator": "Sec. III B, immediately after Eq. (3.15). Ref. [16] = H. Daido, Phys. Rev. E 91, 012925 (2015).",
+      "quote": "One should note that the dynamic fluctuations of the order parameter are not necessarily proportional to the susceptibility (response of the order parameter to an infinitesimal external field) in general nonequilibrium steady states due to probable violation of the fluctuation-dissipation theorem. It is almost trivial to derive the susceptibility exponents in the Kuramoto model, which turn out to be gamma_sus = gamma'_sus = 1 [16]. Yet this accordance with the dynamic fluctuation exponents in Eq. (3.15) may be merely coincidental.",
+      "bears_on": "The paper draws the fluctuation/response distinction itself, gives the response exponents their own symbol and their own value, and warns FDT is probably violated so the two need not agree. Note where it sits: inside the RANDOM-class section, with no derivation and no error bar."
+    },
+    {
+      "locator": "Sec. IV, Eq. (4.1)",
+      "quote": "In this section, we consider the 'regular' frequency set {omega_j} with minimal disorder among frequencies. This set can be generated following a deterministic procedure given by\n\n(j - 0.5)/N = Integral_{-infinity}^{omega_j} g(omega) d omega,\n\nwith j = 1, ..., N and g(omega) = (1/sqrt(2 pi)) e^{-omega^2/2}. The generated frequencies are quasi-uniformly spaced in accordance with g(omega) in the population. As this set is uniquely determined for each N, sample disorder may result from initial conditions only. Note that the regular frequency distribution is considered in numerical attempts by Daido [4].",
+      "bears_on": "The regular class, and the distribution every exponent in Sec. IV is measured on: GAUSSIAN."
+    },
+    {
+      "locator": "Sec. IV A, end of subsection",
+      "quote": "We also considered the regular Lorentzian distribution given by g(omega) = gamma_omega/[pi(omega^2 + gamma_omega^2)] with the half-width gamma_omega, where the oscillator frequency is chosen as omega_j = gamma_omega tan[j pi/N - (N+1) pi/(2N)] for j = 1, ..., N. We find a similar behavior again with nu-bar ~= 5/4.",
+      "bears_on": "THE ENTIRE regular-Lorentzian content of the paper. nu-bar for the ORDER PARAMETER only. No chi, no gamma, no gamma-prime, no error bar. This is the cell kuramoto.py's frequency set actually sits in."
+    },
+    {
+      "locator": "Sec. IV B, Eq. (4.4) and following text",
+      "quote": "The data shown in Fig. 9 fit well to a power law\n\nchi_c ~ N^{gamma/nu-bar}   with   gamma/nu-bar = 0.22(2).\n\nUsing nu-bar = 5/4, we find gamma = 0.27(3), which is close to 1/4. This value is consistent with Daido's theoretical result of gamma = 1/4 [4].",
+      "bears_on": "REGULAR class, supercritical: they ENDORSE Daido's 1/4. Note this estimate is not independent of the assumed nu-bar = 5/4."
+    },
+    {
+      "locator": "Sec. IV B, text and Eq. (4.5)",
+      "quote": "We also estimate gamma and gamma' directly from off-critical data by examining the effective exponents gamma_eff for large N. Figure 10 shows (4 gamma_eff)^{-1} versus epsilon. Following a similar procedure as in the random case, we find gamma = 0.24(2) and gamma' = 0.25(1). We also fit the off-critical data directly in Fig. 8, which agree very well with chi ~ |epsilon|^{-0.25}. All the numerical results strongly suggest scaling exponent values as\n\nbeta = 1/2,   nu-bar = nu-bar' = 5/4,   and   gamma = gamma' = 1/4.",
+      "bears_on": "The regular-class answer, and the nu-bar-independent half of it (0.24(2), 0.25(1)) survives any later revision of nu-bar."
+    },
+    {
+      "locator": "Sec. IV B, immediately after Eq. (4.5)",
+      "quote": "Our results are clearly different from Daido's numerical suggestions of nu-bar ~= 1/2 and nu-bar' ~= 2 and also his theoretical prediction of gamma' = 1 on the subcritical side, which cannot be accounted for by adopting a slightly different definition of chi by Daido [15].",
+      "bears_on": "WHERE THE DISAGREEMENT ACTUALLY IS: the subcritical side only. And the authors close the definitional escape hatch themselves — within the fluctuation family this is a physics disagreement, not bookkeeping."
+    },
+    {
+      "locator": "Sec. III B (RANDOM frequency distribution), text preceding Eq. (3.15)",
+      "quote": "On the supercritical side, gamma_eff^{-1} varies in a nonlinear fashion far from the transition, but approaches gamma^{-1} linearly near small epsilon with the asymptotic value gamma = 0.98(5). This suggests strongly that gamma = gamma' = 1, and definitely excludes Daido's value gamma = 1/4. With gamma = 1, our numerical estimate in Eq. (3.13) lead to nu-bar = nu-bar' = 5/2.",
+      "bears_on": "THE SENTENCE THE CATALOGUE WAS OVER-READING. 'definitely excludes Daido's value gamma = 1/4' is a RANDOM-class statement. In the regular class they endorse 1/4. Any summary that says 'Hong refutes Daido' without naming the class and the side has this backwards."
+    },
+    {
+      "locator": "Sec. I (Introduction)",
+      "quote": "In the perturbation theory developed by Daido [4], it is claimed that they scale differently when approaching the synchronization threshold from above and from below, with the scaling exponent gamma = 1/4 in the supercritical region and gamma' = 1 in the subcritical region. This result is quite surprising by itself, in the sense that conventional scaling theory predicts identical scaling behavior on either side of the transition. Note that Daido used the regular frequency distribution in numerical investigations as well as in his perturbation theory [4].",
+      "bears_on": "The modern statement of Daido's pair, already converted to chi units, and the attribution of the regular class to him."
+    },
+    {
+      "locator": "Reference/endnote [15]",
+      "quote": "In references [4], a slightly different definition for dynamic fluctuations is adopted as N [ <|Z|^2> - |<Z>|^2 ] with the complex order parameter Z in Eq. (2.2). Given that the dynamic equations (2.1) have the symmetry of phi_j -> phi_j + constant for all j, this quantity behaves in the same way as N [ <Delta^2> ] in the absence of symmetry breaking, which is expected of a finite system.",
+      "bears_on": "Daido's chi is also a variance. Both sides of the dispute live on the fluctuation observable."
+    }
+  ],
+  "numbers": [
+    "FLUCTUATION | REGULAR | Gaussian | Eq. (4.5): beta = 1/2, nu-bar = nu-bar' = 5/4, gamma = gamma' = 1/4. SYMMETRIC.",
+    "FLUCTUATION | REGULAR | Gaussian | off-critical effective exponents at N = 6400: gamma = 0.24(2) above, gamma' = 0.25(1) below. Independent of nu-bar.",
+    "FLUCTUATION | REGULAR | Gaussian | at K_c, Eq. (4.4): gamma/nu-bar = 0.22(2); gamma = 0.27(3) only after assuming nu-bar = 5/4.",
+    "FLUCTUATION | RANDOM | Gaussian | Eq. (3.15): beta = 1/2, nu-bar = nu-bar' = 5/2, gamma = gamma' = 1. gamma = 0.98(5), gamma' = 1.01(3).",
+    "FLUCTUATION | REGULAR | LORENTZIAN | nu-bar ~ 5/4 for the ORDER PARAMETER only. gamma NOT REPORTED. gamma' NOT REPORTED.",
+    "FIELD RESPONSE | no class attached | Sec. III B: gamma_sus = gamma'_sus = 1, asserted in one sentence, cited to Daido PRE 91, 012925 (2015), with no derivation and no error bar."
+  ],
+  "caveats": [
+    "gamma = 0.27(3) and gamma = 0.24(2) are not independent corroboration: the first is the second-hand route through an assumed nu-bar = 5/4.",
+    "Regular-class statistics are thinner than random-class: 20-100 initial-phase samples, and the off-critical effective exponents rest on a single size N = 6400.",
+    "The paper says of the regular case that 'The small amplitude makes it difficult to determine the peak height and position accurately', which is why it uses the exactly known K_c rather than locating chi_max.",
+    "Equation numbers here follow the arXiv PDF / journal numbering. The ar5iv rendering numbers the same equations sequentially (chi definition = its Eq. 10, regular conclusion = its Eq. 28).",
+    "Whether gamma_sus = 1 holds for the REGULAR class is not settled by this text. The sentence is phrased generally but sits inside the random-class section, in a paper whose whole thesis is that the two classes have different exponents."
+  ]
+}

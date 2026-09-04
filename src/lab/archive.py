@@ -656,6 +656,157 @@ def run_ledger(limit: int | None = None) -> list[dict]:
     ])
 
 
+# ── the attempt ledger ───────────────────────────────────────────────────────
+#
+# G01 asks whether a `field` unknown has been ATTEMPTED. Until 2026-09-03 that
+# question was answered by `"ATTEMPTED" in u.reach_evidence` (goal.py) — a
+# case-sensitive, unanchored substring search against one physical line of
+# UNKNOWNS.md, a markdown file the grading agent edits, while goal.py's own
+# docstring claimed its progress was "computed, never written". The lever was
+# not even a cheat you had to intend: rewording U-A01's correction from
+# "verdict REANALYSED — NOT an attempt" to "— NOT ATTEMPTED" flips G01 from
+# OPEN to MET. That is the sentence an honest corrector reaches for FIRST, so
+# the failure mode was a lab telling the truth harder and grading itself higher
+# for it. Verified live on 2026-09-03 before this landed: OPEN → MET on that one
+# substitution.
+#
+# The answer belongs here rather than in a surface of its own, because the
+# receipts ARE the evidence and this module is already the estate's ledger over
+# them. No new dashboard, no new index, no new file: one more derivation off the
+# same bytes.
+
+
+def _receipts_dir() -> Path:
+    """The receipts directory, resolved through the publish MODULE OBJECT.
+
+    ``archive`` binds ``RECEIPTS_DIR`` by value at import (line 39). Every
+    fixture in ``tests/test_publish.py`` repoints ``publish.RECEIPTS_DIR`` and
+    not this module's copy — so a grader reading the bound name would sit inside
+    a ``tmp_path`` test and silently grade the real 196-receipt ledger, passing
+    for entirely the wrong reason and reporting nothing when the fixture it was
+    meant to read was empty. Reading the attribute off the module at call time
+    honours whichever of the two a caller patched, which is the same discipline
+    ``cli.py:277`` already uses.
+    """
+    from . import publish as publish_mod
+    return publish_mod.RECEIPTS_DIR
+
+
+def _why(e: Exception) -> str:
+    """An exception rendered for the PUBLIC feed: named, but with no local path.
+
+    Every string this module puts in a gap bucket rides ``goal.progress()`` into
+    the committed ``pot.json``, which the windowsill page reads. ``OSError``
+    puts the absolute filename of whatever it touched into ``str(e)``, so one
+    locked receipt on the publishing box would commit ``C:\\Users\\<name>\\...``
+    to a public repo — and ``pot.json`` carries no local path today.
+    ``_public_href`` is this same rule for links; this is it for reasons.
+    ``strerror`` is the identical fact without the box's disk in it, and the
+    receipt is already named in the row beside it.
+    """
+    return f"{type(e).__name__}: {getattr(e, 'strerror', None) or e}"
+
+
+def attempt_ledger(unknowns=None) -> dict:
+    """Which catalogued field-unknowns have an ATTEMPT on record, per the receipts.
+
+    The join is: the catalogue's own ``crosses_the_gate`` judgement (a `field`
+    unknown, live) against the COMMITTED ledger in ``reports/receipts/``. Never
+    ``~/.lab`` — a publisher-local receipt is a recovery input, not a public
+    record, and a goal that can be met by bytes only one box can see is a goal
+    graded in private.
+
+    Nothing here believes a receipt about itself. Each one is re-derived through
+    ``checks.check_hypothesis``, which rebuilds both constructors from the
+    receipt's own bytes and recomputes every derived string — so a flipped
+    stage, a deleted kill condition or an authored headline is REFUSED rather
+    than counted. The terminus is then recomputed from ``stage`` +
+    ``new_observations`` and never read off ``attempted_the_question``, because
+    a receipt asserting its own attempt status is the substring search again
+    with a JSON key instead of a markdown line. ``reanalysed`` is excluded by
+    name as well: a re-reading of the archive is real work and is not a crossing
+    of the gate, and saying so twice costs nothing.
+
+    Returns four named buckets plus an ``error`` string, and **never raises**.
+    That is not tidiness. ``publish.py:1425-1430`` wraps ``goal.progress()`` in a
+    bare ``except Exception: pass`` which DELETES the ``goal`` key from
+    ``pot.json`` — so an exception in here does not fail a publish, it silently
+    blanks the lab's public commitment from a pass that exits 0. The buckets
+    exist so a ledger this box cannot read FAILS CLOSED and says why:
+
+    * ``attempts``     — receipts that survive every re-derivation above.
+    * ``undecidable``  — the checker returned ``None``: written before a
+      contract field existed, so it cannot be graded under today's rule (the
+      committed H01 receipt predates ``stage`` and lands here). Never a pass.
+    * ``refused``      — the checker returned ``False``: tampering or contract
+      violation. Never a shrug.
+    * ``unreadable``   — the bytes would not parse, or grading them blew up.
+
+    A calibration receipt with no ``hypothesis`` block appears in no bucket. It
+    never claimed to attempt anything, and filing 194 of them as gaps would bury
+    the two rows that matter.
+    """
+    ledger: dict = {"attempts": [], "undecidable": [], "refused": [],
+                    "unreadable": [], "error": ""}
+    try:
+        from . import checks as checks_mod
+        from . import unknowns as unknowns_mod
+        from .hypothesis import DISCOVER, REANALYSED
+
+        cat = unknowns_mod.load() if unknowns is None else unknowns
+        gate = {u.id for u in cat
+                if u.crosses_the_gate and u.status != unknowns_mod.RETIRED}
+
+        receipts = _receipts_dir()
+        paths = (sorted(receipts.glob(f"run-{_DATE_GLOB}-*.json"))
+                 if receipts.exists() else [])
+        for path in paths:
+            try:
+                report = json.loads(path.read_text(encoding="utf-8"))
+            except Exception as e:  # noqa: BLE001 — the same rule as the grading
+                ledger["unreadable"].append(   # call below: one bad receipt is a
+                    {"receipt": path.name,     # gap, not a blanked ledger.
+                     "why": f"receipt will not parse: {_why(e)}"})
+                continue
+            if not isinstance(report, dict) or \
+                    not isinstance(report.get("hypothesis"), dict):
+                continue
+            try:
+                ok, why = checks_mod.check_hypothesis(report)
+            except Exception as e:  # noqa: BLE001 — one bad receipt is a gap,
+                ledger["unreadable"].append(   # not a blanked ledger
+                    {"receipt": path.name,
+                     "why": f"could not be graded: {_why(e)}"})
+                continue
+            if ok is None:
+                ledger["undecidable"].append({"receipt": path.name, "why": why})
+                continue
+            if not ok:
+                ledger["refused"].append({"receipt": path.name, "why": why})
+                continue
+
+            block = report["hypothesis"]
+            observations = report.get("new_observations") or {}
+            verdict = str(report.get("verdict", ""))
+            unknown_id = str(block.get("unknown_id", "")).strip()
+            # The terminus, recomputed. Not read.
+            if verdict == REANALYSED or block.get("stage") != DISCOVER \
+                    or not observations:
+                continue
+            if unknown_id not in gate:
+                continue
+            ledger["attempts"].append({
+                "unknown_id": unknown_id,
+                "receipt": path.name,
+                "verdict": verdict,
+                "observations": len(observations),
+            })
+    except Exception as e:  # noqa: BLE001 — see the fail-closed note above
+        ledger["attempts"] = []
+        ledger["error"] = _why(e)
+    return ledger
+
+
 def detect_divergence(rows: list[dict], now: str | None = None) -> list[dict]:
     """Milestones where the two machines are returning DIFFERENT verdicts.
 

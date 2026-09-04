@@ -432,3 +432,299 @@ def test_build_physics_feed_writes_file(tmp_path):
     assert data["schema"] == physics_feed.PHYSICS_SCHEMA
     assert data["provenance"]["code_sha"] == "abc123"
     assert data["m01"]["config"]["seed"] == 42
+
+
+# ── Turn-stamped receipts: the attestation that silently never ran ──────────
+#
+# Every test above this line uses a BARE ``run-<date>-<slug>.json`` receipt — the
+# only shape that existed before turn-stamping landed on 2026-08-02. All 19 of
+# them passed against a raw-name derivation that kept the turn stamp, because a
+# bare name has no stamp to keep. That is how 33 days of 2026-08-01 lattices
+# shipped under a 2026-08-30 provenance line with a green suite.
+#
+# TWO traps make the obvious regression test pass on the unfixed code, and both
+# have to be closed or this proves nothing:
+#
+# 1. Writing a stamped receipt AND its raw report side by side lets
+#    ``_newest_m01_report`` simply select the RAW report — also a valid M01 sweep
+#    in the same tree — and the feed comes out fresh without the attestation path
+#    ever running. Closed by forcing the receipt strictly newer with ``os.utime``
+#    and asserting on ``generated_from``.
+# 2. Handing in a ``previous_feed`` built from that same report lets the OTHER
+#    attestation path (``_attested_packed_snapshots``, which re-hashes the
+#    already-packed lattices) succeed on the broken code, unlabeled — a green
+#    test for the wrong reason. Closed by passing ``previous_feed=None``, so the
+#    only route to a lattice is recovering the raw report BY NAME.
+
+
+def _stamped_receipt_over_raw_report(tmp_path, receipt_name):
+    """A turn-stamped receipt that outranks the raw report it omitted snapshots from.
+
+    Returns ``(reports_dir, raw_report)``. ``os.utime`` forces the receipt
+    strictly newer — the production ordering, where the receipt is written just
+    after the run that produced the report — so selection cannot fall back to the
+    raw report and mask the seam under test.
+    """
+    import os
+
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    raw = _tiny_report()
+    raw_path = reports / "2026-08-30-m01.json"
+    raw_path.write_text(json.dumps(raw), encoding="utf-8")
+
+    receipt = _tiny_report()
+    snapshots = receipt.pop("snapshots")
+    receipt["chi"] = [0.04, 8.8, 0.35]     # this turn's OWN numbers, not the raw's
+    receipt["public_receipt"] = {
+        "omitted": [{
+            "path": "snapshots",
+            "sha256": physics_feed._snapshot_digest(snapshots),
+        }]
+    }
+    receipts = reports / "receipts"
+    receipts.mkdir()
+    receipt_path = receipts / receipt_name
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    stamp = raw_path.stat().st_mtime
+    os.utime(raw_path, (stamp, stamp))
+    os.utime(receipt_path, (stamp + 60, stamp + 60))
+    return reports, raw
+
+
+def test_turn_stamped_receipt_recovers_the_raw_report_it_was_distilled_from(tmp_path):
+    # The regression itself. ``run-2026-08-30-2100-m01.json`` is distilled from
+    # ``2026-08-30-m01.json``: the turn stamp lives ONLY in the receipt name,
+    # because one report is written per (date, slug) while every turn gets its own
+    # receipt. A blind ``name[4:]`` looks for ``2026-08-30-2100-m01.json``, a
+    # filename no code in this repo has ever written, so the lookup misses, the
+    # attestation is skipped, and — with no previous feed to carry — the triptych
+    # goes dark. Fixed, the raw report is found by name and its lattices are
+    # attested against the receipt's own digest.
+    reports, raw = _stamped_receipt_over_raw_report(
+        tmp_path, "run-2026-08-30-2100-m01.json"
+    )
+
+    feed = physics_feed.build_feed(
+        reports_dir=reports, lab_home=tmp_path / "nolab", previous_feed=None,
+    )
+    m01 = feed["m01"]
+    # The receipt won selection — without this the lattices could be fresh for
+    # the wrong reason (the raw report having been chosen directly).
+    assert feed["generated_from"] == "reports/receipts/run-2026-08-30-2100-m01.json"
+    assert m01["chi"] == [0.04, 8.8, 0.35]
+    # On the unfixed derivation there is no ``snapshots`` key at all.
+    assert set(m01["snapshots"]) == {"1.5", "2.5", "3.5"}
+    assert m01["snapshot_L"] == 4
+    # Attested from this run's own raw report → this run's evidence, unlabeled.
+    assert "snapshots_source_report" not in m01
+    assert "snapshots_date" not in m01
+
+
+def test_turn_stamped_attestation_beats_an_unrelated_stale_carry(tmp_path):
+    # The same seam with a previous feed present, and the previous feed holding
+    # ANOTHER run's lattices so the packed-retention path cannot rescue the broken
+    # derivation. Unfixed, this falls through to the disclosed-stale carry and the
+    # page keeps serving the older run under the newer provenance line — the exact
+    # 33-day shape. Fixed, the fresh attestation wins and no staleness is claimed.
+    reports, raw = _stamped_receipt_over_raw_report(
+        tmp_path, "run-2026-08-30-2100-m01.json"
+    )
+    older = tmp_path / "older"
+    older.mkdir()
+    unrelated = _tiny_report()
+    unrelated["snapshots"] = {"T=1.500": [[-1, -1, -1, -1]] * 4}
+    (older / "2026-08-01-m01.json").write_text(json.dumps(unrelated), encoding="utf-8")
+    stale_feed = physics_feed.build_feed(reports_dir=older, lab_home=tmp_path / "nolab")
+    assert stale_feed["m01"]["snapshots"]
+
+    feed = physics_feed.build_feed(
+        reports_dir=reports, lab_home=tmp_path / "nolab", previous_feed=stale_feed,
+    )
+    m01 = feed["m01"]
+    assert feed["generated_from"] == "reports/receipts/run-2026-08-30-2100-m01.json"
+    assert m01["snapshots"] != stale_feed["m01"]["snapshots"]
+    assert "snapshots_source_report" not in m01
+    assert "snapshots_date" not in m01
+
+
+def test_legacy_unstamped_receipt_still_attests_from_its_raw_report(tmp_path):
+    # The compatibility half: a receipt written before 2026-08-02 carries no turn
+    # stamp, so the parse must return exactly the string the old slice returned.
+    reports, raw = _stamped_receipt_over_raw_report(
+        tmp_path, "run-2026-08-30-m01.json"
+    )
+
+    feed = physics_feed.build_feed(
+        reports_dir=reports, lab_home=tmp_path / "nolab", previous_feed=None,
+    )
+    assert feed["generated_from"] == "reports/receipts/run-2026-08-30-m01.json"
+    assert set(feed["m01"]["snapshots"]) == {"1.5", "2.5", "3.5"}
+    assert "snapshots_source_report" not in feed["m01"]
+
+
+def test_raw_report_names_parses_the_turn_stamp_off_but_keeps_the_date():
+    # The date is also four digits followed by a hyphen, so a turn-stamp matcher
+    # run against the whole name eats the YEAR instead. Pinned directly.
+    assert physics_feed._raw_report_names("run-2026-08-30-2100-m01.json")[0] == (
+        "2026-08-30-m01.json"
+    )
+    assert physics_feed._raw_report_names("run-2026-08-30-m01.json") == [
+        "2026-08-30-m01.json"
+    ]
+
+
+# ── snapshot_peak_t: the frame's temperature travels with the frame ─────────
+
+
+def test_snapshot_peak_t_rides_with_this_runs_own_lattices(tmp_path):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    report = _tiny_report()
+    report["snapshot_peak_t"] = 2.5
+    (reports / "2026-08-30-m01.json").write_text(json.dumps(report), encoding="utf-8")
+
+    feed = physics_feed.build_feed(reports_dir=reports, lab_home=tmp_path / "nolab")
+    assert feed["m01"]["snapshot_peak_t"] == 2.5
+
+
+def test_attested_retention_publishes_this_runs_own_peak_temperature(tmp_path):
+    """The third branch: lattices retained by digest are THIS run's, so is its T.
+
+    ``build_feed`` reaches a lattice three ways, and each needs its own frame
+    temperature answered separately. The fresh and disclosed-stale paths are
+    pinned above; this is the one in between, and the one a rebuild actually
+    walks — a receipt-only tree (the raw report is gitignored) whose omission
+    digest matches the previous feed's ALREADY-PACKED lattices. Attestation
+    proves those bytes are this run's own evidence, which is why the feed
+    publishes them with no staleness label; the temperature that names their
+    middle frame therefore has to come from this run's report too, not from the
+    previous feed that merely stored them.
+
+    Without this the branch was silent: deleting its ``_set_snapshot_peak_t``
+    call left all 32 other tests in this file green (measured), so the field
+    could go missing on the commonest rebuild path with a fully green suite —
+    the same invisible-miss shape as the raw-name bug above.
+    """
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    raw = _tiny_report()                      # declares no peak temperature
+    (reports / "2026-07-14-m01.json").write_text(json.dumps(raw), encoding="utf-8")
+    previous_feed = physics_feed.build_feed(
+        reports_dir=reports, lab_home=tmp_path / "nolab"
+    )
+    assert "snapshot_peak_t" not in previous_feed["m01"]
+
+    receipts = reports / "receipts"
+    receipts.mkdir()
+    receipt = _snapshotless_receipt(physics_feed._snapshot_digest(raw["snapshots"]))
+    receipt["snapshot_peak_t"] = 2.5
+    (receipts / "run-2026-07-15-m01.json").write_text(
+        json.dumps(receipt), encoding="utf-8"
+    )
+
+    feed = physics_feed.build_feed(
+        reports_dir=reports, lab_home=tmp_path / "nolab", previous_feed=previous_feed,
+    )
+    m01 = feed["m01"]
+    assert feed["generated_from"] == "reports/receipts/run-2026-07-15-m01.json"
+    # Retained by digest, not carried: this run's evidence, so no stale label...
+    assert m01["snapshots"] == previous_feed["m01"]["snapshots"]
+    assert "snapshots_source_report" not in m01
+    # ...and the temperature naming the middle frame is this run's declaration,
+    # which the previous feed could not have supplied.
+    assert m01["snapshot_peak_t"] == 2.5
+
+
+def test_snapshot_peak_t_is_omitted_when_the_report_declares_none(tmp_path):
+    # Reports written before the engine declared the field must not gain an
+    # invented temperature — the page keeps its own nearest-Tc fallback.
+    reports, _ = _previous_feed_from_raw(tmp_path)
+    feed = physics_feed.build_feed(reports_dir=reports, lab_home=tmp_path / "nolab")
+    assert "snapshot_peak_t" not in feed["m01"]
+
+
+def test_stale_carry_brings_the_lattices_peak_temperature_not_this_runs(tmp_path):
+    # The mislabel this field exists to close: when lattices carry forward, the
+    # temperature that names them must come from the run that DREW them. This
+    # run's own declaration describes frames nobody is looking at.
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    origin_report = _tiny_report()
+    origin_report["snapshot_peak_t"] = 2.5
+    (reports / "2026-07-14-m01.json").write_text(
+        json.dumps(origin_report), encoding="utf-8"
+    )
+    previous_feed = physics_feed.build_feed(
+        reports_dir=reports, lab_home=tmp_path / "nolab"
+    )
+    assert previous_feed["m01"]["snapshot_peak_t"] == 2.5
+
+    receipts = reports / "receipts"
+    receipts.mkdir()
+    receipt = _snapshotless_receipt("0" * 64)   # attests some OTHER run's lattices
+    receipt["snapshot_peak_t"] = 3.5           # this run's frame, not the carried one
+    (receipts / "run-2026-07-15-m01.json").write_text(
+        json.dumps(receipt), encoding="utf-8"
+    )
+
+    feed = physics_feed.build_feed(
+        reports_dir=reports, lab_home=tmp_path / "nolab", previous_feed=previous_feed,
+    )
+    m01 = feed["m01"]
+    assert m01["snapshots_date"] == "2026-07-14"
+    assert m01["snapshot_peak_t"] == 2.5
+
+
+@pytest.mark.parametrize("bad", ["2.5", None, True, float("nan"), float("inf")])
+def test_snapshot_peak_t_refuses_a_non_finite_or_non_numeric_declaration(tmp_path, bad):
+    reports = tmp_path / "reports"
+    reports.mkdir()
+    report = _tiny_report()
+    report["snapshot_peak_t"] = bad
+    (reports / "2026-08-30-m01.json").write_text(json.dumps(report), encoding="utf-8")
+
+    feed = physics_feed.build_feed(reports_dir=reports, lab_home=tmp_path / "nolab")
+    assert "snapshot_peak_t" not in feed["m01"]
+
+
+def test_turn_stamped_receipt_recovers_its_raw_report_from_lab_home(tmp_path):
+    # The branch the production rebuild actually walks, and the one every test
+    # above disables with ``lab_home=tmp_path / "nolab"``.
+    #
+    # ``render._write_report`` writes the full report to BOTH ``reports/`` and
+    # ``~/.lab``, but ``reports/<date>-<slug>.json`` is gitignored — so on a fresh
+    # clone, a `git clean`, or a worktree, ``~/.lab`` is the only copy left. The
+    # turn-stamped name has to parse the same way down that path; a fix that only
+    # worked against ``reports/`` would still leave a rebuilt feed serving stale
+    # lattices under a fresh provenance line.
+    import os
+
+    reports = tmp_path / "reports"
+    receipts = reports / "receipts"
+    receipts.mkdir(parents=True)
+    lab_home = tmp_path / "labhome"
+    lab_home.mkdir()
+
+    raw = _tiny_report()
+    raw_path = lab_home / "2026-08-30-m01.json"
+    raw_path.write_text(json.dumps(raw), encoding="utf-8")
+
+    receipt = _snapshotless_receipt(physics_feed._snapshot_digest(raw["snapshots"]))
+    receipt_path = receipts / "run-2026-08-30-2100-m01.json"
+    receipt_path.write_text(json.dumps(receipt), encoding="utf-8")
+    stamp = raw_path.stat().st_mtime
+    os.utime(raw_path, (stamp, stamp))
+    os.utime(receipt_path, (stamp + 60, stamp + 60))
+
+    feed = physics_feed.build_feed(
+        reports_dir=reports, lab_home=lab_home, previous_feed=None,
+    )
+    m01 = feed["m01"]
+    assert feed["generated_from"] == "reports/receipts/run-2026-08-30-2100-m01.json"
+    assert m01["chi"] == [0.05, 7.7, 0.5]        # the receipt's own numbers won
+    assert set(m01["snapshots"]) == {"1.5", "2.5", "3.5"}
+    assert m01["snapshot_L"] == 4
+    # Attested from this run's own report → this run's evidence, unlabeled.
+    assert "snapshots_source_report" not in m01
+    assert "snapshots_date" not in m01

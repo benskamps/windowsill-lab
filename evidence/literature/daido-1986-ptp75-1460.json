@@ -1,0 +1,50 @@
+{
+  "id": "daido-1986-ptp75-1460",
+  "citation": {
+    "authors": "H. Daido",
+    "title": "Discrete-Time Population Dynamics of Interacting Self-Oscillators",
+    "venue": "Progress of Theoretical Physics 75, 1460 (1986)",
+    "doi": "10.1143/PTP.75.1460"
+  },
+  "reached": "primary-full-text",
+  "how_reached": "Full four-page scan read page by page via the OUP article-pdf route.",
+  "urls": [
+    "https://academic.oup.com/ptp/article/75/6/1460/1889919",
+    "https://academic.oup.com/ptp/article-pdf/75/6/1460/5339401/75-6-1460.pdf"
+  ],
+  "retrieved": "2026-09-03",
+  "why_this_source": "This is the paper UNKNOWNS.md and src/lab/k03.py cite for Daido's asymmetric exponent pair. It does not contain it. That is the finding.",
+  "observable": "FLUCTUATION. sigma = (<B^2> - C^2)^(1/2), the standard deviation of the order parameter of a purely deterministic system. No external field appears.",
+  "frequency_class": "REGULAR / deterministic-quantile on a LORENTZIAN g. Delta_j = gamma * tan{(j*pi/N) - (N+1)*pi/(2N)}, algebraically the inverse Lorentzian CDF at the midpoint quantiles (2j-1)/(2N). Zero frequency randomness; the randomness is in initial conditions only.",
+  "quotes": [
+    {
+      "locator": "p. 1461, left column",
+      "quote": "The Lorentzian distribution of Δ_j was realized approximately using Δ_j=γ×tan{(jπ/N)−(N+1)π/2N}(1≤j≤N).",
+      "bears_on": "Frequency class, from primary text: deterministic-quantile Lorentzian, the same construction lorentzian_frequencies() implements."
+    },
+    {
+      "locator": "p. 1462, left column",
+      "quote": "and σ=(⟨B²⟩−C²)^{1/2}",
+      "bears_on": "The observable is a standard deviation of the order parameter — a fluctuation, and note it is sigma, not sigma-squared."
+    },
+    {
+      "locator": "p. 1462, left column, Eq. (7)",
+      "quote": "On the other hand, as to σ, it is possible to show that for 0<|ε−ε_c|≪1   σ̂≃Q_±|ε−ε_c|^{−1/2} ,   (ε≷ε_c)   (7)   where σ̂=lim_{N→∞}√N σ with Q_+=(ε_cQ)^{1/2}/2 and Q_−=(ε_cQ/2)^{1/2}",
+      "bears_on": "THE NEGATIVE RESULT. The only fluctuation-exponent statement in this paper gives the SAME exponent 1/2 on both sides of the transition. Only the amplitudes are asymmetric, by a factor sqrt(2). The pair gamma = 1/4, gamma' = 1 is not here."
+    },
+    {
+      "locator": "p. 1462, right column",
+      "quote": "Note that our system is purely deterministic, so that fluctuations of B_n measured by σ are not what is induced by external stochastic perturbations, but are of internal origin.",
+      "bears_on": "Daido's own words that sigma is an intrinsic fluctuation, not a driven or field response."
+    }
+  ],
+  "numbers": [
+    "FLUCTUATION | regular Lorentzian | BOTH sides | Eq. (7): sigma-hat ~ Q_+/- |eps - eps_c|^(-1/2). Exponent 1/2 on sigma, i.e. 1 on chi = sigma^2, symmetric. Amplitude ratio Q_+/Q_- = 1/sqrt(2).",
+    "ORDER PARAMETER | p. 1462: C ~ A(eps - eps_c)^(1/2), i.e. beta = 1/2."
+  ],
+  "caveats": [
+    "The symbol gamma in this paper is the Lorentzian half-width, not a critical exponent. Grepping for 'gamma = 1/4' finds a width, not an exponent.",
+    "The numerics are a discrete-time coupled-circle-map model ('Model LDS'), not the continuous-time Kuramoto ODE.",
+    "Daido himself cites this paper only as the numerical antecedent to the 1989 letter, not as the source of the asymmetric exponents."
+  ]
+}

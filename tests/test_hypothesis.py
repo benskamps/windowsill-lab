@@ -9,8 +9,8 @@ from __future__ import annotations
 import pytest
 
 from lab import h01_bbp_tail as h01
-from lab.hypothesis import (CALIBRATE, DISCOVER, KILLED, SUPPORTED, UNRESOLVED,
-                            Finding, Hypothesis)
+from lab.hypothesis import (CALIBRATE, DISCOVER, KILLED, REANALYSED, SUPPORTED,
+                            UNRESOLVED, Finding, Hypothesis)
 
 
 def _h(**over):
@@ -158,6 +158,52 @@ def test_h01_is_labelled_calibration_and_does_not_pretend_otherwise():
     definition of the calibrate side, and a lab whose self-audits quietly count
     as discovery has lost the ability to answer the only question about its aim."""
     assert h01.HYPOTHESIS.stage == CALIBRATE
+
+
+def _observation():
+    return {"evidence/observations/run/0.csv": {
+        "path": "evidence/observations/run/0.csv", "sha256": "0" * 64,
+        "n_bytes": 12, "kind": "external-fetch"}}
+
+
+def test_a_re_analysis_that_acquired_new_observations_cannot_be_built():
+    """The contradiction the 2026-09-03 goal repair had to close first.
+
+    `REANALYSED` exists to mean one thing: the run consumed only bytes that
+    already existed when the hypothesis was written. It is also the one verdict
+    the goal grader excludes by name. So a Finding carrying that label AND new
+    observations was the 2026-08-25 failure re-armed one field over — instead of
+    a re-reading labelled an attempt, an attempt labelled a re-reading — and it
+    reported `attempted_the_question=True` while wearing the word that means the
+    opposite. Whichever way that pair had been resolved downstream, some grader
+    was going to read the label and some other grader the bytes.
+    """
+    with pytest.raises(ValueError) as caught:
+        Finding(hypothesis=_h(stage=DISCOVER, unknown_id="U-K02"),
+                verdict=REANALYSED, detail="re-read it",
+                new_observations=_observation())
+    assert "not a re-analysis" in str(caught.value)
+
+
+def test_a_re_analysis_that_read_only_the_archive_is_still_first_class():
+    """The refusal above must not make the honest case harder to file. U-A01's
+    committed receipt is exactly this shape, and re-scoring 173 crossings
+    against a measured null is real work that turned an empty shelf into a
+    measured empty."""
+    finding = Finding(hypothesis=_h(stage=DISCOVER, unknown_id="U-K02"),
+                      verdict=REANALYSED, detail="re-read it")
+    assert finding.attempted_the_question is False
+    assert finding.decided is True
+    assert finding.to_report()["verdict"] == "reanalysed"
+
+
+def test_an_attempt_that_went_outside_says_so_under_a_deciding_verdict():
+    """The other half of the same rule: a run that acquired bytes reports one of
+    the three doors, and `attempted_the_question` follows the observations."""
+    finding = Finding(hypothesis=_h(stage=DISCOVER, unknown_id="U-K02"),
+                      verdict=KILLED, detail="it died",
+                      new_observations=_observation())
+    assert finding.attempted_the_question is True
 
 
 def test_the_board_schema_and_the_dataclass_are_the_same_six_fields():

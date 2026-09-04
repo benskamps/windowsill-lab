@@ -1,12 +1,39 @@
 """K03 — Daido vs Hong: is the susceptibility exponent asymmetric across K_c?
 
 χ ~ |K − K_c|^(−γ) above the transition and ^(−γ') below. Daido's perturbation
-theory (Prog. Theor. Phys. 75, 1460 (1986); J. Stat. Phys. 60, 753 (1990))
+theory (Prog. Theor. Phys. 81, 727 (1989); J. Stat. Phys. 60, 753 (1990))
 predicts an ASYMMETRIC pair — γ = 1/4 supercritical, γ' = 1 subcritical — on
-the regular (deterministic-quantile) frequency distribution. Hong, Chaté, Tang
-& Park, PRE 92, 022122 (2015) §IV contradict it: γ = γ' = 1/4 for the same
-class. The 2026-08-02 assay established this engine's frequency set is that
-class term for term, so the disagreement is measurable here.
+the regular (deterministic-quantile) Lorentzian frequency distribution. Hong,
+Chaté, Tang & Park, PRE 92, 022122 (2015) §IV contradict it: γ = γ' = 1/4 for
+the regular class, sampled from a Gaussian. The 2026-08-02 assay established
+this engine's frequency set is the regular class term for term.
+
+### The mismatch this module has not yet resolved — read this before running it
+
+**Both published pairs are FLUCTUATION exponents.** They describe the divergence
+of ``chi = N*Var_t(r)``, the intrinsic noise of the order parameter — that is
+what Daido's 1989 title names and what Hong et al. measure. The next section
+explains why this module instruments a linear RESPONSE instead, and the two are
+not the same quantity. That contradiction sat in this file for a year as prose:
+a heading asserting "FIELD measurement" directly above two constants that were
+about something else.
+
+It is now data. ``DAIDO``/``HONG`` carry ``observable=FLUCTUATION_OBSERVABLE``,
+this bench carries ``INSTRUMENT_OBSERVABLE``, and ``rivals.discriminates_on``
+RAISES when it is HANDED that pairing.
+
+Read that sentence narrowly, because the same over-reading is what let the
+original contradiction live here for a year: as of 2026-09-03 nothing in this
+module or in ``hypothesis.py`` calls the guard. It is a function a caller may
+invoke, not a gate a run must pass, and until ``Hypothesis.__post_init__``
+invokes it (doctrine item 4) a K03 run posed against the wrong observable is
+still *possible* — it is merely now refusable, and legible on the receipt via
+``instrument_observable``. The failure that wiring forecloses is
+not a null: a subcritical response slope landing anywhere near 1 coincides
+numerically with ``DAIDO["gamma_prime"]``, so the sigma-distance below would
+report "Daido confirmed, Hong refuted" with confidence, and both halves of that
+sentence would be wrong. Until a rival pair is posed for the response
+observable, ``_verdict``'s adjudication is decoration and is labelled as such.
 
 ### Why this is a FIELD measurement and not a fluctuation one
 
@@ -56,6 +83,7 @@ from .kuramoto import (
     DT, GAMMA, critical_coupling, lorentzian_frequencies, mean_field_r,
     order_parameter, rk4_step,
 )
+from .rivals import Rival
 
 # ── the measurement's identity ───────────────────────────────────────────────
 # Symmetric log-spaced grid in ε = |K − K_c|/K_c, both branches. The floor sits
@@ -84,12 +112,77 @@ T_BURN = 1000.0
 T_MEASURE = 2000.0
 PILOT_T_BURN = 300.0
 PILOT_T_MEASURE = 600.0
+# ── what this bench actually instruments ─────────────────────────────────────
+# Carried as DATA, not only as prose in the docstring above, so the rival guard
+# can compare a published claim against the quantity on the bench instead of a
+# reader having to notice the contradiction. Both entries are response slopes.
+INSTRUMENT_OBSERVABLE = {
+    "below": "field response: chi_prime = d<cos theta>/dh",
+    "above": "field response: chi = d<r>/dh",
+}
+# The observable Daido's and Hong's exponents are defined on — the divergence of
+# the order parameter's own temporal variance. NOT either line above. This
+# string is the whole reason rivals.discriminates_on exists.
+FLUCTUATION_OBSERVABLE = "fluctuation: chi = N*Var_t(r)"
+# Which branch each exponent names, so a caller can look up the instrument.
+EXPONENT_BRANCH = {"gamma": "above", "gamma_prime": "below"}
+# The coarsest exponent difference this design can call a difference.
+#
+# What the receipts on disk actually say, since a constant justified from memory
+# is the defect this module is being repaired for: across BOTH committed K03
+# receipts there is exactly ONE fitted stderr, 0.0177 on the supercritical
+# branch of 2026-08-23 (six columns, R² = 0.9989 — it passed its R² gate; the
+# 2026-08-15 above branch and BOTH below branches returned err=None, having
+# failed the column-count gate before any fit was attempted).
+#
+# So the subcritical resolution — the only one that could ever adjudicate this
+# pair — has never been measured. 0.10 is therefore NOT derived: it is ~5.6x the
+# single stderr this experiment has produced, chosen pessimistically because the
+# branch that matters has no error bar at all. It should be tightened to a
+# measured number the first time the below branch survives its own gate.
+EXPONENT_RESOLUTION = 0.10
 # ── the two published claims this measurement adjudicates (reported, not gated)
-DAIDO = {"gamma": 0.25, "gamma_prime": 1.0,
-         "source": "Daido, Prog. Theor. Phys. 75, 1460 (1986); "
-                   "J. Stat. Phys. 60, 753 (1990)"}
-HONG = {"gamma": 0.25, "gamma_prime": 0.25,
-        "source": "Hong, Chaté, Tang & Park, PRE 92, 022122 (2015) §IV"}
+# CITATION CORRECTED 2026-09-03. The pair was previously sourced to Prog. Theor.
+# Phys. 75, 1460 (1986) — that paper is "Discrete-Time Population Dynamics of
+# Interacting Self-Oscillators" and gives the SAME exponent on both sides of the
+# threshold (its Eq. 7). The branch asymmetry is in Prog. Theor. Phys. 81, 727
+# (1989), "Intrinsic Fluctuation and Its Critical Scaling...", and in J. Stat.
+# Phys. 60, 753 (1990). Both of those are fluctuation papers, which is the
+# mismatch below stated a second way: the title of Daido's asymmetry result
+# names the quantity, and it is not the one this module measures.
+DAIDO = Rival(
+    name="daido",
+    claim="the fluctuation exponent is ASYMMETRIC across K_c: 1/4 approaching "
+          "from above, 1 from below. NOTE these are the chi-unit RESTATEMENTS. "
+          "Daido writes his exponents on sigma = sqrt(N*Var_t(r)) and labels "
+          "both sides gamma_prime; the downstream literature squares him "
+          "without saying so, which is a factor-of-two trap in the same family "
+          "as the fluctuation/response one below",
+    observable=FLUCTUATION_OBSERVABLE,
+    predicts={"gamma": 0.25, "gamma_prime": 1.0},
+    resolvable_at={"gamma": EXPONENT_RESOLUTION,
+                   "gamma_prime": EXPONENT_RESOLUTION},
+    source="Daido, Prog. Theor. Phys. 81, 727 (1989); "
+           "J. Stat. Phys. 60, 753 (1990)",
+    frequency_class="regular (deterministic-quantile)",
+    distribution="Lorentzian",
+)
+HONG = Rival(
+    name="hong",
+    claim="the fluctuation exponent is SYMMETRIC across K_c at 1/4 for the "
+          "regular (deterministic) frequency class. NOTE the distribution: "
+          "their regular-class numbers are measured on a GAUSSIAN g(omega), "
+          "and this engine runs a Lorentzian — Daido's. There is no published "
+          "Hong gamma_prime on the distribution this bench uses, so even on "
+          "the right observable this half of the pair is an extrapolation",
+    observable=FLUCTUATION_OBSERVABLE,
+    predicts={"gamma": 0.25, "gamma_prime": 0.25},
+    resolvable_at={"gamma": EXPONENT_RESOLUTION,
+                   "gamma_prime": EXPONENT_RESOLUTION},
+    source="Hong, Chaté, Tang & Park, PRE 92, 022122 (2015) §IV",
+    frequency_class="regular (deterministic)",
+    distribution="Gaussian",
+)
 # ── validity gates for check_k03 ─────────────────────────────────────────────
 MIN_COLUMNS_PER_BRANCH = 4
 # Subcritical baseline: m(h=0) is the finite-N random-walk floor, |m| ≲ 1/√N.
@@ -100,6 +193,26 @@ BASELINE_FLOOR_SCALE = 5.0
 BASELINE_R_TOL = 0.08
 # Branch power-law fit must at least look like a power law.
 BRANCH_R2_MIN = 0.80
+
+
+def instrument_for(exponent: str) -> str:
+    """What THIS bench measures for the branch that ``exponent`` names.
+
+    The one line a caller needs to hand ``rivals.discriminates_on`` the truth
+    about the apparatus instead of a guess::
+
+        discriminates_on((DAIDO, HONG), "gamma_prime",
+                         instrument_for("gamma_prime"))
+
+    which RAISES — correctly, and that refusal is the entire point of this
+    module's rival types. Posing the pair against ``FLUCTUATION_OBSERVABLE``
+    passes, and is a statement about a run this bench has never made.
+    """
+    try:
+        return INSTRUMENT_OBSERVABLE[EXPONENT_BRANCH[exponent]]
+    except KeyError:
+        raise KeyError(
+            f"{exponent!r} names no branch of this measurement") from None
 
 
 def eps_grid(n_points: int = EPS_POINTS, eps_min: float = EPS_MIN,
@@ -371,7 +484,21 @@ def run_k03(
 
 
 def _verdict(fit_above: dict, fit_below: dict) -> dict:
-    """Nearest published claim by σ-distance — REPORTED, never graded."""
+    """Nearest published claim by σ-distance — REPORTED, never graded.
+
+    Read the module docstring's mismatch section before reading this number.
+    ``g`` and ``gp`` are RESPONSE slopes; ``DAIDO`` and ``HONG`` are FLUCTUATION
+    exponents. The σ-distance below is therefore arithmetic between two
+    different quantities, and its ``nearest`` is not an adjudication of anything
+    — least of all when ``gp`` lands near 1, where a coincidence with Daido's
+    γ' reads exactly like a confirmation. ``rivals.discriminates_on`` will
+    refuse this pairing when asked, but NOTHING ASKS IT — not this function, not
+    ``to_report``, not ``check_k03``. Calling it is still a caller's choice, so
+    this docstring is the only thing standing between the number below and a
+    reader who believes it. The function is left standing because
+    retiring it (doctrine item 9, which also drops ``nearest`` from every
+    receipt and the public page) is a separate ruling with its own blast radius.
+    """
     g, gp = fit_above.get("gamma"), fit_below.get("gamma")
     if g is None or gp is None:
         return {"nearest": None,
@@ -425,7 +552,15 @@ def to_report(result: K03Result) -> dict:
         "fit_above": result.fit_above,
         "surviving_columns": {"below": len(ok_below), "above": len(ok_above)},
         "verdict": _verdict(result.fit_above, result.fit_below),
-        "references": {"daido": DAIDO, "hong": HONG},
+        # ``to_json`` keeps the exponents and ``source`` exactly where the
+        # committed 2026-08-15 and 2026-08-23 receipts already carry them and
+        # adds the observable, the frequency class and the resolution alongside
+        # — a diff of additions, no moves.
+        "references": {"daido": DAIDO.to_json(), "hong": HONG.to_json()},
+        # What the bench measured, recorded next to what the papers predicted,
+        # so the mismatch is legible ON THE RECEIPT rather than only to someone
+        # who reads this module's docstring.
+        "instrument_observable": dict(INSTRUMENT_OBSERVABLE),
         "pilot": result.pilot,
         "wall_seconds": result.wall_seconds,
         "claim_boundary": (

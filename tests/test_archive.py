@@ -777,3 +777,441 @@ def test_none_milestone_rows_never_band():
     out = render_index(runs=runs)
     assert '<details class="era"' not in out
     assert out.count('id="run-') == 5
+
+
+# ── the attempt ledger: which field-unknowns have a receipt behind them ──────
+#
+# G01's attempt condition used to be a case-sensitive substring search for
+# "ATTEMPTED" in a markdown line the grading agent writes. These tests pin the
+# replacement: a join between the catalogue's own ``crosses_the_gate`` verdict
+# and the committed receipts, with every receipt re-derived through
+# ``checks.check_hypothesis`` rather than believed. Hermetic — the catalogue is
+# patched alongside the receipts directory, so nothing here reads the real
+# UNKNOWNS.md or the real 196-receipt ledger.
+
+def _unknown(**over):
+    from lab import unknowns as U
+    base = dict(id="U-X01", track="X", question="q?", why_open="w",
+                known_to_whom=U.FIELD, who_would_care="us",
+                feasibility_test="cheap", if_out_of_reach="buy more",
+                status=U.CHARTED, reach=U.IN_REACH)
+    base.update(over)
+    return U.Unknown(**base)
+
+
+def _patch_catalogue(monkeypatch, *entries):
+    """Point BOTH readers of the catalogue at a fixture.
+
+    ``attempt_ledger`` reads it for the gate join and ``check_hypothesis`` reads
+    it again to confirm a DISCOVER receipt cites an id that exists, so a test
+    patching only one would be grading half a fixture against the real estate.
+    """
+    from lab import unknowns as U
+    cat = list(entries) or [_unknown()]
+    monkeypatch.setattr(U, "load", lambda *a, **kw: list(cat))
+    return cat
+
+
+def _finding_receipt(verdict="unresolved", observations=1, stage="discover",
+                     unknown_id="U-X01", **over):
+    """A receipt in the shape a real run files — built by the real constructors.
+
+    Deliberately NOT a hand-written dict: every derived string on a receipt is
+    recomputed by the checker, so a fixture that authored its own headline would
+    be testing the checker's patience rather than the ledger's join. ``over``
+    is how a test forges one field AFTER the honest receipt exists.
+    """
+    from lab.hypothesis import Finding, Hypothesis
+    hyp = Hypothesis(id=unknown_id, track="X", stage=stage,
+                     unknown_id=unknown_id if stage == "discover" else "",
+                     question="does the sector hold one?",
+                     why_unanswered="nobody has looked with this instrument",
+                     observable="a number", kill_condition="if it disagrees",
+                     cheapest_decisive="an afternoon",
+                     why_this_might_be_nothing="it is probably empty")
+    obs = {f"evidence/observations/run/{i}.csv":
+           {"path": f"evidence/observations/run/{i}.csv", "sha256": "0" * 64,
+            "n_bytes": 12, "kind": "external-fetch"}
+           for i in range(observations)}
+    report = Finding(hypothesis=hyp, verdict=verdict, detail="d",
+                     new_observations=obs).to_report()
+    report.update(over)
+    return report
+
+
+def _write_receipt(receipts, name, payload):
+    receipts.mkdir(parents=True, exist_ok=True)
+    path = receipts / name
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    return path
+
+
+def test_a_receipt_that_went_outside_is_an_attempt(tmp_path, monkeypatch):
+    """The happy path, and the only shape that can close G01: a DISCOVER run
+    citing a live field unknown, carrying observations that did not exist when
+    the question was asked, under a verdict that is not a re-reading."""
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-u-x01.json",
+                   _finding_receipt(verdict="killed", observations=2))
+    led = archive.attempt_ledger()
+    assert [a["unknown_id"] for a in led["attempts"]] == ["U-X01"]
+    assert led["attempts"][0]["receipt"] == "run-2026-09-03-0100-u-x01.json"
+    assert led["attempts"][0]["verdict"] == "killed"
+    assert led["attempts"][0]["observations"] == 2
+    assert led["refused"] == [] and led["undecidable"] == [] and not led["error"]
+
+
+def test_a_re_analysis_is_not_an_attempt_and_is_not_a_fault(tmp_path, monkeypatch):
+    """U-A01's committed receipt in miniature. Re-reading the archive with
+    better statistics is real work — it put a measured false-alarm price on 173
+    crossings — and it is not a crossing of the gate. It counts as nothing, and
+    it is filed as nothing wrong."""
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-u-x01.json",
+                   _finding_receipt(verdict="reanalysed", observations=0))
+    led = archive.attempt_ledger()
+    assert led["attempts"] == []
+    assert led["refused"] == [] and led["unreadable"] == []
+
+
+def test_a_re_analysis_carrying_observations_is_refused(tmp_path, monkeypatch):
+    """The contradiction closed in hypothesis.py, seen from the ledger.
+
+    ``reanalysed`` MEANS "consumed only committed bytes". A receipt wearing that
+    label while recording new observations is an attempt hiding under the one
+    verdict exempt from being counted as one — the 2026-08-25 failure with its
+    sign flipped — and the constructor now refuses to rebuild it.
+    """
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    payload = _finding_receipt(verdict="reanalysed", observations=0)
+    payload["new_observations"] = {"evidence/observations/run/0.csv": {
+        "path": "evidence/observations/run/0.csv", "sha256": "0" * 64,
+        "n_bytes": 12, "kind": "external-fetch"}}
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-u-x01.json", payload)
+    led = archive.attempt_ledger()
+    assert led["attempts"] == []
+    assert len(led["refused"]) == 1
+    assert "terminus" in led["refused"][0]["why"]
+
+
+def test_a_discovery_verdict_with_no_observations_is_refused(tmp_path, monkeypatch):
+    """The 2026-08-25 failure itself: a claim about the world from a run that
+    never went outside. It fails here even though the receipt reads pass."""
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    payload = _finding_receipt(verdict="killed", observations=1)
+    payload["new_observations"] = {}
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-u-x01.json", payload)
+    led = archive.attempt_ledger()
+    assert led["attempts"] == [] and len(led["refused"]) == 1
+
+
+def test_an_authored_headline_is_refused(tmp_path, monkeypatch):
+    """Nothing on a receipt is believed, including the prose a reader sees. A
+    headline edited after the run no longer matches what its own verdict
+    produces, and a ledger that trusted it would be the substring search again
+    with a JSON key instead of a markdown line."""
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-u-x01.json",
+                   _finding_receipt(headline="U-X01 crossed the gate"))
+    led = archive.attempt_ledger()
+    assert led["attempts"] == []
+    assert "headline" in led["refused"][0]["why"]
+
+
+def test_a_stage_flipped_to_discovery_is_refused(tmp_path, monkeypatch):
+    """A calibration run relabelled as discovery cannot be rebuilt: DISCOVER is
+    not self-declarable, so the flipped receipt names no catalogued unknown and
+    the constructor refuses it before the ledger has to notice."""
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    payload = _finding_receipt(verdict="unresolved", observations=1,
+                               stage="calibrate", unknown_id="H99")
+    payload["hypothesis"]["stage"] = "discover"
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-h99.json", payload)
+    led = archive.attempt_ledger()
+    assert led["attempts"] == []
+    assert "contract" in led["refused"][0]["why"]
+
+
+def test_an_attempt_that_does_not_cross_the_gate_is_not_counted(
+        tmp_path, monkeypatch):
+    """The join is against the CATALOGUE's verdict on the unknown, not the
+    receipt's opinion of itself. A sound run against a `us` unknown is
+    calibration and cannot close a discovery goal — and it is not a gap either,
+    so it lands in no bucket at all."""
+    from lab import unknowns as U
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch, _unknown(known_to_whom=U.US))
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-u-x01.json",
+                   _finding_receipt())
+    led = archive.attempt_ledger()
+    assert led["attempts"] == [] and led["refused"] == []
+
+
+def test_a_retired_unknown_cannot_be_attempted(tmp_path, monkeypatch):
+    """Retirement removes an unknown from every denominator; it has to remove it
+    from the numerator too, or a retired entry with an old receipt behind it
+    would go on meeting the goal from beyond the grave."""
+    from lab import unknowns as U
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch, _unknown(status=U.RETIRED))
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-u-x01.json",
+                   _finding_receipt())
+    assert archive.attempt_ledger()["attempts"] == []
+
+
+def test_a_receipt_predating_the_contract_is_undecidable_never_a_pass(
+        tmp_path, monkeypatch):
+    """The committed H01 receipt's shape: written before ``stage`` existed. It
+    cannot be graded under today's rule, which is an honest gap and is published
+    as one — failing an old entry against a new standard is honest, calling it
+    fraud is not, and calling it a pass is neither."""
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    payload = _finding_receipt()
+    del payload["hypothesis"]["stage"]
+    _write_receipt(reports / "receipts", "run-2026-08-24-1109-h01.json", payload)
+    led = archive.attempt_ledger()
+    assert led["attempts"] == [] and led["refused"] == []
+    assert len(led["undecidable"]) == 1
+    assert "predates" in led["undecidable"][0]["why"]
+
+
+def test_an_unparseable_receipt_is_a_named_gap_not_a_crash(tmp_path, monkeypatch):
+    """Corrupt bytes are kept as a row here for the reason the index keeps them
+    as a row: a run that vanishes because its JSON broke is a run the ledger
+    silently stopped counting."""
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    (reports / "receipts").mkdir(parents=True)
+    (reports / "receipts" / "run-2026-09-03-0100-u-x01.json").write_text(
+        "{not json", encoding="utf-8")
+    led = archive.attempt_ledger()
+    assert [r["receipt"] for r in led["unreadable"]] == \
+           ["run-2026-09-03-0100-u-x01.json"]
+    assert led["attempts"] == [] and not led["error"]
+
+
+def test_calibration_receipts_are_not_gaps(tmp_path, monkeypatch):
+    """194 of the 196 committed receipts carry no hypothesis block. They never
+    claimed to attempt anything, so filing them as gaps would bury the two rows
+    that matter under the whole ladder."""
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-m01.json",
+                   {"experiment": "M01-ising-verification", "status": "pass"})
+    assert archive.attempt_ledger() == {
+        "attempts": [], "undecidable": [], "refused": [], "unreadable": [],
+        "error": ""}
+
+
+def test_the_receipts_directory_is_resolved_through_the_publish_module(
+        tmp_path, monkeypatch):
+    """The bug this landed one attribute lookup away from.
+
+    ``archive`` binds ``RECEIPTS_DIR`` by value at import, and every fixture in
+    tests/test_publish.py repoints ``publish.RECEIPTS_DIR`` and not this
+    module's copy. A grader reading the bound name would therefore sit inside a
+    ``tmp_path`` test and grade the real 196-receipt ledger — passing for
+    entirely the wrong reason, and saying nothing about the fixture it was asked
+    to read. So this test patches ONLY the publish module, exactly as
+    test_publish does, and leaves the archive's stale copy pointing at the live
+    estate.
+    """
+    from lab import unknowns as U
+    receipts = tmp_path / "elsewhere" / "receipts"
+    monkeypatch.setattr(publish, "RECEIPTS_DIR", receipts)
+    monkeypatch.setattr(U, "load", lambda *a, **kw: [_unknown()])
+    _write_receipt(receipts, "run-2026-09-03-0100-u-x01.json", _finding_receipt())
+    led = archive.attempt_ledger()
+    assert [a["receipt"] for a in led["attempts"]] == \
+           ["run-2026-09-03-0100-u-x01.json"]
+    assert archive.RECEIPTS_DIR != receipts     # the stale bound name, unpatched
+
+
+def test_a_missing_receipts_directory_is_empty_not_broken(tmp_path, monkeypatch):
+    """A checkout with no receipts has attempted nothing. That is a fact about
+    the lab, not an error about the box."""
+    monkeypatch.setattr(publish, "RECEIPTS_DIR", tmp_path / "no-such-dir")
+    _patch_catalogue(monkeypatch)
+    assert archive.attempt_ledger() == {
+        "attempts": [], "undecidable": [], "refused": [], "unreadable": [],
+        "error": ""}
+
+
+def test_no_gap_the_ledger_publishes_carries_this_box_s_disk(
+        tmp_path, monkeypatch):
+    """These strings are PUBLISHED, so they answer to the public feed's rules.
+
+    ``goal.progress()`` copies every gap row into ``attempt_ledger_gaps`` in
+    ``pot.json``, which is committed and which the windowsill page reads. Today
+    that file contains no absolute local path anywhere — ``_public_href`` keeps
+    links to http(s) for exactly this reason, after a ``file:///home/...`` link
+    once reached the archive index.
+
+    ``OSError`` renders the absolute filename it touched, so a receipt the
+    publishing box cannot open (a lock, a permission, a directory where a file
+    should be) put ``C:\\Users\\<name>\\...`` one publish away from a public
+    repo. Demonstrated on 2026-09-04 before ``_why`` existed. The receipt is
+    already named in the row; the box's disk adds nothing a reader wants.
+    """
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    receipts = reports / "receipts"
+    receipts.mkdir(parents=True)
+    # A directory where a receipt should be: read_text raises OSError, and the
+    # message it carries is the whole absolute path.
+    (receipts / "run-2026-09-03-0100-u-x01.json").mkdir()
+    led = archive.attempt_ledger()
+    why = led["unreadable"][0]["why"]
+    assert "run-2026-09-03-0100-u-x01.json" in led["unreadable"][0]["receipt"]
+    assert str(tmp_path) not in why, f"the publishing box's disk is in the feed: {why}"
+    assert ":\\" not in why and "/" not in why, why
+    assert why != "receipt will not parse: ", "the reason was dropped, not cleaned"
+
+
+def test_the_ledger_never_raises_and_fails_closed(tmp_path, monkeypatch):
+    """``publish.py`` wraps the goal block in a bare ``except Exception: pass``
+    that DELETES the goal key from pot.json — so an exception here does not fail
+    a publish, it silently blanks the lab's public commitment from a pass that
+    exits 0. A ledger this box cannot read must therefore return, with no
+    attempts and the reason attached: a broken ledger cannot MEET the goal."""
+    from lab import unknowns as U
+    _patch(tmp_path, monkeypatch)
+
+    def boom(*a, **kw):
+        raise RuntimeError("UNKNOWNS.md is malformed")
+
+    monkeypatch.setattr(U, "load", boom)
+    led = archive.attempt_ledger()
+    assert led["attempts"] == []
+    assert "UNKNOWNS.md is malformed" in led["error"]
+
+
+def test_a_discovery_run_that_could_not_get_its_data_is_not_an_attempt(
+        tmp_path, monkeypatch):
+    """The one legal shape the constructor lets through and only this stops.
+
+    ``Finding`` refuses SUPPORTED and KILLED without observations, but it
+    deliberately does NOT refuse UNRESOLVED: that verdict is the ABSENCE of a
+    claim, and a DISCOVER runner which could not obtain its data at all has to
+    be able to say so — the permission is written into
+    ``attempted_the_question``'s docstring on purpose, and it is right. So this
+    receipt is legal, re-derives cleanly through every check in
+    ``check_hypothesis``, cites a live field unknown, and the ONLY thing between
+    it and closing G01 is this ledger recomputing the terminus from the
+    observations. The neighbouring test above uses ``killed``, which the
+    constructor rejects one layer earlier and files as ``refused`` — so it never
+    reaches this line. A run that never went outside is not an attempt, and it
+    is not a fault either: it lands in no bucket.
+    """
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-u-x01.json",
+                   _finding_receipt(verdict="unresolved", observations=0))
+    led = archive.attempt_ledger()
+    assert led["attempts"] == []
+    assert led["refused"] == [] and led["undecidable"] == []
+    assert led["unreadable"] == [] and not led["error"]
+
+
+def test_the_terminus_is_recomputed_even_when_the_receipt_does_not_state_it(
+        tmp_path, monkeypatch):
+    """``attempt_ledger``'s strongest sentence, made checkable.
+
+    Its docstring promises the terminus is recomputed from ``stage`` +
+    ``new_observations`` and "never read off ``attempted_the_question``, because
+    a receipt asserting its own attempt status is the substring search again
+    with a JSON key instead of a markdown line". Every other test in this group
+    holds either way: ``check_hypothesis`` already refuses a receipt whose
+    STATED flag disagrees with its re-derived one, so on a receipt carrying the
+    field the two readings cannot differ, and swapping the recomputation for
+    ``report.get("attempted_the_question")`` passed all 58 of them (checked
+    2026-09-04, by doing it).
+
+    They differ on a receipt that OMITS the field: ``check_hypothesis`` treats
+    the absence as no contradiction rather than a fault, so a grader reading the
+    key would drop a real attempt on the floor and publish OPEN over a crossing
+    that happened. This is the test that notices — which is what makes the
+    recomputation load-bearing rather than a sentence about itself.
+    """
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    payload = _finding_receipt(verdict="killed", observations=1)
+    del payload["attempted_the_question"]
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-u-x01.json",
+                   payload)
+    led = archive.attempt_ledger()
+    assert [a["unknown_id"] for a in led["attempts"]] == ["U-X01"]
+    assert led["refused"] == [] and led["undecidable"] == []
+
+
+def test_a_calibration_run_citing_a_field_unknown_is_not_an_attempt(
+        tmp_path, monkeypatch):
+    """``stage`` is load-bearing here, not decorative.
+
+    The contract only *requires* an ``unknown_id`` of DISCOVER; a calibrate
+    hypothesis may carry one. So a calibration run that fetched fresh bytes
+    while citing a field entry re-derives cleanly, is not tampering, and clears
+    the gate join — the stage is the only thing left saying it audited our own
+    arithmetic rather than going and looking. The flipped-stage test above
+    covers a receipt EDITED to say discovery; this one is honest and still must
+    not count.
+    """
+    from lab.hypothesis import Finding, Hypothesis
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    hyp = Hypothesis(id="H99", track="X", stage="calibrate",
+                     unknown_id="U-X01",
+                     question="is our own arithmetic right?",
+                     why_unanswered="nobody has re-derived it",
+                     observable="a number", kill_condition="if it disagrees",
+                     cheapest_decisive="an afternoon",
+                     why_this_might_be_nothing="it is probably fine")
+    obs = {"evidence/observations/run/0.csv":
+           {"path": "evidence/observations/run/0.csv", "sha256": "0" * 64,
+            "n_bytes": 12, "kind": "external-fetch"}}
+    _write_receipt(reports / "receipts", "run-2026-09-03-0100-h99.json",
+                   Finding(hypothesis=hyp, verdict="unresolved", detail="d",
+                           new_observations=obs).to_report())
+    led = archive.attempt_ledger()
+    assert led["attempts"] == []
+    assert led["refused"] == [] and led["undecidable"] == []
+
+
+def test_bytes_that_break_the_parser_are_one_gap_not_a_blanked_ledger(
+        tmp_path, monkeypatch):
+    """One unreadable receipt must cost one ROW, not the whole ledger.
+
+    Fail-closed is the right direction for a ledger nobody can read, and the
+    wrong answer for one file in a hundred: the outer handler CLEARS
+    ``attempts``, so a failure that escapes the per-receipt catch silently
+    deletes real attempts from the public feed and names no culprit — while
+    this module's own comment promises a gap instead.
+
+    ``json.loads`` is the live route to exactly that. Deeply nested bytes raise
+    ``RecursionError``, which is neither ``OSError`` nor ``ValueError``; caught
+    only by those two (as it was until 2026-09-04), the receipt below wiped the
+    attempt above it and reported ``unreadable == []``. Verified in that
+    direction before the widening landed.
+    """
+    reports, _ = _patch(tmp_path, monkeypatch)
+    _patch_catalogue(monkeypatch)
+    receipts = reports / "receipts"
+    _write_receipt(receipts, "run-2026-09-03-0100-u-x01.json",
+                   _finding_receipt(verdict="killed", observations=2))
+    (receipts / "run-2026-09-03-0200-u-x01.json").write_text(
+        "[" * 20_000 + "]" * 20_000, encoding="utf-8")
+    led = archive.attempt_ledger()
+    assert [a["receipt"] for a in led["attempts"]] == \
+           ["run-2026-09-03-0100-u-x01.json"], \
+        "one unparseable receipt erased an attempt that had already been read"
+    assert [r["receipt"] for r in led["unreadable"]] == \
+           ["run-2026-09-03-0200-u-x01.json"]
+    assert "RecursionError" in led["unreadable"][0]["why"]
+    assert not led["error"]

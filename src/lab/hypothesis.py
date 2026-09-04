@@ -138,6 +138,23 @@ class Finding:
     def __post_init__(self) -> None:
         if self.verdict not in VERDICTS:
             raise ValueError(f"{self.verdict!r} is not one of {VERDICTS}")
+        # REANALYSED *means* "consumed only bytes that already existed". A
+        # re-analysis carrying new observations is therefore not a re-analysis;
+        # it is an attempt wearing the one label that is exempt from being
+        # counted as one. Until this refusal existed the pair was constructible
+        # and `attempted_the_question` returned True for it — the 2026-08-25
+        # failure re-armed one field over: instead of a re-reading labelled as
+        # an attempt, an attempt labelled as a re-reading, which is the same
+        # decoupling of the word from the bytes with the sign flipped. A run
+        # that went outside says so with supported, killed or unresolved.
+        if self.verdict == REANALYSED and self.new_observations:
+            raise ValueError(
+                f"{self.hypothesis.id} reports {self.verdict} but records "
+                f"{len(self.new_observations)} new observation(s). A run that "
+                "acquired bytes which did not exist when the hypothesis was "
+                "written is an ATTEMPT, not a re-analysis — report it as "
+                "supported, killed or unresolved. Only a run that read the "
+                "committed archive alone may claim this verdict.")
         if (self.hypothesis.stage == DISCOVER
                 and self.verdict in (SUPPORTED, KILLED)
                 and not self.new_observations):
@@ -167,6 +184,11 @@ class Finding:
 
         A calibrate-stage runner auditing our own arithmetic (H01) never
         attempts the question and must not be forced to acquire anything.
+
+        The verdict cannot contradict this either way: ``__post_init__``
+        refuses REANALYSED beside new observations, so the one verdict that
+        exists to mean "did not go outside" can no longer be worn by a run that
+        did. The observations decide, and nothing overrides them.
         """
         return bool(self.hypothesis.stage == DISCOVER and self.new_observations)
 

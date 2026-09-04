@@ -70,6 +70,8 @@ from dataclasses import dataclass, asdict
 import numpy as np
 import torch
 
+from .ising import snapshot_indices
+
 
 # Exact honeycomb-lattice 2D Ising critical temperature (k_B = J = 1).
 # T_c = 2 / ln(2 + √3) ≈ 1.518651 — the dual of the triangular 4/ln 3.
@@ -330,7 +332,10 @@ def run(cfg: HexRunConfig) -> HexRunResult:
     # the square, triangular and 3D engines). It peaks at T_c — the thermal cross-check.
     specific_heat = (cfg.L * cfg.L) * energy.var(dim=0, unbiased=False).numpy() / (T_np ** 2)
 
-    pick_idx = [0, cfg.n_temps // 2, cfg.n_temps - 1]
+    # Middle frame = this run's own χ' peak, never the sweep's positional midpoint
+    # (see ``ising.snapshot_indices``): the gallery captions that frame critical,
+    # so the frame has to be the one the measurement calls critical.
+    pick_idx = snapshot_indices(cfg.n_temps, chi_abs)
     snapshots = {f"T={T_np[i]:.3f}": spins[i].cpu().numpy() for i in pick_idx}
 
     return HexRunResult(

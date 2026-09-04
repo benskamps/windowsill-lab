@@ -9,9 +9,11 @@ This module distills the newest M01 heartbeat report into a tiny (~8 KB) feed
 the page can fetch and render: the six measured arrays, both the raw and
 equilibrium-qualified χ peaks, disclosed quality exclusions, and the three
 lattice snapshots bit-packed to base64 (each 128×128 ±1 lattice → one bit per
-site → 2 KB → base64). Nothing is fabricated — measurements are copied from a
-provenance-stamped run, while the quality decision is re-derived by the same
-shared guard as the checker. The source report is named so a reader can diff it.
+site → 2 KB → base64) beside ``snapshot_peak_t``, the temperature of the middle
+frame the engine actually rendered. Nothing is fabricated — measurements are
+copied from a provenance-stamped run, while the quality decision is re-derived by
+the same shared guard as the checker. The source report is named so a reader can
+diff it.
 
 Kept standard-library-only (no torch, no matplotlib) so it stays cheap and the
 pure builder is unit-tested without the scientific stack. Written by ``publish``
@@ -23,6 +25,7 @@ import base64
 import hashlib
 import json
 import math
+import re
 from pathlib import Path
 
 from .m01_quality import assess_m01_quality
@@ -41,6 +44,19 @@ ONSAGER_TC = 2.0 / math.log(1.0 + math.sqrt(2.0))   # ≈ 2.269185
 
 _DATE_GLOB = "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]"
 _M01_EXPERIMENT = "M01-ising-verification"
+
+# A receipt filename is ``run-<date>[-<hhmm>]-<slug>.json`` (turn-stamping landed
+# 2026-08-02); the full report it was distilled from is ``<date>-<slug>.json``.
+# The turn stamp lives ONLY in the receipt name — ``render._commit_report`` writes
+# one report per (date, slug) and lets a same-day re-run overwrite it, while the
+# receipt is stamped so two turns are two receipts. So recovering the raw name is
+# a parse, not a slice: strip ``run-``, then strip a four-digit turn group if one
+# is there. The four-digit guard is structural, not a convention — slugs are
+# milestone ids or ``run`` and therefore always start with a letter, so this can
+# never eat a slug. Mirrors ``publish._split_receipt_stem`` without importing it,
+# for the same reason ``_date_of`` is duplicated here: this module is the cheap,
+# stdlib-only feed builder and does not drag the publisher in behind it.
+_RECEIPT_TURN_RE = re.compile(r"^\d{4}-(?=.)")
 
 # The measured arrays we lift verbatim (name in report → name in feed). Each is
 # a per-temperature list parallel to ``T``; a missing one is simply omitted.
@@ -166,6 +182,34 @@ def _attested_snapshot_digest(report: dict) -> str | None:
     return None
 
 
+def _raw_report_names(receipt_name: str) -> list[str]:
+    """Filenames the full report behind ``run-<date>[-<hhmm>]-<slug>.json`` may use.
+
+    Turn-stamped first (the parsed ``<date>-<slug>.json``, which is what
+    ``render._commit_report`` actually writes), then the literal ``run-``-stripped
+    name for the pre-2026-08-02 layout where the two were the same string. For a
+    legacy unstamped receipt both candidates ARE that same string, so the older
+    behaviour is preserved exactly and only the stamped case gains a hit.
+
+    This is the seam that broke silently: a blind ``name[4:]`` kept the ``2100-``
+    of ``run-2026-08-30-2100-m01.json`` and looked for a file that has never
+    existed on any box, so attestation could not run and the page served the
+    2026-08-01 lattices under a 2026-08-30 provenance line for 33 days while three
+    M01 turns computed fresh ones and discarded them. Failure was invisible
+    because the miss is indistinguishable from "no local raw report here" — the
+    honest carry-forward path downstream then labelled the stale panels correctly
+    and nothing ever raised.
+    """
+    stripped = receipt_name[len("run-"):]
+    # The turn stamp sits AFTER the date, so the date has to come off before the
+    # four-digit group is looked for — otherwise the year itself matches it.
+    date, rest = stripped[:10], stripped[11:]
+    names = [stripped]
+    if rest:
+        names.insert(0, f"{date}-{_RECEIPT_TURN_RE.sub('', rest, count=1)}")
+    return list(dict.fromkeys(names))
+
+
 def _attested_raw_snapshots(report: dict, source_rel: str,
                             reports_dir: Path, lab_home: Path) -> dict | None:
     """Load receipt-omitted snapshots only when their recorded digest matches."""
@@ -173,20 +217,20 @@ def _attested_raw_snapshots(report: dict, source_rel: str,
     source_name = Path(source_rel).name
     if expected is None or not source_name.startswith("run-"):
         return None
-    raw_name = source_name[4:]
-    for directory in (reports_dir, lab_home):
-        path = directory / raw_name
-        try:
-            candidate = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        snapshots = candidate.get("snapshots")
-        if (
-            _is_snapshot_report(candidate)
-            and isinstance(snapshots, dict)
-            and _snapshot_digest(snapshots) == expected
-        ):
-            return snapshots
+    for raw_name in _raw_report_names(source_name):
+        for directory in (reports_dir, lab_home):
+            path = directory / raw_name
+            try:
+                candidate = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            snapshots = candidate.get("snapshots")
+            if (
+                _is_snapshot_report(candidate)
+                and isinstance(snapshots, dict)
+                and _snapshot_digest(snapshots) == expected
+            ):
+                return snapshots
     return None
 
 
@@ -279,6 +323,27 @@ def _carried_stale_snapshots(
     if not isinstance(source, str) or not isinstance(date, str):
         return None
     return packed, lattice_L, source, date
+
+
+def _set_snapshot_peak_t(m01: dict, value: object) -> None:
+    """Record the middle frame's temperature, when its source declared one.
+
+    ``snapshot_peak_t`` describes the LATTICES, not the run: it is the temperature
+    of the frame the page captions "near the tipping point", chosen by the engine
+    from that run's own χ' curve (``ising.snapshot_indices``). So it travels with
+    whichever lattices reach the feed — this run's value when the lattices are
+    this run's, the previous feed's when they carry forward disclosed-stale — and
+    is never re-derived here, because a temperature derived from THIS run's curve
+    beside ANOTHER run's lattices is exactly the mislabel this field exists to
+    close. Reports from before the engine declared it omit the field entirely, and
+    the page keeps its existing fallback of captioning the delivered key nearest
+    T_c.
+    """
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return
+    if not math.isfinite(value):
+        return
+    m01["snapshot_peak_t"] = round(float(value), 4)
 
 
 def pack_lattice(rows: list[list[int]]) -> str:
@@ -382,10 +447,14 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
     if packed:
         m01["snapshots"] = packed
         m01["snapshot_L"] = lattice_L
+        _set_snapshot_peak_t(m01, rep.get("snapshot_peak_t"))
     else:
         retained = _attested_packed_snapshots(rep, previous_feed)
         if retained is not None:
             m01["snapshots"], m01["snapshot_L"] = retained
+            # Attested: the packed lattices ARE this run's, so its own frame
+            # temperature describes them.
+            _set_snapshot_peak_t(m01, rep.get("snapshot_peak_t"))
         else:
             # Attestation failed or absent: carry the previous lattices
             # forward labeled with their origin run, never as this run's own.
@@ -397,6 +466,9 @@ def build_feed(reports_dir: Path = REPORTS_DIR,
                     m01["snapshots_source_report"],
                     m01["snapshots_date"],
                 ) = carried
+                _set_snapshot_peak_t(
+                    m01, (previous_feed.get("m01") or {}).get("snapshot_peak_t"),
+                )
 
     return {
         "schema": PHYSICS_SCHEMA,

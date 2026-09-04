@@ -150,7 +150,7 @@ class PottsRunResult:
 # (STR-3): the square lattice is bipartite, so a site on colour ``a`` has all
 # four neighbours on colour ``b`` and vice-versa; updating one colour while the
 # other is held fixed is exact for any nearest-neighbour model, Potts included.
-from .ising import _checkerboard_masks
+from .ising import _checkerboard_masks, snapshot_indices
 
 
 def _agree_count(spins: torch.Tensor, value: torch.Tensor) -> torch.Tensor:
@@ -326,7 +326,13 @@ def run(cfg: PottsRunConfig) -> PottsRunResult:
     # the square + triangular + 3D engines). It peaks at T_c — the thermal cross-check.
     specific_heat = (cfg.L * cfg.L) * energy.var(dim=0, unbiased=False).numpy() / (T_np ** 2)
 
-    pick_idx = [0, cfg.n_temps // 2, cfg.n_temps - 1]
+    # No peak observable yet: these snapshots are q-state labels, not ±1 spins,
+    # and this engine carries ``chi`` (the order-parameter susceptibility) but no
+    # ⟨|m|⟩-based ``chi_abs``. The q≥5 transition is first-order, where a χ peak
+    # is a latent-heat artefact rather than a critical point, so pointing the
+    # gallery at it would trade one wrong caption for another. Legacy midpoint,
+    # unchanged, until someone decides what the critical frame means for Potts.
+    pick_idx = snapshot_indices(cfg.n_temps)
     snapshots = {f"T={T_np[i]:.3f}": spins[i].cpu().numpy() for i in pick_idx}
 
     return PottsRunResult(

@@ -1,0 +1,31 @@
+{
+  "id": "tang-2011-jstat-p01034",
+  "citation": {
+    "authors": "L.-H. Tang",
+    "title": "Collective behaviour of coupled phase oscillators (as cited for Daido's susceptibility)",
+    "venue": "J. Stat. Mech. (2011) P01034",
+    "arxiv": "1011.5823"
+  },
+  "reached": "primary-full-text",
+  "how_reached": "arXiv:1011.5823 full text.",
+  "urls": [
+    "https://arxiv.org/pdf/1011.5823"
+  ],
+  "retrieved": "2026-09-03",
+  "why_this_source": "An independent restatement of what Daido's chi IS, written by a co-author of the rival group and citing J. Stat. Phys. 60, 753 (1990) directly. It is the third chain on the observable question, and the only one that quotes Daido's definition in a formula.",
+  "observable": "FLUCTUATION. chi = N(Delta^2 - Delta-bar^2), with the overline an explicit time average.",
+  "frequency_class": "Not restated here; the quote is about the observable, not the class.",
+  "quotes": [
+    {
+      "locator": "Sec. 1, Eq. (4); ref [6] = H. Daido, J. Stat. Phys. 60, 753 (1990)",
+      "quote": "Daido developed a perturbation theory[6] to calculate the susceptibility defined by,\nchi == N(Delta^2 - Delta-bar^2)   (4)\nHere the overline bar denotes time average. His calculation yielded a power-law divergence of chi at Kc, but the exponent gamma differs on the two sides of the transition: gamma = gamma_minus = 1 on the subcritical side and gamma = gamma_plus = 1/4 on the supercritical side.",
+      "bears_on": "Third independent confirmation that Daido's 1/4-and-1 pair lives on the fluctuation susceptibility, and confirmation of the side assignment: 1/4 supercritical, 1 subcritical."
+    }
+  ],
+  "numbers": [
+    "FLUCTUATION | attributed to Daido JSP 1990: gamma = 1/4 supercritical, gamma' = 1 subcritical, on chi = N*Var_t."
+  ],
+  "caveats": [
+    "Tang is a co-author of Hong, Chate, Tang & Park. Two of the three chains on Daido's definition are by the group arguing against him, so the rendering is not disinterested — but all three agree, and one of them (the 1989 letter) is Daido's own text."
+  ]
+}

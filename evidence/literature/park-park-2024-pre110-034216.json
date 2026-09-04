@@ -1,0 +1,50 @@
+{
+  "id": "park-park-2024-pre110-034216",
+  "citation": {
+    "authors": "Su-Chan Park, Hyunggyu Park",
+    "title": "Finite-size scaling of the Kuramoto model at criticality",
+    "venue": "Physical Review E 110, 034216 (2024)",
+    "arxiv": "2406.18904",
+    "doi": "10.1103/PhysRevE.110.034216"
+  },
+  "reached": "primary-full-text",
+  "how_reached": "arXiv:2406.18904 full text and LaTeX source.",
+  "urls": [
+    "https://arxiv.org/abs/2406.18904",
+    "https://arxiv.org/pdf/2406.18904"
+  ],
+  "retrieved": "2026-09-03",
+  "why_this_source": "The paper best positioned to settle the regular-class gamma. It revises nu-bar for that class, declines to measure gamma, and says so twice in writing. That is the strongest available form of the negative.",
+  "observable": "FLUCTUATION. Their Eq. (6) is the same N*Var_t object and they name gamma 'the fluctuation exponent'. The string 'suscept' does not occur in their source.",
+  "frequency_class": "Deterministic sampling on a COMPACT-SUPPORT parabolic g(omega) = (3/2)(1 - 4 omega^2), with a one-parameter offset family x_k = (k - s)/N; s = 1/2 is the standard regular / equally-spaced case.",
+  "quotes": [
+    {
+      "locator": "Sec. II, Eq. (6)",
+      "quote": "The dynamic fluctuations of the order parameter can be defined as\nchi_N := N lim_{t->infinity}[ overline{r_N^2}(t) - overline{r_N}(t)^2 ],   chi := lim_{N->infinity} chi_N,\nwhich are expected to behave as chi ~ |K-K_c|^{-gamma} near the transition (0<|K-K_c|<<1) with the fluctuation exponent gamma.",
+      "bears_on": "A second modern group naming gamma explicitly as the FLUCTUATION exponent, with no field anywhere in the paper."
+    },
+    {
+      "locator": "Sec. IV, opening paragraph; D1990 = Daido, J. Stat. Phys. 60, 753 (1990)",
+      "quote": "In previous numerical studies [D1990,HCTP2015], the FSS exponents for the ES case (regular sampling) were suggested to be -beta/nu-bar ~ -2/5 and gamma/nu-bar ~ 1/5. A notable feature of these estimates is their adherence to the hyperscaling relation in Eq. (hyper). Additionally, gamma=1/4 was analytically predicted in Ref. [D1990] as K-K_c -> 0^+.",
+      "bears_on": "Independent confirmation that Daido's 1/4 is (a) analytic, (b) supercritical, and (c) attributed to the 1990 paper, not the 1986 one."
+    },
+    {
+      "locator": "Sec. VII (Discussion), final paragraph before the Summary",
+      "quote": "Similar discussion can be applied to the dynamic fluctuation, which suggests that the fluctuation exponent gamma in the supercritical region may not dictate the large-N behavior of fluctuations at criticality. This is surely an intriguing question and a detailed discussion for gamma will be reported elsewhere.",
+      "bears_on": "They decline to measure gamma. The promised follow-up has not appeared."
+    },
+    {
+      "locator": "abstract",
+      "quote": "In this paper, we explore the Kuramoto model with 'deterministic' sampling of natural frequencies, employing extensive numerical simulations and reporting the asymptotic values of the finite-size scaling exponents, which deviate significantly from the previously reported values in the literature. Additionally, we observe that these exponents are sensitive to the specifics of the sampling method.",
+      "bears_on": "Exponents in this class depend on sampling details finer than 'regular vs random'. A run that reports 'the regular-class gamma' without naming g AND the quantile offset is not comparable to either paper."
+    }
+  ],
+  "numbers": [
+    "ORDER PARAMETER | regular/ES (s = 1/2), compact-support parabolic g | Eq. (20): beta/nu-bar_c = 0.325(15), nu-bar_c = 1.54(7) ~ 3/2, at N up to 2^18 and t up to 10^9. 'clearly distinct from 2/5 and 5/4, suggested in Ref. [5]' (= Hong et al. 2015).",
+    "NO gamma REPORTED for any class. Deferred in writing, twice."
+  ],
+  "caveats": [
+    "They switched to a compact-support g deliberately, because unbounded support puts a single oscillator at an extreme frequency under deterministic sampling at large N. So the distribution axis is NOT held fixed against Hong et al., and it is a live confound for any direct comparison.",
+    "If nu-bar_c ~ 3/2 is right, Hong et al.'s at-criticality route (gamma/nu-bar = 0.22(2) times nu-bar = 5/4) would instead give gamma ~ 0.33. Their nu-bar-independent off-critical estimates 0.24(2) and 0.25(1) survive the arithmetic, but were taken at N = 6400, inside the window Park & Park show to be pre-asymptotic."
+  ]
+}

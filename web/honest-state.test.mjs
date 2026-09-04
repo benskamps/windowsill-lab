@@ -265,10 +265,48 @@ test("the block states the feed's goal in the feed's own words", () => {
 test("the clock, the attempt and the open doubts all reach the page", () => {
   const lines = commitmentLines(FEED.goal, FEED.objections);
   const said = lines.state.join(" · ");
-  assert.match(said, new RegExp(`\\b${FEED.goal.days_remaining} days left\\b`));
-  assert.match(said, /no field unknown attempted yet/);
-  assert.equal(FEED.goal.conditions.a_field_unknown_attempted, false,
-    "a field unknown has been attempted — this assertion is now the wrong one");
+
+  // The clock has THREE phrasings, not one: commitmentLines() emits "due today"
+  // at zero and "N days past the deadline" below it. A regex built as
+  // `${days_remaining} days left` is therefore a dated landmine — it goes red
+  // on 2026-09-24 and stays red, on a day nobody is looking at this file, for a
+  // reason that has nothing to do with the lab being wrong. Assert the shape
+  // instead, and that whichever branch fired carries the feed's own number.
+  assert.match(said,
+    /(^|· )(\d+ days? left|due today|\d+ days? past the deadline)( ·|$)/,
+    `the goal's clock did not reach the page: ${said}`);
+  const d = Math.round(FEED.goal.days_remaining);
+  if (d !== 0) {
+    assert.ok(said.includes(String(Math.abs(d))),
+      `the clock line does not carry the feed's own ${d}`);
+  }
+
+  // CONSISTENCY, not a snapshot. The line this replaced hard-asserted
+  // `a_field_unknown_attempted === false`: simultaneously the only assertion
+  // anywhere that the goal's boolean is real, and a test that would go red the
+  // day a genuine attempt landed — that is, on the one morning the lab most
+  // needs its tests to be about the lab. What must hold in BOTH worlds is that
+  // the flag, the list it summarises and the sentence on the page agree.
+  const attempted = Array.isArray(FEED.goal.attempted) ? FEED.goal.attempted : [];
+  assert.equal(FEED.goal.conditions.a_field_unknown_attempted, attempted.length > 0,
+    "the goal's flag and its own attempted list disagree: " +
+    `${FEED.goal.conditions.a_field_unknown_attempted} against ` +
+    `${attempted.length} entr${attempted.length === 1 ? "y" : "ies"}`);
+  assert.match(said, attempted.length ? /a field unknown has been attempted/
+                                      : /no field unknown attempted yet/);
+
+  // And the flag has to stand on receipts the feed NAMES. Since 2026-09-03
+  // `attempted` is joined out of reports/receipts/ rather than found by a
+  // substring search in UNKNOWNS.md, so an attempt with nothing a reader can
+  // open is the grader having been talked into it a second time.
+  // (`attempt_receipts` arrives with the next publish; while the feed claims no
+  // attempt this binds vacuously, which is the honest state of that feed.)
+  if (attempted.length) {
+    assert.ok(Array.isArray(FEED.goal.attempt_receipts)
+      && FEED.goal.attempt_receipts.length > 0,
+      "the feed claims an attempt but names no receipt a reader could check");
+  }
+
   assert.match(said, new RegExp(
     `\\b${FEED.objections.open} of ${FEED.objections.total} objections still open\\b`));
 });

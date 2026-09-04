@@ -1,0 +1,55 @@
+{
+  "id": "yoon-etal-2015-pre91-032814",
+  "citation": {
+    "authors": "S. Yoon, M. Sorbaro Sindaci, A. V. Goltsev, J. F. F. Mendes",
+    "title": "Critical behavior of the relaxation rate, the susceptibility, and a pair correlation function in the Kuramoto model on scale-free networks",
+    "venue": "Physical Review E 91, 032814 (2015)",
+    "arxiv": "1411.4810",
+    "doi": "10.1103/PhysRevE.91.032814"
+  },
+  "reached": "primary-full-text",
+  "how_reached": "arXiv:1411.4810v1 full text.",
+  "urls": [
+    "https://arxiv.org/abs/1411.4810",
+    "https://arxiv.org/html/1411.4810v1"
+  ],
+  "retrieved": "2026-09-03",
+  "why_this_source": "The paper that defines BOTH observables side by side in one text, and the one that says what a lab measuring d<r>/dh should expect: exponent 1 on both sides, with an amplitude ratio of 2.",
+  "observable": "BOTH, kept separate: chi(h) = dr(h)/dh (field response) and C~(h) = N[<z z*>_t - <z>_t<z*>_t] (fluctuation).",
+  "frequency_class": "None. These are thermodynamic-limit mean-field results on a Lorentzian g — no finite-N sampling class enters at all.",
+  "quotes": [
+    {
+      "locator": "Sec. V, the definition of the susceptibility",
+      "quote": "We define the susceptibility as follows:\nchi(h) == d r(h)/dh,\nwhere the order parameter r(h) must be found taking into account the field h. This definition is similar to the longitudinal susceptibility in the classical XY model.",
+      "bears_on": "The FIELD-response observable, defined explicitly and separately from the fluctuation in the same paper. This is the object K03's instrument measures."
+    },
+    {
+      "locator": "definition of the pair correlation function",
+      "quote": "C~(h) = N[<z(t)z*(t)>_t - <z(t)>_t<z*(t)>_t]",
+      "bears_on": "The FLUCTUATION observable, in the same paper, under a different symbol."
+    },
+    {
+      "locator": "Sec. on the pair correlation function; ref [15] = H. Daido, J. Stat. Phys. 60, 753 (1990)",
+      "quote": "Numerical simulations in [28, 15, 29] revealed that C~ has a sharp maximum at the critical coupling Kc. Using an analytical approach in [15], Daido found that C~ proportional to |K-Kc|^{-gamma'} with the critical exponent gamma'=1 when K<Kc and gamma'=1/4 when K>Kc.",
+      "bears_on": "Second independent attribution of the 1/4-and-1 pair to Daido JSP 1990, and confirmation it sits on C~ (the fluctuation), not on their chi (the response)."
+    },
+    {
+      "locator": "Table I, rows for degree exponent > 5 (finite fourth moment; includes the complete graph), Lorentzian g",
+      "quote": "K<Kc ... chi: (1/2)(1 - K/Kc)^{-1} ;  K > Kc ... chi: (1/4)(K/Kc - 1)^{-1}",
+      "bears_on": "WHAT A FIELD-RESPONSE MEASUREMENT SHOULD RETURN: exponent 1 on both sides, with an AMPLITUDE ratio of exactly 2. An amplitude ratio is not an exponent asymmetry, and mistaking one for the other is a live hazard."
+    },
+    {
+      "locator": "Sec. VII (Simulations), closing sentence of the pair-correlation paragraph",
+      "quote": "However, further theoretical analysis and more detailed simulations of larger networks are necessary to prove this suggestion.",
+      "bears_on": "The one FDT-like fluctuation-equals-response identity on offer in this literature is flagged as unproven by its own authors."
+    }
+  ],
+  "numbers": [
+    "FIELD RESPONSE | mean field, Lorentzian, no sampling class | chi(0) = (1/2)(1 - K/K_c)^(-1) below and (1/4)(K/K_c - 1)^(-1) above. Exponent 1 both sides; amplitude ratio 2.",
+    "FIELD RESPONSE | at K = K_c: r ~ h^(1/3), chi(h) ~ h^(-2/3)."
+  ],
+  "caveats": [
+    "Their C(h) is the variance of the LONGITUDINAL PROJECTION of z measured in a FINITE field that pins the phase — not N*Var(|z|) at h = 0. At h = 0 the Kuramoto phase diffuses freely, so the two are different objects.",
+    "Their symbol gamma is the network degree exponent, not a susceptibility exponent."
+  ]
+}

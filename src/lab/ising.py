@@ -6,6 +6,7 @@ site in a half-lattice can be flipped independently in one tensor op.
 """
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass, asdict, field
 from typing import Optional
@@ -47,6 +48,11 @@ class RunResult:
     specific_heat: np.ndarray  # C per spin = (⟨E²⟩−⟨E⟩²)·N/T², (n_temps,) — M04
     snapshots: dict            # {temperature_key: 2D int8 lattice, sampled at end}
     wall_seconds: float
+    # The temperature of the MIDDLE snapshot — the frame the gallery captions as
+    # critical. Published because it is a choice this run made from its own χ'
+    # curve (see ``snapshot_indices``), and a downstream reader that re-derives it
+    # from a carried-forward lattice would name a temperature no lattice shows.
+    snapshot_peak_t: float | None = None
 
     def to_json(self) -> dict:
         return {
@@ -59,8 +65,61 @@ class RunResult:
             "energy": self.energy.tolist(),
             "specific_heat": self.specific_heat.tolist(),
             "snapshots": {k: v.astype(int).tolist() for k, v in self.snapshots.items()},
+            "snapshot_peak_t": self.snapshot_peak_t,
             "wall_seconds": self.wall_seconds,
         }
+
+
+def snapshot_indices(n_temps: int, peak_observable=None) -> list[int]:
+    """The three temperature indices the lattice gallery shows: cold, peak, hot.
+
+    The gallery's whole claim is that the middle frame is what a critical point
+    looks like from the inside. Since the first commit (2026-06-08) it was not:
+    the index was the POSITIONAL midpoint of the sweep, ``n_temps // 2``, which is
+    the critical frame only if T_c happens to sit at the centre of the temperature
+    window. On the M01 heartbeat (T from 1.5 to 3.5, 21 points) it does not: that
+    midpoint is T = 2.5, where the 2026-08-30 run measures ⟨|m|⟩ ≈ 0.047 — a
+    nearly-disordered lattice — while the same run's χ' peak is index 8, T = 2.3,
+    ⟨|m|⟩ ≈ 0.264, one grid step off Onsager's exact T_c = 2.269. The page showed
+    thermal noise and captioned it "near the tipping point". The frame was wrong,
+    not the caption.
+
+    ``peak_observable`` is the run's OWN per-temperature response curve — χ' for
+    the ferromagnetic spin engines — so each run picks the frame ITS measurement
+    says is critical rather than a frame a config's endpoints happened to choose.
+    Nothing is assumed about where T_c is.
+
+    ``peak_observable=None`` reproduces the legacy positional midpoint EXACTLY.
+    That is a compatibility guarantee, not a fallback of convenience: engines with
+    no usable peak (``xy`` snapshots θ angles, not spins; the frustrated
+    triangular antiferromagnet has no transition at all) keep the picture they
+    have always had, provably unchanged, and the change is confined to the
+    engines that can actually justify moving it.
+
+    Two shapes fall back to that same legacy midpoint rather than guessing:
+
+    * an observable that is the wrong length or carries a non-finite value — a
+      degenerate curve must never be allowed to move the picture;
+    * a peak that lands on the coldest or hottest index — the triptych needs
+      three DISTINCT frames, and an endpoint peak means the sweep never bracketed
+      the transition, so there is no interior critical frame to show.
+
+    Ties resolve to the lowest index, deterministically, so a run's snapshot
+    choice is reproducible from its own numbers.
+    """
+    legacy = [0, n_temps // 2, n_temps - 1]
+    if peak_observable is None:
+        return legacy
+    try:
+        values = [float(v) for v in peak_observable]
+    except (TypeError, ValueError):
+        return legacy
+    if len(values) != n_temps or not all(math.isfinite(v) for v in values):
+        return legacy
+    peak = max(range(n_temps), key=lambda i: values[i])
+    if peak in (0, n_temps - 1):
+        return legacy
+    return [0, peak, n_temps - 1]
 
 
 def _checkerboard_masks(L: int, n_temps: int, device: torch.device):
@@ -157,7 +216,11 @@ def run(cfg: RunConfig) -> RunResult:
     # (population variance, matching the 3D engine). It diverges logarithmically
     # at T_c — the observable M04 reads.
     specific_heat = (cfg.L * cfg.L) * energy.var(dim=0, unbiased=False).numpy() / (T_np ** 2)
-    pick_idx = [0, cfg.n_temps // 2, cfg.n_temps - 1]
+    # The middle frame is the run's OWN χ' peak, not the sweep's midpoint — see
+    # ``snapshot_indices``. Published as ``snapshot_peak_t`` so every reader down
+    # the chain (receipt → physics-latest.json → the page's caption) names the
+    # temperature this run actually rendered instead of re-deriving one.
+    pick_idx = snapshot_indices(cfg.n_temps, chi_abs)
     snapshots = {f"T={T_np[i]:.3f}": spins[i].cpu().numpy() for i in pick_idx}
 
     return RunResult(
@@ -171,4 +234,10 @@ def run(cfg: RunConfig) -> RunResult:
         specific_heat=specific_heat,
         snapshots=snapshots,
         wall_seconds=wall,
+        # Rounded to the same 3 decimals the snapshot KEYS carry, so the declared
+        # temperature and the frame it names are the same number and a reader can
+        # look the lattice up by it. The raw float32 grid point would print as
+        # 2.299999952316284 beside a key of "T=2.300" — two spellings of one
+        # temperature is how a caption drifts off its picture.
+        snapshot_peak_t=float(f"{T_np[pick_idx[1]]:.3f}"),
     )

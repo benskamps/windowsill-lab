@@ -48,7 +48,7 @@ from dataclasses import dataclass, asdict
 import numpy as np
 import torch
 
-from .ising import _neighbor_sum
+from .ising import _neighbor_sum, snapshot_indices
 
 
 @dataclass
@@ -300,7 +300,10 @@ def wolff_run(cfg: WolffConfig) -> WolffResult:
     energy_mean = energy.mean(dim=0).numpy()
     mean_cluster_fraction = cluster_frac.mean(dim=0).numpy()
 
-    pick_idx = [0, cfg.n_temps // 2, cfg.n_temps - 1]
+    # Middle frame = this run's own χ' peak, never the sweep's positional midpoint
+    # (see ``ising.snapshot_indices``): the gallery captions that frame critical,
+    # so the frame has to be the one the measurement calls critical.
+    pick_idx = snapshot_indices(cfg.n_temps, chi_abs)
     snapshots = {f"T={T_np[i]:.3f}": spins[i].cpu().numpy() for i in pick_idx}
 
     return WolffResult(

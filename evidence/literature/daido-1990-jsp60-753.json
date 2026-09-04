@@ -1,0 +1,31 @@
+{
+  "id": "daido-1990-jsp60-753",
+  "citation": {
+    "authors": "H. Daido",
+    "title": "Intrinsic fluctuations and a phase transition in a class of large populations of coupled oscillators",
+    "venue": "Journal of Statistical Physics 60, 753 (1990)",
+    "doi": "10.1007/BF01025993"
+  },
+  "reached": "abstract-only",
+  "how_reached": "Springer landing page reached; full text behind a paywall (303 to an identity provider). The abstract below is verbatim; NOTHING ELSE from this paper was read, and no equation number from it may be cited on the strength of this record.",
+  "urls": [
+    "https://link.springer.com/article/10.1007/BF01025993"
+  ],
+  "retrieved": "2026-09-03",
+  "why_this_source": "This is the canonical citation for the 1/4-and-1 pair in the modern literature, and it is the hole in this pass. The 1989 letter carries the same pair in sigma units, so the pair itself is verified at primary text — but what THIS paper states, in which units, is not.",
+  "observable": "FLUCTUATION, per the abstract's 'intensity as well as the correlation time of fluctuations'. Not verified beyond the abstract.",
+  "frequency_class": "Not verified from this paper. Hong et al. state Daido used the regular frequency distribution in both his numerics and his perturbation theory.",
+  "quotes": [
+    {
+      "locator": "abstract, Springer landing page",
+      "quote": "A theory of intrinsic fluctuations is developed of a phase ordering parameter for large populations of weakly and uniformly coupled limit-cycle oscillators with distributed native frequencies. In particular it is shown that the intensity as well as the correlation time of fluctuations exhibit power-law divergence at the onset of mutual entrainment with critical exponents which depend on whether the coupling strength approaches the threshold from below or above.",
+      "bears_on": "Confirms the paper is about intrinsic fluctuations and carries side-dependent exponents. No external field appears in the abstract. 'Intensity' suggests the variance rather than the standard deviation, but the abstract does not settle the units."
+    }
+  ],
+  "numbers": [
+    "NOT READ. Two independent secondary sources attribute gamma = 1/4 (supercritical) and gamma' = 1 (subcritical) on the fluctuation to this paper: Hong, Chate, Tang & Park 2015 (ref [4]) and Tang, J. Stat. Mech. (2011) P01034 (ref [6])."
+  ],
+  "caveats": [
+    "UNRESOLVED: whether the 48-page version states the exponents on the intensity (sigma^2), in which case 1/4 and 1 appear literally in Daido's own text, or on sigma as in the 1989 letter. Buy or ILL the PDF before citing equation numbers from it."
+  ]
+}
