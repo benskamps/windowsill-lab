@@ -272,3 +272,78 @@ def test_hunt_slot_script_is_executable_and_gated():
     assert '"reports/hunts/dossiers/${stem}"-tic*.html' in slot, "dossier travels with receipt"
     assert "restore_pot" in slot and "git add -- pot.json" in slot, "the pot's two rules"
     assert os.access(ROOT / "scripts" / "a05-hunt-slot.sh", os.X_OK)
+
+
+def test_campaign_runs_the_test_suite_after_publishing_and_never_gates_on_it():
+    """Loam's twin of the nightly's pytest step (2026-09-04).
+
+    Same contract as ``test_nightly_templates_test_after_publishing_and_never_gate_on_it``:
+    the suite runs LAST in a pass, only on this box's one scheduled turn per UTC
+    day (``--if-due`` — the loop's default interval mode wakes every 30 minutes,
+    which the window alone would not survive), and a red suite produces a log
+    line and nothing else. It must never reach ``withhold_pass``: the science
+    pipeline's gates are ``lab next`` and ``lab verify``, and a failing unit test
+    is not grounds to unpublish a run that graded clean.
+    """
+    script = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    loop = _loop_body()
+    assert "-m lab.cli selftest --if-due" in script
+    stage = loop.index("git add -- pot.json physics-latest.json")
+    selftest = loop.index("-m lab.cli selftest")
+    assert loop.index("-m lab.cli next") < loop.index("-m lab.cli verify") < stage < selftest
+    tail = loop[selftest:loop.index("MAX_ITERS")]
+    assert "withhold_pass" not in tail
+    assert "git checkout" not in tail
+    assert "publish above stands" in tail
+
+
+def test_campaign_commits_the_selftest_receipt_and_only_that():
+    """Loam's twin of the nightly's receipt commit (2026-09-04).
+
+    The feed's `tests` block is a per-machine map derived from the COMMITTED
+    receipts, so a verdict that stays in the worktree is a verdict nothing
+    reads — and worse than that, `withhold_pass` ends in
+    `git clean -qfd -- reports/`, so the next refused pass DELETES an untracked
+    selftest receipt. The step therefore files its own commit, scoped to
+    reports/receipts and nothing else: this runs after the science commit and a
+    commit here that could reach pot.json would be a second, ungraded publisher
+    of the feed sitting in the loop's tail.
+    """
+    loop = _loop_body()
+    tail = loop[loop.index("-m lab.cli selftest"):loop.index("MAX_ITERS")]
+    # The prose in the tail names pot.json (it explains WHY the receipt has to be
+    # committed), so the scoping assertions below read the COMMANDS.
+    commands = "\n".join(line for line in tail.splitlines()
+                          if not line.strip().startswith("#"))
+    # Scoped to the receipts this step writes, never to the whole directory:
+    # a torn artifact left by a partly-failed pass must not be swept onto the
+    # ledger under a "selftest:" subject.
+    assert "git add -- 'reports/receipts/selftest-*.json'" in commands
+    assert 'git commit -q --only -m "selftest:' in commands
+    assert "-- 'reports/receipts/selftest-*.json'" in commands
+    assert "pot.json" not in commands and "physics-latest.json" not in commands
+    assert "git add -A" not in commands
+    # Still not a gate, and still not a way to undo a graded run.
+    assert "withhold_pass" not in commands
+    assert "git checkout" not in commands
+    assert "git clean" not in commands
+
+
+def test_campaign_unstages_a_receipt_it_could_not_commit():
+    """The lane must not be able to wedge itself. See
+    tests/test_campaign_pass_gate.py::test_a_receipt_commit_that_fails_leaves_the_lane_runnable
+    for the driven proof; this pins the line so a refactor cannot quietly drop it.
+    """
+    text = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    assert "git reset -q -- 'reports/receipts/selftest-*.json'" in text
+    _, _, tail = text.partition("git reset -q -- 'reports/receipts/selftest-*.json'")
+    assert "could not be committed" in tail[:400], tail[:400]
+
+
+def test_campaign_honours_dry_before_committing_the_receipt():
+    """DRY is documented as "skip commit/push"; the receipt step must obey it."""
+    text = (ROOT / "scripts" / "campaign.sh").read_text(encoding="utf-8")
+    dry = text.index('if [ -n "${LAB_CAMPAIGN_DRY:-}" ]; then\n'
+                     '      log "campaign: pass $iter \u2014 DRY, selftest receipt')
+    add = text.index("git add -- 'reports/receipts/selftest-*.json'")
+    assert dry < add, "the DRY guard must gate the receipt staging, not follow it"

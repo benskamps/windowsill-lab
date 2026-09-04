@@ -12,5 +12,8 @@
 #   - latest.html  : back-compat pointer, a copy of the newest render (report-under-visual)
 #   - index.html   : the committed every-run archive ledger
 #   - receipts/run-*.json : compact, provenance-stamped evidence for every run
+#   - receipts/selftest-*.json : one box's test-suite verdict for one turn.
+#     pot.json's per-machine `tests` map is derived from these, so an
+#     untracked one is a verdict the feed cannot carry (src/lab/selftest.py).
 20*-*.html
 20*-*.json

@@ -369,3 +369,95 @@ def test_generated_nightly_ps1_parses(tmp_path):
     out = subprocess.run([PWSH, "-NoProfile", "-NonInteractive", "-File", str(checker)],
                          capture_output=True, text=True)
     assert out.returncode == 0, out.stdout + out.stderr
+
+
+# ── the pytest step (2026-09-04) ─────────────────────────────────────────────
+# Neither nightly ran the test suite at all until this landed: `lab next`, then
+# `lab verify`, then commit. The only automated pytest anywhere was CI on push,
+# and pot.json carried no test status, so the estate had to read "a box published
+# a receipt" as "the tests ran". These pin the step into both templates and pin
+# the two properties that make it safe to have there.
+
+def test_nightly_templates_run_the_test_suite_once_a_day():
+    for script in (setup.nightly_script(), setup.nightly_ps1()):
+        assert "lab.cli selftest" in script
+        # --if-due, never a bare `selftest`: the cadence rule lives in ONE place
+        # (lab/selftest.py) so the two templates cannot drift into two answers,
+        # and so a 30-minute campaign interval cannot run the suite 12x a day.
+        assert "selftest --if-due" in script
+
+
+def test_nightly_templates_test_after_publishing_and_never_gate_on_it():
+    """A red suite must be RECORDED, never allowed to revert a good science run.
+
+    The science pipeline has its own gate (`lab verify`, which withholds). This
+    is a different signal on a different question, so it runs last and its exit
+    status only ever produces a log line.
+    """
+    for script in (setup.nightly_script(), setup.nightly_ps1()):
+        run = script.index("lab.cli next")
+        verify = script.index("lab.cli verify")
+        commit = script.index("git commit")
+        selftest = script.index("lab.cli selftest")
+        assert run < verify < commit < selftest
+        # Nothing between the selftest and the end of the script may exit
+        # non-zero or undo the publish — the tail is a log line and nothing else.
+        tail = script[selftest:]
+        assert "exit 1" not in tail
+        assert "git checkout" not in tail and "Restore-CampaignPaths" not in tail
+        assert "the publish above stands" in tail
+
+
+def test_nightly_templates_commit_the_selftest_receipt():
+    """The verdict has to LEAVE THE BOX, or the feed cannot carry it.
+
+    pot.json's `tests` block is a PER-MACHINE map derived from the committed
+    receipts in reports/receipts/ — the same shape and the same source as
+    turns.last_by_machine. That shape exists because the first cut published one
+    slot filled from this box's ~/.lab/selftest-latest.json, and both machines
+    publish the same feed: one box's red suite was overwritten by the other's
+    green within hours.
+
+    So a receipt that is never committed is a verdict nothing reads. Nothing
+    else in either script stages it — the `git add -A reports/` ran before the
+    selftest step, and a refused run restores reports/ out from under it — which
+    is why the step files its own commit.
+    """
+    for script in (setup.nightly_script(), setup.nightly_ps1()):
+        tail = script[script.index("lab.cli selftest"):]
+        # The prose in the tail names pot.json (it explains WHY the receipt has
+        # to be committed), so the scoping assertions below read the COMMANDS.
+        commands = "\n".join(line for line in tail.splitlines()
+                              if not line.strip().startswith("#"))
+        # Scoped to the receipts this step writes, never to the whole
+        # directory: a torn artifact left by a partly-failed run must not be
+        # swept onto the ledger under a "selftest:" subject.
+        assert "git add -- 'reports/receipts/selftest-*.json'" in commands
+        assert "git commit" in commands
+        assert "-- 'reports/receipts/selftest-*.json'" in commands
+        assert "-- reports/receipts\n" not in commands
+        # Scoped to the receipts directory and nothing else: this runs after the
+        # science commit, and a commit here that could reach pot.json would be a
+        # second, ungraded publisher of the feed sitting in the script's tail.
+        assert "pot.json" not in commands
+        assert "physics-latest.json" not in commands
+        assert "git add -A" not in commands
+        # ...and it still cannot fail the run. RestartOnFailure re-runs the whole
+        # nightly twice, five minutes apart, on a non-zero exit.
+        assert "exit 1" not in commands
+
+
+def test_nightly_templates_unstage_a_receipt_they_could_not_commit():
+    """Both nightlies REFUSE a pre-loaded index at the top and stop (bash exits,
+    PowerShell exits 0 with "skipped: staged changes present"). The selftest step
+    runs `git add` before its commit, so a commit that fails once would leave the
+    index loaded and turn every later night into a silent no-op that still
+    reports success. Reset on the failure path, exactly as the science commit
+    does.
+    """
+    for script in (setup.nightly_script(), setup.nightly_ps1()):
+        assert "git reset -q -- 'reports/receipts/selftest-*.json'" in script, script[:200]
+        # ...and it sits on the FAILURE branch, never in the happy path.
+        head, _, tail = script.partition(
+            "git reset -q -- 'reports/receipts/selftest-*.json'")
+        assert "could not be committed" in tail[:400], tail[:400]

@@ -11,10 +11,12 @@ from pathlib import Path
 from lab.publish import build_snapshot, parse_milestones
 
 SCHEMA = json.loads(
-    (Path(__file__).resolve().parents[1] / "schema" / "pot.schema.json").read_text()
+    (Path(__file__).resolve().parents[1] / "schema" / "pot.schema.json")
+    .read_text(encoding="utf-8")
 )
 PHYSICS_SCHEMA = json.loads(
-    (Path(__file__).resolve().parents[1] / "schema" / "physics.schema.json").read_text()
+    (Path(__file__).resolve().parents[1] / "schema" / "physics.schema.json")
+    .read_text(encoding="utf-8")
 )
 
 _IS_TYPE = {
@@ -59,9 +61,18 @@ def validate(inst, schema, root=None, path="$"):
             if req not in inst:
                 errs.append(f"{path}: missing required {req!r}")
         props = schema.get("properties", {})
+        # `additionalProperties` as a SCHEMA (not a bool) is how this contract
+        # describes a MAP whose keys are data — `turns.last_by_machine` and, since
+        # 2026-09-04, `tests`. Until it was honoured here the validator walked
+        # `properties` only, so every row of both maps went entirely unchecked:
+        # `tests` could have shipped a machine row with `status: "green"` or a
+        # `passed: -1` and this file would have called the snapshot conforming.
+        extra = schema.get("additionalProperties")
         for k, v in inst.items():
             if k in props:
                 errs += validate(v, props[k], root, f"{path}.{k}")
+            elif isinstance(extra, dict):
+                errs += validate(v, extra, root, f"{path}.{k}")
     if isinstance(inst, list) and "items" in schema:
         for i, item in enumerate(inst):
             errs += validate(item, schema["items"], root, f"{path}[{i}]")

@@ -149,6 +149,15 @@ def test_torn_pot_write_leaves_the_committed_feed_intact(tmp_path, monkeypatch):
     # it writes (refresh_shelf_fallback). Redirect that too, or a fixture
     # snapshot scribbles zeros over the SHIPPED web/index.html mid-suite.
     monkeypatch.setattr(publish, "WEB_INDEX", tmp_path / "index.html")
+    # ...and publish() refreshes the COMMITTED archive index through
+    # archive.write_index(), which resolves reports/index.html off
+    # archive.REPORTS_DIR. Unredirected, a fixture snapshot rewrote the real
+    # reports/index.html on every `pytest` run and left the clone dirty. That
+    # was harmless while nothing scheduled ran pytest; since 2026-09-04 the
+    # nightly does (lab/selftest.py), and campaign.sh refuses a pass whose
+    # worktree is already dirty -- so an unredirected publish here would have
+    # frozen the lane after the first test turn.
+    monkeypatch.setattr(archive, "REPORTS_DIR", tmp_path / "reports")
     monkeypatch.setattr(publish, "ensure_public_receipts", lambda *a, **k: [])
     monkeypatch.setattr(publish, "collect",
                         lambda: {"schema": "windowsill.pot.v5", "junk": "q" * 400})

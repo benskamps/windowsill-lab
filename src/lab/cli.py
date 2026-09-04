@@ -420,6 +420,15 @@ Usage:
   lab publish         write the committed pot.json — feeds the windowsill
   lab backfill        copy ~/.lab history into reports/ under permanent names
   lab verify [IDs]    re-derive verified milestones from their reports (CI gate)
+  lab selftest        run pytest once and file a committed receipt for the
+                      feed's per-machine `tests` map — including whether the
+                      GPU-gated tests actually executed on this box
+  lab selftest --if-due
+                      the same, but only on this box's one scheduled turn per
+                      UTC day (what the nightly calls); otherwise does nothing
+  lab selftest --status
+                      print the `tests` map as the feed carries it — every
+                      declared machine, derived from the committed receipts
   lab verify --rerun-smoke
                       also re-run the pinned L=16 CPU smoke config and prove it
                       reproduces itself + the committed golden (determinism gate)
@@ -1383,6 +1392,78 @@ def main(argv=None):
         print(f"\n{verb} {len(paths)} file(s) into reports/."
               + (" (dry run — nothing written)" if dry else ""))
         return 0
+
+    if cmd == "selftest":
+        # The test suite's own turn. `lab verify` re-grades the SCIENCE; this
+        # runs pytest and records whether the instrument's code still works —
+        # a different question, on a different signal, which until 2026-09-04
+        # nothing scheduled asked at all (see lab/selftest.py).
+        #
+        # --if-due carries the whole cadence rule so neither nightly template has
+        # to: one pass per box per UTC day, picked from the UTC hour, no config.
+        # A not-due pass exits 0 having done nothing.
+        from . import selftest as selftest_mod
+        from .publish import CADENCE, RECEIPTS_DIR, REPO_ROOT
+        result = LAB_HOME / selftest_mod.RESULT_NAME
+        # --status FIRST, and unconditionally: it is a pure reader of the
+        # committed ledger. Handled after --if-due it silently ate the turn — a
+        # `selftest --if-due --status` (the obvious way to log the block from a
+        # nightly) printed the block on the pass that was due and never ran the
+        # suite, which is the whole failure class this command exists to close.
+        #
+        # It reads exactly what `publish.collect` publishes — the per-machine map
+        # derived from reports/receipts/ — and not this box's scratch record, so
+        # `lab selftest --status` cannot disagree with the feed, and shows both
+        # boxes rather than flattering the one you happen to be standing on.
+        if "--status" in args:
+            print(json.dumps(
+                selftest_mod.tests_by_machine(RECEIPTS_DIR,
+                                              CADENCE.get("machines", [])),
+                indent=2))
+            return 0
+        if "--if-due" in args:
+            due, why = selftest_mod.is_due(datetime.now(timezone.utc),
+                                           selftest_mod.last_run_date(result))
+            if not due:
+                print(f"lab selftest · not due — {why}")
+                return 0
+            print(f"lab selftest · due — {why}")
+        record = selftest_mod.run(REPO_ROOT, result)
+        # The verdict LEAVES THE BOX here. `result` is scratch — cadence
+        # bookkeeping and a handoff — and publishing from it was the fault the
+        # first cut of this shipped: one `tests` slot on a feed two machines
+        # write is last-writer-wins, so a red suite on one box was erased by the
+        # other's green within hours. The receipt is machine-named and
+        # append-only; the nightly commits it, and the feed derives from the
+        # committed set.
+        # A receipt the LEDGER cannot attribute is a verdict that never
+        # reaches the feed. `tests_by_machine` keys rows by
+        # `archive.machine_of` over the receipt's provenance, whose
+        # accelerator half comes from the torch build suffix -- so a box
+        # reinstalled with a plain PyPI wheel (`2.9.1`, no `+cu`/`+rocm`)
+        # derives as `windows`, not `windows-cuda`, and every receipt it
+        # files from then on is skipped while its declared row reads
+        # `unknown` forever. Silent, in the safe direction, and
+        # indistinguishable from a box that never ran pytest at all --
+        # which is exactly the green-while-dead shape wearing the other
+        # face. Say it here, on the box, in the nightly log, on the run
+        # that would otherwise vanish.
+        derived = selftest_mod.machine_now()
+        declared = [m for m in CADENCE.get("machines", []) if isinstance(m, str)]
+        if derived not in declared:
+            print(f"  WARNING: this box derives as {derived!r}, which is not a"
+                  f" declared machine ({', '.join(declared)}). The receipt below"
+                  f" will be IGNORED by the feed and this box will keep"
+                  f" publishing 'unknown'. Check provenance():"
+                  f" {selftest_mod.provenance()}")
+        receipt = selftest_mod.write_receipt(RECEIPTS_DIR, record)
+        print(f"  {record['status']}: {record.get('detail', '')}")
+        print(f"  receipt: {receipt}")
+        print(f"  scratch:  {result}")
+        # The exit code mirrors the SUITE so the nightly log carries a line when
+        # it reds. Callers must not act on it: a failing suite is recorded, never
+        # allowed to revert or block a science run that already graded clean.
+        return 0 if record["status"] == "pass" else 1
 
     if cmd == "verify":
         from . import checks

@@ -255,6 +255,61 @@ mkdir -p "$(dirname "$LOG")"
     : > "${{LAB_STATE_DIR:-$HOME/.lab}}/nightly.published" 2>/dev/null || true
     echo "── published"
   fi
+  # The test suite's own turn — LAST, and deliberately harmless. Until
+  # 2026-09-04 no scheduled job on either box ran pytest at all: the nightly ran
+  # `lab next` + `lab verify` and stopped, so the only automated pytest anywhere
+  # was CI on push, and `pot.json` — the estate's whole model of windowsill
+  # health — carried no test status. "Did a box publish a receipt" was standing
+  # in for "did the tests run", which is how a sibling agent read a two-week hole
+  # in committed receipts as a two-week test outage that had not happened.
+  #
+  # AFTER the publish, and its exit code is read but never acted on. The science
+  # pipeline has its own gates (`lab verify` above, which DOES withhold); this is
+  # a different signal and must never be able to revert a run that graded clean.
+  # A red suite is recorded in the feed's `tests` block and logged here — that is
+  # the entire intervention.
+  #
+  # --if-due owns the cadence so this line does not: one pass per box per UTC
+  # day, chosen from the UTC hour, no new config on either machine. See
+  # lab/selftest.py:DUE_UTC_HOURS for why one six-hour window catches exactly one
+  # of four six-hourly passes whatever the box's offset.
+  if ! "{PY}" -m lab.cli selftest --if-due; then
+    echo "   selftest reported a FAILURE — recorded in the feed; the publish above stands"
+  fi
+  # ...and the verdict has to LEAVE THIS BOX or it is not a signal. `lab
+  # selftest` files reports/receipts/selftest-<date>-<hhmm>-<machine>.json,
+  # and nothing above stages it: the commit ran before this step, and a
+  # refused run restores reports/ out from under it. Commit it here, in its
+  # own commit, touching nothing but the receipt itself.
+  #
+  # WHY IT MUST BE COMMITTED: pot.json carries a per-machine `tests` map
+  # derived from the committed receipt ledger, exactly like
+  # turns.last_by_machine. A verdict that stays in ~/.lab is a verdict the
+  # feed cannot see — and publishing from ~/.lab instead was the fault this
+  # replaced, because one `tests` slot on a feed BOTH boxes write meant one
+  # machine's red suite was erased by the other's green within hours.
+  #
+  # Still not a gate: it runs after the science commit and push, it stages
+  # nothing but its own receipt, and every failure below is a log line. A
+  # lost push race is left for the next run's sync_main + push.
+  # Scoped to selftest-*.json, not to the directory: a receipt is immutable
+  # evidence, and a torn artifact from a partly-failed run must never land on the
+  # ledger under a "selftest:" subject. The glob can only match what this step wrote.
+  if ls reports/receipts/selftest-*.json >/dev/null 2>&1 \
+     && git add -- 'reports/receipts/selftest-*.json' 2>/dev/null \
+     && ! git diff --cached --quiet -- 'reports/receipts/selftest-*.json'; then
+    if git commit -q --only -m "selftest: $(date -u +%F)" -- 'reports/receipts/selftest-*.json'; then
+      git push -q || echo "   selftest receipt committed; push deferred to the next run"
+    else
+      # UNSTAGE, always. The `git add` above put the receipt in the index, and
+      # the top of this script REFUSES a pre-loaded index ("nightly will not
+      # sweep the index") and exits 0 -- so one failed commit here would make
+      # every later night a silent no-op that still reports success. Losing the
+      # receipt costs one verdict, which the feed publishes as `unknown`.
+      git reset -q -- 'reports/receipts/selftest-*.json' >/dev/null 2>&1 || true
+      echo "   selftest receipt could not be committed; unstaged, it stays in the worktree"
+    fi
+  fi
   echo "── done"
 }} >>"$LOG" 2>&1
 """
@@ -438,6 +493,72 @@ if ($LASTEXITCODE -ne 0) {
     # Consumer: groundskeeper/checks/freshness.py.
     New-Item -ItemType File -Force -Path (Join-Path $stateDir 'nightly.published') | Out-Null
     Log "-- published"
+}
+# The test suite's own turn -- LAST, and deliberately harmless. Until 2026-09-04
+# no scheduled job on either box ran pytest at all: this script ran `lab next` +
+# `lab verify` and stopped, campaign.sh was the same shape, and the only
+# automated pytest anywhere was CI on push. Meanwhile pot.json -- the estate's
+# whole model of windowsill health -- carried no test status, so "did a box
+# publish a receipt" stood in for "did the tests run". Those are different
+# questions, and reading the first as the second is how a two-week gap in
+# committed receipts was reported as a two-week test outage that never happened.
+#
+# AFTER the publish, and its exit code is read but never acted on. The science
+# pipeline has its own gates (the `lab verify` withhold above); this is a
+# different signal and must never be able to revert a run that graded clean. A
+# red suite is recorded in the feed's `tests` block and logged here -- that is
+# the entire intervention. Note the trap at the top exits 1 on a POWERSHELL
+# error; a native command's non-zero exit does not trip it, which is exactly the
+# behaviour wanted here.
+#
+# --if-due owns the cadence so this line does not: one pass per box per UTC day,
+# chosen from the UTC hour, no new config on either machine. See
+# lab/selftest.py:DUE_UTC_HOURS for why one six-hour window catches exactly one
+# of four six-hourly passes whatever the box's UTC offset.
+& '__PY__' -m lab.cli selftest --if-due 2>&1 | LogCmd
+if ($LASTEXITCODE -ne 0) {
+    Log "   selftest reported a FAILURE -- recorded in the feed; the publish above stands"
+}
+# ...and the verdict has to LEAVE THIS BOX or it is not a signal. `lab
+# selftest` files reports/receipts/selftest-<date>-<hhmm>-<machine>.json, and
+# nothing above stages it: the commit ran before this step, and a refused run
+# restores reports/ out from under it. Commit it here, in its own commit,
+# touching nothing but the receipt itself.
+#
+# WHY IT MUST BE COMMITTED: pot.json carries a per-machine `tests` map derived
+# from the committed receipt ledger, exactly like turns.last_by_machine. A
+# verdict that stays in ~/.lab is a verdict the feed cannot see -- and
+# publishing from ~/.lab instead was the fault this replaced, because ONE
+# `tests` slot on a feed BOTH boxes write meant one machine's red suite was
+# erased by the other's green within hours.
+#
+# Still not a gate: it runs after the science commit and push, it stages
+# nothing but its own receipt, and every failure below is a log line. A lost
+# push race is left for the next run's Sync-Main + push.
+# Scoped to selftest-*.json, not to the directory: a receipt is immutable
+# evidence, and a torn artifact from a partly-failed run must never land on the
+# ledger under a "selftest:" subject. The glob can only match what this step wrote,
+# and Test-Path keeps a not-due night (the common case, ~3 of 4) silent.
+if (Test-Path 'reports/receipts/selftest-*.json') {
+    git add -- 'reports/receipts/selftest-*.json' 2>&1 | LogCmd
+    git diff --cached --quiet -- 'reports/receipts/selftest-*.json'
+    if ($LASTEXITCODE -ne 0) {
+        git commit -q --only -m "selftest: $((Get-Date).ToUniversalTime().ToString('yyyy-MM-dd'))" -- 'reports/receipts/selftest-*.json' 2>&1 | LogCmd
+        if ($LASTEXITCODE -ne 0) {
+            # UNSTAGE, always. `git add` above put the receipt in the index, and
+            # the guard at the top of this script REFUSES a pre-loaded index and
+            # exits 0 ("skipped: staged changes present") -- so a single failed
+            # commit here would turn every subsequent night into a green-exit-0
+            # no-op that never publishes again. Losing the receipt costs one
+            # verdict, which the feed publishes as `unknown`; a refused index
+            # costs the whole lane.
+            git reset -q -- 'reports/receipts/selftest-*.json' 2>&1 | LogCmd
+            Log "   selftest receipt could not be committed; unstaged, it stays in the worktree"
+        } else {
+            git push 2>&1 | LogCmd
+            if ($LASTEXITCODE -ne 0) { Log "   selftest receipt committed; push deferred to the next run" }
+        }
+    }
 }
 Log "-- done (success)"
 """
