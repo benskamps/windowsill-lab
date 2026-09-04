@@ -461,3 +461,61 @@ def test_driver_distinguishes_exhaustion_from_a_grade_failure():
     assert (src.index("ok, detail = checks.check_a05(report)")
             < src.index("exhausted = ok is None")
             < src.index("settled = settle_receipt(receipt_path"))
+
+
+# ── recording exhaustion so DISPATCH can see it ──────────────────────────────
+# The exhaustion branch has printed a remediation line since 2026-08-26. On the
+# Windows scheduler path it named the wrong file (`hunt.sector`, read only by
+# the bash slot script), so following it verbatim changed nothing and the lane
+# re-picked the same used-up sector every six hours for 112 slots.
+
+def test_record_exhausted_is_append_only_and_idempotent(monkeypatch, tmp_path):
+    mod = _load_script()
+    lab_home = tmp_path / "labhome"
+    monkeypatch.setattr(mod, "LAB_HOME", lab_home)
+
+    path = mod._record_exhausted(2)
+    assert path.read_text(encoding="utf-8") == "2\n"
+
+    mod._record_exhausted(29)
+    assert path.read_text(encoding="utf-8") == "2\n29\n"
+
+    # Re-running an already-recorded sector must not grow the file: a box that
+    # keeps rediscovering the same exhaustion writes one line, not a thousand.
+    mod._record_exhausted(2)
+    assert path.read_text(encoding="utf-8") == "2\n29\n"
+
+
+def test_record_exhausted_survives_a_file_with_no_trailing_newline(
+        monkeypatch, tmp_path):
+    """A hand-edited record is the normal case — this file is meant to be
+    edited by a human putting a sector back. Appending to one that does not end
+    in a newline must not produce `2 29` on one line, which would then read as
+    a single malformed entry and silently un-exhaust BOTH sectors."""
+    mod = _load_script()
+    lab_home = tmp_path / "labhome"
+    lab_home.mkdir()
+    (lab_home / "hunt-exhausted").write_text("2", encoding="utf-8")
+    monkeypatch.setattr(mod, "LAB_HOME", lab_home)
+
+    mod._record_exhausted(29)
+    assert (lab_home / "hunt-exhausted").read_text(
+        encoding="utf-8") == "2\n29\n"
+
+
+def test_the_recorded_sector_is_the_one_curriculum_reads(monkeypatch,
+                                                         tmp_path):
+    """Writer and reader agree on the format — the seam the old advice missed.
+
+    `_record_exhausted` writes it and `curriculum.exhausted_sectors` reads it;
+    a mismatch here is precisely the class of bug this whole change repairs, so
+    it is asserted across the boundary rather than on either side alone.
+    """
+    mod = _load_script()
+    from lab import curriculum, labhome
+    lab_home = tmp_path / "labhome"
+    monkeypatch.setattr(mod, "LAB_HOME", lab_home)
+    monkeypatch.setattr(labhome, "LAB_HOME", lab_home)
+
+    mod._record_exhausted(2)
+    assert curriculum.exhausted_sectors() == frozenset({2})

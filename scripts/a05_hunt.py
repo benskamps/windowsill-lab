@@ -220,6 +220,42 @@ def record_grade_failure(hunt_id: str) -> int:
     return total
 
 
+def _record_exhausted(sector: int) -> Path:
+    """Note a used-up sector where ``lab hunt``'s bare dispatch will read it.
+
+    ``curriculum.exhausted_sectors`` owns the format and the reasoning; this is
+    the writer. Append-only and idempotent: re-running an already-recorded
+    sector rewrites nothing, so a box that keeps finding the same exhaustion
+    (because a human put the sector back) does not grow the file without bound.
+
+    Written with ``encoding="utf-8"`` like every other write in this repo. On
+    Windows the default is cp1252 and a ``#`` annotation carrying an em dash —
+    the punctuation this codebase writes everywhere — would raise
+    ``UnicodeEncodeError`` mid-hunt, turning a normal end-of-sector into a
+    crash.
+    """
+    path = LAB_HOME / "hunt-exhausted"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        existing = path.read_text(encoding="utf-8") if path.exists() else ""
+    except OSError:
+        existing = ""
+    already = set()
+    for line in existing.splitlines():
+        line = line.split("#", 1)[0].strip()
+        if line:
+            try:
+                already.add(int(line))
+            except ValueError:
+                continue
+    if sector in already:
+        return path
+    prefix = "" if (not existing or existing.endswith("\n")) else "\n"
+    with path.open("a", encoding="utf-8") as fh:
+        fh.write(f"{prefix}{sector}\n")
+    return path
+
+
 def is_retired(hunt_id: str, hunts_dir: Path) -> bool:
     """Is this hunt id finished — by EITHER of the two ways a hunt can finish?
 
@@ -519,8 +555,18 @@ def main() -> int:
               f"CONTROL_FRACTION={a05.CONTROL_FRACTION:g} — the enumerable "
               f"window for this sector is consumed, so no slice it can still "
               f"draw is gradeable.")
-        print(f"fix: flip the lane to a sector with headroom — "
-              f"echo <sector> > {LAB_HOME}/hunt.sector")
+        # Record it where DISPATCH can see it. The withheld receipt below never
+        # commits, so the committed counters `cli._hunt_status` measures never
+        # move, so a bare `lab hunt` would pick this same sector again on the
+        # next slot — which is exactly what happened here for 112 slots. The
+        # old advice printed at this point named `hunt.sector`, a file only
+        # `scripts/a05-hunt-slot.sh` reads: on the Windows scheduler path,
+        # which reaches this code through `lab next`, following it verbatim
+        # changed nothing at all. Roll the lane forward instead of asking.
+        recorded = _record_exhausted(args.sector)
+        print(f"lane: sector {args.sector} recorded exhausted in {recorded} — "
+              f"a bare `lab hunt` will now pick the next sector in this box's "
+              f"lane. Remove its line to search it again.")
         print("this is not counted as a grade failure; the checkpoint stays "
               "healthy for the next sector.")
 
