@@ -513,31 +513,41 @@
     }
   ],
   "total": 40,
-  "last_run": "2026-09-05T16:02:48.766498+00:00",
+  "last_run": "2026-09-05T19:00:04.106443+00:00",
   "runs": 72,
-  "temp_c": null,
+  "temp_c": 90.5,
   "latest_report": {
     "date": "2026-09-05",
-    "milestone": "M11",
+    "milestone": "C01",
     "verdict": "verified",
-    "headline": "2D Edwards\u2013Anderson spin glass (L=16, 64 disorder realizations, parallel tempering): \u27e8q\u00b2\u27e9 grows 0.011 \u2192 0.475 as T falls 2.00 \u2192 0.30 \u2014 P(q) broadens toward T=0 (T_c=0 in 2D, no finite-T glass phase); the same ladder without the exchange move turns over at T=0.64 \u00b7 159s on GPU",
+    "headline": "OEIS A000045: 40 terms matched byte-for-byte; Lucas\u2013Lehmer residue for 2^31\u22121 is 0",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-09-05-1202-m11.json",
-    "machine": "windows-cuda",
-    "at": "2026-09-05T16:02:48.766498+00:00"
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-09-05-1500-c01.json",
+    "machine": "linux-rocm",
+    "at": "2026-09-05T19:00:04.106443+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-09-05T16:03:04.717296+00:00",
+  "updated": "2026-09-05T19:00:29.425225+00:00",
   "provenance": {
-    "code_sha": "fc09fa5",
-    "env": "python 3.13.14 \u00b7 windows",
+    "code_sha": "2ab9944",
+    "env": "python 3.14.4 \u00b7 linux",
     "deps": {
-      "torch": "2.6.0+cu124",
-      "numpy": "2.4.6",
-      "matplotlib": "3.11.0"
+      "torch": "2.10.0.dev20251031+rocm6.4",
+      "numpy": "2.5.1",
+      "matplotlib": "3.11.1"
     }
   },
   "reports": [
+    {
+      "date": "2026-09-05",
+      "milestone": "C01",
+      "verdict": "verified",
+      "headline": "OEIS A000045: 40 terms matched byte-for-byte; Lucas\u2013Lehmer residue for 2^31\u22121 is 0",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-09-05-1500-c01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-09-05-1500-c01.json",
+      "machine": "linux-rocm",
+      "at": "2026-09-05T19:00:04.106443+00:00"
+    },
     {
       "date": "2026-09-05",
       "milestone": "M11",
@@ -661,7 +671,7 @@
     {
       "date": "2026-09-03",
       "milestone": "A07",
-      "verdict": "null",
+      "verdict": "verified",
       "headline": "four moons, one law: T^2/a^3 spread 2.08e-04, GM_Jupiter 1.268e+08 vs 1.267e+08 km^3/s^2; Laplace residual 1.2e-05 (Callisto substituted: 0.28)",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-09-03-0900-a07",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-09-03-0900-a07.json",
@@ -841,7 +851,7 @@
     {
       "date": "2026-08-30",
       "milestone": "A07",
-      "verdict": "null",
+      "verdict": "verified",
       "headline": "four moons, one law: T^2/a^3 spread 2.08e-04, GM_Jupiter 1.268e+08 vs 1.267e+08 km^3/s^2; Laplace residual 1.2e-05 (Callisto substituted: 0.28)",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-30-1700-a07",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-30-1700-a07.json",
@@ -1029,6 +1039,16 @@
       "at": "2026-08-25T04:08:30.875046+00:00"
     },
     {
+      "date": "2026-08-25",
+      "milestone": "U-A01",
+      "verdict": "null",
+      "headline": "U-A01 attempted: the shelf is a measured empty",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-25-u-a01",
+      "receipt_url": null,
+      "machine": "linux-rocm",
+      "at": "2026-08-25T12:10:46.090391+00:00"
+    },
+    {
       "date": "2026-08-24",
       "milestone": "H01",
       "verdict": "unscored",
@@ -1131,7 +1151,7 @@
     {
       "date": "2026-08-22",
       "milestone": "A07",
-      "verdict": "verified",
+      "verdict": "null",
       "headline": "four moons, one law: T^2/a^3 spread 2.08e-04, GM_Jupiter 1.268e+08 vs 1.267e+08 km^3/s^2; Laplace residual 1.2e-05 (Callisto substituted: 0.28)",
       "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-22-1730-a07",
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-22-1730-a07.json",
@@ -1620,7 +1640,30 @@
       "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-07-0736-m02.json",
       "machine": "linux-rocm",
       "at": "2026-08-07T11:36:49.476934+00:00",
-      "group_count": 19,
+      "group_count": 2,
+      "group_first_date": "2026-08-07",
+      "group_machines": [
+        "linux-rocm"
+      ]
+    },
+    {
+      "date": "2026-08-07",
+      "milestone": "A03",
+      "verdict": "null",
+      "headline": "GW170817-v3: pipeline recovers an injected chirp mass to 4.0e-05 Msun in 2 detectors; the event itself is NOT recovered",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-07-a03",
+      "receipt_url": null
+    },
+    {
+      "date": "2026-08-06",
+      "milestone": "M02",
+      "verdict": "verified",
+      "headline": "finite-size scaling: \u03c7_max \u221d L^1.762 (2D Ising \u03b3/\u03bd = 7/4 = 1.75) \u00b7 16507s on GPU",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-08-06-1935-m02",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-08-06-1935-m02.json",
+      "machine": "linux-rocm",
+      "at": "2026-08-06T23:35:09.121125+00:00",
+      "group_count": 17,
       "group_first_date": "2026-08-02",
       "group_machines": [
         "linux-rocm",
@@ -2032,11 +2075,11 @@
     }
   ],
   "turns": {
-    "count": 209,
-    "today": 5,
+    "count": 210,
+    "today": 6,
     "last_by_machine": {
       "windows-cuda": "2026-09-05T16:02:48.766498+00:00",
-      "linux-rocm": "2026-09-05T13:00:45.354944+00:00"
+      "linux-rocm": "2026-09-05T19:00:04.106443+00:00"
     },
     "expected_interval_h": 3
   },
