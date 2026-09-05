@@ -1,0 +1,415 @@
+{
+  "calibration_passed": true,
+  "candidates": [
+    {
+      "catalog": {
+        "ctoi_alias_n": null,
+        "ctoi_period_days": null,
+        "ctoi_table_age_days": 1.9361933399047013,
+        "disposition": null,
+        "known_ctoi": null,
+        "known_planet": "2MASS J01033563-5515561 AB b",
+        "known_toi": null,
+        "n_ctoi": 0,
+        "published_period_days": null,
+        "tic": "206502540"
+      },
+      "depth": 0.009708188248213512,
+      "known_planet": null,
+      "period_days": 0.5,
+      "phase": 0.5,
+      "sde": 8.056027443754607,
+      "tic": "206502540",
+      "vetting": {
+        "grid_hi": 9.135155904510762,
+        "grid_lo": 0.5,
+        "railed_at": 0.5,
+        "verdict": "period-railed"
+      }
+    }
+  ],
+  "candidates_vetted": true,
+  "claim_boundary": "A SAMPLE of one sector, not the whole sector: a full TESS sector holds thousands of 2-minute targets and this run searches a deterministic subset, so no completeness or occurrence-rate statement is implied. The graded claim is RECOVERY of already-confirmed planets by a search that was not told about them, plus a measured false-alarm floor — it is not a discovery, and nothing here is submitted to ExoFOP. Depths are reported, not graded: the running-median detrend biases them low for long transits, which the injections quantify. Published periods are read only at grading time and never enter the search.",
+  "control_passed": true,
+  "detrend_window_days": 0.5,
+  "enumeration_note": "page-capped; a real sector holds thousands of 2-minute targets",
+  "experiment": "A04-blind-transit-search",
+  "false_alarm_max": 7.59159662927178,
+  "false_alarm_median": 4.307028543546014,
+  "false_alarm_sde": [
+    4.035564277206338,
+    4.759659525630734,
+    3.9004696848821374,
+    5.9411453467743724,
+    4.248193170074002,
+    5.356371742368913,
+    4.670995399929002,
+    3.7687183054185205,
+    4.1256336418593875,
+    4.049393411553074,
+    3.914450593455991,
+    5.300884359864232,
+    4.307028543546014,
+    4.070033351637839,
+    7.144649847177765,
+    6.004488343273058,
+    4.205286346991968,
+    4.586730808746852,
+    7.59159662927178,
+    3.5654206542579336,
+    4.684008148584188,
+    4.336023572707129,
+    4.029487137024401
+  ],
+  "floor_clear": true,
+  "generated_at": "2026-09-05T07:14:08.034846+00:00",
+  "headline": "blind search of 26 sector-2 targets: 2/2 known planets recovered without being told where; 3/3 injections recovered; 1 candidate(s) vetted; noise floor max SDE 7.6 vs threshold 8.0",
+  "injections": [
+    {
+      "host_tic": "120585431",
+      "injected_depth": 0.01,
+      "injected_period_days": 3.7,
+      "period_error_frac": 0.0002027788703253819,
+      "recovered": true,
+      "recovered_depth": 0.009102445237316958,
+      "recovered_period_days": 3.700750281820204,
+      "sde": 8.841397613754646
+    },
+    {
+      "host_tic": "120585431",
+      "injected_depth": 0.004,
+      "injected_period_days": 2.3,
+      "period_error_frac": 8.252740256997626e-05,
+      "recovered": true,
+      "recovered_depth": 0.003841381695484758,
+      "recovered_period_days": 2.3001898130259106,
+      "sde": 9.074110784084242
+    },
+    {
+      "host_tic": "120585431",
+      "injected_depth": 0.002,
+      "injected_period_days": 5.1,
+      "period_error_frac": 0.0012701480749981453,
+      "recovered": true,
+      "recovered_depth": 0.0016383595317047694,
+      "recovered_period_days": 5.106477755182491,
+      "sde": 9.234662723219321
+    }
+  ],
+  "period_grid": {
+    "hi_days": 15.0,
+    "lo_days": 0.5,
+    "n": 3000
+  },
+  "period_tolerance_frac": 0.01,
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.1",
+      "numpy": "2.5.1",
+      "torch": "2.10.0.dev20251031+rocm6.4"
+    },
+    "platform": "linux-x86_64",
+    "python": "3.14.4",
+    "source_clean": true,
+    "source_commit": "6ca10409ac32ad1299bf01f6eed0d3553d54868a",
+    "source_diff_sha256": null,
+    "source_tree_sha256": "3562986be5485fd2ebc9621db350230f51baf600104c85d265e7fffbb69f9698"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "planned": {
+      "chosen": "A04",
+      "planner": "v1",
+      "reason": "planner v1: A04 verified-canary (score 0.56) beats M13 verified-canary (0.55)",
+      "scoreboard": [
+        {
+          "cls": "verified-canary",
+          "mid": "A04",
+          "score": 0.5641
+        },
+        {
+          "cls": "verified-canary",
+          "mid": "M13",
+          "score": 0.5501
+        },
+        {
+          "cls": "verified-canary",
+          "mid": "M15",
+          "score": 0.5145
+        }
+      ]
+    },
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "f01c427f4698828f3f4db7ebf754a9cf7ab4e62c16d1ae636acbb2cd393176b1"
+  },
+  "recovered_any": true,
+  "recoveries": [
+    {
+      "depth": 0.009862739317458291,
+      "known_planet": "WASP-18 b",
+      "period_days": 0.9416354542647258,
+      "period_error_frac": 0.00019461875906956472,
+      "phase": 0.4075,
+      "published_period_days": 0.94145223,
+      "recovered": true,
+      "sde": 10.202305054692463,
+      "tic": "100100827"
+    },
+    {
+      "depth": 0.005441491409931332,
+      "known_planet": "HIP 65 A b",
+      "period_days": 0.9812412183904988,
+      "period_error_frac": 0.00027301289769821047,
+      "phase": 0.445,
+      "published_period_days": 0.9809734,
+      "recovered": true,
+      "sde": 14.220192786100304,
+      "tic": "201248411"
+    }
+  ],
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify A04",
+    "rerun": "python -m lab.cli a04"
+  },
+  "sde_threshold": 8.0,
+  "searched": [
+    {
+      "depth": 0.009862739317458291,
+      "known_planet": "WASP-18 b",
+      "period_days": 0.9416354542647258,
+      "period_error_frac": 0.00019461875906956472,
+      "phase": 0.4075,
+      "published_period_days": 0.94145223,
+      "recovered": true,
+      "sde": 10.202305054692463,
+      "tic": "100100827"
+    },
+    {
+      "depth": 0.00010441244062198152,
+      "known_planet": null,
+      "period_days": 1.2523786192339452,
+      "phase": 0.6725,
+      "sde": 4.035564277206338,
+      "tic": "120585431"
+    },
+    {
+      "depth": 0.00033681217180314693,
+      "known_planet": null,
+      "period_days": 2.349463738535692,
+      "phase": 0.5425,
+      "sde": 4.759659525630734,
+      "tic": "141709237"
+    },
+    {
+      "depth": 5.7699897336394024e-05,
+      "known_planet": null,
+      "period_days": 0.9873485583287107,
+      "phase": 0.355,
+      "sde": 3.9004696848821374,
+      "tic": "141823020"
+    },
+    {
+      "depth": 7.79992810985286e-05,
+      "known_planet": null,
+      "period_days": 0.5058998874589207,
+      "phase": 0.6475,
+      "sde": 5.9411453467743724,
+      "tic": "142107756"
+    },
+    {
+      "depth": 8.516461055030344e-05,
+      "known_planet": null,
+      "period_days": 1.3146504829323251,
+      "phase": 0.2575,
+      "sde": 4.248193170074002,
+      "tic": "144276567"
+    },
+    {
+      "depth": 0.00017373997204872538,
+      "known_planet": null,
+      "period_days": 0.552024393705669,
+      "phase": 0.94,
+      "sde": 5.356371742368913,
+      "tic": "144434261"
+    },
+    {
+      "depth": 7.826695798351935e-05,
+      "known_planet": null,
+      "period_days": 3.8818613341292414,
+      "phase": 0.635,
+      "sde": 4.670995399929002,
+      "tic": "165885921"
+    },
+    {
+      "depth": 0.0001872933091530138,
+      "known_planet": null,
+      "period_days": 0.6941945001503014,
+      "phase": 0.45,
+      "sde": 3.7687183054185205,
+      "tic": "167304933"
+    },
+    {
+      "depth": 0.005441491409931332,
+      "known_planet": "HIP 65 A b",
+      "period_days": 0.9812412183904988,
+      "period_error_frac": 0.00027301289769821047,
+      "phase": 0.445,
+      "published_period_days": 0.9809734,
+      "recovered": true,
+      "sde": 14.220192786100304,
+      "tic": "201248411"
+    },
+    {
+      "catalog": {
+        "ctoi_alias_n": null,
+        "ctoi_period_days": null,
+        "ctoi_table_age_days": 1.9361933399047013,
+        "disposition": null,
+        "known_ctoi": null,
+        "known_planet": "2MASS J01033563-5515561 AB b",
+        "known_toi": null,
+        "n_ctoi": 0,
+        "published_period_days": null,
+        "tic": "206502540"
+      },
+      "depth": 0.009708188248213512,
+      "known_planet": null,
+      "period_days": 0.5,
+      "phase": 0.5,
+      "sde": 8.056027443754607,
+      "tic": "206502540",
+      "vetting": {
+        "grid_hi": 9.135155904510762,
+        "grid_lo": 0.5,
+        "railed_at": 0.5,
+        "verdict": "period-railed"
+      }
+    },
+    {
+      "depth": 8.821142945214522e-05,
+      "known_planet": null,
+      "period_days": 0.6130367487822411,
+      "phase": 0.55,
+      "sde": 4.1256336418593875,
+      "tic": "209369633"
+    },
+    {
+      "depth": 0.0034883660947166995,
+      "known_planet": null,
+      "period_days": 0.6149381989647553,
+      "phase": 0.21,
+      "sde": 4.049393411553074,
+      "tic": "220021405"
+    },
+    {
+      "depth": 0.00012811018252023576,
+      "known_planet": null,
+      "period_days": 0.7933015086593304,
+      "phase": 0.4725,
+      "sde": 3.914450593455991,
+      "tic": "237924789"
+    },
+    {
+      "depth": 0.0007748834062747401,
+      "known_planet": null,
+      "period_days": 0.8819536127166682,
+      "phase": 0.01750000000000007,
+      "sde": 5.300884359864232,
+      "tic": "251853749"
+    },
+    {
+      "depth": 0.0011678402398892507,
+      "known_planet": null,
+      "period_days": 0.8521066053668653,
+      "phase": 0.3275,
+      "sde": 4.307028543546014,
+      "tic": "259927523"
+    },
+    {
+      "depth": 9.207135708388936e-05,
+      "known_planet": null,
+      "period_days": 0.9478229562031857,
+      "phase": 0.155,
+      "sde": 4.070033351637839,
+      "tic": "314829171"
+    },
+    {
+      "depth": 0.0004967592906254259,
+      "known_planet": null,
+      "period_days": 5.173122213083343,
+      "phase": 0.7325,
+      "sde": 7.144649847177765,
+      "tic": "350862394"
+    },
+    {
+      "depth": 0.000173255426068053,
+      "known_planet": null,
+      "period_days": 1.3124790681731193,
+      "phase": 0.3925,
+      "sde": 6.004488343273058,
+      "tic": "382159282"
+    },
+    {
+      "depth": 0.0001486762664443253,
+      "known_planet": null,
+      "period_days": 1.331201358481262,
+      "phase": 0.15,
+      "sde": 4.205286346991968,
+      "tic": "38815302"
+    },
+    {
+      "depth": 0.00015767429807045374,
+      "known_planet": null,
+      "period_days": 4.113346316619885,
+      "phase": 0.3275,
+      "sde": 4.586730808746852,
+      "tic": "39080333"
+    },
+    {
+      "depth": 0.0032714666028713646,
+      "known_planet": null,
+      "period_days": 2.0745703550408465,
+      "phase": 0.9525,
+      "sde": 7.59159662927178,
+      "tic": "425938795"
+    },
+    {
+      "depth": 0.0005090110164447381,
+      "known_planet": null,
+      "period_days": 6.039723957747778,
+      "phase": 0.8575,
+      "sde": 3.5654206542579336,
+      "tic": "434105148"
+    },
+    {
+      "depth": 0.002914374016398158,
+      "known_planet": null,
+      "period_days": 1.1675749539626148,
+      "phase": 0.8325,
+      "sde": 4.684008148584188,
+      "tic": "55269690"
+    },
+    {
+      "depth": 0.00026275371586337304,
+      "known_planet": null,
+      "period_days": 1.978826057175493,
+      "phase": 0.97,
+      "sde": 4.336023572707129,
+      "tic": "70859423"
+    },
+    {
+      "depth": 0.0005955390949734518,
+      "known_planet": null,
+      "period_days": 1.3113918993408107,
+      "phase": 0.8425,
+      "sde": 4.029487137024401,
+      "tic": "80418176"
+    }
+  ],
+  "sector": 2,
+  "status": "pass",
+  "targets_searched": 26,
+  "wall_seconds": 842.9500060081482
+}
