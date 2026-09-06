@@ -5267,17 +5267,7 @@
   })();
   </script>
   <script>
-    // The guided walk belongs to the hosted Broken Branch shell, not this
-    // downloadable instrument. Load it only where the companion asset exists.
-    if (/(^|\.)brokenbranch\.dev$/i.test(location.hostname)) {
-      var walk = document.createElement('script');
-      walk.src = '/walk/walk.js';
-      walk.defer = true;
-      document.body.appendChild(walk);
-    }
-  </script>
-  <script>
-    // Vercel Web Analytics, host-gated exactly like the walk above.
+    // Vercel Web Analytics, host-gated to brokenbranch.dev.
     //
     // This page is mirrored VERBATIM into the site repo, which is why it has to
     // carry its own beacon: the site's other 23 pages have the two <script> tags
