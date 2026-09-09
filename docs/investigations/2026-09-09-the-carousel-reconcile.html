@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The Carousel — windowsill reconcile, 2026-09-09</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..900;1,9..144,300..900&family=JetBrains+Mono:ital,wght@0,300..700;1,300..700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f2ea; --ink:#2b2218; --ink-soft:#5a4a39; --rule:#d9cdb8;
+  --accent:#8a3b1f; --accent-soft:#c97a4a; --code-bg:#ece4d3;
+  --moss:#5a6b3c; --dusk:#4a6478; --ash:#8d8272;
+  --mono:'JetBrains Mono',ui-monospace,monospace;
+  --serif:'Fraunces',Georgia,serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--serif); font-weight:400; font-size:17.5px; line-height:1.62;
+  font-variation-settings:'opsz' 14;
+}
+/* atmosphere: paper grain + faint corner radials */
+body::before{content:'';position:fixed;inset:0;pointer-events:none;z-index:1;opacity:.05;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");}
+.lamplight{position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(ellipse 60% 32% at 50% -4%, rgba(201,122,74,.13), transparent 70%),
+    radial-gradient(ellipse 40% 28% at 8% 108%, rgba(90,107,60,.07), transparent 70%);}
+.wrap{position:relative;z-index:2;max-width:860px;margin:0 auto;padding:56px 28px 96px}
+
+/* ── masthead ─────────────────────────────────────────── */
+.masthead{border-top:4px double var(--ink);border-bottom:4px double var(--ink);padding:26px 0 22px;margin-bottom:8px}
+.hero-eyebrow{display:flex;align-items:center;gap:12px;margin-bottom:18px}
+.hero-eyebrow::before,.hero-eyebrow::after{content:"";flex:1;height:1px;background:var(--rule)}
+.hero-eyebrow span{font-family:var(--mono);font-size:10px;letter-spacing:.42em;text-transform:uppercase;color:var(--accent)}
+h1{font-size:clamp(42px,8.5vw,86px);line-height:.96;margin:0;font-style:italic;font-weight:380;
+   font-variation-settings:'opsz' 144;letter-spacing:-.018em}
+.sub{font-style:italic;color:var(--ink-soft);margin:16px 0 0;font-size:19px;max-width:60ch}
+.dateline{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--ash);margin-top:20px;display:flex;flex-wrap:wrap;gap:6px 14px}
+
+/* ── stat strip ───────────────────────────────────────── */
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:2px;
+  background:var(--rule);border:1px solid var(--rule);margin:34px 0 8px}
+.stat{background:var(--bg);padding:16px 14px}
+.stat b{display:block;font-family:var(--mono);font-weight:700;font-size:30px;color:var(--accent);letter-spacing:-.02em;line-height:1.1}
+.stat span{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ash);margin-top:6px}
+
+/* ── sections ─────────────────────────────────────────── */
+section{margin-top:52px}
+.sec-num{font-family:var(--mono);font-size:11px;color:var(--accent);letter-spacing:.3em}
+h2{font-size:31px;font-style:italic;font-weight:400;margin:6px 0 4px;line-height:1.15;font-variation-settings:'opsz' 60}
+.blurb{font-style:italic;color:var(--ink-soft);margin:0 0 22px;font-size:16.5px}
+p{margin:0 0 16px}
+strong{font-weight:700}
+code{font-family:var(--mono);font-size:.86em;color:var(--accent);background:rgba(201,122,74,.11);padding:1px 5px;border-radius:3px}
+
+/* drop cap on the lede */
+.lede::first-letter{float:left;font-family:var(--serif);font-weight:900;font-style:italic;
+  font-size:4.6em;line-height:.82;padding:.06em .1em 0 0;color:var(--accent)}
+
+/* ── cards ────────────────────────────────────────────── */
+.card{background:rgba(255,255,255,.42);border:1px solid var(--rule);border-left:3px solid var(--accent);
+  padding:18px 20px;margin:0 0 14px;transition:background .18s}
+.card:hover{background:rgba(255,255,255,.8)}
+.card.fixed{border-left-color:var(--moss)}
+.card.built{border-left-color:var(--dusk)}
+.card h3{margin:0 0 6px;font-size:18px;font-style:italic;font-weight:600}
+.card p{margin:0;font-size:16px;color:var(--ink-soft)}
+.card .tag{font-family:var(--mono);font-size:9px;letter-spacing:.18em;text-transform:uppercase;color:var(--ash);display:block;margin-bottom:7px}
+
+/* ── the rings figure ─────────────────────────────────── */
+.fig{position:relative;border:1px solid var(--rule);background:rgba(255,255,255,.42);padding:34px 22px 22px;margin:26px 0}
+.fig::before{content:attr(data-fig);position:absolute;top:-9px;left:22px;background:var(--bg);padding:0 11px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;color:var(--accent);text-transform:uppercase}
+.rings{display:flex;flex-wrap:wrap;gap:3px;align-items:flex-end;min-height:52px}
+.ring{width:11px;background:var(--accent-soft);border-radius:1px}
+.ring.odd{background:var(--dusk)}
+.figcap{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--ash);margin-top:14px;line-height:1.7;text-transform:uppercase}
+
+/* ── tables ───────────────────────────────────────────── */
+table{width:100%;border-collapse:collapse;margin:20px 0;font-size:15px}
+caption{caption-side:top;text-align:left;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--accent);padding-bottom:9px}
+th{background:var(--ink);color:var(--bg);font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;
+  text-transform:uppercase;font-weight:400;text-align:left;padding:8px 10px}
+td{padding:9px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+tbody tr:nth-child(odd){background:rgba(255,255,255,.36)}
+td.num{font-family:var(--mono);font-size:13px;white-space:nowrap}
+.bar{display:inline-block;height:.72em;background:var(--accent-soft);vertical-align:baseline;margin-right:7px}
+.bar.win{background:var(--moss)}
+
+/* ── pull quote ───────────────────────────────────────── */
+.pull{position:relative;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);
+  margin:34px 0;padding:34px 6px 24px;text-align:center}
+.pull::before{content:"❝";position:absolute;top:-15px;left:50%;transform:translateX(-50%);
+  background:var(--bg);padding:0 12px;font-size:30px;color:var(--accent-soft);line-height:1}
+.pull q{font-style:italic;font-size:20.5px;quotes:none;display:block;max-width:52ch;margin:0 auto;line-height:1.5}
+.pull cite{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.2em;
+  text-transform:uppercase;color:var(--ash);margin-top:15px;font-style:normal}
+
+/* ── chips ────────────────────────────────────────────── */
+.conf{font-family:var(--mono);font-size:9px;letter-spacing:.1em;border:1px solid var(--rule);
+  padding:2px 6px;border-radius:3px;color:var(--ink-soft);white-space:nowrap;text-transform:uppercase}
+.conf.measured{border-color:var(--moss);color:var(--moss)}
+.conf.held{border-color:var(--accent);color:var(--accent)}
+.conf.open{border-color:var(--dusk);color:var(--dusk)}
+
+.stamp{display:inline-block;padding:9px 22px;border:3px double var(--accent);border-radius:4px;
+  color:var(--accent);font-family:var(--mono);font-size:11px;letter-spacing:.28em;
+  text-transform:uppercase;transform:rotate(-2.5deg);margin:8px 0}
+
+ul{margin:0 0 16px;padding-left:20px}
+li{margin-bottom:9px}
+
+/* ── colophon ─────────────────────────────────────────── */
+footer{margin-top:72px;border-top:4px double var(--ink);padding-top:20px;
+  display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:18px;
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ash);line-height:1.9}
+footer b{display:block;color:var(--ink);font-weight:400;letter-spacing:.2em;margin-bottom:5px}
+.endmark{text-align:center;font-size:19px;color:var(--accent-soft);margin:44px 0 0}
+@media(max-width:560px){ .wrap{padding:36px 18px 70px} h1{font-size:38px} }
+</style>
+</head>
+<body>
+<div class="lamplight"></div>
+<div class="wrap">
+
+<header class="masthead">
+  <div class="hero-eyebrow"><span>Windowsill Lab · Reconcile</span></div>
+  <h1>The Carousel</h1>
+  <p class="sub">The lab was not broken. It was running a product we retired on the second of August, and nothing in the code was ever told.</p>
+  <div class="dateline">
+    <span>Filed 2026-09-09</span><span>·</span><span>Loam</span><span>·</span>
+    <span>~/projects/windowsill-lab</span><span>·</span><span>Publication held, both boxes</span>
+  </div>
+</header>
+
+<div class="stats">
+  <div class="stat"><b>45</b><span>M01 receipts</span></div>
+  <div class="stat"><b>41</b><span>identical headlines</span></div>
+  <div class="stat"><b>240</b><span>receipts total</span></div>
+  <div class="stat"><b>38</b><span>days since redefinition</span></div>
+  <div class="stat"><b>15</b><span>days to the G01 deadline</span></div>
+</div>
+
+<section>
+  <div class="sec-num">01</div>
+  <h2>What the receipts say</h2>
+  <p class="blurb">Not an inference. The archive, counted.</p>
+  <p class="lede">Milestone M01 reproduces Onsager's 1944 exact solution for the 2D Ising critical temperature. It has run <strong>forty-five times</strong> since June. Forty-one of those runs printed a byte-identical headline: <code>χ peaked at T≈2.300 vs Onsager 2.2692</code>. The four that differed read <code>T≈1.600</code> and <code>T≈1.500</code> — those are not discoveries, those are the estimator failing and being published as a result. M02 has run forty-four times.</p>
+
+  <div class="fig" data-fig="Fig. 01 — Forty-five rings, one year">
+    <div class="rings" id="rings"></div>
+    <div class="figcap">
+      Each bar is one committed M01 receipt, June → September. Height encodes the measured χ-peak.
+      Forty-one agree to the last digit; the four in dusk-blue are the estimator's own failures, published
+      as findings. A core sample from a tree that added no wood.
+    </div>
+  </div>
+
+  <p>After the value-function planner landed on 14 August, the pattern changed shape but not substance: <strong>110 receipts across 27 milestones, five to seven runs each</strong> — near-perfectly uniform. The planner did not fix the carousel. It balanced it.</p>
+</section>
+
+<section>
+  <div class="sec-num">02</div>
+  <h2>Three declarations, all dated, all in the repo</h2>
+  <p class="blurb">The bug was filed. Twice. Then the product changed under it.</p>
+
+  <table>
+    <caption>The paper trail</caption>
+    <thead><tr><th>Date</th><th>Where</th><th>What was declared</th></tr></thead>
+    <tbody>
+      <tr><td class="num">2026-06-26</td><td>docs/investigations/<br>heartbeat-vs-lab-next.md</td><td>Raised as a <strong>P0</strong> by the public-experience audit. Fixed 7-05 (PR #49) — <em>"so the windowsill climbs the curriculum instead of re-running M01 every night."</em></td></tr>
+      <tr><td class="num">2026-08-02</td><td>BACKLOG.md, top of file</td><td><strong>"⭐ North star — the frontier gate (declared 2026-08-02, Ben)."</strong> <em>"Everything below this line serves that crossing."</em> The product redefinition, signed.</td></tr>
+      <tr><td class="num">2026-08-24</td><td>pot.json · goal G01</td><td><em>"Stop pricing the frontier and cross it."</em> Deadline <strong>2026-09-24</strong>. <code>a_field_unknown_attempted: false</code> · <code>attempted: []</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="pull">
+    <q>The lab is very good at answering and has never once asked. Every rung on the ladder was typed by a human months ago; the scheduler picks which existing rung to work on and cannot invent a new one.</q>
+    <cite>src/lab/frontier.py — the lab's own docstring, written before this session</cite>
+  </div>
+</section>
+
+<section>
+  <div class="sec-num">03</div>
+  <h2>Why the planner could not reach the frontier</h2>
+  <p class="blurb">Three mechanical causes. None of them is "nobody tried."</p>
+
+  <div class="card">
+    <span class="tag">Cause 01 · the dispatch table</span>
+    <h3>The frontier class had one seat, and it was gated shut</h3>
+    <p><code>plan_turn</code> admits an open milestone <em>only if it has a registered runner</em>. The eight that <em>are</em> the redefined product — C02, C03, C04, A06, I02, I03, B01, B02 — had none, so they were skipped silently on every turn. The one milestone actually marked open, A05, is lane-exhausted on this box. Every turn fell through to the canary board.</p>
+  </div>
+
+  <div class="card">
+    <span class="tag">Cause 02 · the value function</span>
+    <h3>Staleness paid the planner to replay</h3>
+    <p>A verified canary's value scaled by <code>log2(1 + days_since / half_life)</code>, capped at <strong>4×</strong>. The longer a rung went unmeasured, the more the planner wanted it. It also broke the stated class order — a canary at 4.0 outranked a kept miss worth retrying at 3.0.</p>
+  </div>
+
+  <div class="card">
+    <span class="tag">Cause 03 · the guard, and its test</span>
+    <h3>The repeat law measured the wrong axis</h3>
+    <p><code>repeats = head_run if mid == head_mid</code> counts <em>consecutive</em> receipts. A 29-slot round-robin never repeats consecutively. <strong>Max consecutive run since the planner landed: 1.</strong> <code>REPEAT_HARD_CAP = 3</code> has never fired. The guard was built for the June failure — M01 nightly, nineteen in a row — and the failure had already moved. The test suite pinned the same axis, so it stayed green throughout.</p>
+  </div>
+
+  <p>The deeper reason decay could never have worked: <strong>a carousel is a fixed point of any symmetric value function.</strong> Every rung pays the same decay each lap, nothing reorders, and the loop is stable. Breaking it needs an <em>asymmetric</em> term.</p>
+</section>
+
+<section>
+  <div class="sec-num">04</div>
+  <h2>What was fixed</h2>
+  <p class="blurb">Planner v1 → v2. Old receipts are not regraded; they were honest under the law they were planned by.</p>
+
+  <div class="card fixed"><span class="tag">curriculum.py</span><h3>Staleness capped at due</h3><p><code>STALENESS_CAP</code> 4.0 → <strong>1.0</strong>. A canary comes due at one half-life and never appreciates past it. Being ignored for another month does not make Onsager's constant more in need of remeasuring.</p></div>
+
+  <div class="card fixed"><span class="tag">curriculum.py</span><h3>Repeat saturation — the asymmetric term</h3><p>Canary value divided by <code>1 + prior receipts</code>. The 46th M01 run is worth 1/46th of the first. This is what a carousel cannot survive, because it prices <em>samples already taken</em> rather than time elapsed.</p></div>
+
+  <div class="card fixed"><span class="tag">cli.py</span><h3>The single-bench shortcut stops short-circuiting the planner</h3><p><code>_select_next</code> now declines when more than one milestone is open, so <code>plan_turn</code> arbitrates. Without this, opening C03 would have created a <em>new</em> carousel — one rung, every turn — and starved the A05 hunt outright.</p></div>
+
+  <div class="card fixed"><span class="tag">curriculum.py</span><h3>The reason line stopped lying about its own version</h3><p>Four hardcoded <code>"planner v1:"</code> strings meant a receipt could carry <code>planner: "v2"</code> in its block while the prose beside it said v1.</p></div>
+
+  <div class="card fixed"><span class="tag">tests/test_planner.py</span><h3>The law the suite never had</h3><p><code>test_an_all_canary_carousel_is_not_a_fixed_point</code> — 120 turns over the real rotation; the board's own scores must exhaust as it laps, and one dispatchable frontier rung must take the turns back. The test that would have caught this in August.</p></div>
+</section>
+
+<section>
+  <div class="sec-num">05</div>
+  <h2>What was built</h2>
+  <p class="blurb"><code>lab c03</code> — the first of the eight to become dispatchable.</p>
+
+  <p>An OEIS b-file extension instrument, shaped as a gate rather than a run, because the standing failure mode is an instrument that cannot say <em>unsure</em>:</p>
+  <ul>
+    <li><strong>Reproduce</strong> — regenerate <em>every</em> term the b-file already holds and compare canonical bytes. One mismatch and the run refuses. We do not get to extend what we cannot reproduce.</li>
+    <li><strong>Cross-verify</strong> — an algorithmically independent second method must agree. Two runs of one algorithm agree about their shared bug.</li>
+    <li><strong>Price the reach</strong> — time the terms, project the cost, return <code>in-reach</code>/<code>out-of-reach</code> with the number. An out-of-reach verdict is a <em>result</em>.</li>
+    <li><strong>Extend</strong> — inside the measured budget only, and a term is claimed only where both methods produce the same integer.</li>
+  </ul>
+
+  <table>
+    <caption>Measured, this session</caption>
+    <thead><tr><th>Target</th><th>Known terms</th><th>Reproduced</th><th>Cross-verified</th><th>New terms</th></tr></thead>
+    <tbody>
+      <tr><td class="num">A001006 · Motzkin</td><td class="num">2,107 <span class="conf measured">n=0..2106</span></td><td class="num">exact bytes</td><td class="num">closed form</td><td class="num">24 <span class="conf">1001 digits</span></td></tr>
+      <tr><td class="num">A000045 · Fibonacci</td><td class="num">2,001 <span class="conf measured">n=0..2000</span></td><td class="num">exact bytes</td><td class="num">fast doubling</td><td class="num">32</td></tr>
+    </tbody>
+  </table>
+
+  <p><code>check_c03</code> re-derives all of it offline from the registered method pair. Six negative controls — a fabricated term, a false reproduction hash, an unregistered target, an "extension" inside the known range, an inflated count, swapped methods — each refuse. 21 tests, all offline.</p>
+
+  <div class="fig" data-fig="Fig. 02 — What the scheduler would dispatch">
+    <table style="margin:0">
+      <thead><tr><th>&nbsp;</th><th>Pick</th><th>Class</th><th>Score</th></tr></thead>
+      <tbody>
+        <tr><td class="num">before</td><td class="num">A03</td><td class="num">null-retry</td><td class="num"><span class="bar" style="width:12px"></span>0.31</td></tr>
+        <tr><td class="num">after</td><td class="num">C03</td><td class="num">open-frontier</td><td class="num"><span class="bar win" style="width:200px"></span>8.00</td></tr>
+      </tbody>
+    </table>
+    <div class="figcap">Real ledger, <code>lab next --dry-run</code>. Because it routes through the planner rather than the bench shortcut, C03 is still subject to the repeat cap — it cannot monopolise the schedule either.</div>
+  </div>
+</section>
+
+<section>
+  <div class="sec-num">06</div>
+  <h2>What the target search actually found</h2>
+  <p class="blurb">The honest half. This is the milestone, and it is still open.</p>
+
+  <p>The instrument is calibrated; the <em>target</em> is not chosen. Extending Motzkin numbers is not a contribution — that b-file stops at 2,106 by convention, not by difficulty. Three things were measured while looking for one that is both reachable and wanted:</p>
+
+  <div class="card built"><span class="tag">Measurement</span><h3>The famous short b-files are short because they are hard</h3><p>A000105 (polyominoes) stops at n=59, A000170 (n-queens) and A007764 (self-avoiding rook paths) at 27. Every one is a standing record. There is no soft frontier hiding among the well-known sequences.</p></div>
+
+  <div class="card built"><span class="tag">Measurement</span><h3>OEIS publishes its own soft frontier, and it is empty</h3><p><code>keyword:more</code> means "more terms are needed"; <code>keyword:easy</code> means "easy to compute". Their intersection returns <strong>exactly one sequence</strong> — and it is a joke about the English names of numbers. Curation has already eaten the easy wins.</p></div>
+
+  <div class="card built"><span class="tag">Instrument defect, caught by control</span><h3>The search endpoint answers "too many" with the word <code>null</code></h3><p>HTTP 200, body <code>null</code>. A probe reading that as "zero results" reports an empty frontier that is in fact a crowded one — and my first pass did exactly that until a positive control caught it. It also rate-limits to 403 under steady polling. Both are now encoded in <code>oeis_search</code>.</p></div>
+
+  <p>Which sharpens what the r/vibecoding result actually was. Circle packing at N=101–114 was soft because it is a <em>continuous optimisation nobody had thrown modern compute at</em>, with a cheap exact verifier and a responsive human maintaining the record. That combination is the scarce thing — not the agent, and not the overnight cron.</p>
+</section>
+
+<section>
+  <div class="sec-num">07</div>
+  <h2>Standing</h2>
+  <div class="stamp">Publication held · both boxes</div>
+  <ul>
+    <li><span class="conf held">Held</span> &nbsp;Loam: campaign, hunt and deep lanes stopped <em>and disabled</em> — the unit carried <code>Restart=on-failure</code>, so a stop alone would have come back.</li>
+    <li><span class="conf held">Held</span> &nbsp;Win: handoff pushed at 11:07, 53 minutes before its 12:00 pass, with the PowerShell to disable its scheduled tasks and a request for the <code>State</code> column as a receipt.</li>
+    <li><span class="conf measured">Green</span> &nbsp;Planner, next and C03 suites: <strong>103 passed</strong>. C03: 21 tests, offline.</li>
+    <li><span class="conf open">Pre-existing</span> &nbsp;One full-suite failure, <code>test_archive.py</code> — reproduced identically at clean HEAD in a scratch worktree. That is issue #111, "main is red", filed this morning and not from this work.</li>
+    <li><span class="conf open">Open</span> &nbsp;Seven of the eight still have no runner: C02, C04, A06, I02, I03, B01, B02.</li>
+    <li><span class="conf open">Open</span> &nbsp;A C03 target that is both reachable and wanted. G01 falls due <strong>2026-09-24</strong>.</li>
+  </ul>
+  <p>Nothing here has been committed to a published surface. <code>pot.json</code> and <code>reports/latest.html</code> were restored after the calibration run touched them, because the hold means the hold.</p>
+</section>
+
+<div class="endmark">❦</div>
+
+<footer>
+  <div><b>Origin</b>Loam · this box<br>2026-09-09</div>
+  <div><b>Project</b>windowsill-lab<br>reconcile · planner v2</div>
+  <div><b>Filed</b>~/cockpit/<br>windowsill-reconcile.html</div>
+  <div><b>Assets</b>Self-contained<br>fonts from Google only</div>
+</footer>
+
+</div>
+<script>
+/* The rings: 45 real M01 receipts in ledger order. Height encodes the measured
+   χ-peak; the four dusk bars are the runs that reported a peak at 1.5–1.6 K,
+   which is the estimator failing, not the physics moving. Static data, no PRNG. */
+(function(){
+  var peaks = [2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,
+               2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,
+               1.6,1.6,1.6,2.3,2.3,2.3,1.5,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3,2.3];
+  var host = document.getElementById('rings');
+  peaks.forEach(function(p){
+    var d = document.createElement('div');
+    d.className = 'ring' + (p < 2 ? ' odd' : '');
+    d.style.height = Math.round(14 + (p - 1.4) * 38) + 'px';
+    d.title = 'χ peak T≈' + p.toFixed(3);
+    host.appendChild(d);
+  });
+})();
+</script>
+</body>
+</html>

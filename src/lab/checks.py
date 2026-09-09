@@ -3774,8 +3774,10 @@ def check_planned_decision(receipt: dict, records) -> tuple[bool | None, str]:
     ordered = sorted(older)
     head_mid, head_run = _head_run(ordered)
     last_stamp: dict[str, str] = {}
+    prior_runs: dict[str, int] = {}     # v2 saturation denominator
     for s, m in ordered:
         last_stamp[m] = s          # ordered ascending — the last write wins
+        prior_runs[m] = prior_runs.get(m, 0) + 1
 
     problems: list[str] = []
     scores = [s for _mid, _cls, s in entries]
@@ -3832,7 +3834,12 @@ def check_planned_decision(receipt: dict, records) -> tuple[bool | None, str]:
                     STALENESS_CAP,
                     math.log2(1.0 + days / CANARY_HALF_LIFE_DAYS),
                 )
-            ceiling = VERIFIED_CANARY_VALUE * multiplier
+            # v2 saturation, re-derived from the same strictly-older ledger:
+            # the samples already taken divide the value. Without this term the
+            # ceiling would sit a factor of (1 + prior) above what plan_turn can
+            # actually emit, and a fabricated canary score could hide under it.
+            ceiling = (VERIFIED_CANARY_VALUE * multiplier
+                       / (1.0 + prior_runs.get(mid, 0)))
         elif base_cls in _PLANNED_BASE_VALUE:
             ceiling = _PLANNED_BASE_VALUE[base_cls]
         else:
@@ -4563,6 +4570,169 @@ def check_hypothesis(report: dict) -> tuple[bool | None, str]:
                   f"{len(finding.new_observations)} new-observation record(s)")
 
 
+# ── C03 · OEIS b-file extension ──────────────────────────────────────────────
+# The grading axis is arithmetic, not provenance: every term the receipt claims
+# — the ones already in the b-file AND the new ones — is regenerated here from
+# the registered methods and compared. A fabricated term fails on integers.
+#
+# Bounded on purpose, the same way check_c01 refuses a caller-selected amount of
+# work: a receipt is untrusted input, and "regenerate n terms" with an
+# attacker-chosen n is a denial of service with a check's name on it.
+_C03_MAX_KNOWN_TERMS = 200_000
+_C03_MAX_NEW_TERMS = 4_096
+
+
+def check_c03(report: dict) -> tuple[bool | None, str]:
+    """Re-derive a C03 extension offline: reproduce, cross-verify, re-extend.
+
+    Never contacts OEIS. The receipt pins the source b-file by SHA-256 and
+    retains the canonical rendering's hash; this check regenerates that
+    rendering from the registered generator and compares hashes, then recomputes
+    every claimed new term with BOTH registered methods. What it cannot prove is
+    that the pinned bytes are what OEIS served — that is the fetch's provenance
+    claim, graded by the hash, not by this arithmetic.
+    """
+    if report.get("experiment") != "C03-oeis-bfile-extension":
+        return None, "not a C03 b-file extension"
+
+    from . import c03 as c03_mod
+
+    target = report.get("target")
+    if not isinstance(target, str) or target not in c03_mod.TARGETS:
+        return False, (f"C03 target {target!r} is not in the registry "
+                       f"{sorted(c03_mod.TARGETS)} — an unregistered target "
+                       "carries no method pair to re-derive it with")
+    tgt = c03_mod.TARGETS[target]
+
+    n_known = report.get("known_terms")
+    first_index = report.get("known_first_index")
+    last_index = report.get("known_last_index")
+    if (not isinstance(n_known, int) or isinstance(n_known, bool)
+            or not isinstance(first_index, int) or isinstance(first_index, bool)
+            or not isinstance(last_index, int) or isinstance(last_index, bool)):
+        return None, "C03 report missing its known-term index range"
+    if not 0 < n_known <= _C03_MAX_KNOWN_TERMS:
+        return False, (f"C03 claims {n_known} known terms, outside the "
+                       f"re-derivable bound of {_C03_MAX_KNOWN_TERMS}")
+    if last_index - first_index + 1 != n_known:
+        return False, (f"C03 index range n={first_index}..{last_index} does not "
+                       f"span the {n_known} terms claimed")
+    if report.get("method_a") != tgt.method_a \
+            or report.get("method_b") != tgt.method_b:
+        return False, (f"C03 receipt names methods the {target} registry does "
+                       "not — the claim cannot be re-derived under its own law")
+
+    # ── the known terms, regenerated from scratch ───────────────────────────
+    gen_all = tgt.generate(first_index + n_known)
+    regenerated = [(first_index + k, gen_all[first_index + k])
+                   for k in range(n_known)]
+    regen_hash = hashlib.sha256(c03_mod.bfile_bytes(regenerated)).hexdigest()
+    claimed_source = report.get("source_prefix_sha256")
+    claimed_gen = report.get("generated_prefix_sha256")
+    reproduced = bool(report.get("reproduced"))
+    if reproduced:
+        if claimed_gen != regen_hash:
+            return False, (
+                f"C03 claims its generated prefix hashes {claimed_gen}, but "
+                f"regenerating {n_known} terms of {target} by {tgt.method_a} "
+                f"gives {regen_hash}")
+        if claimed_source != regen_hash:
+            return False, (
+                "C03 claims an EXACT reproduction, yet the receipt's own "
+                f"source-prefix hash {claimed_source} differs from the "
+                f"regenerated {regen_hash}")
+
+    # ── every claimed new term, by BOTH methods ─────────────────────────────
+    new_terms = report.get("new_terms")
+    if new_terms is None:
+        new_terms = []
+    if not isinstance(new_terms, list):
+        return None, "C03 new_terms is not a list — unreadable, not graded"
+    if len(new_terms) > _C03_MAX_NEW_TERMS:
+        return False, (f"C03 claims {len(new_terms)} new terms, outside the "
+                       f"re-derivable bound of {_C03_MAX_NEW_TERMS}")
+
+    problems: list[str] = []
+    agreed_indices: list[int] = []
+    if new_terms:
+        indices = []
+        for entry in new_terms:
+            if not isinstance(entry, dict):
+                return None, "C03 new_terms entry is not an object — unreadable"
+            idx, val = entry.get("index"), entry.get("value")
+            if not isinstance(idx, int) or isinstance(idx, bool) \
+                    or not isinstance(val, str):
+                return None, ("C03 new_terms entry missing an integer index or "
+                              "string value — unreadable, not graded")
+            if idx <= last_index:
+                problems.append(
+                    f"n={idx} is not past the b-file's end (n={last_index}) — "
+                    "an 'extension' inside the known range is not one")
+            indices.append(idx)
+        extended = tgt.generate(max(indices) + 1)
+        witness = tgt.witness(indices)
+        for entry in new_terms:
+            idx = entry["index"]
+            claimed = entry["value"]
+            a_val = extended[idx]
+            b_val = witness.get(idx)
+            if str(a_val) != claimed:
+                problems.append(
+                    f"n={idx}: receipt says {claimed[:32]}… but {tgt.method_a} "
+                    f"gives {str(a_val)[:32]}…")
+                continue
+            if b_val is None or b_val != a_val:
+                if entry.get("agreed"):
+                    problems.append(
+                        f"n={idx}: claimed as method-agreed, but "
+                        f"{tgt.method_b} disagrees")
+                continue
+            if entry.get("agreed"):
+                agreed_indices.append(idx)
+            else:
+                problems.append(
+                    f"n={idx}: both methods agree yet the receipt marks it "
+                    "unagreed — the claim is narrower than the evidence, "
+                    "which still means the receipt does not describe its run")
+
+    # ── the fragment is exactly the agreed terms, and hashes to its claim ───
+    fragment = "".join(f"{i} {extended[i]}\n" for i in sorted(agreed_indices)) \
+        if agreed_indices else ""
+    frag_hash = hashlib.sha256(fragment.encode("utf-8")).hexdigest()
+    if report.get("extension_fragment_sha256") != frag_hash:
+        problems.append(
+            "the submission fragment does not hash to the agreed terms "
+            f"(receipt {report.get('extension_fragment_sha256')}, "
+            f"re-derived {frag_hash})")
+    claimed_agreed = report.get("new_terms_agreed")
+    if claimed_agreed != len(agreed_indices):
+        problems.append(
+            f"receipt counts {claimed_agreed} agreed terms; re-derivation "
+            f"finds {len(agreed_indices)}")
+
+    # ── status must match what the stages actually returned ─────────────────
+    status = report.get("status")
+    if status == "pass" and not (reproduced and report.get("cross_checked")
+                                 and agreed_indices):
+        problems.append(
+            "status 'pass' without a reproduction, a cross-check and at least "
+            "one method-agreed new term")
+    if not reproduced and status == "pass":
+        problems.append("status 'pass' on a refused reproduction")
+
+    if problems:
+        return False, "C03 re-derivation failed: " + "; ".join(problems[:4])
+    if not reproduced:
+        return None, (
+            f"C03 refused before extending: {report.get('reproduce_detail')} — "
+            "a refusal is graded as unresolved, not as a failure")
+    return True, (
+        f"{target}: {n_known} known terms regenerated to hash {regen_hash[:12]}… "
+        f"by {tgt.method_a}; {len(agreed_indices)} new terms past n={last_index} "
+        f"re-derived and confirmed by both {tgt.method_a} and {tgt.method_b}; "
+        f"fragment hash matches")
+
+
 CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M04": check_m04, "M05": check_m05, "M06": check_m06,
           "M07": check_m07, "M08": check_m08, "M09": check_m09,
@@ -4571,7 +4741,7 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "M16": check_m16, "M17": check_m17, "M18": check_m18,
           "K01": check_k01, "K02": check_k02, "K03": check_k03,
           "K04": check_k04,
-          "C01": check_c01, "C05": check_c05,
+          "C01": check_c01, "C03": check_c03, "C05": check_c05,
           "A01": check_a01,
     "A02": check_a02,
     "P01": check_p01, "A03": check_a03, "A04": check_a04,

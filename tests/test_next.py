@@ -872,3 +872,38 @@ def test_newly_admitted_runners_are_in_rotation():
     """The three admitted 2026-08-30 after being timed out-of-rotation."""
     for mid in ("K04", "C05", "P01"):
         assert mid in curriculum.ROTATION, f"{mid} was admitted; it must stay rotated"
+
+
+def test_select_next_declines_when_more_than_one_milestone_is_open():
+    """The single-bench shortcut must not become a new carousel.
+
+    `_select_next` exists to dispatch THE one open experiment without paying
+    for a value function. Opening a second one (C03 joined A05 on the bench
+    2026-09-09) turns that shortcut into "whichever sorts first in
+    MILESTONES.md, every turn, forever" — a round-robin of one — and it would
+    starve the A05 hunt outright, because the survey rides in as a synthetic
+    planner candidate and the planner only runs when this branch declines.
+    Arbitration between open milestones belongs to plan_turn, which ranks them
+    and applies the repeat law so no frontier rung monopolises the schedule.
+    """
+    milestones = [
+        {"id": "M01", "status": "verified"},
+        {"id": "C03", "status": "open"},
+        {"id": "A05", "status": "open"},
+    ]
+    mid, has_runner = cli._select_next(milestones)
+    assert mid is None
+    assert has_runner is False
+
+
+def test_select_next_still_shortcuts_a_single_open_bench():
+    """The shortcut is not removed, only bounded: one open milestone with a
+    runner still dispatches directly, which is what every pre-2026-09-09
+    receipt was planned under."""
+    milestones = [
+        {"id": "M01", "status": "verified"},
+        {"id": "C03", "status": "open"},
+    ]
+    mid, has_runner = cli._select_next(milestones)
+    assert mid == "C03"
+    assert has_runner is True
