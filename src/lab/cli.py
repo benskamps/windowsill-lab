@@ -238,10 +238,21 @@ def _select_next(milestones):
     heartbeat. This is pure selection: it reads state and decides, it never runs
     a simulation or edits ``MILESTONES.md``.
     """
-    open_ms = next((m for m in milestones if m.get("status") == "open"), None)
-    if open_ms is None:
+    open_ms = [m for m in milestones if m.get("status") == "open"]
+    if not open_ms:
         return None, False
-    mid = open_ms["id"]
+    if len(open_ms) > 1:
+        # More than one bench. This shortcut exists to dispatch THE single open
+        # experiment without paying for a value function; with a real frontier
+        # of several it would instead hand every turn to whichever one sorts
+        # first in MILESTONES.md — a new carousel with a better name, and one
+        # that would starve A05's hunt outright (the survey rides in as a
+        # synthetic planner candidate, and the planner only runs when this
+        # branch declines). Arbitration between open milestones is exactly what
+        # plan_turn is for: it ranks them, decays repeats and caps runs, so no
+        # single frontier rung can monopolise the schedule either.
+        return None, False
+    mid = open_ms[0]["id"]
     return mid, mid in RUNNERS
 
 
@@ -406,6 +417,8 @@ Usage:
   lab k03             run K03: Daido vs Hong — is the susceptibility exponent asymmetric across K_c? (Track K)
   lab k04             run K04: Mirollo–Strogatz fireflies — measure the almost-sure sync theorem (Track K)
   lab c01             run C01: OEIS byte + Lucas–Lehmer arithmetic calibration
+  lab c03             run C03: extend an OEIS b-file — reproduce every known term,
+                      cross-verify with a second method, price the reach, extend
   lab c05             run C05: BBP hex digits of π extracted at position, byte-checked
                       against an independent Machin expansion; deep window at 10^7
   lab a01             run A01: recover WASP-18 b from official TESS SPOC light curves
@@ -1046,6 +1059,23 @@ def _parse_c01(args):
     return p.parse_args(args)
 
 
+def _parse_c03(args):
+    p = argparse.ArgumentParser(add_help=False)
+    p.add_argument("--target", default=None,
+                   help="OEIS A-number from the C03 registry "
+                        "(default: %s)" % "A001006")
+    p.add_argument("--terms", type=int, default=None,
+                   help="terms to attempt past the b-file's end")
+    p.add_argument("--budget", type=float, default=None,
+                   help="wall-clock budget in seconds for the extension; a "
+                        "projection above it returns out-of-reach and the "
+                        "extension is not attempted")
+    p.add_argument("--refresh", action="store_true",
+                   help="re-fetch the b-file instead of using the pinned cache "
+                        "(OEIS rate-limits; the cache is the polite default)")
+    return p.parse_args(args)
+
+
 def _parse_c05(args):
     p = argparse.ArgumentParser(add_help=False)
     p.add_argument("--digits", type=int, default=None,
@@ -1156,7 +1186,10 @@ def _run_next(args, dry, lock_path=None):
         else:
             skips.append((open_mid, gate_reason))
     if subcmd is None:
-        if open_mid is None:
+        n_open = sum(1 for m in milestones if m.get("status") == "open")
+        if open_mid is None and n_open > 1:
+            why = f"{n_open} milestones open — the planner arbitrates"
+        elif open_mid is None:
             why = "no open milestone"
         elif not has_runner:
             why = f"no runner for {open_mid} yet"
@@ -2506,6 +2539,36 @@ def main(argv=None):
               f"Lucas–Lehmer residue={result.lucas_lehmer_residue} · "
               f"{'calibrated' if result.calibration_passed else '[~] null'} · "
               f"{result.wall_seconds:.2f}s")
+        path = render_mod.render_calibration(report)
+        print(f"  ✓ report: {path}")
+        try:
+            from . import publish as publish_mod
+            print(f"  ✓ snapshot: {publish_mod.publish(quiet=True)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"  (snapshot skipped: {e})")
+        return 0
+
+    if cmd == "c03":
+        ns = _parse_c03(args[1:])
+        from . import c03
+        from . import render as render_mod
+        target = ns.target or c03.DEFAULT_TARGET
+        terms = ns.terms if ns.terms is not None else c03.DEFAULT_EXTEND_TERMS
+        budget = (ns.budget if ns.budget is not None
+                  else c03.DEFAULT_BUDGET_SECONDS)
+        print(f"C03 OEIS b-file extension · {target} · "
+              f"{terms} terms requested · {budget:.0f}s budget")
+        result = c03.run_c03(target_id=target, extend_terms=terms,
+                             budget_seconds=budget, refresh=ns.refresh)
+        report = c03.to_report(result)
+        print(f"  → {result.known_terms} known terms "
+              f"{'reproduced EXACTLY' if result.reproduced else 'MISMATCHED'} · "
+              f"second method {'agrees' if result.cross_checked else 'NOT RUN/DISAGREES'} · "
+              f"reach {result.reach_verdict} ({result.reach_detail}) · "
+              f"{result.new_terms_agreed} new terms past n={result.known_last_index} · "
+              f"{result.wall_seconds:.1f}s")
+        if result.status != "pass":
+            print(f"  [~] status {result.status}: {result.reproduce_detail}")
         path = render_mod.render_calibration(report)
         print(f"  ✓ report: {path}")
         try:

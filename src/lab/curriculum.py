@@ -44,6 +44,14 @@ RUNNERS = {
     # null. Seconds of NumPy CPU — the cheapest turn on the shelf.
     "K04": "k04",
     "C01": "c01",
+    # C03's runner landed 2026-09-09: the OEIS b-file extension
+    # instrument (reproduce -> cross-verify -> price the reach ->
+    # extend). Registered because an OPEN milestone with no runner is
+    # invisible to plan_turn: the frontier class outscores every canary
+    # and then never gets to, because a runnerless candidate is skipped
+    # before it is ever scored. C02/C04/A06/I02/I03/B01/B02 are still in
+    # that state and are the rest of this reconcile.
+    "C03": "c03",
     "C05": "c05",
     "A01": "a01",
     "A03": "a03",
@@ -176,6 +184,9 @@ ROTATION: tuple[str, ...] = (
 ROTATION_EXCLUDED: dict[str, str] = {
     "A05": "the frontier branch owns the open bench — rotation must never "
            "double-dispatch it (it has its own windowsill-hunt.timer)",
+    "C03": "the frontier branch owns the open bench — C03 is an OPEN "
+           "milestone and the planner dispatches it by class, so a rotation "
+           "slot would double-dispatch it exactly as it would A05",
     "M12": "wall-clock class — PT2H-exceeding full run; hand-run, see the "
            "2026-08-01 rotation doc",
     "M16": "wall-clock class — null-spam quick variant; hand-run, same doc",
@@ -517,7 +528,13 @@ def newest_receipt_milestone(records: Iterable[tuple[str, str]]) -> str | None:
 
 #: Planner identity stamped into every decision record — bump on any scoring
 #: change so an old receipt's planned block is never re-derived against new law.
-PLANNER_VERSION = "v1"
+#:
+#: v2 (2026-09-09): staleness capped at due instead of 4x, and canary value
+#: divided by the samples already taken. v1 planned honestly under a law that
+#: paid for replay; its receipts are not regraded (check_planned_decision's
+#: PLANNER_VERSION boundary passes them vacuously) because they were not wrong
+#: under the law they were planned by — the LAW was wrong.
+PLANNER_VERSION = "v2"
 
 #: Class base values, strictly ordered: an OPEN frontier milestone is the whole
 #: point of the lab; a rung that has NEVER produced a receipt is a missing
@@ -546,11 +563,35 @@ ALL_CANARY_REASON = ("every eligible candidate is a re-run of an already-verifie
 #: seven days, then slow growth.
 CANARY_HALF_LIFE_DAYS = 7.0
 
-#: Staleness cap. Deliberately BELOW NEVER_RUN_VALUE / VERIFIED_CANARY_VALUE
-#: (4 < 5): no matter how stale, a verified canary can never outrank a rung
-#: that has never been measured at all. Class order is an invariant, not a
-#: tendency (tests/test_planner.py pins it).
-STALENESS_CAP = 4.0
+#: Staleness cap. A canary comes DUE at one half-life and never appreciates
+#: past due: 1.0, not 4.0.
+#:
+#: Lowered 2026-09-09. At 4.0 this was a replay incentive with a value function
+#: bolted to it — the longer a verified rung sat, the MORE the planner wanted
+#: it, so the board refilled itself forever and M01 accumulated 45 receipts
+#: carrying one identical headline. It also broke the class order the docstring
+#: above claims: a canary at 4.0 outranks a NULL_RETRY at 3.0, so a kept miss
+#: worth retrying lost to a rung that had already answered.
+#:
+#: "Due" is the whole honest claim for a regression canary. Being ignored for a
+#: further month does not make Onsager's constant more in need of remeasuring.
+STALENESS_CAP = 1.0
+
+#: Repeat SATURATION — the marginal information in one more identical sample.
+#:
+#: A verified canary's value is divided by (1 + prior receipts for that mid), so
+#: the 46th M01 run is worth 1/46th of the first. This is the term that actually
+#: breaks a carousel, and it exists because decay alone provably cannot: the
+#: consecutive-repeat decay below is SYMMETRIC across a uniform rotation — every
+#: mid pays it equally, nothing reorders, and a round-robin is a fixed point of
+#: any symmetric value function. That is why the 2026-08-14 planner diversified
+#: the replay (110 receipts over 27 milestones, 5-7 each) without changing what
+#: the lab published. Saturation is ASYMMETRIC: it prices measurements already
+#: taken, so a rung answered 45 times falls below one answered twice.
+#:
+#: Canaries only. A never-run rung has no samples, a null-retry is a kept miss,
+#: and the hunt searches fresh sky every turn (exempt, like the decay).
+#: Applied in :func:`plan_turn` as ``value /= 1 + prior_runs[mid]``.
 
 #: The repeat law's hard cap: with at least two eligible candidates of nonzero
 #: base value, the planner cannot choose the same mid more than this many
@@ -661,8 +702,14 @@ def plan_turn(
     )
     head_mid, head_run = _head_run(ordered)
     last_stamp: dict[str, str] = {}
+    #: Receipts already on the ledger per mid — the denominator of the
+    #: saturation term. Counted over the WHOLE committed ledger, not a window:
+    #: the question saturation asks is "how many times has this already been
+    #: answered", and a sample taken in June still counts as taken.
+    prior_runs: dict[str, int] = {}
     for stamp, mid in ordered:
         last_stamp[mid] = stamp  # ordered ascending — the last write wins
+        prior_runs[mid] = prior_runs.get(mid, 0) + 1
 
     skips: list[tuple[str, str]] = []
     open_ids = [m for m, s in statuses.items() if s == "open"]
@@ -737,7 +784,11 @@ def plan_turn(
                     STALENESS_CAP,
                     math.log2(1.0 + days / CANARY_HALF_LIFE_DAYS),
                 )
-            value = VERIFIED_CANARY_VALUE * multiplier
+            # Saturation (see CANARY_SATURATION): the marginal information in
+            # one more identical sample. Asymmetric by construction — this is
+            # the term a uniform carousel cannot survive, because it prices
+            # samples ALREADY TAKEN rather than time elapsed.
+            value = VERIFIED_CANARY_VALUE * multiplier / (1.0 + prior_runs[mid])
         repeats = head_run if (mid == head_mid and mid != HUNT_CANDIDATE) else 0
         value *= 2.0 ** -repeats
         cost = max(1.0, med_by_mid[mid] / norm) if mid in med_by_mid and norm > 0 \
@@ -745,7 +796,8 @@ def plan_turn(
         scoreboard.append({
             "mid": mid, "cls": cls, "value": round(value, 4),
             "cost": round(cost, 4), "score": round(value / cost, 4),
-            "repeats": repeats, "_rank": rank,
+            "repeats": repeats, "prior_runs": prior_runs.get(mid, 0),
+            "_rank": rank,
         })
 
     # The repeat law's hard cap: decay alone cannot bound a class gap.
@@ -762,7 +814,7 @@ def plan_turn(
     if not scoreboard:
         decision.update({
             "chosen": None, "scoreboard": [],
-            "reason": "planner v1: no eligible candidates",
+            "reason": f"planner {PLANNER_VERSION}: no eligible candidates",
         })
         return None, decision
 
@@ -783,15 +835,15 @@ def plan_turn(
                 f"rotation continues after {pointer} "
                 f"(tie at {top['score']:.2f})"
             )
-        reason = f"planner v1: {chosen} {top['cls']} — {context}"
+        reason = f"planner {PLANNER_VERSION}: {chosen} {top['cls']} — {context}"
     elif runner_up is None:
         reason = (
-            f"planner v1: {chosen} {top['cls']} "
+            f"planner {PLANNER_VERSION}: {chosen} {top['cls']} "
             f"(score {top['score']:.2f}) is the only eligible candidate"
         )
     else:
         reason = (
-            f"planner v1: {chosen} {top['cls']} (score {top['score']:.2f}) "
+            f"planner {PLANNER_VERSION}: {chosen} {top['cls']} (score {top['score']:.2f}) "
             f"beats {runner_up['mid']} {runner_up['cls']} "
             f"({runner_up['score']:.2f})"
         )

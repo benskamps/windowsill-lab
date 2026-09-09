@@ -120,15 +120,27 @@ def test_frontier_beats_never_run_beats_null_beats_canary(monkeypatch):
 
 # ── staleness ────────────────────────────────────────────────────────────────
 
-def test_canary_staleness_worthless_next_day_due_in_a_week(monkeypatch):
-    """A verified canary is worth ~0 the day after it ran, exactly its base
-    value at one half-life, and never more than the cap however long it sits.
-    A fresher M04 receipt holds the ledger head so M03's score is staleness
-    alone — repeat decay applies only to the mid at the head of the ledger."""
+def test_canary_comes_due_at_a_half_life_and_never_appreciates_past_due(
+        monkeypatch):
+    """A verified canary is worth ~0 the day after it ran, comes DUE at one
+    half-life, and then stops — flat forever, however long it sits.
+
+    Rewritten 2026-09-09 with STALENESS_CAP 4.0 -> 1.0. The old law asserted
+    ``value_at(1) < value_at(7) < value_at(30)`` — *monotone growth* — which is
+    the replay incentive stated as a test: it paid the planner more for a rung
+    the longer it went unmeasured, so the canary board refilled itself forever.
+    Being ignored for a further month does not make Onsager's constant more in
+    need of remeasuring. Monotone UP TO due, flat after.
+
+    A fresher M04 receipt holds the ledger head so M03's score is staleness and
+    saturation alone — repeat decay applies only to the mid at the head."""
     monkeypatch.setattr(curriculum, "ROTATION", ("M03", "M04"))
 
-    def value_at(days):
+    def value_at(days, extra_m03=0):
         records = [
+            (_stamp(NOW - timedelta(days=days + 1 + i)), "M03")
+            for i in range(extra_m03)
+        ] + [
             (_stamp(NOW - timedelta(days=days)), "M03"),
             (_stamp(NOW - timedelta(minutes=1)), "M04"),
         ]
@@ -137,12 +149,75 @@ def test_canary_staleness_worthless_next_day_due_in_a_week(monkeypatch):
         return next(
             e for e in decision["scoreboard"] if e["mid"] == "M03")["score"]
 
+    due = VERIFIED_CANARY_VALUE / 2.0          # one prior sample: 1/(1+1)
     assert value_at(0) == 0.0
     assert 0 < value_at(1) < 0.2                       # came due? barely
-    assert value_at(CANARY_HALF_LIFE_DAYS) == pytest.approx(
-        VERIFIED_CANARY_VALUE, abs=1e-4)               # log2(2) == 1
-    assert value_at(1) < value_at(7) < value_at(30)    # monotone growth …
-    assert value_at(100_000) == STALENESS_CAP * VERIFIED_CANARY_VALUE  # … capped
+    assert value_at(CANARY_HALF_LIFE_DAYS) == pytest.approx(due, abs=1e-4)
+    assert value_at(1) < value_at(7)                   # monotone up to due …
+    assert value_at(7) == value_at(30) == value_at(100_000)   # … then FLAT
+    assert value_at(100_000) == pytest.approx(
+        STALENESS_CAP * due, abs=1e-4)                 # capped at due, not 4x
+
+    # Saturation: the same rung, equally stale, is worth strictly less the more
+    # times it has already answered. This is the term a carousel cannot survive.
+    assert value_at(30, extra_m03=0) > value_at(30, extra_m03=3) \
+        > value_at(30, extra_m03=44)                   # M01's real history
+    assert value_at(30, extra_m03=44) < 0.03
+
+
+# ── the carousel law ─────────────────────────────────────────────────────────
+
+def test_an_all_canary_carousel_is_not_a_fixed_point():
+    """The law this suite was missing, and the reason M01 reached 45 receipts.
+
+    Every repeat law here measured ``_max_run`` — CONSECUTIVE repeats — because
+    that was the shape of the June failure (M01 nightly, 40 in a row). By
+    2026-08-14 the failure had moved and nobody moved the test. A 29-slot
+    round-robin satisfies every pinned law while replaying the whole ladder
+    forever: max consecutive run 1, ``len(set(picks))`` 29, both assertions
+    green, and the lab publishes the same numbers for three months. Measured on
+    the real archive: 110 receipts over 27 milestones after the planner landed,
+    5-7 runs each, uniform.
+
+    A carousel is a FIXED POINT of any symmetric value function — every mid pays
+    the same decay each lap, so nothing reorders and the loop is stable. The
+    saturation term is the asymmetric one: it prices samples already taken, so
+    an all-canary board must visibly exhaust itself rather than cycling at
+    steady value. The board's own numbers have to say "this is producing
+    nothing", loudly enough that a surface reading them cannot report health.
+    """
+    statuses = _verified_estate()
+    records, tops = [], []
+    now = NOW
+    for _ in range(120):
+        now = now + timedelta(hours=6)
+        pick, decision = plan_turn(records, statuses, now=now)
+        assert pick is not None
+        tops.append(decision["scoreboard"][0]["score"])
+        records.append((_stamp(now), pick))
+
+    # It still laps — a canary board has nothing better to offer, and picking
+    # the least-measured rung is the right degenerate behaviour.
+    assert len(set(m for _s, m in records)) >= 5
+    # But it is no longer a fixed point: the board exhausts as it laps.
+    assert tops[-1] < tops[0] / 10, (
+        f"top score held at {tops[-1]:.4f} against an opening {tops[0]:.4f} — "
+        "the carousel is still a fixed point"
+    )
+    # Still falling at the end, not settled onto a plateau: each further lap
+    # costs another sample. ~4 laps of the 29-rung rotation fit in 120 turns,
+    # so the board sits near 1/(1+4); M01's real 45 receipts price at 1/46.
+    assert tops[-1] < tops[len(tops) // 2] < tops[0]
+    # And the vacuum is named, not hidden behind a pick.
+    _pick, final = plan_turn(records, statuses, now=now)
+    assert final["frontier_idle"] is True
+
+    # The counterfactual that makes the fix load-bearing: give the board ONE
+    # dispatchable frontier rung — a C-track runner is all this takes — and the
+    # exhausted canaries stop winning turns at all.
+    with_frontier = {**statuses, FRONTIER_ID: "open"}
+    picks = _iterate(records, with_frontier, 40)
+    assert picks.count(FRONTIER_ID) >= 25
 
 
 # ── the repeat law ───────────────────────────────────────────────────────────
@@ -294,7 +369,7 @@ def test_decision_record_shape():
     """The record a receipt will carry: planner version, chosen, one-line
     reason, top-5 scoreboard sorted by descending score, per-entry fields."""
     pick, decision = plan_turn([], _verified_estate(), now=NOW)
-    assert decision["planner"] == "v1"
+    assert decision["planner"] == "v2"
     assert decision["chosen"] == pick
     assert isinstance(decision["reason"], str) and decision["reason"]
     board = decision["scoreboard"]
@@ -302,7 +377,8 @@ def test_decision_record_shape():
     scores = [e["score"] for e in board]
     assert scores == sorted(scores, reverse=True)
     for entry in board:
-        assert set(entry) == {"mid", "cls", "value", "cost", "score", "repeats"}
+        assert set(entry) == {"mid", "cls", "value", "cost", "score", "repeats",
+                              "prior_runs"}
 
 
 def test_receipt_carries_planned_block_only_when_the_scheduler_armed_it():
@@ -322,7 +398,7 @@ def test_receipt_carries_planned_block_only_when_the_scheduler_armed_it():
         receipt_mod.clear_planned_decision()
     assert planned["chosen"] == decision["chosen"]
     assert planned["reason"] == decision["reason"]
-    assert planned["planner"] == "v1"
+    assert planned["planner"] == "v2"
     assert len(planned["scoreboard"]) == 3
     assert [e["mid"] for e in planned["scoreboard"]] == \
         [e["mid"] for e in decision["scoreboard"][:3]]
@@ -390,7 +466,7 @@ def test_next_dry_run_prints_the_planner_reason(
     out = capsys.readouterr().out
     assert rc == 0
     assert "would run `lab m03`" in out
-    assert "planner v1" in out
+    assert "planner v2" in out
 
 
 def test_planner_failure_falls_back_to_the_rotation_walk(
@@ -452,7 +528,7 @@ def test_scheduled_dispatch_arms_the_receipt_seam_and_clears_it(
     assert rc == 0
     assert len(seen) == 1
     assert seen[0] is not None and seen[0]["chosen"] == "M03"
-    assert seen[0]["planner"] == "v1"
+    assert seen[0]["planner"] == "v2"
     assert receipt_mod._PLANNED_DECISION is None       # cleared after dispatch
 
 # ── the hunt seam: committed coverage state → the survey slot ─────────────────
@@ -521,17 +597,23 @@ def test_hunt_status_is_none_without_enumeration(tmp_path, monkeypatch):
 
 def test_frontier_sends_the_scheduler_hunting_when_lane_armed(monkeypatch,
                                                               capsys):
-    """End to end on real committed state: A05 is the open frontier WITH a
+    """End to end on real committed state: A05 is an open frontier WITH a
     registered runner (2026-08-15), so a box with an armed sector lane
-    dispatches `lab hunt` from the frontier branch — every slot goes to new
-    sky, not to re-measuring finished work."""
+    dispatches `lab hunt` — every slot goes to new sky, not to re-measuring
+    finished work.
+
+    Since 2026-09-09 the bench holds TWO open milestones (C03 joined A05), so
+    the route is the PLANNER rather than the single-bench shortcut — and that
+    is the property under test: arbitration must not cost the hunt its turn.
+    The shortcut would have handed every slot to whichever milestone sorts
+    first in MILESTONES.md and the survey would never have run again."""
     from lab import cli, curriculum
     monkeypatch.setattr(curriculum, "hunt_lane", lambda: (2, 29))
     rc = cli.main(["next", "--dry-run"])
     out = capsys.readouterr().out
     assert rc == 0
     assert "would run `lab hunt`" in out
-    assert "open milestone A05" in out
+    assert "the planner arbitrates" in out
 
 
 def test_frontier_without_lane_skips_a05_and_runs_the_portfolio(monkeypatch,
