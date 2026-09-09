@@ -26,8 +26,11 @@ AUTHOR = "Gus Wiseman, Nov 13 2019"
 PUBLISHED = [1, 2, 4, 7, 12, 18, 28, 40, 57, 80, 110, 148, 200, 266, 348, 457,
              592, 764, 978, 1248, 1580, 2000, 2508, 3142, 3913]
 
+# Two solvers have written these logs (`brute=`/`oeis=` and `pruned=`/`ref=`),
+# so accept both spellings rather than silently parsing zero rows.
 ROW = re.compile(
-    r"n=\s*(\d+)\s+brute=\s*(\d+)\s+conj=\s*(\d+)\s+oeis=\s*(\S+)\s+(.*?)\s+[\d.]+s")
+    r"n=\s*(\d+)\s+(?:brute|pruned)=\s*(\d+)\s+conj=\s*(\d+)\s+"
+    r"(?:oeis|ref)=\s*(\S+)\s+(.*?)\s+[\d.]+s")
 
 
 def parse_log(path: pathlib.Path):
@@ -39,7 +42,10 @@ def parse_log(path: pathlib.Path):
         n, brute, conj, oeis, verdict = m.groups()
         rows[int(n)] = {
             "brute": int(brute), "conj": int(conj),
-            "oeis": None if oeis == "None" else int(oeis),
+            # The log's reference column is whatever THAT solver was checking
+            # against — the pruned run also carries terms an earlier run of ours
+            # produced, which are not published. Kept only as a cross-check.
+            "ref": None if oeis == "None" else int(oeis),
             "verdict": verdict.strip(),
         }
     return rows
@@ -66,9 +72,9 @@ def main() -> int:
         if r["brute"] != r["conj"]:
             problems.append(f"n={n}: the two methods DISAGREE "
                             f"({r['brute']} vs {r['conj']}) — nothing is submittable")
-        if r["oeis"] is not None and r["oeis"] != r["brute"]:
+        if r["ref"] is not None and r["ref"] != r["brute"]:
             problems.append(f"n={n}: our value {r['brute']} contradicts the "
-                            f"published {r['oeis']}")
+                            f"reference {r['ref']} the run was checked against")
     # Every published term must have been reproduced, or this is not an extension.
     for i, want in enumerate(PUBLISHED, start=OFFSET):
         got = rows.get(i, {}).get("brute")
@@ -83,7 +89,9 @@ def main() -> int:
         return 1
 
     terms = [rows[n]["brute"] for n in range(OFFSET, hi + 1)]
-    new_n = [n for n in sorted(rows) if rows[n]["oeis"] is None]
+    # NEW means "past what OEIS publishes" — decided by PUBLISHED, the pinned
+    # list, and never by whatever the run happened to be checking itself against.
+    new_n = [n for n in sorted(rows) if n > OFFSET + len(PUBLISHED) - 1]
     data_line = ", ".join(str(t) for t in terms)
     digest = hashlib.sha256(data_line.encode()).hexdigest()[:16]
 

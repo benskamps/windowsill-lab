@@ -2,10 +2,10 @@
 
 **Number of compositions of n with uniform Lyndon factorization and uniform co-Lyndon factorization.**
 
-Offset 1. Entry by Gus Wiseman, Nov 13 2019. Generated from `full.log`; DATA digest `fe3c01c8f3e39235`.
+Offset 1. Entry by Gus Wiseman, Nov 13 2019. Generated from `pruned.log`; DATA digest `1d1f1d3bf537279d`.
 
 - Published terms reproduced: **25** (n=1..25), all exact.
-- New terms: **4** (n=26..29).
+- New terms: **8** (n=26..33).
 - Every term produced by two independent methods that agree.
 
 ---
@@ -15,13 +15,13 @@ Offset 1. Entry by Gus Wiseman, Nov 13 2019. Generated from `full.log`; DATA dig
 OEIS wants the FULL sequence, not only the new terms.
 
 ```
-1, 2, 4, 7, 12, 18, 28, 40, 57, 80, 110, 148, 200, 266, 348, 457, 592, 764, 978, 1248, 1580, 2000, 2508, 3142, 3913, 4868, 6016, 7430, 9128
+1, 2, 4, 7, 12, 18, 28, 40, 57, 80, 110, 148, 200, 266, 348, 457, 592, 764, 978, 1248, 1580, 2000, 2508, 3142, 3913, 4868, 6016, 7430, 9128, 11200, 13682, 16692, 20282
 ```
 
 ## 2 · Extensions field
 
 ```
-a(26)-a(29) from <YOUR NAME>, <Mon DD YYYY>
+a(26)-a(33) from <YOUR NAME>, <Mon DD YYYY>
 ```
 
 ## 3 · New comment — the conjecture check
@@ -30,7 +30,7 @@ This is the part an editor is most likely to care about, and it is
 stated as a VERIFICATION, never as a proof.
 
 ```
-Gus Wiseman's conjecture a(n) = 2*A000041(n) - A000005(n) holds for all n <= 29: each term above was computed independently by brute-force enumeration of the compositions of n and by that formula, and the two agree throughout. This is a verification, not a proof.
+Gus Wiseman's conjecture a(n) = 2*A000041(n) - A000005(n) holds for all n <= 33: each term above was computed independently by brute-force enumeration of the compositions of n and by that formula, and the two agree throughout. This is a verification, not a proof.
 ```
 
 ## 4 · PROG — the program that produced the terms
@@ -60,7 +60,7 @@ def A329398(n):
             continue
         for q in range(1, rem + 1): stack.append((p + (q,), rem - q))
     return c
-print([A329398(n) for n in range(1, 30)])
+print([A329398(n) for n in range(1, 34)])
 ```
 
 A note for the PROG comment, if you want one: the longest Lyndon prefix
