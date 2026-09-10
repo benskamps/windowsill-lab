@@ -38,6 +38,7 @@ silence means nothing.
 from __future__ import annotations
 
 import itertools
+import re
 import json
 import math
 import statistics
@@ -291,3 +292,598 @@ def absent_fields(rows: Sequence[dict], order_key: str = "_src",
                   any(f.subject == control_field for f in findings)
                   if control_field else bool(findings),
                   control_field or "any field with a partial span")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# The wider suite. Everything below takes the same corpus shape and returns
+# the same Report, so `run_all` can drive them uniformly and a caller can add
+# a family without touching anything else.
+# ═══════════════════════════════════════════════════════════════════════════
+
+from . import weird_stats as ws  # noqa: E402
+
+
+def _column(rows: Sequence[dict], k: str) -> list[float]:
+    return [r[k] for r in rows if k in r]
+
+
+def boundary_pileups(rows: Sequence[dict], control_field: str = "") -> Report:
+    """Censoring found WITHOUT being told where the ceiling is.
+
+    ``censored_values`` needs a declared ladder. This one reads the sample's own
+    extremes and asks whether an implausible share of the mass sits exactly on
+    one — which is what a cap, a clamp, or a saturated estimator looks like from
+    the outside.
+    """
+    findings = []
+    for k in _fields(rows):
+        hit = ws.boundary_pileup(_column(rows, k))
+        if not hit:
+            continue
+        edge, value, share = hit
+        findings.append(Finding(
+            "pileup", k,
+            f"{share:.1%} of values sit exactly on the sample {edge} "
+            f"({value:g}) — a cap, a clamp or a saturated estimator, not a "
+            f"measurement that happened to land there",
+            share * 100, {"edge": edge, "value": value, "share": share}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("pileup", findings,
+                  any(f.subject == control_field for f in findings)
+                  if control_field else bool(findings),
+                  control_field or "any column with mass on an extreme")
+
+
+def digit_law_violations(rows: Sequence[dict], control_field: str = "") -> Report:
+    """Leading digits that do not obey Benford where the range says they should.
+
+    A column spanning orders of magnitude has a leading-digit law. Departure
+    means generated, rounded, capped, or drawn from a hidden narrow band — all
+    facts about the column that its name does not carry.
+    """
+    findings = []
+    for k in _fields(rows):
+        got = ws.benford_deviation(_column(rows, k))
+        if not got:
+            continue
+        chi2, n = got
+        if chi2 > 5.0:
+            findings.append(Finding(
+                "benford", k,
+                f"leading digits depart from Benford at chi2/dof {chi2:.1f} "
+                f"over {n} values — generated, rounded or capped rather than "
+                f"measured across its stated range", chi2,
+                {"chi2_per_dof": chi2, "n": n}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("benford", findings,
+                  any(f.subject == control_field for f in findings)
+                  if control_field else bool(findings),
+                  control_field or "any column departing from Benford")
+
+
+def rounding_tells(rows: Sequence[dict], control_field: str = "") -> Report:
+    """Excess mass on terminal 0 and 5 — hand entry, or a rounded pipeline."""
+    findings = []
+    for k in _fields(rows):
+        got = ws.terminal_digit_bias(_column(rows, k))
+        if not got:
+            continue
+        share, n = got
+        if share > 0.45:
+            findings.append(Finding(
+                "rounding", k,
+                f"{share:.0%} of terminal digits are 0 or 5 against 20% "
+                f"expected ({n} values) — the column was rounded or entered by "
+                f"hand somewhere upstream", share * 100,
+                {"share": share, "n": n}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("rounding", findings,
+                  any(f.subject == control_field for f in findings)
+                  if control_field else bool(findings),
+                  control_field or "any column with round-digit excess")
+
+
+def secretly_discrete(rows: Sequence[dict], control_field: str = "") -> Report:
+    """Float columns on a lattice — a categorical wearing a number's clothes."""
+    findings = []
+    for k in _fields(rows):
+        got = ws.quantization(_column(rows, k))
+        if not got:
+            continue
+        share, distinct = got
+        if distinct <= 12 and share < 0.05:
+            findings.append(Finding(
+                "discrete", k,
+                f"only {distinct} distinct values across {len(_column(rows,k))} "
+                f"rows — this is a category, and every mean, MAD or correlation "
+                f"taken over it means something other than it appears to",
+                1.0 / max(share, 1e-9), {"distinct": distinct}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("discrete", findings,
+                  any(f.subject == control_field for f in findings)
+                  if control_field else bool(findings),
+                  control_field or "any float column on a small lattice")
+
+
+def redundant_fields(rows: Sequence[dict], control_pair: tuple = ()) -> Report:
+    """Pairs that are near-perfect functions of one another.
+
+    Two columns carrying the same fact are TWO PRODUCERS. They agree today;
+    the interesting day is the one where they stop, and nothing is watching.
+    This is the drift bug found before it drifts.
+    """
+    findings = []
+    fs = _fields(rows)
+    for a, b in itertools.combinations(fs, 2):
+        xs = [(r[a], r[b]) for r in rows if a in r and b in r]
+        if len(xs) < MIN_PAIRS:
+            continue
+        rho = ws.spearman([x for x, _ in xs], [y for _, y in xs])
+        if rho is not None and abs(rho) > 0.999:
+            findings.append(Finding(
+                "redundant", f"{a} ~ {b}",
+                f"|rho| = {abs(rho):.5f} over {len(xs)} rows — one is derived "
+                f"from the other. Two homes for one fact is a drift waiting to "
+                f"happen; delete a home or bind them with a test.",
+                abs(rho) * 1000, {"rho": rho, "n": len(xs), "a": a, "b": b}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("redundant", findings,
+                  (f"{control_pair[0]} ~ {control_pair[1]}" in
+                   {f.subject for f in findings}) if control_pair
+                  else bool(findings),
+                  " ~ ".join(control_pair) if control_pair
+                  else "any near-perfectly dependent pair")
+
+
+def hidden_dependence(rows: Sequence[dict], control_pair: tuple = ()) -> Report:
+    """Pairs with strong mutual information and NO monotone correlation.
+
+    This is the shape nobody plots: a ring, a fork, an XOR, two populations
+    crossing. Spearman reads zero and the pair looks independent in every
+    summary table ever produced from it.
+    """
+    findings = []
+    fs = _fields(rows)
+    for a, b in itertools.combinations(fs, 2):
+        xs = [(r[a], r[b]) for r in rows if a in r and b in r]
+        if len(xs) < 200:
+            continue
+        u, v = [x for x, _ in xs], [y for _, y in xs]
+        rho, mi = ws.spearman(u, v), ws.mutual_information(u, v)
+        if mi is None or rho is None:
+            continue
+        if mi > 0.25 and abs(rho) < 0.15:
+            findings.append(Finding(
+                "hidden", f"{a} ~ {b}",
+                f"mutual information {mi:.3f} nats with Spearman only "
+                f"{rho:+.3f} over {len(xs)} rows — strongly related in a shape "
+                f"no correlation reports. Plot this one.",
+                mi * 100, {"mi": mi, "rho": rho, "n": len(xs), "a": a, "b": b}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("hidden", findings,
+                  (f"{control_pair[0]} ~ {control_pair[1]}" in
+                   {f.subject for f in findings}) if control_pair
+                  else bool(findings),
+                  " ~ ".join(control_pair) if control_pair
+                  else "any pair dependent without correlation")
+
+
+def regime_changes(rows: Sequence[dict], order_key: str = "_src",
+                   control_field: str = "") -> Report:
+    """Columns whose distribution shifts partway through the corpus.
+
+    Every aggregate spanning the shift is a mixture of two regimes reported as
+    one number.
+    """
+    ordered = sorted(rows, key=lambda r: (r.get(order_key, ""), r.get("_id", "")))
+    findings = []
+    for k in _fields(rows):
+        col = [r[k] for r in ordered if k in r]
+        got = ws.changepoint(col)
+        if not got:
+            continue
+        idx, gap = got
+        if gap > 4.0:
+            srcs = [r.get(order_key) for r in ordered if k in r]
+            findings.append(Finding(
+                "regime", k,
+                f"distribution shifts by {gap:.1f} MADs at {srcs[idx]} "
+                f"({idx}/{len(col)} through) — anything averaged across that "
+                f"line mixes two regimes", gap,
+                {"index": idx, "gap_mads": gap, "at": srcs[idx]}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("regime", findings,
+                  any(f.subject == control_field for f in findings)
+                  if control_field else bool(findings),
+                  control_field or "any column with a shift in its ordering")
+
+
+def order_dependence(rows: Sequence[dict], order_key: str = "_src",
+                     control_field: str = "") -> Report:
+    """Values that are not independent of the order they were produced in.
+
+    A property of the RUN masquerading as a property of the subject.
+    """
+    ordered = sorted(rows, key=lambda r: (r.get(order_key, ""), r.get("_id", "")))
+    findings = []
+    for k in _fields(rows):
+        z = ws.runs_test([r[k] for r in ordered if k in r])
+        if z is not None and abs(z) > 6.0:
+            findings.append(Finding(
+                "order", k,
+                f"runs test z = {z:+.1f} against the corpus ordering — the "
+                f"value depends on WHEN the row was produced, which is a fact "
+                f"about the run, not the subject", abs(z), {"runs_z": z}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("order", findings,
+                  any(f.subject == control_field for f in findings)
+                  if control_field else bool(findings),
+                  control_field or "any column correlated with its ordering")
+
+
+def multimodal_fields(rows: Sequence[dict], control_field: str = "") -> Report:
+    """Columns with separated peaks — two populations summarised as one."""
+    findings = []
+    for k in _fields(rows):
+        peaks = ws.modality(_column(rows, k))
+        if peaks and peaks >= 3:
+            findings.append(Finding(
+                "modal", k,
+                f"{peaks} separated peaks — this column is a mixture, and its "
+                f"median describes none of its populations", float(peaks),
+                {"peaks": peaks}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("modal", findings,
+                  any(f.subject == control_field for f in findings)
+                  if control_field else bool(findings),
+                  control_field or "any multimodal column")
+
+
+def duplicate_rows(rows: Sequence[dict], control_id: str = "") -> Report:
+    """Rows identical on every numeric field — one measurement, filed twice."""
+    seen: dict[tuple, list[dict]] = {}
+    for r in rows:
+        key = tuple(sorted((k, v) for k, v in r.items() if not k.startswith("_")))
+        if len(key) < 5:
+            continue
+        seen.setdefault(key, []).append(r)
+    findings = []
+    for key, group in seen.items():
+        if len(group) < 2:
+            continue
+        srcs = sorted({g["_src"] for g in group})
+        if len(srcs) < 2:
+            continue                      # same file twice is a different bug
+        findings.append(Finding(
+            "duplicate", group[0]["_id"],
+            f"identical on all {len(key)} numeric fields across {len(srcs)} "
+            f"sources ({', '.join(srcs[:3])}) — one measurement filed more "
+            f"than once, not repeated observation", float(len(group)),
+            {"sources": srcs, "n": len(group)}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("duplicate", findings,
+                  any(f.subject == control_id for f in findings)
+                  if control_id else bool(findings),
+                  control_id or "any row duplicated across sources")
+
+
+def subgroup_reversals(rows: Sequence[dict], group_field: str,
+                       control_pair: tuple = ()) -> Report:
+    """Simpson's paradox: a relation that reverses inside subgroups.
+
+    The corpus-wide sign is the aggregate; the subgroup signs are the truth.
+    Where they disagree, every conclusion drawn from the aggregate is backwards.
+    """
+    findings = []
+    groups: dict[float, list[dict]] = {}
+    for r in rows:
+        if group_field in r:
+            groups.setdefault(r[group_field], []).append(r)
+    big = {g: rs for g, rs in groups.items() if len(rs) >= 100}
+    if len(big) < 2:
+        return Report("simpson", [], False, "at least two sizeable subgroups")
+    for a, b in itertools.combinations(_fields(rows), 2):
+        whole = [(r[a], r[b]) for r in rows if a in r and b in r]
+        if len(whole) < MIN_PAIRS:
+            continue
+        rho_all = ws.spearman([x for x, _ in whole], [y for _, y in whole])
+        if rho_all is None or abs(rho_all) < 0.25:
+            continue
+        signs = []
+        for g, rs in big.items():
+            sub = [(r[a], r[b]) for r in rs if a in r and b in r]
+            if len(sub) < 60:
+                continue
+            rho = ws.spearman([x for x, _ in sub], [y for _, y in sub])
+            if rho is not None and abs(rho) > 0.25:
+                signs.append((g, rho))
+        if len(signs) >= 2 and all(
+                (rho > 0) != (rho_all > 0) for _g, rho in signs):
+            findings.append(Finding(
+                "simpson", f"{a} ~ {b}",
+                f"corpus-wide rho {rho_all:+.2f}, but reverses in every "
+                f"subgroup of {group_field} ({', '.join(f'{g:g}:{r:+.2f}' for g, r in signs[:4])}) "
+                f"— the aggregate sign is an artefact of the mix",
+                abs(rho_all) * 100,
+                {"rho_all": rho_all, "subgroups": signs, "a": a, "b": b}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("simpson", findings,
+                  (f"{control_pair[0]} ~ {control_pair[1]}" in
+                   {f.subject for f in findings}) if control_pair
+                  else bool(findings),
+                  " ~ ".join(control_pair) if control_pair
+                  else "any relation reversing inside subgroups")
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# From findings to hypotheses.
+#
+# A finding says "X is anomalous". That is not yet a question — it is a
+# surprise. A HYPOTHESIS says "X is anomalous BECAUSE Y", and carries the test
+# that would kill it plus what that test costs. Generating questions is only
+# safe when each one arrives with its own way of dying, and cheaply.
+#
+# Nothing here invents a mechanism. Each rule maps a finding SHAPE to the
+# small set of causes that shape can have, which is a fact about statistics,
+# not about the subject matter.
+# ═══════════════════════════════════════════════════════════════════════════
+
+@dataclass
+class Hypothesis:
+    claim: str                    # what is being asserted
+    because: str                  # the proposed mechanism
+    falsifier: str                # the observation that would kill it
+    cost: str                     # free | cheap | expensive
+    surprise: float               # how much it is NOT explained by others
+    source: Finding = None        # noqa: RUF013 - the finding it came from
+
+    def __str__(self) -> str:
+        return (f"[{self.cost:9}] {self.claim}\n"
+                f"             because: {self.because}\n"
+                f"             killed by: {self.falsifier}")
+
+
+#: family -> (mechanism, falsifying test, what the test costs)
+_MECHANISMS = {
+    "pileup": ("the column is capped, clamped, or produced by an estimator "
+               "that saturates — the pile is a bound, not a measurement",
+               "find the declared maximum in the producing code; if the pile "
+               "sits on it, every piled value is a lower bound and must be "
+               "marked as one", "free"),
+    "censored": ("values recovered only at the top rung of a declared ladder "
+                 "are right-censored lower bounds",
+                 "extend the ladder by one rung and re-run those hosts; if the "
+                 "floor moves, every stored value was a bound", "expensive"),
+    "ratio": ("either one of the two fields saturated on this row, or the row "
+              "belongs to a different population from the corpus",
+              "run group_signature over the violating rows; a shared field "
+              "names the population, its absence leaves saturation", "free"),
+    "absent": ("the schema changed at that source; rows before it could not "
+               "carry the field rather than declining to",
+               "compare outcomes either side of the boundary — if they differ, "
+               "every aggregate spanning it is a mixture", "free"),
+    "redundant": ("one column is computed from the other, so the corpus stores "
+                  "one fact in two places",
+                  "recover the formula on a sample; if it holds exactly, delete "
+                  "a column or bind the pair with a test before they drift",
+                  "free"),
+    "hidden": ("a latent variable drives both columns in a shape no monotone "
+               "statistic reports",
+               "condition on each candidate grouping field in turn; the one "
+               "that collapses the mutual information is the latent",
+               "cheap"),
+    "regime": ("something in the producing pipeline changed at that point — a "
+               "version, a parameter, a machine",
+               "read the commit log at that source's date; a matching change "
+               "confirms it, its absence makes this interesting", "free"),
+    "order": ("the value depends on when the row was produced: warm caches, "
+              "drifting hardware, or an accumulating parameter",
+              "re-derive a sample in shuffled order; if the statistic moves, "
+              "the ordering was in the measurement", "cheap"),
+    "modal": ("the column mixes two or more populations that were never "
+              "separated",
+              "search for a field that partitions the peaks; if one does, the "
+              "column should never be summarised whole", "cheap"),
+    "benford": ("the column was generated, rounded, capped, or drawn from a "
+                "narrower band than its range suggests — real measurements "
+                "spanning orders of magnitude obey the leading-digit law",
+                "check the producing code for a formula, a round(), or a clamp; "
+                "a derived column has no obligation to obey Benford and should "
+                "be exempted rather than reported", "free"),
+    "rounding": ("something upstream rounded or hand-entered the column, so its "
+                 "precision is smaller than its stored digits imply",
+                 "read the producing code; if a round() or a fixed constant is "
+                 "there, every downstream tolerance tighter than that rounding "
+                 "is measuring the rounding", "free"),
+    "discrete": ("the column is a category stored as a float, so every mean "
+                 "and correlation over it is a category average",
+                 "read the producing code for the value set; if it is a fixed "
+                 "menu, retype the column", "free"),
+    "duplicate": ("one measurement was filed more than once — concurrent "
+                  "producers writing beside each other rather than over",
+                  "compare the input hashes; identical inputs mean one "
+                  "observation, and one of the rows must declare it supersedes "
+                  "the other", "free"),
+    "simpson": ("a confounder correlated with both the grouping and the "
+                "outcome — the aggregate sign is an artefact of the mix",
+                "name the confounder and re-derive within strata; if the sign "
+                "holds inside every stratum the aggregate was backwards",
+                "cheap"),
+    "signature": ("the outlier group shares a cause that the corpus does not",
+                  "hold the shared field fixed and re-run the detector; if the "
+                  "anomaly dissolves, the field was the mechanism", "cheap"),
+}
+
+
+
+def _cluster_key(f: Finding) -> tuple:
+    """The mechanism a finding belongs to. ONE definition, used everywhere.
+
+    `hypothesise` and `rank_by_surprise` each grew their own version of this and
+    they disagreed: 179 clusters against 9, on the same findings. Two functions
+    computing the same fact is the defect this whole module hunts, so the
+    clustering has exactly one home now.
+
+    The key is family-specific because a mechanism is: a ratio anomaly is about
+    a PAIR, a schema gap is about the BOUNDARY it starts at, a pile is about the
+    COLUMN. Clustering everything by subject splits one cause into many; by
+    family alone it merges many causes into one.
+    """
+    ev = f.evidence
+    if f.family in ("ratio", "redundant", "hidden", "simpson"):
+        return (f.family, tuple(sorted(str(ev[k]) for k in
+                                       ("field_a", "field_b", "a", "b") if k in ev)))
+    if f.family == "absent":
+        # every field appearing at the same source is ONE schema change
+        m = re.search(r"(?:first appears at|stops after) (\S+)", f.detail)
+        return (f.family, m.group(1) if m else f.subject)
+    if f.family == "regime":
+        return (f.family, str(ev.get("at", f.subject)))
+    if f.family == "duplicate":
+        return (f.family, tuple(ev.get("sources", (f.subject,))))
+    return (f.family, f.subject)
+
+
+def hypothesise(findings: Sequence[Finding]) -> list[Hypothesis]:
+    """Turn findings into falsifiable claims, ranked by surprise.
+
+    Surprise is deliberately not the deviation. A thousand rows breaking the
+    same relation for the same reason is ONE fact, and reporting it a thousand
+    times by z-score buries the single row that breaks a different one.
+    """
+    # Cluster by (family, the fields involved) — one mechanism per cluster.
+    clusters: dict[tuple, list[Finding]] = {}
+    for f in findings:
+        clusters.setdefault(_cluster_key(f), []).append(f)
+
+    out: list[Hypothesis] = []
+    for (family, what), group in clusters.items():
+        mech = _MECHANISMS.get(family)
+        if mech is None:
+            continue
+        because, falsifier, cost = mech
+        head = max(group, key=lambda f: f.z)
+        # A cluster of one is a singleton nobody has explained; a cluster of
+        # many is one mechanism repeating. Rarity is the surprise.
+        surprise = 1.0 / len(group)
+        label = " ~ ".join(what) if isinstance(what, tuple) else str(what)
+        claim = (f"{head.subject}: {head.detail}" if len(group) == 1 else
+                 f"{len(group)} findings share one {family} mechanism at "
+                 f"{label} — strongest: {head.subject}: {head.detail}")
+        out.append(Hypothesis(claim, because, falsifier, cost,
+                              surprise, head))
+    out.sort(key=lambda h: (-h.surprise, {"free": 0, "cheap": 1,
+                                          "expensive": 2}[h.cost]))
+    return out
+
+
+def rank_by_surprise(findings: Sequence[Finding]) -> list[Finding]:
+    """Collapse repeated mechanisms; keep the strongest of each, rarest first.
+
+    2,627 ratio findings dominated by one saturating estimator is a firehose.
+    The same list collapsed to one row per mechanism is a shortlist.
+    """
+    clusters: dict[tuple, list[Finding]] = {}
+    for f in findings:
+        clusters.setdefault(_cluster_key(f), []).append(f)
+    heads = []
+    for group in clusters.values():
+        head = max(group, key=lambda f: f.z)
+        head.evidence = dict(head.evidence, cluster_size=len(group))
+        heads.append(head)
+    heads.sort(key=lambda f: (f.evidence.get("cluster_size", 1), -f.z))
+    return heads
+
+
+def run_all(rows: Sequence[dict], controls: dict | None = None) -> dict[str, Report]:
+    """Every family that can run on this corpus, each with its control.
+
+    A family whose control is not supplied runs in *unguarded* mode: it reports
+    whatever it finds and says so. Unguarded output is a lead, never a result —
+    the whole point of a control is that silence means something.
+    """
+    c = controls or {}
+    reports: dict[str, Report] = {}
+
+    def add(name, fn, *args, **kw):
+        try:
+            reports[name] = fn(*args, **kw)
+        except Exception as exc:                            # noqa: BLE001
+            reports[name] = Report(name, [], False, f"raised {type(exc).__name__}: {exc}")
+
+    add("ratio", ratio_violations, rows, c.get("ratio", ""))
+    add("pileup", boundary_pileups, rows, c.get("pileup", ""))
+    add("benford", digit_law_violations, rows, c.get("benford", ""))
+    add("rounding", rounding_tells, rows, c.get("rounding", ""))
+    add("discrete", secretly_discrete, rows, c.get("discrete", ""))
+    add("redundant", redundant_fields, rows, c.get("redundant", ()))
+    add("hidden", hidden_dependence, rows, c.get("hidden", ()))
+    add("regime", regime_changes, rows, "_src", c.get("regime", ""))
+    add("order", order_dependence, rows, "_src", c.get("order", ""))
+    add("modal", multimodal_fields, rows, c.get("modal", ""))
+    add("duplicate", duplicate_rows, rows, c.get("duplicate", ""))
+    add("absent", absent_fields, rows, "_src", c.get("absent", ""))
+    if "simpson_group" in c:
+        add("simpson", subgroup_reversals, rows, c["simpson_group"],
+            c.get("simpson", ()))
+    if "censored_ladder" in c:
+        add("censored", censored_values, rows, c["censored_ladder"],
+            c.get("censored", ""))
+    return reports
+
+
+def all_findings(reports: dict[str, Report], trusted_only: bool = True
+                 ) -> list[Finding]:
+    """Findings from every report, optionally only those that proved they see."""
+    out = []
+    for rep in reports.values():
+        if trusted_only and not rep.saw_control:
+            continue
+        out.extend(rep.findings)
+    return out
+
+
+def explain_away(reports: dict[str, Report]) -> tuple[list[Finding], list[str]]:
+    """Suppress findings that another finding already accounts for.
+
+    Surprise is not deviation, and it is not rarity either — it is what is left
+    once the corpus has explained itself. A column with ONE distinct value makes
+    every ratio involving it a rescaling of its partner, so those "anomalies"
+    are the partner's, restated. A column piled on its own extreme explains
+    every ratio that saturates against it.
+
+    Without this the loudest findings are the most structural ones, and the
+    single row that breaks a relation nothing else touches is on page nine.
+    """
+    notes: list[str] = []
+    constant: set[str] = set()
+    piled: set[str] = set()
+
+    for f in reports.get("discrete", Report("", [], False, "")).findings:
+        if f.evidence.get("distinct") == 1:
+            constant.add(f.subject)
+    for f in reports.get("pileup", Report("", [], False, "")).findings:
+        if f.evidence.get("share", 0) > 0.20:
+            piled.add(f.subject)
+    if constant:
+        notes.append(f"{len(constant)} constant column(s) — every ratio against "
+                     f"them is their partner restated: {', '.join(sorted(constant))}")
+    if piled:
+        notes.append(f"{len(piled)} column(s) piled >20% on an extreme — ratios "
+                     f"that saturate against them are that pile, not a new fact")
+
+    kept: list[Finding] = []
+    for rep in reports.values():
+        if not rep.saw_control:
+            continue
+        for f in rep.findings:
+            ev = f.evidence
+            pair = {str(ev[k]) for k in ("field_a", "field_b", "a", "b") if k in ev}
+            if f.family == "ratio" and pair & constant:
+                continue                      # a rescaling, not an anomaly
+            if f.family == "ratio" and pair & piled:
+                continue                      # the pile, seen from the side
+            if f.family in ("rounding", "benford") and f.subject in constant:
+                continue                      # a constant has one digit
+            kept.append(f)
+    return kept, notes

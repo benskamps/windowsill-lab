@@ -149,3 +149,147 @@ def test_the_real_corpus_reproduces_its_known_anomalies():
     ladder = {f"d_min.{p}": (0.002, 0.004, 0.010) for p in ("2.3", "3.7", "5.1")}
     rep = weird.censored_values(rows, ladder, control_field="d_min.2.3")
     assert rep.saw_control
+
+
+# ── the wider suite ─────────────────────────────────────────────────────────
+
+def _flat(n=400, **cols):
+    rows = []
+    for i in range(n):
+        r = {"_id": f"t{i}", "_src": f"{i//100:02d}.json"}
+        for k, fn in cols.items():
+            r[k] = fn(i)
+        rows.append(r)
+    return rows
+
+
+def test_pileup_finds_a_ceiling_it_was_never_told_about():
+    rows = _flat(400, v=lambda i: 1.0 if i < 300 else i / 100.0)
+    rep = weird.boundary_pileups(rows, control_field="v")
+    assert rep.saw_control
+    assert "min" in rep.findings[0].detail or "max" in rep.findings[0].detail
+
+
+def test_secretly_discrete_flags_a_category_wearing_a_float():
+    rows = _flat(400, v=lambda i: float(i % 3))
+    rep = weird.secretly_discrete(rows, control_field="v")
+    assert rep.saw_control
+
+
+def test_redundant_finds_one_fact_stored_twice():
+    rows = _flat(400, a=lambda i: float(i + 1),
+                 b=lambda i: float((i + 1) * 2.5))
+    rep = weird.redundant_fields(rows, control_pair=("a", "b"))
+    assert rep.saw_control
+
+
+def test_hidden_dependence_sees_a_shape_correlation_cannot():
+    """A V: strongly dependent, Spearman near zero. The shape nobody plots."""
+    rows = _flat(600, x=lambda i: float(i - 300),
+                 y=lambda i: float(abs(i - 300)))
+    rep = weird.hidden_dependence(rows, control_pair=("x", "y"))
+    assert rep.saw_control, "a V-shape must be found by MI where rho is blind"
+
+
+def test_regime_change_finds_a_shift_partway_through():
+    rows = _flat(400, v=lambda i: 1.0 + (i % 7) * 0.01 + (0 if i < 200 else 50))
+    rep = weird.regime_changes(rows, control_field="v")
+    assert rep.saw_control
+
+
+def test_duplicates_need_two_sources_not_one():
+    """The same row twice in ONE file is a different defect and not this one."""
+    rows = [{"_id": "x", "_src": "a.json", "p": 1.0, "q": 2.0, "r": 3.0,
+             "s": 4.0, "t": 5.0} for _ in range(2)]
+    assert weird.duplicate_rows(rows).findings == []
+    rows[1]["_src"] = "b.json"
+    assert weird.duplicate_rows(rows, control_id="x").saw_control
+
+
+def test_multimodal_finds_a_mixture():
+    rows = _flat(600, v=lambda i: float(i % 3) * 100 + (i % 5) * 0.1)
+    rep = weird.multimodal_fields(rows, control_field="v")
+    assert rep.saw_control
+
+
+# ── the hypothesis layer ────────────────────────────────────────────────────
+
+def test_hypotheses_and_mechanisms_cluster_identically():
+    """THE regression. Both functions clustered findings their own way and
+    disagreed 179 to 9 on the same input — two producers of one fact, which is
+    the defect this whole module hunts. They share `_cluster_key` now."""
+    rows = _corpus()
+    rows += _flat(300, w=lambda i: 1.0 if i < 250 else float(i))
+    reps = weird.run_all(rows, {"ratio": "PLANTED"})
+    kept, _notes = weird.explain_away(reps)
+    assert len(weird.hypothesise(kept)) == len(weird.rank_by_surprise(kept))
+
+
+def test_every_family_has_a_mechanism_or_it_produces_no_hypothesis():
+    """A family with no entry in _MECHANISMS silently vanishes from the
+    hypotheses while still counting as a mechanism. That is how the two
+    clusterings drifted apart the first time."""
+    families = {"ratio", "censored", "pileup", "benford", "rounding", "discrete",
+                "redundant", "hidden", "regime", "order", "modal", "duplicate",
+                "absent", "simpson", "signature"}
+    assert families <= set(weird._MECHANISMS), (
+        f"no mechanism for: {families - set(weird._MECHANISMS)}")
+
+
+def test_every_hypothesis_carries_a_falsifier_and_a_cost():
+    rows = _corpus()
+    reps = weird.run_all(rows, {"ratio": "PLANTED"})
+    kept, _ = weird.explain_away(reps)
+    for h in weird.hypothesise(kept):
+        assert h.falsifier.strip(), "a hypothesis with no way to die is not one"
+        assert h.cost in ("free", "cheap", "expensive")
+
+
+def test_explain_away_suppresses_ratios_against_a_constant():
+    """A column with one value makes every ratio against it a rescaling of its
+    partner. Reporting those buries the row that breaks something real."""
+    rows = _flat(400, k=lambda i: 1.0, v=lambda i: 1.0 + (i % 9) * 0.001)
+    rows[7]["v"] = 900.0
+    reps = weird.run_all(rows, {})
+    kept, notes = weird.explain_away(reps)
+    assert any("constant" in n for n in notes)
+    assert not any(f.family == "ratio" and "k" in
+                   {f.evidence.get("field_a"), f.evidence.get("field_b")}
+                   for f in kept)
+
+
+def test_untrusted_reports_never_reach_the_findings_list():
+    rows = _corpus()
+    reps = weird.run_all(rows, {"ratio": "NOT-PRESENT"})
+    assert all(f.family != "ratio" for f in weird.all_findings(reps))
+
+
+# ── the statistical floor refuses rather than guesses ───────────────────────
+
+def test_stats_return_none_rather_than_a_number_they_cannot_stand_behind():
+    from lab import weird_stats as ws
+    assert ws.mad([5.0] * 40) is None, "constant has no scale, not zero scale"
+    assert ws.mad([]) is None
+    assert ws.robust_z(1.0, [5.0] * 40) is None
+    assert ws.spearman([1, 2], [1, 2]) is None          # too few
+    assert ws.mutual_information([1.0] * 50, [2.0] * 50) is None
+    assert ws.benford_deviation([1.0, 2.0]) is None      # too few
+    assert ws.benford_deviation([1.0 + i * 1e-6 for i in range(200)]) is None
+
+
+def test_spearman_sees_a_monotone_curve_pearson_would_understate():
+    from lab import weird_stats as ws
+    xs = [float(i) for i in range(200)]
+    ys = [float(i) ** 3 for i in range(200)]
+    assert ws.spearman(xs, ys) > 0.999
+
+
+def test_mutual_information_is_zero_for_independent_columns():
+    from lab import weird_stats as ws
+    xs, ys, x = [], [], 11
+    for _ in range(2000):
+        x = (1103515245 * x + 12345) % (1 << 31)
+        xs.append(float(x % 997))
+        x = (1103515245 * x + 12345) % (1 << 31)
+        ys.append(float(x % 991))
+    assert ws.mutual_information(xs, ys) < 0.05
