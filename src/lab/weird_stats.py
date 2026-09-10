@@ -156,16 +156,21 @@ def terminal_digit_bias(xs: Sequence[float], places: int = 2
 
     Returns ``(share_on_0_or_5, n)``. Uniform expectation is 0.2.
     """
+    vals = [x for x in xs if math.isfinite(x) and x != 0]
+    if not vals:
+        return None
+    # An INTEGER column has no fractional digits, so formatting it at 2dp gives
+    # every value a terminal "0" and scores 100% — which is exactly what it did
+    # on a lattice-size column of 32/64/128. Found by porting the tool to a
+    # corpus it was never designed for. Read each value at its own precision:
+    # the last digit of the integer if it is one, else the last decimal place.
+    all_int = all(float(v).is_integer() for v in vals)
     digs = []
-    for x in xs:
-        if not math.isfinite(x) or x == 0:
-            continue
-        # The FIRST version stripped trailing zeros before taking the last
-        # digit, which deleted exactly the zeros that are the evidence: the
-        # zero count was always 0, the true null was 1/9 rather than the
-        # documented 1/5, and a maximally-round column scored LOWER than noise.
-        # Take the terminal digit at the stated precision, as written.
-        digs.append(f"{abs(x):.{places}f}".replace(".", "")[-1])
+    for x in vals:
+        if all_int:
+            digs.append(str(int(abs(x)))[-1])
+        else:
+            digs.append(f"{abs(x):.{places}f}".replace(".", "")[-1])
     if len(digs) < 100:
         return None
     c = Counter(digs)
