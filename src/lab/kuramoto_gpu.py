@@ -112,6 +112,12 @@ def evolve(theta, omega, coupling, dt, steps, field=None, observe_every=0,
         raise ModuleNotFoundError("torch is not installed")
     n_samples = 0
     acc_r = t.zeros((), dtype=theta.dtype, device=theta.device)
+    # Second moment of r, for the FLUCTUATION observable chi = N*Var_t(r).
+    # Added 2026-09-09 for the U-K02 attempt and deliberately additive: K03
+    # measures a field RESPONSE and ignores this key, so accumulating it changes
+    # no existing verdict. Both published rivals in U-K02 are fluctuation
+    # exponents, which is precisely why K03 cannot settle that entry.
+    acc_r2 = t.zeros((), dtype=theta.dtype, device=theta.device)
     acc_cos = t.zeros((), dtype=theta.dtype, device=theta.device)
     for i in range(steps):
         theta = rk4_step(theta, omega, coupling, dt, field)
@@ -120,12 +126,15 @@ def evolve(theta, omega, coupling, dt, steps, field=None, observe_every=0,
             c = cos_t.mean(dim=-1)
             s = sin_t.mean(dim=-1)
             if observable in ("r", "both"):
-                acc_r = acc_r + (c * c + s * s).sqrt().mean()
+                r = (c * c + s * s).sqrt()
+                acc_r = acc_r + r.mean()
+                acc_r2 = acc_r2 + (r * r).mean()
             if observable in ("cos", "both"):
                 acc_cos = acc_cos + c.mean()
             n_samples += 1
     out = {"theta": theta, "n_samples": n_samples}
     if n_samples:
         out["mean_r"] = float(acc_r / n_samples)
+        out["mean_r2"] = float(acc_r2 / n_samples)
         out["mean_cos"] = float(acc_cos / n_samples)
     return out
