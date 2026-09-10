@@ -38,6 +38,7 @@ silence means nothing.
 from __future__ import annotations
 
 import itertools
+import collections
 import functools
 import hashlib
 import re
@@ -128,14 +129,35 @@ def load_rows(paths: Iterable[Path], key: str, id_field: str = "tic") -> list[di
     return rows
 
 
-def _fields(rows: Sequence[dict], min_share: float = 0.05) -> list[str]:
+#: A column must appear on at least this many rows to be OFFERED to a family.
+#: Deliberately near the floor: every family already enforces its own
+#: statistical minimum (ratio and redundant need MIN_PAIRS, Benford and
+#: modality need 100, pileup and discrete 50, runs 40), so a global gate adds
+#: no protection and only blinds.
+#:
+#: It cost a great deal to learn that. The original used 5% of the corpus —
+#: 681 rows here — and dropped 114 of 131 columns. The survey's sparse fields
+#: are precisely its SCIENCE: centroid shifts, blend evidence, catalogue
+#: crosschecks, fold gates. They are sparse because they only exist on rows
+#: that crossed threshold, which is to say on the interesting ones. The tool
+#: was auditing the pipeline's plumbing and structurally could not see the sky.
+MIN_ROWS_FOR_FIELD = 12
+
+
+def _fields(rows: Sequence[dict], min_rows: int = MIN_ROWS_FOR_FIELD) -> list[str]:
+    """Every numeric column present on enough rows to say anything about.
+
+    Zero and negative values COUNT. The first version required ``v > 0``, which
+    made a column clamped at -1.0 and an all-zero column invisible to every
+    family — including the constant-detector that `explain_away` depends on, so
+    a zero-valued constant could never be explained away at all.
+    """
     counts: dict[str, int] = {}
     for r in rows:
         for k, v in r.items():
-            if not k.startswith("_") and isinstance(v, float) and v > 0:
+            if not k.startswith("_") and isinstance(v, float):
                 counts[k] = counts.get(k, 0) + 1
-    floor = len(rows) * min_share
-    return sorted(k for k, n in counts.items() if n >= floor)
+    return sorted(k for k, n in counts.items() if n >= min_rows)
 
 
 def _mad(values: Sequence[float]) -> tuple[float, float]:
@@ -384,14 +406,17 @@ def digit_law_violations(rows: Sequence[dict], control_field: str = "") -> Repor
         got = ws.benford_deviation(_column(rows, k))
         if not got:
             continue
-        chi2, n = got
-        if chi2 > 5.0:
+        tv, n = got
+        # 0.15 total variation is a digit distribution a person would call
+        # visibly different — roughly a 15-point shift of probability mass.
+        # Scale-free, so it means the same on 100 rows and on 13,000.
+        if tv > 0.15:
             findings.append(Finding(
                 "benford", k,
-                f"leading digits depart from Benford at chi2/dof {chi2:.1f} "
-                f"over {n} values — generated, rounded or capped rather than "
-                f"measured across its stated range", chi2,
-                {"chi2_per_dof": chi2, "n": n}))
+                f"leading digits depart from Benford by {tv:.0%} total "
+                f"variation over {n} values — generated, rounded, capped or "
+                f"drawn from a narrower band than the range implies", tv * 100,
+                {"total_variation": tv, "n": n}))
     findings.sort(key=lambda f: -f.z)
     return Report("benford", findings,
                   any(f.subject == control_field for f in findings)
@@ -733,6 +758,23 @@ _MECHANISMS = {
                  "read the producing code; if a round() or a fixed constant is "
                  "there, every downstream tolerance tighter than that rounding "
                  "is measuring the rounding", "free"),
+    "entity": ("this row was produced under conditions the corpus did not "
+               "share — a different instrument, a different epoch, or a "
+               "genuinely different object",
+               "hold each of its odd fields fixed in turn and ask whether the "
+               "rest normalise; the field that explains the others is the "
+               "condition", "cheap"),
+    "conditional": ("a relation real inside one stratum and absent elsewhere — "
+                    "the corpus-wide zero is the strata cancelling",
+                    "re-derive the relation within each stratum separately; if "
+                    "it survives only where claimed, the stratum is the "
+                    "mechanism and the pooled statistic was never meaningful",
+                    "cheap"),
+    "impossible": ("either a constraint nobody wrote down, or a branch of the "
+                   "producing code that cannot be reached",
+                   "read the producing code for the two values; a guard "
+                   "confirms the constraint, its absence means dead code or a "
+                   "sampling gap", "free"),
     "discrete": ("the column is a category stored as a float, so every mean "
                  "and correlation over it is a category average",
                  "read the producing code for the value set; if it is a fixed "
@@ -874,9 +916,21 @@ def run_all(rows: Sequence[dict], controls: dict | None = None) -> dict[str, Rep
     add("modal", multimodal_fields, rows, c.get("modal", ""))
     add("duplicate", duplicate_rows, rows, c.get("duplicate", ""))
     add("absent", absent_fields, rows, "_src", c.get("absent", ""))
+    add("entity", entity_outliers, rows, c.get("entity", ""))
+    add("conditional", conditional_relations, rows, c.get("conditional", ()))
+    add("impossible", impossible_combinations, rows, c.get("impossible", ()))
     if "simpson_group" in c:
         add("simpson", subgroup_reversals, rows, c["simpson_group"],
             c.get("simpson", ()))
+    else:
+        # Discover a grouper rather than requiring one: any column taking 2-8
+        # values on enough rows is a candidate label. Requiring the caller to
+        # name one meant this family almost never ran.
+        cands = [k for k in _fields(rows)
+                 if 2 <= len({r[k] for r in rows if k in r}) <= 8
+                 and sum(1 for r in rows if k in r) >= 400]
+        if cands:
+            add("simpson", subgroup_reversals, rows, cands[0], c.get("simpson", ()))
     if "censored_ladder" in c:
         add("censored", censored_values, rows, c["censored_ladder"],
             c.get("censored", ""))
@@ -1044,6 +1098,45 @@ def _selftests() -> dict[str, tuple]:
         "benford": (lambda rs: digit_law_violations(rs, "v"),
                     _synth(400, v=lambda i: 10 ** (1 + (i % 4)) * 1.0), "v",
                     _synth(400, v=lambda i: 10 ** (4 * lcg(i)))),
+        "entity": (lambda rs: entity_outliers(rs, "ODD"),
+                   ([{"_id": f"n{i}", "_src": "a.json",
+                      **{f"f{j}": 1.0 + lcg(i * 13 + j) / 20 for j in range(9)}}
+                     for i in range(400)] +
+                    [{"_id": "ODD", "_src": "a.json",
+                      **{f"f{j}": 9.0 for j in range(9)}}]), "ODD",
+                   [{"_id": f"n{i}", "_src": "a.json",
+                     **{f"f{j}": 1.0 + lcg(i * 13 + j) / 20 for j in range(9)}}
+                    for i in range(400)]),
+        # SIX strata, strong in exactly one. With two the relation is visible
+        # corpus-wide (rho ~ 0.5) and the detector correctly declines it — the
+        # family hunts relations the pooled statistic CANNOT see, so the fixture
+        # has to dilute the signal below the pooled threshold.
+        "conditional": (lambda rs: conditional_relations(rs, ("x", "y", "g")),
+                        [{"_id": f"c{i}", "_src": "a.json",
+                          "g": float(i % 6),
+                          "x": lcg(i),
+                          "y": (lcg(i) if i % 6 == 0 else lcg(i, 77))}
+                         for i in range(1800)], "x ~ y | g",
+                        [{"_id": f"c{i}", "_src": "a.json", "g": float(i % 6),
+                          "x": lcg(i), "y": lcg(i, 77)} for i in range(1800)]),
+        "impossible": (lambda rs: impossible_combinations(rs, ("a", "b")),
+                       [{"_id": f"i{i}", "_src": "a.json",
+                         "a": float(i % 3),
+                         "b": float(0 if i % 3 == 0 else 1)}
+                        for i in range(600)], "a=0 & b=1",
+                       [{"_id": f"i{i}", "_src": "a.json",
+                         "a": float(i % 3), "b": float(i % 2)}
+                        for i in range(600)]),
+        # Simpson: strongly POSITIVE corpus-wide, strongly NEGATIVE in every
+        # stratum. The classic shape, planted.
+        "simpson": (lambda rs: subgroup_reversals(rs, "g", ("x", "y")),
+                    ([{"_id": f"s{i}", "_src": "a.json", "g": 0.0,
+                       "x": 1.0 + i / 200, "y": 5.0 - i / 300} for i in range(300)] +
+                     [{"_id": f"t{i}", "_src": "a.json", "g": 1.0,
+                       "x": 4.0 + i / 200, "y": 9.0 - i / 300} for i in range(300)]),
+                    "x ~ y",
+                    [{"_id": f"u{i}", "_src": "a.json", "g": float(i % 2),
+                      "x": lcg(i), "y": lcg(i, 55)} for i in range(600)]),
         "rounding": (lambda rs: rounding_tells(rs, "v"),
                      _synth(400, v=lambda i: round(1 + lcg(i) * 20, 1)), "v",
                      _synth(400, v=lambda i: 1 + lcg(i) * 20)),
@@ -1074,3 +1167,196 @@ def self_test(family: str) -> tuple[bool, str]:
     except Exception as exc:                                  # noqa: BLE001
         return False, f"self-test raised {type(exc).__name__}: {exc}"
     return True, "found its planted positive and stayed silent on clean data"
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Families that need the wide aperture. Everything above asks about a COLUMN
+# or a PAIR; these ask about an ENTITY, a CONDITION, and an ABSENCE — three
+# questions no per-column statistic can pose.
+# ═══════════════════════════════════════════════════════════════════════════
+
+def entity_outliers(rows: Sequence[dict], control_id: str = "",
+                    min_fields: int = 6, z_each: float = 2.5) -> Report:
+    """Rows that are MILDLY odd on many axes at once.
+
+    Every family above hunts a single large deviation. This hunts the opposite
+    shape: nothing individually alarming, jointly improbable. A star 2.5 MADs
+    out on nine unrelated measurements is not nine coincidences, and no
+    per-column threshold will ever surface it — each axis says "unremarkable"
+    and the row walks through.
+
+    Scored as the SHARE of a row's populated fields that are mildly deviant, so
+    a sparse row is not rewarded for having little to be odd about, then the
+    share is itself judged against the corpus of shares.
+    """
+    fields = _fields(rows)
+    scales: dict[str, tuple[float, float]] = {}
+    for k in fields:
+        col = _column(rows, k)
+        m, sd = ws.median(col), ws.mad(col)
+        if m is None:
+            continue
+        if sd is None:
+            # MAD is 0 whenever a majority share one value — [1.0]*300 + [99.0]
+            # has an obvious outlier and no scale. Declaring the column
+            # unscalable threw that row away. If anything differs from the
+            # median at all, "differs" IS the deviation.
+            if len({v for v in col}) > 1:
+                scales[k] = (m, None)
+            continue
+        scales[k] = (m, sd)
+    if len(scales) < min_fields:
+        return Report("entity", [], False, "too few scalable columns")
+
+    scored = []
+    for r in rows:
+        have = [k for k in scales if k in r]
+        if len(have) < min_fields:
+            continue
+        odd = [k for k in have
+               if (scales[k][1] is None and r[k] != scales[k][0])
+               or (scales[k][1] is not None
+                   and abs(r[k] - scales[k][0]) / scales[k][1] > z_each)]
+        scored.append((len(odd) / len(have), r, odd, len(have)))
+    if len(scored) < 50:
+        return Report("entity", [], False, "too few rows carry enough fields")
+
+    shares = [s for s, _r, _o, _n in scored]
+    med, sd = ws.median(shares), ws.mad(shares)
+    findings = []
+    for share, r, odd, n in scored:
+        if sd is None:
+            # Every row scores the SAME share — usually zero, because the corpus
+            # is clean. There is no scale, so there is no z, and the first
+            # version `break`-ed and discarded the outlier it exists to find.
+            # A row departing from a constant departs unboundedly. (Third time
+            # today: group_signature and ratio had the identical defect.)
+            z = float("inf") if share > (med or 0) else 0.0
+        else:
+            z = (share - med) / sd
+        if z > 8.0 and len(odd) >= min_fields:
+            findings.append(Finding(
+                "entity", r["_id"],
+                f"{len(odd)} of {n} populated fields sit past {z_each} MADs — "
+                f"{share:.0%} of what was measured about it is unusual, against "
+                f"a corpus median of {med:.0%}. Nothing here is individually "
+                f"alarming; jointly it is. Fields: {', '.join(sorted(odd)[:6])}"
+                + ("…" if len(odd) > 6 else ""),
+                z, {"n_odd": len(odd), "n_fields": n, "share": share,
+                    "fields": sorted(odd), "src": r["_src"]}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("entity", findings,
+                  any(f.subject == control_id for f in findings)
+                  if control_id else bool(findings),
+                  control_id or "any row jointly odd across many fields")
+
+
+def conditional_relations(rows: Sequence[dict], control_pair: tuple = (),
+                          max_groupers: int = 8) -> Report:
+    """Relations that hold INSIDE one subgroup and nowhere else.
+
+    A corpus-wide correlation of zero can hide a strong relation confined to a
+    stratum — the reverse of Simpson's paradox and far more common. Groupers are
+    discovered, not supplied: any column taking 2-8 distinct values is a
+    candidate label, which is what `secretly_discrete` was already telling us
+    about but nothing acted on.
+    """
+    fields = _fields(rows)
+    groupers = []
+    for k in fields:
+        vals = {r[k] for r in rows if k in r}
+        if 2 <= len(vals) <= 8 and len([r for r in rows if k in r]) >= 200:
+            groupers.append(k)
+    groupers = groupers[:max_groupers]
+    if not groupers:
+        return Report("conditional", [], False, "no discrete grouping columns")
+
+    findings = []
+    for g in groupers:
+        strata: dict[float, list[dict]] = {}
+        for r in rows:
+            if g in r:
+                strata.setdefault(r[g], []).append(r)
+        big = {v: rs for v, rs in strata.items() if len(rs) >= 120}
+        if len(big) < 2:
+            continue
+        for a, b in itertools.combinations([f for f in fields if f != g], 2):
+            whole = [(r[a], r[b]) for r in rows if a in r and b in r]
+            if len(whole) < MIN_PAIRS:
+                continue
+            rho_all = ws.spearman([x for x, _ in whole], [y for _, y in whole])
+            if rho_all is None or abs(rho_all) > 0.20:
+                continue                      # visible corpus-wide; not hidden
+            per = {}
+            for v, rs in big.items():
+                sub = [(r[a], r[b]) for r in rs if a in r and b in r]
+                if len(sub) < 120:
+                    continue
+                rho = ws.spearman([x for x, _ in sub], [y for _, y in sub])
+                if rho is not None:
+                    per[v] = rho
+            if len(per) < 2:
+                continue
+            strong = {v: rho for v, rho in per.items() if abs(rho) > 0.55}
+            weak = {v: rho for v, rho in per.items() if abs(rho) < 0.20}
+            if len(strong) == 1 and len(weak) == len(per) - 1:
+                v, rho = next(iter(strong.items()))
+                findings.append(Finding(
+                    "conditional", f"{a} ~ {b} | {g}",
+                    f"invisible corpus-wide (rho {rho_all:+.2f}) but rho "
+                    f"{rho:+.2f} inside {g}={v:g} alone, and under 0.20 in every "
+                    f"other stratum — a relation that exists only under a "
+                    f"condition nobody separated", abs(rho) * 100,
+                    {"a": a, "b": b, "grouper": g, "value": v,
+                     "rho_in": rho, "rho_all": rho_all, "per_stratum": per}))
+    findings.sort(key=lambda f: -f.z)
+    return Report("conditional", findings,
+                  (f"{control_pair[0]} ~ {control_pair[1]} | {control_pair[2]}"
+                   in {f.subject for f in findings}) if len(control_pair) == 3
+                  else bool(findings),
+                  " ~ ".join(control_pair) if control_pair
+                  else "any relation confined to one stratum")
+
+
+def impossible_combinations(rows: Sequence[dict], control_pair: tuple = ()) -> Report:
+    """Value pairs that NEVER co-occur though both are common. Negative space.
+
+    ``absent_fields`` finds a column that is missing. This finds a combination
+    that is missing — a hole in a grid whose rows and columns are both well
+    populated. Those holes are either a constraint nobody wrote down, or a
+    branch of the producing code that cannot be reached.
+    """
+    fields = [k for k in _fields(rows)
+              if 2 <= len({r[k] for r in rows if k in r}) <= 12]
+    findings = []
+    for a, b in itertools.combinations(fields, 2):
+        both = [r for r in rows if a in r and b in r]
+        if len(both) < MIN_PAIRS:
+            continue
+        va = collections.Counter(r[a] for r in both)
+        vb = collections.Counter(r[b] for r in both)
+        seen = {(r[a], r[b]) for r in both}
+        n = len(both)
+        for x, cx in va.items():
+            for y, cy in vb.items():
+                if (x, y) in seen:
+                    continue
+                # expected count if the two were independent
+                exp = cx * cy / n
+                if exp >= 12:
+                    findings.append(Finding(
+                        "impossible", f"{a}={x:g} & {b}={y:g}",
+                        f"never co-occur in {n} rows, though {a}={x:g} appears "
+                        f"{cx}x and {b}={y:g} appears {cy}x — {exp:.0f} joint "
+                        f"rows expected if independent. Either an unwritten "
+                        f"constraint or an unreachable branch.", exp,
+                        {"a": a, "b": b, "va": x, "vb": y, "expected": exp}))
+    findings.sort(key=lambda f: -f.z)
+    # A finding's subject is a VALUE combination ("a=0 & b=1"); a control names
+    # the COLUMN pair. Match on the evidence, not on the rendered string.
+    return Report("impossible", findings,
+                  any({f.evidence.get("a"), f.evidence.get("b")} == set(control_pair)
+                      for f in findings) if control_pair
+                  else bool(findings),
+                  " & ".join(str(c) for c in control_pair) if control_pair
+                  else "any never-co-occurring pair of common values")

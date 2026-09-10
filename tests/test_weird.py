@@ -7,6 +7,7 @@ because they could not see the floor; only a control caught them. A detector
 whose silence has never been tested is a detector whose silence means nothing.
 """
 import math
+import re
 
 import pytest
 
@@ -421,3 +422,110 @@ def test_the_selftest_negative_fixture_is_actually_unordered():
     col = [r["v"] for r in neg]
     z = ws.runs_test(col)
     assert z is not None and abs(z) < 6.0, f"negative fixture is ordered: z={z}"
+
+
+# ── the wide-aperture families ──────────────────────────────────────────────
+
+def test_the_aperture_is_not_a_share_of_the_corpus():
+    """A 5%-of-corpus floor dropped 114 of 131 columns on the real survey —
+    every vetting, blend, fold and catalogue field. Those are sparse BECAUSE
+    they only exist on rows that crossed threshold, i.e. the interesting ones.
+    The tool was auditing plumbing and structurally could not see the science."""
+    rows = [{"_id": f"t{i}", "_src": "a.json", "common": 1.0 + (i % 13)}
+            for i in range(5000)]
+    for i in range(40):
+        rows[i]["rare_but_real"] = float(i)
+    assert "rare_but_real" in weird._fields(rows)
+
+
+def test_zero_and_negative_columns_are_visible():
+    """`v > 0` made an all-zero constant and a column clamped at -1 invisible
+    to every family — including the constant detector `explain_away` needs."""
+    rows = [{"_id": f"t{i}", "_src": "a.json", "z": 0.0, "neg": -1.0}
+            for i in range(200)]
+    assert {"z", "neg"} <= set(weird._fields(rows))
+
+
+def test_entity_outliers_find_a_row_odd_on_many_axes_and_loud_on_none():
+    """The shape no per-column threshold can reach: nothing individually
+    alarming, jointly improbable."""
+    rows = [{"_id": f"n{i}", "_src": "a.json",
+             **{f"f{j}": 1.0 + ((i * 7 + j) % 11) * 0.01 for j in range(9)}}
+            for i in range(400)]
+    rows.append({"_id": "ODD", "_src": "a.json",
+                 **{f"f{j}": 1.35 for j in range(9)}})
+    rep = weird.entity_outliers(rows, control_id="ODD")
+    assert rep.saw_control
+    hit = next(f for f in rep.findings if f.subject == "ODD")
+    assert hit.evidence["n_odd"] >= 6
+
+
+def test_entity_outliers_survive_a_corpus_with_no_spread_at_all():
+    """A clean corpus gives MAD(shares) == 0, and the first version `break`-ed
+    and discarded the very outlier it exists to find. Third occurrence of that
+    shape in this module — see group_signature and ratio."""
+    rows = [{"_id": f"n{i}", "_src": "a.json",
+             **{f"f{j}": 1.0 for j in range(9)}} for i in range(300)]
+    rows.append({"_id": "ODD", "_src": "a.json",
+                 **{f"f{j}": 99.0 for j in range(9)}})
+    rep = weird.entity_outliers(rows, control_id="ODD")
+    assert rep.saw_control, "a constant corpus hid its only outlier"
+
+
+def test_conditional_relations_find_what_the_pooled_statistic_cannot():
+    rows = []
+    for i in range(1800):
+        g = i % 6
+        x = ((i * 2654435761) % 10007) / 10007
+        y = x if g == 0 else ((i * 40503) % 9973) / 9973
+        rows.append({"_id": f"c{i}", "_src": "a.json",
+                     "g": float(g), "x": x, "y": y})
+    rep = weird.conditional_relations(rows, control_pair=("x", "y", "g"))
+    assert rep.saw_control
+    hit = rep.findings[0]
+    assert abs(hit.evidence["rho_all"]) < 0.20
+    assert abs(hit.evidence["rho_in"]) > 0.55
+
+
+def test_conditional_declines_a_relation_that_is_visible_corpus_wide():
+    """If the pooled statistic already sees it, it is not hidden and this family
+    has nothing to add."""
+    rows = []
+    for i in range(1200):
+        x = ((i * 2654435761) % 10007) / 10007
+        rows.append({"_id": f"c{i}", "_src": "a.json",
+                     "g": float(i % 2), "x": x, "y": x})
+    assert weird.conditional_relations(rows).findings == []
+
+
+def test_impossible_combinations_find_a_hole_in_a_populated_grid():
+    rows = [{"_id": f"i{i}", "_src": "a.json", "a": float(i % 3),
+             "b": float(0 if i % 3 == 0 else 1)} for i in range(600)]
+    rep = weird.impossible_combinations(rows, control_pair=("a", "b"))
+    assert rep.saw_control
+    assert any("never co-occur" in f.detail for f in rep.findings)
+
+
+def test_impossible_stays_quiet_when_every_combination_occurs():
+    rows = [{"_id": f"i{i}", "_src": "a.json", "a": float(i % 3),
+             "b": float(i % 2)} for i in range(600)]
+    assert weird.impossible_combinations(rows).findings == []
+
+
+def test_all_sixteen_families_pass_their_planted_positive_and_negative():
+    fams = sorted(weird._selftests())
+    assert len(fams) >= 16, f"only {len(fams)} families carry a self-test"
+    for f in fams:
+        passed, why = weird.self_test(f)
+        assert passed, f"{f}: {why}"
+
+
+def test_every_family_run_by_run_all_has_a_self_test():
+    """A family wired into run_all with no self-test would be trusted on the
+    word of `self_test`'s fallback, which is False — but it would also never be
+    visible as a gap. Derive the list rather than hand-maintaining it."""
+    import inspect
+    src = inspect.getsource(weird.run_all)
+    wired = set(re.findall(r'add\("(\w+)"', src))
+    assert wired <= set(weird._selftests()), (
+        f"wired but no self-test: {wired - set(weird._selftests())}")

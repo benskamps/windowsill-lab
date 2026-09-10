@@ -126,7 +126,7 @@ BENFORD = [math.log10(1 + 1 / d) for d in range(1, 10)]
 
 
 def benford_deviation(xs: Sequence[float]) -> tuple[float, int] | None:
-    """How far leading digits fall from Benford. Returns ``(chi2_per_dof, n)``.
+    """How far leading digits fall from Benford. Returns ``(total_variation, n)``.
 
     Real measurements spanning orders of magnitude obey Benford. Values that do
     not are typically generated, rounded, capped, or drawn from a narrow range —
@@ -140,9 +140,14 @@ def benford_deviation(xs: Sequence[float]) -> tuple[float, int] | None:
         return None
     lead = Counter(int(str(f"{v:e}")[0]) for v in vals)
     n = sum(lead.values())
-    chi2 = sum((lead.get(d, 0) - n * BENFORD[d - 1]) ** 2 / (n * BENFORD[d - 1])
-               for d in range(1, 10))
-    return chi2 / 8.0, n
+    # TOTAL VARIATION distance, not chi-squared. chi2 is PROPORTIONAL TO n, so
+    # a fixed threshold means 136x more sensitivity on a 13,597-row column than
+    # on a 100-row one — which is why every large column in the survey "failed"
+    # Benford, including a random 64-bit seed. TV is an effect size in [0,1]:
+    # half the summed absolute difference between the observed and expected
+    # digit shares, and it says the same thing at every n.
+    tv = 0.5 * sum(abs(lead.get(d, 0) / n - BENFORD[d - 1]) for d in range(1, 10))
+    return tv, n
 
 
 def terminal_digit_bias(xs: Sequence[float], places: int = 2
