@@ -155,9 +155,12 @@ def terminal_digit_bias(xs: Sequence[float], places: int = 2
     for x in xs:
         if not math.isfinite(x) or x == 0:
             continue
-        s = f"{abs(x):.{places}f}".replace(".", "").rstrip("0")
-        if s:
-            digs.append(s[-1])
+        # The FIRST version stripped trailing zeros before taking the last
+        # digit, which deleted exactly the zeros that are the evidence: the
+        # zero count was always 0, the true null was 1/9 rather than the
+        # documented 1/5, and a maximally-round column scored LOWER than noise.
+        # Take the terminal digit at the stated precision, as written.
+        digs.append(f"{abs(x):.{places}f}".replace(".", "")[-1])
     if len(digs) < 100:
         return None
     c = Counter(digs)
@@ -191,11 +194,15 @@ def boundary_pileup(xs: Sequence[float]) -> tuple[str, float, float] | None:
         return None
     at_lo = sum(1 for v in vals if v == lo) / len(vals)
     at_hi = sum(1 for v in vals if v == hi) / len(vals)
-    if at_hi >= at_lo and at_hi > 0.02:
-        return "max", hi, at_hi
+    # BOTH edges. The first version returned on the first match, so a column
+    # piled at min AND max reported only one — architecturally unable to see
+    # the double censoring it was written to find.
+    out = []
     if at_lo > 0.02:
-        return "min", lo, at_lo
-    return None
+        out.append(("min", lo, at_lo))
+    if at_hi > 0.02:
+        out.append(("max", hi, at_hi))
+    return out or None
 
 
 def modality(xs: Sequence[float], bins: int = 24) -> int | None:

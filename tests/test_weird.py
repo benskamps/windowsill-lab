@@ -259,8 +259,12 @@ def test_explain_away_suppresses_ratios_against_a_constant():
 
 
 def test_untrusted_reports_never_reach_the_findings_list():
+    """Trust is now decided by the SELF-TEST, so a corpus-derived control can no
+    longer disqualify a family — disqualify one directly instead."""
     rows = _corpus()
-    reps = weird.run_all(rows, {"ratio": "NOT-PRESENT"})
+    reps = weird.run_all(rows, {})
+    assert any(f.family == "ratio" for f in weird.all_findings(reps))
+    reps["ratio"].saw_control = False
     assert all(f.family != "ratio" for f in weird.all_findings(reps))
 
 
@@ -293,3 +297,127 @@ def test_mutual_information_is_zero_for_independent_columns():
         x = (1103515245 * x + 12345) % (1 << 31)
         ys.append(float(x % 991))
     assert ws.mutual_information(xs, ys) < 0.05
+
+
+# ── the control mechanism, rebuilt ──────────────────────────────────────────
+
+def test_every_family_passes_its_own_planted_positive_and_negative():
+    """THE design claim, and it was hollow until 2026-09-10.
+
+    `saw_control` used to default to `bool(findings)` — "did I find anything?"
+    — which held for 11 of 13 families on the real corpus, made `trusted_only`
+    a no-op, and INVERTED: three families ran cleanly, found nothing, and were
+    stamped BLIND. A control drawn from the data under study tells you about
+    the data, not about the detector.
+    """
+    for family in sorted(weird._selftests()):
+        passed, why = weird.self_test(family)
+        assert passed, f"{family}: {why}"
+
+
+def test_a_family_with_no_self_test_is_never_trusted():
+    passed, why = weird.self_test("a-family-that-does-not-exist")
+    assert passed is False
+    assert "no self-test" in why
+
+
+def test_trusted_and_quiet_is_expressible_and_is_not_blind():
+    """A true negative must not read as blindness. This is the inversion the
+    adversarial review caught: `redundant`, `hidden` and `regime` each ran
+    correctly, found nothing, and the page called them BLIND."""
+    rows = _flat(400, v=lambda i: 1.0 + (i % 97) * 0.01)
+    reps = weird.run_all(rows, {})
+    quiet = [n for n, r in reps.items() if r.saw_control and not r.findings]
+    assert quiet, "no family managed a trusted true negative on clean data"
+    for n in quiet:
+        out = reps[n].render()
+        assert "QUIET" in out and "BLIND" not in out
+
+
+def test_explain_away_will_not_let_a_blind_family_delete_a_trusted_finding():
+    """Confirmed as a live defect by adversarial review: a BLIND `discrete`
+    report was authorised to delete `ratio`'s verified planted anomaly."""
+    rows = _corpus()
+    reps = weird.run_all(rows, {})
+    reps["discrete"] = weird.Report(
+        "discrete",
+        [weird.Finding("discrete", "a", "fake", 1.0, {"distinct": 1})],
+        False, "deliberately disqualified")
+    kept, notes = weird.explain_away(reps)
+    assert any(f.family == "ratio" for f in kept), (
+        "a disqualified detector deleted a trusted family's findings")
+    assert not any("constant" in n for n in notes)
+
+
+# ── the defects the self-test and the review exposed ────────────────────────
+
+def test_an_exact_relation_is_visible_at_all():
+    """A perfect relation has MAD 0 and used to be SKIPPED — so the tightest,
+    most informative relations in any corpus were invisible."""
+    rows = _flat(400, a=lambda i: float(i + 1), b=lambda i: float(i + 1) * 3.0)
+    rows[50]["b"] = rows[50]["a"] * 99.0
+    rep = weird.ratio_violations(rows, control_id="t50")
+    assert rep.saw_control
+
+
+def test_an_exact_relation_over_a_lattice_is_not_a_relation():
+    """`d_min` takes 3 values and `fap.B` is a constant, so two thirds of that
+    pair 'violated' a relation that never existed. 3,306 findings, ~none real."""
+    rows = _flat(400, lattice=lambda i: float(i % 3 + 1),
+                 other=lambda i: float(i % 3 + 1) * 2)
+    rep = weird.ratio_violations(rows, control_id="never")
+    assert not any(f.evidence.get("exact") for f in rep.findings)
+
+
+def test_terminal_digit_bias_is_monotone_in_roundness():
+    """`rstrip("0")` deleted the very zeros that are the evidence, so a
+    maximally-round column scored LOWER than unrounded noise."""
+    from lab import weird_stats as ws
+    import random
+    rng = random.Random(3)
+    rounded = [float(rng.randrange(1, 400) * 10) for _ in range(600)]
+    unrounded = [rng.uniform(1, 4000) for _ in range(600)]
+    r_share, _ = ws.terminal_digit_bias(rounded)
+    u_share, _ = ws.terminal_digit_bias(unrounded)
+    assert r_share > 0.9, f"round column scored only {r_share}"
+    assert u_share < 0.4
+    assert r_share > u_share
+
+
+def test_boundary_pileup_reports_both_edges():
+    """It returned on the first match, so a doubly-censored column reported one
+    end — architecturally unable to see the shape it was written to find."""
+    from lab import weird_stats as ws
+    hits = ws.boundary_pileup([0.002] * 500 + [0.004] * 100 + [0.010] * 300)
+    assert hits is not None
+    edges = {e for e, _v, _s in hits}
+    assert edges == {"min", "max"}, f"only saw {edges}"
+
+
+def test_changepoint_scales_within_segments_not_across_the_shift():
+    """Dividing by the whole column's MAD — which the shift inflates — made the
+    estimator least sensitive to the largest effect it exists to find."""
+    from lab import weird_stats as ws
+    import random
+    rng = random.Random(5)
+    xs = [1.0 + rng.gauss(0, 0.01) for _ in range(100)] + \
+         [50.0 + rng.gauss(0, 0.01) for _ in range(100)]
+    got = ws.changepoint(xs)
+    assert got is not None
+    idx, gap = got
+    # A step has a plateau of near-equal splits — every cut inside the clean
+    # run scores enormously. The claim is the REGION and the magnitude, not a
+    # single index, and pinning the index would be pinning noise.
+    assert 60 <= idx <= 140, f"changepoint landed at {idx}, nowhere near the step"
+    assert gap > 100, f"a 50-unit step on 0.01 noise read as only {gap} MADs"
+
+
+def test_the_selftest_negative_fixture_is_actually_unordered():
+    """An LCG sampled at sequential i has runs z ~ 19 against ~1 for real
+    randomness — a fine fixture everywhere except as the clean negative for the
+    family that tests ordering, where it fires correctly and reads as a bug."""
+    from lab import weird_stats as ws
+    _fn, _pos, _find, neg = weird._selftests()["order"]
+    col = [r["v"] for r in neg]
+    z = ws.runs_test(col)
+    assert z is not None and abs(z) < 6.0, f"negative fixture is ordered: z={z}"

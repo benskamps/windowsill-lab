@@ -38,6 +38,8 @@ silence means nothing.
 from __future__ import annotations
 
 import itertools
+import functools
+import hashlib
 import re
 import json
 import math
@@ -85,7 +87,10 @@ class Report:
             return (f"[{self.family}] BLIND — failed to rediscover its control "
                     f"({self.control}). Its silence proves nothing; the "
                     f"{len(self.findings)} finding(s) it produced are withheld.")
-        head = (f"[{self.family}] control OK ({self.control}) — "
+        if not self.findings:
+            return (f"[{self.family}] trusted and QUIET — {self.control}. "
+                    f"Nothing found, and that is a result.")
+        head = (f"[{self.family}] trusted ({self.control}) — "
                 f"{len(self.findings)} finding(s)")
         return "\n".join([head] + ["  " + str(f) for f in self.findings])
 
@@ -151,7 +156,40 @@ def ratio_violations(rows: Sequence[dict], control_id: str,
             continue
         logs = [math.log(x) for _r, x in pairs]
         med, mad = _mad(logs)
-        if mad <= 0 or mad > MAX_RELATION_MAD:
+        if mad > MAX_RELATION_MAD:
+            continue
+        if mad <= 0:
+            # An EXACT relation — b is a fixed multiple of a on every row that
+            # obeys it. Skipping this made the tightest relations in any corpus
+            # invisible; reporting it unguarded made 3,306 findings of which
+            # almost none were anomalies. TWO guards, both learned the hard way:
+            #
+            #  * a LATTICE column has a modal ratio by construction. `d_min`
+            #    takes 3 values and `fap.B` is the constant 256, so two thirds
+            #    of that pair "violate" a relation that was never a relation.
+            #  * a column DEFINED as one of two others (fap_graded = max(iid,
+            #    block)) equals each of them most of the time, and the rows
+            #    where the other won are the definition working.
+            #
+            # So: both columns must be genuinely continuous, and the exact
+            # relation must hold on the overwhelming majority before a departure
+            # from it means anything.
+            da = len({r[a] for r, _x in pairs})
+            db = len({r[b] for r, _x in pairs})
+            conform = sum(1 for _r, x in pairs
+                          if abs(math.log(x) - med) <= 1e-12) / len(pairs)
+            if min(da, db) <= 12 or conform < 0.90:
+                continue
+            for r, ratio in pairs:
+                if abs(math.log(ratio) - med) > 1e-12:
+                    findings.append(Finding(
+                        "ratio", r["_id"],
+                        f"{a}/{b} = {ratio:.6g} where the relation is EXACT at "
+                        f"{math.exp(med):.6g} on every other row — no scale to "
+                        f"measure against, so the deviation is unbounded",
+                        float("inf"),
+                        {"field_a": a, "field_b": b, "src": r["_src"],
+                         "exact": True}))
             continue
         for r, ratio in pairs:
             z = abs(math.log(ratio) - med) / mad
@@ -317,16 +355,16 @@ def boundary_pileups(rows: Sequence[dict], control_field: str = "") -> Report:
     """
     findings = []
     for k in _fields(rows):
-        hit = ws.boundary_pileup(_column(rows, k))
-        if not hit:
+        hits = ws.boundary_pileup(_column(rows, k))
+        if not hits:
             continue
-        edge, value, share = hit
-        findings.append(Finding(
-            "pileup", k,
-            f"{share:.1%} of values sit exactly on the sample {edge} "
-            f"({value:g}) — a cap, a clamp or a saturated estimator, not a "
-            f"measurement that happened to land there",
-            share * 100, {"edge": edge, "value": value, "share": share}))
+        for edge, value, share in hits:
+            findings.append(Finding(
+                "pileup", k,
+                f"{share:.1%} of values sit exactly on the sample {edge} "
+                f"({value:g}) — a cap, a clamp or a saturated estimator, not a "
+                f"measurement that happened to land there",
+                share * 100, {"edge": edge, "value": value, "share": share}))
     findings.sort(key=lambda f: -f.z)
     return Report("pileup", findings,
                   any(f.subject == control_field for f in findings)
@@ -806,10 +844,23 @@ def run_all(rows: Sequence[dict], controls: dict | None = None) -> dict[str, Rep
     reports: dict[str, Report] = {}
 
     def add(name, fn, *args, **kw):
+        # The control is the SELF-TEST, decided before the corpus is touched and
+        # independent of what it happens to contain. The old rule was
+        # `bool(findings)` — "did I find anything?" — which held for 11 of 13
+        # families, made `trusted_only` a no-op, and inverted: a family that ran
+        # cleanly and found nothing was stamped BLIND. Trusted-and-quiet is now
+        # expressible, and it is a result.
+        passed, why = self_test(name)
         try:
-            reports[name] = fn(*args, **kw)
+            rep = fn(*args, **kw)
         except Exception as exc:                            # noqa: BLE001
-            reports[name] = Report(name, [], False, f"raised {type(exc).__name__}: {exc}")
+            reports[name] = Report(name, [], False,
+                                   f"CRASHED on the corpus: "
+                                   f"{type(exc).__name__}: {exc}")
+            return
+        rep.saw_control = passed
+        rep.control = why
+        reports[name] = rep
 
     add("ratio", ratio_violations, rows, c.get("ratio", ""))
     add("pileup", boundary_pileups, rows, c.get("pileup", ""))
@@ -859,12 +910,21 @@ def explain_away(reports: dict[str, Report]) -> tuple[list[Finding], list[str]]:
     constant: set[str] = set()
     piled: set[str] = set()
 
-    for f in reports.get("discrete", Report("", [], False, "")).findings:
-        if f.evidence.get("distinct") == 1:
-            constant.add(f.subject)
-    for f in reports.get("pileup", Report("", [], False, "")).findings:
-        if f.evidence.get("share", 0) > 0.20:
-            piled.add(f.subject)
+    # ONLY trusted reports may explain anything away. The first version read
+    # these two families' findings with no check, so a detector whose silence
+    # "proves nothing" was authorised to delete a verified finding from a
+    # family that had passed its control. Confirmed by the adversarial review:
+    # ratio's planted anomaly vanished on the word of a BLIND discrete report.
+    disc = reports.get("discrete")
+    pile = reports.get("pileup")
+    if disc is not None and disc.saw_control:
+        for f in disc.findings:
+            if f.evidence.get("distinct") == 1:
+                constant.add(f.subject)
+    if pile is not None and pile.saw_control:
+        for f in pile.findings:
+            if f.evidence.get("share", 0) > 0.20:
+                piled.add(f.subject)
     if constant:
         notes.append(f"{len(constant)} constant column(s) — every ratio against "
                      f"them is their partner restated: {', '.join(sorted(constant))}")
@@ -887,3 +947,130 @@ def explain_away(reports: dict[str, Report]) -> tuple[list[Finding], list[str]]:
                 continue                      # a constant has one digit
             kept.append(f)
     return kept, notes
+
+
+# ═══════════════════════════════════════════════════════════════════════════
+# SELF-TESTS — what `saw_control` should have meant all along.
+#
+# The first design let a family default to ``saw_control = bool(findings)``:
+# "did I find anything?" On the real corpus that held for 11 of 13 families, so
+# `trusted_only` filtered exactly the empty lists — zero bits. Worse, it
+# INVERTED: three families ran cleanly, reported a true negative, and were
+# stamped BLIND on the page. The one distinction the mechanism exists to make —
+# blind versus genuinely quiet — it got backwards.
+#
+# A control must be independent of what the corpus happens to contain. So each
+# family now carries a planted POSITIVE it must find and a planted NEGATIVE it
+# must stay silent on, run before the corpus is touched. A family that passes
+# both and then finds nothing is TRUSTED AND QUIET, which is a result.
+# ═══════════════════════════════════════════════════════════════════════════
+
+def _synth(n: int, **cols) -> list[dict]:
+    out = []
+    for i in range(n):
+        r = {"_id": f"s{i}", "_src": f"{i // max(1, n // 4):02d}.json"}
+        for k, fn in cols.items():
+            r[k] = float(fn(i))
+        out.append(r)
+    return out
+
+
+@functools.lru_cache(maxsize=1)
+def _selftests() -> dict[str, tuple]:
+    """``family -> (fn, positive_rows, must_find, negative_rows)``.
+
+    The negative matters as much as the positive: a detector that fires on
+    clean data is not a detector, it is a random number generator with prose.
+    """
+    # Deterministic but genuinely unordered: hash the index rather than stepping
+    # a recurrence. An LCG sampled at sequential i carries real serial structure
+    # (runs z = 18.8, against 1.1 for true randomness), so it is a fine fixture
+    # everywhere EXCEPT as the clean negative for `order`, where it would
+    # correctly fire and be misread as the detector over-firing.
+    def lcg(i, s=7):
+        h = hashlib.blake2b(f"{s}:{i}".encode(), digest_size=8).digest()
+        return int.from_bytes(h, "big") / (1 << 64)
+
+    pos_ratio = _synth(400, a=lambda i: 1 + lcg(i) / 10, b=lambda i: (1 + lcg(i) / 10) * 2)
+    pos_ratio[123]["b"] *= 2000
+    pos_ratio[123]["_id"] = "HIT"
+    neg_ratio = _synth(400, a=lambda i: 1 + lcg(i) / 10, b=lambda i: (1 + lcg(i) / 10) * 2)
+
+    return {
+        "ratio": (lambda rs: ratio_violations(rs, "HIT"), pos_ratio, "HIT", neg_ratio),
+        "pileup": (lambda rs: boundary_pileups(rs, "v"),
+                   _synth(400, v=lambda i: 1.0 if i < 300 else 1 + i / 100), "v",
+                   _synth(400, v=lambda i: 1 + lcg(i))),
+        "discrete": (lambda rs: secretly_discrete(rs, "v"),
+                     _synth(400, v=lambda i: i % 3), "v",
+                     _synth(400, v=lambda i: 1 + lcg(i))),
+        "redundant": (lambda rs: redundant_fields(rs, ("a", "b")),
+                      _synth(400, a=lambda i: i + 1, b=lambda i: (i + 1) * 2.5),
+                      "a ~ b",
+                      _synth(400, a=lambda i: lcg(i), b=lambda i: lcg(i, 99))),
+        "hidden": (lambda rs: hidden_dependence(rs, ("x", "y")),
+                   _synth(600, x=lambda i: i - 300, y=lambda i: abs(i - 300)),
+                   "x ~ y",
+                   _synth(600, x=lambda i: lcg(i), y=lambda i: lcg(i, 31))),
+        "regime": (lambda rs: regime_changes(rs, "_src", "v"),
+                   _synth(400, v=lambda i: 1 + lcg(i) / 50 + (0 if i < 200 else 50)),
+                   "v",
+                   _synth(400, v=lambda i: 1 + lcg(i) / 50)),
+        "order": (lambda rs: order_dependence(rs, "_src", "v"),
+                  _synth(400, v=lambda i: float(i)), "v",
+                  _synth(400, v=lambda i: lcg(i))),
+        "modal": (lambda rs: multimodal_fields(rs, "v"),
+                  _synth(600, v=lambda i: (i % 3) * 100 + (i % 5) * 0.1), "v",
+                  _synth(600, v=lambda i: lcg(i))),
+        "duplicate": (lambda rs: duplicate_rows(rs, "DUP"),
+                      [{"_id": "DUP", "_src": "a.json", "p": 1.0, "q": 2.0,
+                        "r": 3.0, "s": 4.0, "t": 5.0},
+                       {"_id": "DUP", "_src": "b.json", "p": 1.0, "q": 2.0,
+                        "r": 3.0, "s": 4.0, "t": 5.0}], "DUP",
+                      [{"_id": "A", "_src": "a.json", "p": 1.0, "q": 2.0,
+                        "r": 3.0, "s": 4.0, "t": 5.0},
+                       {"_id": "B", "_src": "b.json", "p": 9.0, "q": 2.0,
+                        "r": 3.0, "s": 4.0, "t": 5.0}]),
+        "absent": (lambda rs: absent_fields(rs, "_src", "late"),
+                   _synth(200, x=lambda i: 1.0) +
+                   [{"_id": f"L{i}", "_src": "99.json", "x": 1.0, "late": 2.0}
+                    for i in range(50)], "late",
+                   _synth(200, x=lambda i: 1.0)),
+        "censored": (lambda rs: censored_values(rs, {"d": (0.002, 0.004, 0.010)}, "d"),
+                     [{"_id": f"c{i}", "_src": "a.json",
+                       "d": 0.010 if i < 20 else 0.002} for i in range(200)], "d",
+                     [{"_id": f"c{i}", "_src": "a.json", "d": 0.002}
+                      for i in range(200)]),
+        "benford": (lambda rs: digit_law_violations(rs, "v"),
+                    _synth(400, v=lambda i: 10 ** (1 + (i % 4)) * 1.0), "v",
+                    _synth(400, v=lambda i: 10 ** (4 * lcg(i)))),
+        "rounding": (lambda rs: rounding_tells(rs, "v"),
+                     _synth(400, v=lambda i: round(1 + lcg(i) * 20, 1)), "v",
+                     _synth(400, v=lambda i: 1 + lcg(i) * 20)),
+    }
+
+
+@functools.lru_cache(maxsize=None)
+def self_test(family: str) -> tuple[bool, str]:
+    """Can this family see, and can it stay quiet? ``(passed, why)``.
+
+    Independent of the corpus under study, which is the entire point — a
+    control drawn from the data being examined tells you about the data, not
+    about the detector.
+    """
+    spec = _selftests().get(family)
+    if spec is None:
+        return False, "no self-test defined — this family cannot be trusted"
+    fn, pos, must_find, neg = spec
+    try:
+        found = {f.subject for f in fn(pos).findings}
+        if must_find not in found:
+            return False, (f"failed its POSITIVE: planted {must_find!r} and did "
+                           f"not find it (found {sorted(found)[:3]})")
+        n_neg = len(fn(neg).findings)
+        if n_neg:
+            return False, (f"failed its NEGATIVE: fired {n_neg} time(s) on clean "
+                           f"data — it reports noise as signal")
+    except Exception as exc:                                  # noqa: BLE001
+        return False, f"self-test raised {type(exc).__name__}: {exc}"
+    return True, "found its planted positive and stayed silent on clean data"
