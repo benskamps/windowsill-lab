@@ -1234,6 +1234,32 @@ def _accepted_hunt_receipts(
     return accepted, refused, superseded
 
 
+def _shelf_states(hunts_dir: Path | None = None) -> dict[str, str]:
+    """``{tic: state}`` from the human rulings ledger, or ``{}`` if unreadable.
+
+    Degrades to empty rather than raising: a publish must not fail because a
+    ruling file is missing, and an empty map makes the lead count fall back to
+    the receipts-only number — visibly wrong in the same old way rather than
+    silently zero.
+    """
+    try:
+        from . import shelf as _shelf
+        from datetime import date as _date
+        # Grade the SAME receipts hunt_block is aggregating. Defaulting to the
+        # repo made a tmp_path fixture inherit the real shelf's six refutations
+        # and report its own single lead as zero awaiting — a caller's own data
+        # answered from somebody else's ledger.
+        where = Path(hunts_dir) if hunts_dir is not None else HUNTS_DIR
+        rulings = Path(where).parent.parent / "docs" / "shelf-rulings.json"
+        if not rulings.exists():
+            rulings = REPO_ROOT / "docs" / "shelf-rulings.json" \
+                if where == HUNTS_DIR else None
+        rows = _shelf.register(where, rulings, _date.today())
+        return {str(r["tic"]): str(r.get("state") or "") for r in rows}
+    except Exception:            # noqa: BLE001 - see docstring
+        return {}
+
+
 def hunt_block(hunts_dir: Path | None = None) -> dict | None:
     """Aggregate every committed hunt receipt into pot.json's ``hunt`` block.
 
@@ -1306,12 +1332,31 @@ def hunt_block(hunts_dir: Path | None = None) -> dict | None:
     dispositions: dict[str, int] = {}
     for verdict in star_disposition.values():
         dispositions[verdict] = dispositions.get(verdict, 0) + 1
+    # A lead the machine minted is not a lead a human still owes an answer on.
+    # The receipts cannot know that: a refutation is written by a person into
+    # docs/shelf-rulings.json and nothing ever wrote it back into the receipt.
+    # Until 2026-09-10 this block read the receipts alone and published
+    # "9 leads awaiting human review" for three weeks after six of the nine had
+    # been ruled REFUTED — one of them because the dip turned out to be a
+    # planet published in 2015, on a neighbouring star 0.71 px away. The
+    # arithmetic was right the whole time; the inputs were half the record.
+    minted = sum(dispositions.get(state, 0) for state in HUNT_LEAD_STATES)
+    shelf_states = _shelf_states(hunts_dir)
+    ruled = sum(1 for v in shelf_states.values() if v == "refuted")
+    parked = sum(1 for v in shelf_states.values() if v == "parked")
+    # Awaiting means awaiting: minted, and neither ruled by a human nor parked
+    # by the contract on a named gap. Never negative — if the shelf is
+    # unreadable, `_shelf_states` returns {} and this degrades to the old
+    # receipts-only number rather than inventing a zero.
+    awaiting = max(0, minted - ruled - parked)
     totals = {
         "targets_searched": total_searched,
         "above_threshold": len(star_disposition),
         "known_recovered": len(star_known),
-        "leads_awaiting_human_review": sum(
-            dispositions.get(state, 0) for state in HUNT_LEAD_STATES),
+        "leads_minted": minted,
+        "leads_refuted": ruled,
+        "leads_parked": parked,
+        "leads_awaiting_human_review": awaiting,
     }
 
     newest_date, newest_path, newest = max(
@@ -1322,6 +1367,12 @@ def hunt_block(hunts_dir: Path | None = None) -> dict | None:
         "above_threshold": totals["above_threshold"],
         "dispositions": dispositions,
         "known_recovered": totals["known_recovered"],
+        # Four numbers, not one: how many the machine minted, how many a human
+        # refuted, how many the contract parked on a named gap, and how many
+        # actually await an answer. Publishing only the first was the defect.
+        "leads_minted": totals["leads_minted"],
+        "leads_refuted": totals["leads_refuted"],
+        "leads_parked": totals["leads_parked"],
         "leads_awaiting_human_review": totals["leads_awaiting_human_review"],
         # HARD-PINNED. Assigned from a literal, after all aggregation, on
         # purpose: there is no data path from any receipt to this number.

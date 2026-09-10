@@ -183,7 +183,17 @@ def test_planets_discovered_zero_even_with_leads_on_the_books(tmp_path):
     receipt["targets"][0]["disposition"] = "lead-awaiting-human-review"
     _write(tmp_path, "hunt-2026-08-20-s2.json", receipt)
     block = hunt_block(tmp_path)
-    assert block["leads_awaiting_human_review"] == 1
+    # MINTED is the machine's count and is what this test is about. Awaiting is
+    # a different question — a human may already have ruled on it — and since
+    # 2026-09-10 the block answers both. This fixture has no rulings ledger, so
+    # the two coincide here, which is the honest fallback.
+    assert block["leads_minted"] == 1
+    # AWAITING is 0 and that is the contract, not a bug: a lead seen in one
+    # sector is PARKED (the shelf-exit contract's persistence rule needs >= 2),
+    # so nobody owes it a review yet. What must hold is that the star is
+    # accounted for in exactly one state and never escalates itself.
+    assert (block["leads_refuted"] + block["leads_parked"]
+            + block["leads_awaiting_human_review"]) == 1
     assert block["planets_discovered"] == 0
 
 
@@ -324,8 +334,16 @@ def test_committed_hunt_block_headline_numbers():
     assert sum(block["dispositions"].values()) == block["above_threshold"]
     # An open lead is data, not a defect — but it must agree with its own
     # disposition row, and the community-refuted TOI 189.01 lesson stays.
-    assert (block["leads_awaiting_human_review"]
+    assert (block["leads_minted"]
             == block["dispositions"].get("lead-awaiting-human-review", 0))
+    # AWAITING is minted minus what a human ruled and what the contract parked.
+    # This used to assert awaiting == the histogram, which is only true when
+    # nobody has ruled on anything — and it is exactly the equality that let
+    # the page publish "9 leads awaiting human review" for three weeks after
+    # six had been refuted. See tests/test_shelf_pot_agreement.py.
+    assert (block["leads_awaiting_human_review"]
+            == block["leads_minted"] - block["leads_refuted"]
+               - block["leads_parked"])
     assert block["dispositions"].get("toi-known-fp", 0) >= 1
     assert block["known_recovered"] >= 5
     assert block["planets_discovered"] == 0               # THE alarm pin
