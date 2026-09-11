@@ -1007,7 +1007,7 @@
         <span class="section-kicker">The measurement</span>
         <h2 id="instrument-panel-title">T<sub>c</sub>&nbsp;=&nbsp;<span id="ip-h2-exact">2.269</span>, solved by hand in 1944.
         This run measured <span id="ip-h2-peak">2.30</span>.</h2>
-        <p><span id="ip-h2-spec">128×128 magnets, 21 temperatures from 1.5 to 3.5, 23.2 seconds on a consumer
+        <p><span id="ip-h2-spec">128×128 magnets, 21 temperatures from 1.5 to 3.5, 21.0 seconds on a consumer
         GPU</span> &mdash; in the model&rsquo;s own units, not degrees. Every mark below is plotted straight from that
         run&rsquo;s <a id="ip-source-link" href="https://github.com/benskamps/windowsill-lab" target="_blank" rel="noopener">committed
         receipt</a> &mdash; nothing is redrawn by hand, and you can diff it yourself. A calibration, not a discovery:
@@ -4732,12 +4732,19 @@
       // 2015 on a neighbouring star. Prefer the publisher's ruling-aware
       // counts; fall back to the histogram only for a feed predating them, and
       // say so by leaving the breakdown empty.
-      out.minted = Number(hunt && hunt.leads_minted);
-      out.refuted = Number(hunt && hunt.leads_refuted);
-      out.parked = Number(hunt && hunt.leads_parked);
-      var awaiting = hunt && hunt.leads_awaiting_human_review;
-      out.rulingAware = Number.isFinite(out.minted) && awaiting !== undefined;
-      if (out.rulingAware) out.leads = Number(awaiting) || 0;
+      // `leads` stays the EVENT count (every minted lead is one threshold
+      // crossing), so the strip's four figures still sum to `events`.
+      // `awaiting` is the publisher's ruling-aware number — minted minus
+      // refuted minus parked — and is what the reader is shown. Two numbers,
+      // two names; sharing one field is how the strip's denominator broke.
+      var aware = !!hunt && Number.isFinite(Number(hunt.leads_minted))
+        && hunt.leads_awaiting_human_review !== undefined
+        && hunt.leads_awaiting_human_review !== null;
+      out.minted = aware ? Number(hunt.leads_minted) || 0 : 0;
+      out.refuted = aware ? Number(hunt.leads_refuted) || 0 : 0;
+      out.parked = aware ? Number(hunt.leads_parked) || 0 : 0;
+      out.awaiting = aware ? Number(hunt.leads_awaiting_human_review) || 0 : out.leads;
+      out.rulingAware = aware;
       return out;
     }
 
@@ -4859,7 +4866,7 @@
       $('hunt-events').textContent = String(above);
       $('hunt-impostors').textContent = String(counters.impostors);
       $('hunt-known').textContent = String(counters.known);
-      $('hunt-leads').textContent = String(counters.leads);
+      $('hunt-leads').textContent = String(counters.awaiting);
       // The whole shelf, not just its remainder. Zero awaiting is only
       // meaningful beside how many were raised and what closed them.
       var shelfNote = $('hunt-shelf-note');

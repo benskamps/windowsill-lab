@@ -83,13 +83,16 @@ test("the page's lead count agrees with the publisher's own counter", () => {
   // publisher derives the same number from the receipts. Drift between them is
   // a producer/page disagreement, which is exactly what a feed contract is for.
   const c = huntCounters(FEED.hunt);
-  assert.equal(c.leads, FEED.hunt.leads_awaiting_human_review);
+  assert.equal(c.awaiting, FEED.hunt.leads_awaiting_human_review);
+  // and the event count is still the histogram's, so the strip's sum closes
+  assert.equal(c.leads, FEED.hunt.dispositions["lead-awaiting-human-review"] || 0);
 });
 
 test("a missing or empty hunt block counts to zero, not to NaN", () => {
   for (const empty of [null, undefined, {}, { dispositions: {} }]) {
     const c = huntCounters(empty);
-    assert.deepEqual(c, { events: 0, impostors: 0, unresolved: 0, known: 0, leads: 0 });
+    assert.deepEqual(c, { events: 0, impostors: 0, unresolved: 0, known: 0, leads: 0,
+                          minted: 0, refuted: 0, parked: 0, awaiting: 0, rulingAware: false });
   }
 });
 
