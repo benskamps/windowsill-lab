@@ -87,6 +87,11 @@ constants that grade it and re-derives everything from the raw stored numbers.
               "stage2": 41, "above_threshold": 9, "dispositioned": 9,
               "leads_awaiting_human_review": 0 },
   "wall_seconds": 5400.0,
+  "pooled_null": {                   // the scramble null the threshold was priced against, MEASURED at receipt time
+    "source": "~/.lab/scramble-null.jsonl", "draws": 325000, "max_sde": 8.65,
+    "threshold": 8.0, "threshold_below_null_max": true,
+    "exceedances_at_threshold": 13, "fap_at_threshold_upper": 6.36e-05, "fap_bound_confidence": 0.95
+  },                                 // null = the run did not consult a pooled null (pre-2026-09-11 receipts)
   "provenance": { "machine": "win-cuda", "code_sha": "…", "python": "3.13" },
   "claim_boundary": "…"              // shipped verbatim into pot.json by the aggregator
 }

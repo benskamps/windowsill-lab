@@ -898,7 +898,8 @@ def run_a05(sector: int = a04.DEFAULT_SECTOR, n_targets: int = 500,
 
 def to_report(result: A05Result,
               prior_floor_history: tuple = PRIOR_FLOOR_HISTORY,
-              provenance: dict | None = None) -> dict:
+              provenance: dict | None = None,
+              pooled_null: dict | None = None) -> dict:
     """Emit the receipt of ``docs/a05-receipt-schema.md`` — counts DERIVED.
 
     Every number in ``counts`` is recomputed here from the rows, never carried
@@ -968,6 +969,11 @@ def to_report(result: A05Result,
                    "leads_awaiting_human_review": len(leads)},
         "wall_seconds": result.wall_seconds,
         "null_caveat": a05_stats.NULL_CAVEAT,
+        # Audit item 12 (2026-09-11): the pooled scramble null the threshold
+        # is priced against is DECLARED in the receipt — draws, maximum, and
+        # exceedances at threshold — so a preregistration can never again
+        # cite a null the run did not actually use. None = not consulted.
+        "pooled_null": dict(pooled_null) if pooled_null else None,
         "provenance": provenance or {},
         "claim_boundary": (
             "Per-target statistics over a predeclared consistent-hash slice of "

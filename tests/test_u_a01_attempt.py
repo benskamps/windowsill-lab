@@ -24,6 +24,15 @@ def _rows(*specs):
             for t, s, k in specs]
 
 
+def _receipt(rows: list[dict]) -> dict:
+    """A receipt the publish gate ACCEPTS. survey_rows reads the accepted set
+    (2026-09-11), so a bare {"targets": [...]} is refused as schema-less; the
+    schema-0 pilot shape is the smallest honest one."""
+    return {"schema": 0, "pilot": "pre-A05 statistics", "experiment": "a05-survey-hunt",
+            "injections": [{"depth": 0.002, "recovered": False}],
+            "floor": {"n": 0}, "targets": rows}
+
+
 def test_the_attempt_declares_itself_discovery_and_cites_its_unknown():
     """`discover` is not self-declarable — the hypothesis has to name a
     catalogue id, which is what separates an attempt from a claim."""
@@ -43,13 +52,18 @@ def test_a_zero_count_tail_is_reported_as_a_bound_not_a_point_estimate():
     n = _null()
     got = A.empirical_fap(n, 99.0)
     assert got["is_bound"] and got["exceedances"] == 0
-    assert got["fap"] == pytest.approx(3.0 / n.size)
+    assert got["fap_point"] == 0.0
+    # The exact one-sided 95% Clopper–Pearson bound at k=0 is
+    # 1 - 0.05**(1/n) = 2.9957/n — the rule of three, to within 0.15%.
+    assert got["fap"] == pytest.approx(3.0 / n.size, rel=2e-3)
 
 
-def test_a_measured_tail_is_a_point_estimate():
+def test_a_measured_tail_is_graded_on_its_bound_not_its_point():
     n = _null()
     got = A.empirical_fap(n, float(np.percentile(n, 99)))
-    assert got["is_bound"] is False and got["exceedances"] > 0
+    assert got["exceedances"] > 0 and got["is_bound"] is True
+    assert got["fap_point"] == pytest.approx(got["exceedances"] / n.size)
+    assert got["fap"] > got["fap_point"]
 
 
 def test_trials_counts_distinct_targets_not_rows(tmp_path, monkeypatch):
@@ -60,8 +74,8 @@ def test_trials_counts_distinct_targets_not_rows(tmp_path, monkeypatch):
     checks."""
     d = tmp_path / "hunts"; d.mkdir()
     (d / "h.json").write_text(json.dumps(
-        {"targets": _rows(("T1", 9.0, False), ("T1", 9.1, False),
-                          ("T2", 4.0, False))}), encoding="utf-8")
+        _receipt(_rows(("T1", 9.0, False), ("T1", 9.1, False),
+                          ("T2", 4.0, False)))), encoding="utf-8")
     nl = tmp_path / "null.jsonl"
     nl.write_text("\n".join(json.dumps({"sde": float(x)}) for x in _null()),
                   encoding="utf-8")
@@ -75,7 +89,7 @@ def test_a_catalogued_planet_is_calibration_and_never_a_discovery(tmp_path):
     find would be the single easiest way for this survey to lie."""
     d = tmp_path / "hunts"; d.mkdir()
     (d / "h.json").write_text(json.dumps(
-        {"targets": _rows(("K1", 30.0, True))}), encoding="utf-8")
+        _receipt(_rows(("K1", 30.0, True)))), encoding="utf-8")
     nl = tmp_path / "null.jsonl"
     nl.write_text("\n".join(json.dumps({"sde": float(x)}) for x in _null()),
                   encoding="utf-8")
@@ -90,13 +104,13 @@ def test_an_empty_result_counts_every_exit(tmp_path):
     enumerated is a measurement."""
     d = tmp_path / "hunts"; d.mkdir()
     (d / "h.json").write_text(json.dumps(
-        {"targets": _rows(("A", 9.0, False), ("B", 30.0, True), ("C", 3.0, False))}),
+        _receipt(_rows(("A", 9.0, False), ("B", 30.0, True), ("C", 3.0, False)))),
         encoding="utf-8")
     nl = tmp_path / "null.jsonl"
     nl.write_text("\n".join(json.dumps({"sde": float(x)}) for x in _null()),
                   encoding="utf-8")
     ev = A.run(hunt_dir=str(d), null_path=nl).evidence
-    assert {"crossings_at_8", "crossings_known_planet",
+    assert {"crossings_at_threshold", "crossings_known_planet",
             "crossings_uncatalogued", "distinct_targets"} <= set(ev)
 
 
@@ -107,7 +121,7 @@ def test_even_a_significant_crossing_is_only_a_re_analysis(tmp_path):
     a substitute for having looked."""
     d = tmp_path / "hunts"; d.mkdir()
     (d / "h.json").write_text(json.dumps(
-        {"targets": _rows(("BIG", 40.0, False))}), encoding="utf-8")
+        _receipt(_rows(("BIG", 40.0, False)))), encoding="utf-8")
     nl = tmp_path / "null.jsonl"
     nl.write_text("\n".join(json.dumps({"sde": float(x)}) for x in _null()),
                   encoding="utf-8")
@@ -141,7 +155,7 @@ def test_a_runner_that_cannot_get_its_data_may_say_so(tmp_path):
     run can report. SUPPORTED and KILLED are claims about the world and still
     require having looked; UNRESOLVED is the absence of a claim."""
     d = tmp_path / "hunts"; d.mkdir()
-    (d / "h.json").write_text(json.dumps({"targets": _rows(("T", 9.0, False))}),
+    (d / "h.json").write_text(json.dumps(_receipt(_rows(("T", 9.0, False)))),
                               encoding="utf-8")
     thin = tmp_path / "thin.jsonl"
     thin.write_text(json.dumps({"sde": 4.0}) + "\n", encoding="utf-8")
@@ -163,3 +177,37 @@ def test_an_attempt_that_looked_and_did_not_decide_still_counts_as_an_attempt():
     looked = Finding(hypothesis=h, verdict=UNRESOLVED, detail="d",
                      new_observations={"sector": "s41", "sha256": "abc"})
     assert looked.attempted_the_question is True
+
+
+# ── Audit item 2 (2026-09-11): the price of a crossing is monotone in SDE ────
+
+def test_the_graded_fap_never_rises_with_sde():
+    """The old estimator priced one exceedance (1/n) three times better than
+    none (3/n): SDE 8.6 promotable, SDE 50 refused. Every tail is now graded
+    on the same one-sided bound, which cannot increase as SDE increases."""
+    n = _null()
+    grid = np.linspace(float(n.min()), float(n.max()) + 5.0, 200)
+    faps = [A.empirical_fap(n, s)["fap"] for s in grid]
+    assert all(a >= b for a, b in zip(faps, faps[1:]))
+    assert A.empirical_fap(n, float(n.max()) + 1)["fap"] < A.empirical_fap(n, float(n.max()) - 1e-9)["fap"]
+
+
+def test_the_bound_at_zero_is_the_rule_of_three_and_at_one_is_larger():
+    assert A._binom_upper(0, 10**6) * 10**6 == pytest.approx(2.9957, abs=1e-3)
+    assert A._binom_upper(1, 1000) > A._binom_upper(0, 1000)
+    assert A._binom_upper(1000, 1000) == 1.0
+
+
+def test_the_strongest_crossing_is_the_strongest_crossing(tmp_path, monkeypatch):
+    """Two uncatalogued crossings, both with an empty tail: the one with the
+    higher SDE is the one the finding names. Under the old ordering the
+    survey named SDE 8.048 while SDE 10.14 sat in the same receipts."""
+    null = np.sort(np.linspace(3.0, 7.9, 20_000))
+    _ = tmp_path  # receipts are patched in, not written
+    rows = [{"tic": "a", "sde": 8.3, "outcome": "searched"},
+            {"tic": "b", "sde": 12.0, "outcome": "searched"}]
+    monkeypatch.setattr(A, "survey_rows", lambda hunt_dir="": rows)
+    monkeypatch.setattr(A, "load_null", lambda path=None: null)
+    f = A.run()
+    assert f.evidence["best_uncatalogued"]["tic"] == "b"
+    assert f.evidence["null_exceedances_at_threshold"] == 0
