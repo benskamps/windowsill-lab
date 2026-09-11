@@ -279,28 +279,31 @@ def test_progress_is_derived_and_carries_no_hand_written_state():
     assert p["gate_ratio"] == 1.0
 
 
-def test_the_committed_ledger_grades_the_goal_open():
-    """The regression that pins the repair as INERT.
+def test_the_committed_ledger_grades_the_goal_met_by_one_named_receipt():
+    """The pin, flipped on the day it should flip.
 
-    Deriving `attempted` from receipts instead of from prose changed no
-    published number: over the committed catalogue and the committed receipt
-    ledger the goal reads OPEN with nothing attempted, exactly as `pot.json`
-    says. The one receipt that carries a hypothesis block and a discovery stage
-    is U-A01's, whose verdict is `reanalysed` — a re-reading of the archive,
-    which is real work and is not a crossing of the gate.
+    Until 2026-09-11 this test pinned the goal OPEN against the real
+    `reports/receipts/`: the only discovery-stage receipt was U-A01's
+    re-analysis, verdict `reanalysed`, correctly not an attempt. On 2026-09-11
+    the hunt lane searched sector 96 under a preregistration committed before
+    the first light curve opened, filed and graded a hunt receipt, and
+    `u_a01_field` turned it into the finding the ledger reads: DISCOVER stage,
+    verdict `killed`, `new_observations` naming the receipt. The goal reads MET
+    by exactly ONE named receipt, and this test says which — so a second one
+    appearing, or this one vanishing, is a red test rather than a quiet drift.
 
-    This test reads the real `reports/receipts/`, deliberately: an inert landing
-    verified only against fixtures is not verified.
+    Reads the real ledger, deliberately: a goal met only against fixtures is
+    not met.
     """
     if not U.load():
         pytest.skip("UNKNOWNS.md not present in this checkout")
-    p = G.progress(today=date(2026, 9, 3))
-    assert p["state"] == "OPEN"
-    assert p["conditions"]["a_field_unknown_attempted"] is False
-    assert p["attempted"] == [] and p["attempt_receipts"] == []
-    assert p["attempt_ledger_gaps"]["error"] == ""
-    assert p["attempt_ledger_gaps"]["refused"] == []
-
+    p = G.progress(today=date(2026, 9, 11))
+    assert p["state"] == "MET"
+    assert p["conditions"]["a_field_unknown_attempted"] is True
+    assert p["attempted"] == ["U-A01"]
+    assert p["attempt_receipts"] == ["run-2026-09-11-1808-u-a01.json"]
+    # The re-analysis is still on the ledger and still does not count.
+    assert not any(r.startswith("run-2026-09-11-1132") for r in p["attempt_receipts"])
 
 def test_the_goal_reaches_the_published_feed():
     """The whole point of publishing it: nobody has to be told the lab missed."""

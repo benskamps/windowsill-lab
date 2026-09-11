@@ -513,23 +513,28 @@
     }
   ],
   "total": 40,
-  "last_run": "2026-09-11T15:32:49.985657+00:00",
+  "last_run": "2026-09-11T22:08:18.923771+00:00",
   "runs": 77,
-  "temp_c": 91.4,
+  "temp_c": 92.0,
   "latest_report": {
     "date": "2026-09-11",
     "milestone": "U-A01",
     "verdict": "verified",
-    "headline": "U-A01 re-read the archive \u2014 this is not an attempt on the question",
+    "headline": "U-A01 ran and killed the claim under test",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-09-11-1132-u-a01.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-09-11-1808-u-a01.json",
     "machine": "linux-rocm",
-    "at": "2026-09-11T15:32:49.985657+00:00"
+    "at": "2026-09-11T22:08:18.923771+00:00",
+    "group_count": 2,
+    "group_first_date": "2026-09-11",
+    "group_machines": [
+      "linux-rocm"
+    ]
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-09-11T15:35:19.675783+00:00",
+  "updated": "2026-09-11T22:08:40.754408+00:00",
   "provenance": {
-    "code_sha": "023a9ef-dirty",
+    "code_sha": "2a955dd-dirty",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -542,11 +547,16 @@
       "date": "2026-09-11",
       "milestone": "U-A01",
       "verdict": "verified",
-      "headline": "U-A01 re-read the archive \u2014 this is not an attempt on the question",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-09-11-1132-u-a01",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-09-11-1132-u-a01.json",
+      "headline": "U-A01 ran and killed the claim under test",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-09-11-1808-u-a01",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-09-11-1808-u-a01.json",
       "machine": "linux-rocm",
-      "at": "2026-09-11T15:32:49.985657+00:00"
+      "at": "2026-09-11T22:08:18.923771+00:00",
+      "group_count": 2,
+      "group_first_date": "2026-09-11",
+      "group_machines": [
+        "linux-rocm"
+      ]
     },
     {
       "date": "2026-09-09",
@@ -2405,11 +2415,11 @@
     }
   ],
   "turns": {
-    "count": 243,
-    "today": 1,
+    "count": 244,
+    "today": 2,
     "last_by_machine": {
       "windows-cuda": "2026-09-09T16:32:20.064436+00:00",
-      "linux-rocm": "2026-09-11T15:32:49.985657+00:00"
+      "linux-rocm": "2026-09-11T22:08:18.923771+00:00"
     },
     "expected_interval_h": 3
   },
@@ -2506,18 +2516,22 @@
     "set_on": "2026-08-24",
     "deadline": "2026-09-24",
     "days_remaining": 13,
-    "state": "OPEN",
+    "state": "MET",
     "conditions": {
       "every_track_charted": true,
-      "a_field_unknown_attempted": false
+      "a_field_unknown_attempted": true
     },
     "tracks_without_a_charted_unknown": [],
     "unknowns_total": 5,
     "unknowns_charted": 5,
     "field_unknowns": 3,
     "gate_ratio": 0.6,
-    "attempted": [],
-    "attempt_receipts": [],
+    "attempted": [
+      "U-A01"
+    ],
+    "attempt_receipts": [
+      "run-2026-09-11-1808-u-a01.json"
+    ],
     "attempt_ledger_gaps": {
       "undecidable": [
         {
