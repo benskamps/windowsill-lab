@@ -1,0 +1,291 @@
+{
+  "attempted_the_question": false,
+  "claim_boundary": "`status: pass` on this receipt means the experiment reached a verdict with its controls intact — it does NOT mean the audited claim survived. Neither, and deliberately so: this run consumed only bytes that already existed when the hypothesis was written. Re-reading the archive with better statistics is real work and is not an attempt on the question — the gate is crossed by going outside, not by looking again. It cannot close a discovery goal.",
+  "controls": {},
+  "detail": "no uncatalogued crossing survives. 11,990 searched rows over 11,814 distinct targets produced 193 crossings at SDE >= 8, of which 87 are catalogued planets and 106 are not; none of the latter reaches an expected background below 0.1. The claim that this survey already holds an undiscovered transit is killed on its predeclared terms, and the shelf's empty is now a measured empty",
+  "evidence": {
+    "best_uncatalogued": {
+      "bound_confidence": 0.95,
+      "cache_file": "tess2020266004630-s0030-0000000219244444-0195-s_lc.fits",
+      "cache_sha256": "a658c7f778b86355bdd3d03e492a0a74e185f3c1e320ae8178a0054cb0b719c8",
+      "components": [],
+      "control_subsample": false,
+      "d_min": {
+        "2.3": null,
+        "3.7": null,
+        "5.1": null
+      },
+      "depth": 0.20846868186208878,
+      "disposition": "harmonic-alias",
+      "disposition_evidence": {
+        "vet": {
+          "alias_depth": 0.198013056714739,
+          "alias_n": 2,
+          "depth_even": 0.02659130489586492,
+          "depth_odd": 0.026161199726224327,
+          "depth_sigma": 18.279678719784293,
+          "n_events": 37,
+          "odd_even_sigma": 0.30052843138027846,
+          "secondary_depth": 0.026252508763625615,
+          "secondary_sigma": 26.572738375702503,
+          "verdict": "harmonic-alias"
+        }
+      },
+      "exceedances": 0,
+      "expected_background": 0.10889667066740505,
+      "fap": 9.217595282495772e-06,
+      "fap_point": 0.0,
+      "injections": [
+        {
+          "depth": 0.002,
+          "epoch": 0,
+          "fap_injection_iid": null,
+          "period_days": 2.3,
+          "period_error_frac": 0.7359375663373054,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.308273415081214
+        },
+        {
+          "depth": 0.002,
+          "epoch": 1,
+          "fap_injection_iid": null,
+          "period_days": 2.3,
+          "period_error_frac": 0.7359375663373054,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.307786956056585
+        },
+        {
+          "depth": 0.002,
+          "epoch": 0,
+          "fap_injection_iid": null,
+          "period_days": 3.7,
+          "period_error_frac": 0.8358530817772439,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.316714345159726
+        },
+        {
+          "depth": 0.002,
+          "epoch": 1,
+          "fap_injection_iid": null,
+          "period_days": 3.7,
+          "period_error_frac": 0.8358530817772439,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.310200219304953
+        },
+        {
+          "depth": 0.002,
+          "epoch": 0,
+          "fap_injection_iid": null,
+          "period_days": 5.1,
+          "period_error_frac": 0.8809130201129025,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.30602260827586
+        },
+        {
+          "depth": 0.002,
+          "epoch": 1,
+          "fap_injection_iid": null,
+          "period_days": 5.1,
+          "period_error_frac": 0.8809130201129025,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.313346741584972
+        },
+        {
+          "depth": 0.004,
+          "epoch": 0,
+          "fap_injection_iid": null,
+          "period_days": 2.3,
+          "period_error_frac": 0.7359375663373054,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.30366564257209
+        },
+        {
+          "depth": 0.004,
+          "epoch": 1,
+          "fap_injection_iid": null,
+          "period_days": 2.3,
+          "period_error_frac": 0.7359375663373054,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.306392862397267
+        },
+        {
+          "depth": 0.004,
+          "epoch": 0,
+          "fap_injection_iid": null,
+          "period_days": 3.7,
+          "period_error_frac": 0.8358530817772439,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.325892407683567
+        },
+        {
+          "depth": 0.004,
+          "epoch": 1,
+          "fap_injection_iid": null,
+          "period_days": 3.7,
+          "period_error_frac": 0.8358530817772439,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.313481552861111
+        },
+        {
+          "depth": 0.004,
+          "epoch": 0,
+          "fap_injection_iid": null,
+          "period_days": 5.1,
+          "period_error_frac": 0.8809130201129025,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.306675094748595
+        },
+        {
+          "depth": 0.004,
+          "epoch": 1,
+          "fap_injection_iid": null,
+          "period_days": 5.1,
+          "period_error_frac": 0.8809130201129025,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.321383743927685
+        },
+        {
+          "depth": 0.01,
+          "epoch": 0,
+          "fap_injection_iid": null,
+          "period_days": 2.3,
+          "period_error_frac": 0.7359375663373054,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.280030159123282
+        },
+        {
+          "depth": 0.01,
+          "epoch": 1,
+          "fap_injection_iid": null,
+          "period_days": 2.3,
+          "period_error_frac": 0.7359375663373054,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.280975489272294
+        },
+        {
+          "depth": 0.01,
+          "epoch": 0,
+          "fap_injection_iid": null,
+          "period_days": 3.7,
+          "period_error_frac": 0.8358530817772439,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.337348537404642
+        },
+        {
+          "depth": 0.01,
+          "epoch": 1,
+          "fap_injection_iid": null,
+          "period_days": 3.7,
+          "period_error_frac": 0.8358530817772439,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.321500268395571
+        },
+        {
+          "depth": 0.01,
+          "epoch": 0,
+          "fap_injection_iid": null,
+          "period_days": 5.1,
+          "period_error_frac": 0.8809130201129025,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.295788249486046
+        },
+        {
+          "depth": 0.01,
+          "epoch": 1,
+          "fap_injection_iid": null,
+          "period_days": 5.1,
+          "period_error_frac": 0.8809130201129025,
+          "recovered": false,
+          "recovered_period_days": 0.6073435974241974,
+          "sde": 12.35035270438812
+        }
+      ],
+      "injections_recovery_rule": "sde-threshold",
+      "insensitive": true,
+      "is_bound": true,
+      "known_planet": null,
+      "outcome": "searched",
+      "period_days": 0.6073435974241974,
+      "phase": 0.4325,
+      "published_period_days": null,
+      "sde": 12.306361231082294,
+      "stage2": true,
+      "tic": "219244444",
+      "wall_seconds": 165.55441284179688
+    },
+    "crossings_at_threshold": 193,
+    "crossings_known_planet": 87,
+    "crossings_uncatalogued": 106,
+    "distinct_targets": 11814,
+    "fap_bound_confidence": 0.95,
+    "null_draws": 325000,
+    "null_exceedances_at_threshold": 13,
+    "null_max": 8.649881727652025,
+    "promotable": [],
+    "rows": 11990,
+    "threshold": 8.0
+  },
+  "experiment": "U-A01-hypothesis",
+  "generated_at": "2026-09-11T15:32:49.985657+00:00",
+  "headline": "U-A01 re-read the archive — this is not an attempt on the question",
+  "hypothesis": {
+    "cheapest_decisive": "Minutes, on committed bytes plus the campaign's null. No new searching.",
+    "crosses_the_gate": true,
+    "id": "U-A01",
+    "kill_condition": "If no uncatalogued crossing has an expected background below 0.1 across the survey, the claim that this survey holds an undiscovered transit is KILLED, and the shelf's empty is reported with every exit counted.",
+    "observable": "For the strongest uncatalogued crossing: its empirical FAP from the scramble null, multiplied by the number of distinct targets searched.",
+    "question": "Does this survey's own record contain a transit signal that is significant against a MEASURED false-alarm null and is not already catalogued?",
+    "stage": "discover",
+    "track": "A",
+    "unknown_id": "U-A01",
+    "why_this_might_be_nothing": "The shelf is already empty and the lane has been running for weeks, so the overwhelmingly likely outcome is that every crossing is a known planet or a vetting failure. The point is that until now the survey could not say that with a number attached.",
+    "why_unanswered": "The hunt lane's SDE >= 8 threshold was set a priori and never priced. Until the scramble campaign put draws above the threshold into the null, no crossing could be assigned a false-alarm probability that did not rest on a one-SDE extrapolation."
+  },
+  "milestone": "U-A01",
+  "new_observations": {},
+  "provenance": {
+    "dependencies": {
+      "matplotlib": "3.11.1",
+      "numpy": "2.5.1",
+      "torch": "2.10.0.dev20251031+rocm6.4"
+    },
+    "platform": "linux-x86_64",
+    "python": "3.14.4",
+    "source_clean": false,
+    "source_commit": "023a9ef4bced232c046eb5bfcb12beb0bb3cb4b6",
+    "source_diff_sha256": "f8d0b55f3c6d55199127bf7370827864c86404b12b778236ba2972f6f68c288e",
+    "source_tree_sha256": "ab144431df7e4c08c8b0561b355a243066930630a0786c2c8a1fe457c4dee94f"
+  },
+  "public_receipt": {
+    "claim_boundary": "Saved measurements can be regraded; this receipt is not a simulation rerun.",
+    "omitted": [],
+    "schema": "windowsill.measurement-receipt.v1",
+    "source_report_sha256": "f23d689524135bceb8f427792df6fb8d5681059a06adbc05f947dbec724e5132"
+  },
+  "report_schema_version": 1,
+  "reproduction": {
+    "regrade": "python -m lab.cli verify U-A01",
+    "rerun": "python -m lab.cli u-a01"
+  },
+  "schema": 1,
+  "status": "pass",
+  "verdict": "reanalysed",
+  "wall_seconds": 0.0
+}

@@ -1135,7 +1135,31 @@ def _hunt_refusal(receipt: dict, path: Path) -> str | None:
         for row in above:
             if not row.get("injections"):
                 return f"missing-injection-block:{row.get('tic')}"
+        # Audit item 5 (2026-09-11): the controls. check_a05 returned None
+        # ("every graded FAP is uninterpretable") for receipts whose own
+        # uniformity control had failed, and this gate — the one that runs
+        # at aggregation — counted them anyway; one was the sole source of
+        # a lead. A receipt the checker will not grade is not a receipt the
+        # ledger may count. Schema 0 predates the controls and is labelled
+        # pilot; everything after it must carry them and pass them.
+        from .checks import a05_control_verdict   # noqa: PLC0415 — checks imports publish
+        ctrl_ok, ctrl_txt = a05_control_verdict(receipt)
+        if ctrl_ok is not True:
+            return f"control:{_control_refusal_slug(ctrl_txt)}"
     return None
+
+
+def _control_refusal_slug(why: str) -> str:
+    """A short, stable name for a control verdict, for the refused listing."""
+    if "UNIFORMITY CONTROL FAILED" in why:
+        return "uniformity-failed"
+    if "PLACEBO FAILED" in why:
+        return "placebo-failed"
+    if "over its declared share" in why:
+        return "budget-over-share"
+    if "contradicts" in why or "not the control rows' own" in why or "does not re-derive" in why:
+        return "block-contradicts-rows"
+    return "control-ungradeable"
 
 
 def _receipt_target_rows(receipt: dict) -> tuple[list[dict], list[dict]]:
@@ -1342,8 +1366,16 @@ def hunt_block(hunts_dir: Path | None = None) -> dict | None:
     # arithmetic was right the whole time; the inputs were half the record.
     minted = sum(dispositions.get(state, 0) for state in HUNT_LEAD_STATES)
     shelf_states = _shelf_states(hunts_dir)
-    ruled = sum(1 for v in shelf_states.values() if v == "refuted")
-    parked = sum(1 for v in shelf_states.values() if v == "parked")
+    # A ruling counts against a lead only while that lead is MINTED. When a
+    # receipt is refused (2026-09-11: five for failed controls) its lead
+    # leaves the ledger and its human ruling must leave the subtraction with
+    # it, or awaiting goes negative — a star cannot be ruled on and not
+    # minted and still be a lead somebody answered.
+    lead_tics = {tic for tic, v in star_disposition.items() if v in HUNT_LEAD_STATES}
+    ruled = sum(1 for tic, v in shelf_states.items()
+                if v == "refuted" and str(tic) in lead_tics)
+    parked = sum(1 for tic, v in shelf_states.items()
+                 if v == "parked" and str(tic) in lead_tics)
     # Awaiting means awaiting: minted, and neither ruled by a human nor parked
     # by the contract on a named gap. Never negative — if the shelf is
     # unreadable, `_shelf_states` returns {} and this degrades to the old

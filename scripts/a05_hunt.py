@@ -47,7 +47,7 @@ from datetime import date
 from multiprocessing import Pool, cpu_count
 from pathlib import Path
 
-from lab import a05, a05_sky, checks
+from lab import a04, a05, a05_sky, checks
 from lab.labhome import LAB_HOME
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -276,6 +276,33 @@ def is_retired(hunt_id: str, hunts_dir: Path) -> bool:
     return grade_failures(hunt_id) >= GRADE_RETRY_LIMIT
 
 
+def pooled_null_declaration() -> dict | None:
+    """What the pooled scramble null says about this run's threshold, as
+    measured at receipt time — never quoted from a document.
+
+    Audit item 12: the sector-96 preregistration justified SDE >= 8.0 with
+    "84,500 draws, maximum 8.049", copied from UNKNOWNS.md, while the live
+    null held 325,000 draws with a maximum of 8.65. The threshold sat below
+    the null's own maximum and nothing in the receipt said so. Now the
+    receipt carries the null it was actually priced against, and the bound
+    at threshold, so a reader can see where the threshold sits without
+    trusting any prose.
+    """
+    from lab.u_a01_attempt import NULL_PATH, empirical_fap, load_null  # noqa: PLC0415
+    null = load_null(NULL_PATH)
+    if null.size == 0:
+        return None
+    at = empirical_fap(null, a04.SDE_THRESHOLD)
+    return {
+        "source": str(NULL_PATH), "draws": int(null.size),
+        "max_sde": float(null.max()), "threshold": float(a04.SDE_THRESHOLD),
+        "threshold_below_null_max": bool(a04.SDE_THRESHOLD < float(null.max())),
+        "exceedances_at_threshold": int(at["exceedances"]),
+        "fap_at_threshold_upper": float(at["fap"]),
+        "fap_bound_confidence": float(at["bound_confidence"]),
+    }
+
+
 def find_checkpoint(sector: int, hunt_id: str | None = None) -> tuple[str, Path]:
     """(hunt_id, checkpoint path): resume what is OPEN, not what is dated today.
 
@@ -502,7 +529,8 @@ def main() -> int:
         return 0
 
     report = a05.to_report(result, prior_floor_history=tuple(floor_history()),
-                           provenance=provenance())
+                           provenance=provenance(),
+                           pooled_null=pooled_null_declaration())
     hunts_dir = REPO_ROOT / "reports/hunts"
     hunts_dir.mkdir(parents=True, exist_ok=True)
     receipt_path = unowned_receipt_path(hunts_dir, hunt_id)

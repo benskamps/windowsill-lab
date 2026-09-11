@@ -25,6 +25,7 @@ Stdlib-only, like the rest of the publish tests.
 import json
 from pathlib import Path
 
+from lab.checks import A05_UNIFORMITY_CRIT, _a05_ks_uniform
 from lab.publish import (
     HUNT_KNOWN_FP, HUNT_SDE_THRESHOLD, PILOT_PROVENANCE,
     hunt_block, translate_pilot_summary,
@@ -40,23 +41,58 @@ COMMITTED_PILOT = HUNTS / "hunt-2026-08-14-s2-pilot-158.json"
 
 # ── Fixtures: minimal receipts in the shapes the aggregator must judge ───────
 
+#: Five control p-values spread across (0, 1) — a calibrator that passes.
+_CONTROL_PS = (0.11, 0.31, 0.52, 0.71, 0.89)
+
+
+def _control_rows(ps=_CONTROL_PS) -> list[dict]:
+    """Sub-threshold control-subsample rows whose iid FAPs ARE the
+    uniformity p-values, as gate 10 of check_a05 requires."""
+    return [{"tic": f"9{i:03d}", "outcome": "searched", "sde": 4.0 + i / 10,
+             "control_subsample": True, "wall_seconds": 10.0,
+             "fap": {"schemes": {"iid": {"fap_empirical": p}}}}
+            for i, p in enumerate(ps)]
+
+
+def _control_blocks(rows: list[dict], ps=_CONTROL_PS, soft: float = 3000.0,
+                    share: float = 0.1) -> dict:
+    """Passing uniformity / placebo / budget blocks, derived from ``rows`` the
+    way the checker re-derives them — so a fixture cannot pass by fiat."""
+    ks = _a05_ks_uniform(list(ps))
+    n = len(ps)
+    ks_pass = ks < A05_UNIFORMITY_CRIT / (n ** 0.5 + 0.12 + 0.11 / n ** 0.5)
+    walls = sum(float(r.get("wall_seconds") or 0.0) for r in rows)
+    return {
+        "uniformity": {"p_values": list(ps), "ks_stat": ks, "pass": ks_pass},
+        "placebo": {"rows": [{"vetting": {"verdict": "noise"}}],
+                    "n_scrambled": 1, "planet_candidates": 0, "pass": True},
+        "budget": {"soft_budget_seconds": soft, "per_target_share": share,
+                   "survey_sum_reported": walls / soft},
+    }
+
+
 def _schema1_receipt(**overrides) -> dict:
     """A minimal well-formed schema-1 receipt: one dispositioned hit carrying
-    its injection ladder, one sub-threshold row, honest counts."""
+    its injection ladder, one sub-threshold row, five passing control rows
+    with their control blocks (audit item 5: a schema>=1 receipt without
+    passing controls is refused), honest counts."""
+    targets = [
+        {"tic": "111", "outcome": "searched", "sde": 9.1,
+         "disposition": "eclipsing-binary-secondary",
+         "injections": [{"depth": 0.002, "period_days": 2.3,
+                         "sde": 4.9, "recovered": False}]},
+        {"tic": "222", "outcome": "searched", "sde": 5.0},
+        *_control_rows(),
+    ]
     receipt = {
         "experiment": "a05-survey-hunt",
         "schema": 1,
         "generated_at": "2026-08-20T03:00:00+00:00",
         "sector": 2,
         "sde_threshold": 8.0,
-        "targets": [
-            {"tic": "111", "outcome": "searched", "sde": 9.1,
-             "disposition": "eclipsing-binary-secondary",
-             "injections": [{"depth": 0.002, "period_days": 2.3,
-                             "sde": 4.9, "recovered": False}]},
-            {"tic": "222", "outcome": "searched", "sde": 5.0},
-        ],
-        "counts": {"attempted": 2, "searched": 2, "above_threshold": 1},
+        "targets": targets,
+        **_control_blocks(targets),
+        "counts": {"attempted": 7, "searched": 7, "above_threshold": 1},
         "wall_seconds": 100.0,
         "claim_boundary": "schema-1 boundary sentence, verbatim.",
     }
@@ -141,7 +177,7 @@ def test_counters_come_from_rows_not_the_receipts_own_counts(tmp_path):
                 "planets_discovered": 3})
     _write(tmp_path, "hunt-2026-08-20-s2.json", receipt)
     block = hunt_block(tmp_path)
-    assert block["targets_searched"] == 2
+    assert block["targets_searched"] == 7      # 2 rows + 5 control rows, from rows
     assert block["above_threshold"] == 1
     assert block["dispositions"] == {"eclipsing-binary-secondary": 1}
     assert block["planets_discovered"] == 0
@@ -413,10 +449,11 @@ def test_known_recovered_dedupes_target_and_recovery_mentions(tmp_path):
            "disposition": "known-planet", "known_planet": "WASP-18 b",
            "injections": [{"depth": 0.002, "period_days": 2.3,
                            "sde": 4.9, "recovered": False}]}
+    targets = [row, {"tic": "222", "outcome": "searched", "sde": 5.0},
+               *_control_rows()]
     receipt = _schema1_receipt(
-        targets=[row, {"tic": "222", "outcome": "searched", "sde": 5.0}],
-        recoveries=[dict(row)],
-        counts={"attempted": 2, "searched": 2, "above_threshold": 1})
+        targets=targets, recoveries=[dict(row)], **_control_blocks(targets),
+        counts={"attempted": 7, "searched": 7, "above_threshold": 1})
     _write(tmp_path, "hunt-2026-08-21-s2.json", receipt)
     block = hunt_block(tmp_path)
     assert block["known_recovered"] == 1
@@ -578,3 +615,54 @@ def test_page_hunt_section_hidden_until_a_feed_arrives_and_wired_to_render():
     assert "box.hidden = true; return;" in html
 
 
+
+
+# ── Audit item 5 (2026-09-11): the controls are refusals, not footnotes ──────
+
+def test_a_failed_uniformity_control_is_refused(tmp_path):
+    """check_a05 says "every graded FAP is uninterpretable" for a receipt whose
+    permutation null does not describe its sample. The aggregation gate used
+    to count it anyway. It refuses now, by name."""
+    # Five p-values piled at the bottom: D is large, the calibrator fails.
+    ps = (0.001, 0.002, 0.003, 0.004, 0.005)
+    targets = [_schema1_receipt()["targets"][0], *_control_rows(ps)]
+    receipt = _schema1_receipt(targets=targets, **_control_blocks(targets, ps))
+    assert receipt["uniformity"]["pass"] is False          # the fixture is honest
+    _write(tmp_path, "hunt-2026-09-11-s2.json", receipt)
+    block = hunt_block(tmp_path)
+    assert block["refused"] == [{"file": "hunt-2026-09-11-s2.json",
+                                 "reason": "control:uniformity-failed"}]
+    assert block["targets_searched"] == 0
+
+
+def test_a_busted_budget_share_is_refused(tmp_path):
+    targets = list(_schema1_receipt()["targets"])
+    targets[0] = {**targets[0], "wall_seconds": 2000.0}    # 0.1 share of 3000 s
+    receipt = _schema1_receipt(targets=targets, **_control_blocks(targets))
+    _write(tmp_path, "hunt-2026-09-11-s2.json", receipt)
+    assert hunt_block(tmp_path)["refused"][0]["reason"] == "control:budget-over-share"
+
+
+def test_a_schema1_receipt_without_control_blocks_is_refused(tmp_path):
+    """Absent is not passed: a schema>=1 receipt that simply omits its
+    controls is ungradeable, and ungradeable is refused."""
+    receipt = _schema1_receipt()
+    for key in ("uniformity", "placebo", "budget"):
+        receipt.pop(key)
+    _write(tmp_path, "hunt-2026-09-11-s2.json", receipt)
+    assert hunt_block(tmp_path)["refused"][0]["reason"] == "control:control-ungradeable"
+
+
+def test_the_committed_ledger_refuses_the_five_receipts_the_audit_named():
+    """Audit item 5 named three receipts with failed uniformity controls and
+    two over their budget share, all five counted. This pins the refusal
+    against the committed data: if a receipt is re-graded or superseded the
+    list shrinks and this test says so."""
+    refused = {r["file"]: r["reason"] for r in hunt_block()["refused"]}
+    assert refused == {
+        "hunt-2026-08-14-s3.json": "control:uniformity-failed",
+        "hunt-2026-08-17-s2-0026.json": "control:uniformity-failed",
+        "hunt-2026-08-18-s2-1000.json": "control:uniformity-failed",
+        "hunt-2026-08-16-s2.json": "control:budget-over-share",
+        "hunt-2026-08-17-s2.json": "control:budget-over-share",
+    }

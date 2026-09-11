@@ -2939,6 +2939,96 @@ def _a05_spot(report: dict, cache_dir) -> tuple[bool | None, str]:
                   f"max dev {worst:.1e}")
 
 
+def a05_control_verdict(report: dict) -> tuple[bool | None, str]:
+    """Gates 10–12 of ``check_a05`` — the three CONTROLS, callable on their own.
+
+    Extracted 2026-09-11 (audit item 5): ``_hunt_refusal``, the gate that
+    actually runs at aggregation, accepted receipts whose own uniformity
+    control had FAILED — ``check_a05`` returned ``None`` ("every graded FAP
+    is uninterpretable") and nothing at publish time asked it. Three such
+    receipts were counted, one the sole source of a lead. The refusal gate
+    must refuse what the checker refuses, and the checker's full path ends
+    in a physical replay from the cache that no publish can afford — so the
+    controls live here, cheap and pure, and both callers share them.
+
+    Returns ``(True, "")`` when every control passes, ``(None, why)`` when a
+    control FAILED or cannot be graded (uninterpretable, never negative), and
+    ``(False, why)`` when a block contradicts the rows it summarises.
+    """
+    rows = report.get("targets")
+    if not isinstance(rows, list):
+        return None, "A05 receipt carries no target rows"
+    rows = [r for r in rows if isinstance(r, dict)]
+    searched = [r for r in rows if r.get("outcome") == "searched"]
+    # -- 10. uniformity: the calibration of the calibrator, re-run -----------
+    uniformity = report.get("uniformity") or {}
+    p_values = uniformity.get("p_values")
+    if not isinstance(p_values, list) or len(p_values) < A05_UNIFORMITY_MIN_N:
+        return None, (f"A05 uniformity control has "
+                      f"{len(p_values) if isinstance(p_values, list) else 0} "
+                      f"p-values; need >= {A05_UNIFORMITY_MIN_N} to grade the "
+                      "calibrator")
+    control_ps = sorted(
+        float(r["fap"]["schemes"]["iid"]["fap_empirical"])
+        for r in searched if r.get("control_subsample") and r.get("fap"))
+    if [round(v, 12) for v in sorted(float(p) for p in p_values)] != [
+            round(v, 12) for v in control_ps]:
+        return False, ("A05 uniformity p-values are not the control rows' own "
+                       "iid FAPs — the ensemble was edited")
+    ks = _a05_ks_uniform([float(p) for p in p_values])
+    n_ks = len(p_values)
+    ks_pass = ks < A05_UNIFORMITY_CRIT / (
+        math.sqrt(n_ks) + 0.12 + 0.11 / math.sqrt(n_ks))   # Stephens (1970)
+    if uniformity.get("pass") is not bool(ks_pass) or not math.isclose(
+            float(uniformity.get("ks_stat", -1)), ks, rel_tol=1e-6, abs_tol=1e-9):
+        return False, (f"A05 uniformity block (D={uniformity.get('ks_stat')}, "
+                       f"pass={uniformity.get('pass')}) contradicts the "
+                       f"re-run (D={ks:.4f}, pass={ks_pass})")
+    if not ks_pass:
+        return None, (f"A05 UNIFORMITY CONTROL FAILED (D={ks:.3f} over "
+                      f"n={len(p_values)}): the permutation null does not "
+                      "describe this sample's noise, so every graded FAP is "
+                      "uninterpretable, not negative")
+
+    # -- 11. placebo: the whole ladder must refuse a scrambled sky -----------
+    placebo = report.get("placebo") or {}
+    prows = placebo.get("rows")
+    if not isinstance(prows, list) or not prows:
+        return None, "A05 placebo block carries no per-curve rows to re-derive"
+    n_pc = sum(1 for p in prows
+               if (p.get("vetting") or {}).get("verdict") == "planet-candidate")
+    if placebo.get("n_scrambled") != len(prows) or placebo.get(
+            "planet_candidates") != n_pc or placebo.get("pass") is not (n_pc == 0):
+        return False, ("A05 placebo summary contradicts its own rows "
+                       f"(rows say {len(prows)} scrambled, {n_pc} candidates)")
+    if n_pc > 0:
+        return None, (f"A05 PLACEBO FAILED — {n_pc} planet-candidate(s) from "
+                      "phase-scrambled curves: the pipeline manufactures "
+                      "discoveries and nothing it reports is interpretable")
+
+    # -- 12. budget: shares re-derived from the rows' own clocks -------------
+    budget = report.get("budget") or {}
+    try:
+        soft = float(budget["soft_budget_seconds"])
+        share = float(budget["per_target_share"])
+        reported_sum = float(budget["survey_sum_reported"])
+    except (KeyError, TypeError, ValueError):
+        return None, "A05 budget block is absent or malformed"
+    if not (soft > 0 and 0 < share <= 1):
+        return None, "A05 budget declares a non-positive budget or share"
+    walls = [float(r.get("wall_seconds") or 0.0) for r in rows]
+    derived_sum = sum(walls) / soft
+    if abs(derived_sum - reported_sum) > A05_BUDGET_RTOL * max(derived_sum, 0.01):
+        return False, (f"A05 survey_sum_reported {reported_sum:.4f} does not "
+                       f"re-derive from the rows ({derived_sum:.4f})")
+    worst = max(walls, default=0.0)
+    if worst > share * soft * (1 + A05_BUDGET_RTOL):
+        return False, (f"A05 a single target consumed {worst:.0f}s, over its "
+                       f"declared share ({share:.3f} of {soft:.0f}s)")
+
+    return True, ""
+
+
 def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
     """Re-derive an A05 hunt receipt without trusting one carried number.
 
@@ -3222,71 +3312,15 @@ def check_a05(report: dict, cache_dir=None) -> tuple[bool | None, str]:
                            f"beta={beta_rep:.3f}) disagrees with the check's "
                            f"refit (mu={mu_fit:.3f}, beta={beta_fit:.3f})")
 
-    # -- 10. uniformity: the calibration of the calibrator, re-run -----------
+    # -- 10–12. the controls: uniformity, placebo, budget (shared with the
+    # publish-time refusal gate — see a05_control_verdict) ------------------
+    ctrl_ok, ctrl_txt = a05_control_verdict(report)
+    if ctrl_ok is not True:
+        return ctrl_ok, ctrl_txt
     uniformity = report.get("uniformity") or {}
     p_values = uniformity.get("p_values")
-    if not isinstance(p_values, list) or len(p_values) < A05_UNIFORMITY_MIN_N:
-        return None, (f"A05 uniformity control has "
-                      f"{len(p_values) if isinstance(p_values, list) else 0} "
-                      f"p-values; need >= {A05_UNIFORMITY_MIN_N} to grade the "
-                      "calibrator")
-    control_ps = sorted(
-        float(r["fap"]["schemes"]["iid"]["fap_empirical"])
-        for r in searched if r.get("control_subsample") and r.get("fap"))
-    if [round(v, 12) for v in sorted(float(p) for p in p_values)] != [
-            round(v, 12) for v in control_ps]:
-        return False, ("A05 uniformity p-values are not the control rows' own "
-                       "iid FAPs — the ensemble was edited")
     ks = _a05_ks_uniform([float(p) for p in p_values])
-    n_ks = len(p_values)
-    ks_pass = ks < A05_UNIFORMITY_CRIT / (
-        math.sqrt(n_ks) + 0.12 + 0.11 / math.sqrt(n_ks))   # Stephens (1970)
-    if uniformity.get("pass") is not bool(ks_pass) or not math.isclose(
-            float(uniformity.get("ks_stat", -1)), ks, rel_tol=1e-6, abs_tol=1e-9):
-        return False, (f"A05 uniformity block (D={uniformity.get('ks_stat')}, "
-                       f"pass={uniformity.get('pass')}) contradicts the "
-                       f"re-run (D={ks:.4f}, pass={ks_pass})")
-    if not ks_pass:
-        return None, (f"A05 UNIFORMITY CONTROL FAILED (D={ks:.3f} over "
-                      f"n={len(p_values)}): the permutation null does not "
-                      "describe this sample's noise, so every graded FAP is "
-                      "uninterpretable, not negative")
-
-    # -- 11. placebo: the whole ladder must refuse a scrambled sky -----------
-    placebo = report.get("placebo") or {}
-    prows = placebo.get("rows")
-    if not isinstance(prows, list) or not prows:
-        return None, "A05 placebo block carries no per-curve rows to re-derive"
-    n_pc = sum(1 for p in prows
-               if (p.get("vetting") or {}).get("verdict") == "planet-candidate")
-    if placebo.get("n_scrambled") != len(prows) or placebo.get(
-            "planet_candidates") != n_pc or placebo.get("pass") is not (n_pc == 0):
-        return False, ("A05 placebo summary contradicts its own rows "
-                       f"(rows say {len(prows)} scrambled, {n_pc} candidates)")
-    if n_pc > 0:
-        return None, (f"A05 PLACEBO FAILED — {n_pc} planet-candidate(s) from "
-                      "phase-scrambled curves: the pipeline manufactures "
-                      "discoveries and nothing it reports is interpretable")
-
-    # -- 12. budget: shares re-derived from the rows' own clocks -------------
-    budget = report.get("budget") or {}
-    try:
-        soft = float(budget["soft_budget_seconds"])
-        share = float(budget["per_target_share"])
-        reported_sum = float(budget["survey_sum_reported"])
-    except (KeyError, TypeError, ValueError):
-        return None, "A05 budget block is absent or malformed"
-    if not (soft > 0 and 0 < share <= 1):
-        return None, "A05 budget declares a non-positive budget or share"
-    walls = [float(r.get("wall_seconds") or 0.0) for r in rows]
-    derived_sum = sum(walls) / soft
-    if abs(derived_sum - reported_sum) > A05_BUDGET_RTOL * max(derived_sum, 0.01):
-        return False, (f"A05 survey_sum_reported {reported_sum:.4f} does not "
-                       f"re-derive from the rows ({derived_sum:.4f})")
-    worst = max(walls, default=0.0)
-    if worst > share * soft * (1 + A05_BUDGET_RTOL):
-        return False, (f"A05 a single target consumed {worst:.0f}s, over its "
-                       f"declared share ({share:.3f} of {soft:.0f}s)")
+    prows = (report.get("placebo") or {}).get("rows")
 
     # -- 13. floor history: the extrapolation stays testable -----------------
     history = report.get("floor_history")
