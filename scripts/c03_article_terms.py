@@ -94,13 +94,23 @@ def main() -> int:
 
     html = article.read_text()
     word = WORDS.get(len(new_n), str(len(new_n)))
+    largest = f"{rows[max(new_n)]['brute']:,}"
     sentence = (
-        f'<p>{word} terms so far that the entry did not carry this morning, each '
-        f'one produced by method A and confirmed by method B, at n={min(new_n)} '
-        f'through n={max(new_n)}.</p>')
+        f'<p>{word} terms the entry did not carry, at n={min(new_n)} through '
+        f'n={max(new_n)}, each produced by method A and confirmed by method B. '
+        f'The largest counts {largest} compositions.</p>')
     html = re.sub(r"<!-- TERMS:COUNT:BEGIN -->.*?<!-- TERMS:COUNT:END -->",
                   f"<!-- TERMS:COUNT:BEGIN -->\n      {sentence}\n      "
                   "<!-- TERMS:COUNT:END -->", html, flags=re.S)
+    gained = (
+        f"<p>Wiseman's formula now has {word.lower()} more values behind it than "
+        f"the entry carried, out to n={max(new_n)} where the enumeration it "
+        f"predicts runs to {largest} objects. That is worth something to whoever "
+        f"eventually proves it, and to whoever eventually looks for a "
+        f"counterexample \u2014 the search can start further out.</p>")
+    html = re.sub(r"<!-- TERMS:GAINED:BEGIN -->.*?<!-- TERMS:GAINED:END -->",
+                  f"<!-- TERMS:GAINED:BEGIN -->\n      {gained}\n      "
+                  "<!-- TERMS:GAINED:END -->", html, flags=re.S)
     html = re.sub(r"<!-- TERMS:TABLE:BEGIN -->.*?<!-- TERMS:TABLE:END -->",
                   "<!-- TERMS:TABLE:BEGIN -->\n      "
                   + render_table(rows, new_n).replace("\n", "\n  ")

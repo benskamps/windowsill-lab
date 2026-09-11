@@ -1,29 +1,40 @@
-n=  1 brute=        1 conj=        1 oeis=        1 OK                            0.00s
-n=  2 brute=        2 conj=        2 oeis=        2 OK                            0.00s
-n=  3 brute=        4 conj=        4 oeis=        4 OK                            0.00s
-n=  4 brute=        7 conj=        7 oeis=        7 OK                            0.00s
-n=  5 brute=       12 conj=       12 oeis=       12 OK                            0.00s
-n=  6 brute=       18 conj=       18 oeis=       18 OK                            0.00s
-n=  7 brute=       28 conj=       28 oeis=       28 OK                            0.00s
-n=  8 brute=       40 conj=       40 oeis=       40 OK                            0.00s
-n=  9 brute=       57 conj=       57 oeis=       57 OK                            0.00s
-n= 10 brute=       80 conj=       80 oeis=       80 OK                            0.00s
-n= 11 brute=      110 conj=      110 oeis=      110 OK                            0.00s
-n= 12 brute=      148 conj=      148 oeis=      148 OK                            0.00s
-n= 13 brute=      200 conj=      200 oeis=      200 OK                            0.00s
-n= 14 brute=      266 conj=      266 oeis=      266 OK                            0.01s
-n= 15 brute=      348 conj=      348 oeis=      348 OK                            0.02s
-n= 16 brute=      457 conj=      457 oeis=      457 OK                            0.04s
-n= 17 brute=      592 conj=      592 oeis=      592 OK                            0.08s
-n= 18 brute=      764 conj=      764 oeis=      764 OK                            0.16s  x2.10
-n= 19 brute=      978 conj=      978 oeis=      978 OK                            0.33s  x2.08
-n= 20 brute=     1248 conj=     1248 oeis=     1248 OK                            0.68s  x2.04
-n= 21 brute=     1580 conj=     1580 oeis=     1580 OK                            1.39s  x2.05
-n= 22 brute=     2000 conj=     2000 oeis=     2000 OK                            2.76s  x1.99
-n= 23 brute=     2508 conj=     2508 oeis=     2508 OK                           10.90s
-n= 24 brute=     3142 conj=     3142 oeis=     3142 OK                           21.25s  x1.95
-n= 25 brute=     3913 conj=     3913 oeis=     3913 OK                           43.22s  x2.03
-n= 26 brute=     4868 conj=     4868 oeis=     None NEW - methods agree          88.32s  x2.04
-n= 27 brute=     6016 conj=     6016 oeis=     None NEW - methods agree         163.42s  x1.85
-n= 28 brute=     7430 conj=     7430 oeis=     None NEW - methods agree         263.64s  x1.61
-n= 29 brute=     9128 conj=     9128 oeis=     None NEW - methods agree         402.73s  x1.53
+n=  1 pruned=         1 conj=         1 ref=         1 OK                              0.00s
+n=  2 pruned=         2 conj=         2 ref=         2 OK                              0.00s
+n=  3 pruned=         4 conj=         4 ref=         4 OK                              0.00s
+n=  4 pruned=         7 conj=         7 ref=         7 OK                              0.00s
+n=  5 pruned=        12 conj=        12 ref=        12 OK                              0.00s
+n=  6 pruned=        18 conj=        18 ref=        18 OK                              0.00s
+n=  7 pruned=        28 conj=        28 ref=        28 OK                              0.00s
+n=  8 pruned=        40 conj=        40 ref=        40 OK                              0.00s
+n=  9 pruned=        57 conj=        57 ref=        57 OK                              0.00s
+n= 10 pruned=        80 conj=        80 ref=        80 OK                              0.00s
+n= 11 pruned=       110 conj=       110 ref=       110 OK                              0.00s
+n= 12 pruned=       148 conj=       148 ref=       148 OK                              0.00s
+n= 13 pruned=       200 conj=       200 ref=       200 OK                              0.01s
+n= 14 pruned=       266 conj=       266 ref=       266 OK                              0.01s
+n= 15 pruned=       348 conj=       348 ref=       348 OK                              0.02s
+n= 16 pruned=       457 conj=       457 ref=       457 OK                              0.03s
+n= 17 pruned=       592 conj=       592 ref=       592 OK                              0.05s
+n= 18 pruned=       764 conj=       764 ref=       764 OK                              0.08s
+n= 19 pruned=       978 conj=       978 ref=       978 OK                              0.14s  x1.68
+n= 20 pruned=      1248 conj=      1248 ref=      1248 OK                              0.24s  x1.66
+n= 21 pruned=      1580 conj=      1580 ref=      1580 OK                              0.40s  x1.68
+n= 22 pruned=      2000 conj=      2000 ref=      2000 OK                              0.64s  x1.62
+n= 23 pruned=      2508 conj=      2508 ref=      2508 OK                              1.09s  x1.69
+n= 24 pruned=      3142 conj=      3142 ref=      3142 OK                              1.86s  x1.71
+n= 25 pruned=      3913 conj=      3913 ref=      3913 OK                              3.13s  x1.68
+n= 26 pruned=      4868 conj=      4868 ref=      4868 OK                              5.31s  x1.70
+n= 27 pruned=      6016 conj=      6016 ref=      6016 OK                              9.17s  x1.73
+n= 28 pruned=      7430 conj=      7430 ref=      7430 OK                             16.14s  x1.76
+n= 29 pruned=      9128 conj=      9128 ref=      9128 OK                             27.37s  x1.70
+n= 30 pruned=     11200 conj=     11200 ref=     11200 OK                             46.49s  x1.70
+n= 31 pruned=     13682 conj=     13682 ref=      None NEW - methods agree            79.50s  x1.71
+n= 32 pruned=     16692 conj=     16692 ref=      None NEW - methods agree           146.84s  x1.85
+n= 33 pruned=     20282 conj=     20282 ref=      None NEW - methods agree           244.06s  x1.66
+n= 34 pruned=     24616 conj=     24616 ref=      None NEW - methods agree           430.88s  x1.77
+n= 35 pruned=     29762 conj=     29762 ref=      None NEW - methods agree           749.80s  x1.74
+n= 36 pruned=     35945 conj=     35945 ref=      None NEW - methods agree          1313.59s  x1.75
+n= 37 pruned=     43272 conj=     43272 ref=      None NEW - methods agree          2329.20s  x1.77
+n= 38 pruned=     52026 conj=     52026 ref=      None NEW - methods agree          4108.08s  x1.76
+n= 39 pruned=     62366 conj=     62366 ref=      None NEW - methods agree          7291.25s  x1.77
+n= 40 pruned=     74668 conj=     74668 ref=      None NEW - methods agree         12940.79s  x1.77

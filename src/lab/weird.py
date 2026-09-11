@@ -98,8 +98,17 @@ class Report:
 
 # ── loading: any corpus of dicts, flattened ──────────────────────────────────
 
-def flatten(obj: dict, prefix: str = "") -> dict:
-    """Numeric leaves only, dotted keys. Booleans are not numbers."""
+def flatten(obj, prefix: str = "") -> dict:
+    """Numeric leaves only, dotted keys. Booleans are not numbers.
+
+    Refuses a non-mapping rather than raising. Real corpora hand you lists of
+    strings where you expected records — the coherence-lab results keep their
+    cells in a dict keyed by NAME, and the first port crashed on a `str` that
+    had no `.items()`. An adapter should get an empty row and notice, not a
+    traceback halfway through a sweep.
+    """
+    if not isinstance(obj, dict):
+        return {}
     out: dict[str, float] = {}
     for k, v in obj.items():
         key = f"{prefix}{k}"
