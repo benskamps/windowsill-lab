@@ -386,6 +386,36 @@ def _hunt_status_for_dispatch() -> dict | None:
             "per_sector": per_sector}
 
 
+def _weird_survey():
+    """Every graded blind-transit target this repo has committed."""
+    from . import weird as weird_mod
+    from .publish import REPO_ROOT
+    return weird_mod.load_rows(
+        (REPO_ROOT / "reports" / "hunts").glob("hunt-*.json"), "targets")
+
+
+def _weird_physics():
+    """One row per committed run receipt — Ising, Kuramoto, spin glass, all of it."""
+    from . import weird as weird_mod
+    from .publish import REPO_ROOT
+    rows = []
+    for f in sorted((REPO_ROOT / "reports" / "receipts").glob("run-*.json")):
+        try:
+            row = weird_mod.flatten(json.loads(f.read_text()))
+        except (OSError, ValueError):
+            continue
+        row["_id"], row["_src"] = f.stem, f.name
+        rows.append(row)
+    return rows
+
+
+#: The corpora `lab weird` can reach without leaving the repo. Sweeps across
+#: corpora this repo did NOT produce live in scripts/weird_sweep.py and
+#: scripts/weird_external.py — they read other people's boxes and other
+#: people's APIs, which is not something a `lab` subcommand should do.
+_WEIRD_CORPORA = {"survey": _weird_survey, "physics": _weird_physics}
+
+
 HELP = """lab — a windowsill physics lab.
 
 Usage:
@@ -445,6 +475,13 @@ Usage:
   lab verify --rerun-smoke
                       also re-run the pinned L=16 CPU smoke config and prove it
                       reproduces itself + the committed golden (determinism gate)
+  lab weird [CORPUS]  sweep a corpus for shapes nobody looked at — 17 detector
+                      families, each withholding its findings unless it can
+                      first rediscover a planted positive. Renders one page.
+                      CORPUS = survey (graded hunts) | physics (run receipts)
+  lab weird --self-test
+                      run every family against its planted positive AND its
+                      planted negative; print which families can see
   lab shelf           grade every lead-awaiting-human-review row against the
                       shelf-exit contract (docs/shelf-exit-contract.md): who is
                       promotable, who is parked and on what, whose clock has run
@@ -1404,6 +1441,62 @@ def main(argv=None):
         return subprocess.call(
             [sys.executable, str(script), *defaults, *extra],
             env=env, cwd=str(publish_mod.REPO_ROOT))
+
+    if cmd == "weird":
+        # A read of corpora this repo already committed. Writes ONE html page
+        # and nothing else — no receipt, no pot, no shelf. It makes claims
+        # about data, not results, so it must never enter the ledger.
+        import argparse
+        from . import weird as weird_mod
+        from . import weird_report
+        p = argparse.ArgumentParser(prog="lab weird")
+        p.add_argument("corpus", nargs="?", default="survey",
+                       choices=sorted(_WEIRD_CORPORA))
+        p.add_argument("--self-test", action="store_true",
+                       help="prove each family can see, then stop")
+        p.add_argument("--out", default=None, help="where to write the page")
+        p.add_argument("--no-open", action="store_true")
+        a = p.parse_args(args[1:])
+
+        if a.self_test:
+            # Enumerate from the SELF-TEST registry, never from a run. The
+            # first version listed `run_all({}, {})`, which on empty input
+            # produces 15 of the 17 families — `censored` and `simpson` need a
+            # declared control or a group field to appear at all — so it
+            # quietly proved 15 families see and called that all of them.
+            fams = sorted(weird_mod._selftests())
+            bad = 0
+            for fam in fams:
+                ok, why = weird_mod.self_test(fam)
+                bad += not ok
+                print(f"  {'sees ' if ok else 'BLIND'}  {fam:12} {why}")
+            print(f"\n{len(fams) - bad} of {len(fams)} families can see, "
+                  f"{bad} cannot")
+            return 1 if bad else 0
+
+        rows = _WEIRD_CORPORA[a.corpus]()
+        if len(rows) < weird_mod.MIN_ROWS_FOR_FIELD:
+            print(f"{a.corpus}: only {len(rows)} rows — nothing to learn a "
+                  "normal from", file=sys.stderr)
+            return 1
+        reports = weird_mod.run_all(rows, {})
+        kept, notes = weird_mod.explain_away(reports)
+        hyps = weird_mod.hypothesise(kept)
+        blind = [n for n, r in reports.items() if not r.saw_control]
+        out = Path(a.out) if a.out else (LAB_HOME / f"weird-{a.corpus}.html")
+        out.parent.mkdir(parents=True, exist_ok=True)
+        weird_report.render(reports, rows, hyps, notes,
+                            f"{a.corpus} · {len(rows):,} rows", out)
+        print(f"{len(rows):,} rows · {len(weird_mod._fields(rows))} numeric fields")
+        print(f"{len(reports) - len(blind)}/{len(reports)} families could see; "
+              f"{len(blind)} withheld everything they found"
+              + (f" ({', '.join(blind)})" if blind else ""))
+        print(f"{sum(len(r.findings) for r in reports.values()):,} raw findings "
+              f"-> {len(kept)} kept -> {len(hyps)} mechanisms")
+        print(out)
+        if not a.no_open:
+            webbrowser.open(f"file://{out}")
+        return 0
 
     if cmd == "publish":
         from . import publish as publish_mod

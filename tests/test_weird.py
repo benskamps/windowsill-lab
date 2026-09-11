@@ -529,3 +529,37 @@ def test_every_family_run_by_run_all_has_a_self_test():
     wired = set(re.findall(r'add\("(\w+)"', src))
     assert wired <= set(weird._selftests()), (
         f"wired but no self-test: {wired - set(weird._selftests())}")
+
+
+def test_cli_self_test_enumerates_from_the_registry_not_from_a_run(capsys):
+    """`lab weird --self-test` must prove EVERY family sees, not most of them.
+
+    The first version listed the families by calling `run_all([], {})`, which
+    on empty input yields 15 of 17 — `censored` needs a declared control and
+    `simpson` needs a group field, so neither appears until real data does.
+    It printed "15 families can see, 0 cannot" and that was a true sentence
+    about a false set. Pin the count to the self-test registry, which is the
+    one place a family declares it is testable at all.
+    """
+    from lab import cli
+    assert cli.main(["weird", "--self-test"]) == 0
+    out = capsys.readouterr().out
+    n = len(weird._selftests())
+    assert f"{n} of {n} families can see" in out
+    for fam in weird._selftests():
+        assert fam in out, f"{fam} not exercised by the CLI self-test"
+
+
+def test_cli_weird_corpora_are_reachable_and_return_rows_or_nothing():
+    """Every registered corpus must be callable without a live network or GPU.
+
+    Not that it returns rows — a fresh clone has no receipts — but that asking
+    for it raises nothing. A corpus that throws would take the whole command
+    down on the one box where its directory happens to be missing.
+    """
+    from lab import cli
+    for name, load in cli._WEIRD_CORPORA.items():
+        rows = load()
+        assert isinstance(rows, list), name
+        for r in rows[:5]:
+            assert "_id" in r and "_src" in r, f"{name}: row missing identity"
