@@ -316,3 +316,52 @@ def test_a_ruling_the_contract_does_not_name_is_refused(tmp_path):
         "by": "ben", "why": "..."}]), encoding="utf-8")
     with pytest.raises(ValueError, match="confirmed-planet"):
         shelf.register(hunts, rulings=rulings, today=TODAY)
+
+
+# ── 2026-09-12: the depth uncertainty was always in the row ──────────────────
+
+def _vet(d_odd, d_even, snr):
+    return {"vet": {"verdict": "planet-candidate", "depth_odd": d_odd,
+                    "depth_even": d_even, "depth_sigma": snr}}
+
+
+def _two_sector(tmp_path, ev30, ev31, sector2=31):
+    ev = lead_row()["disposition_evidence"]
+    receipt(tmp_path, "hunt-2026-08-30-s30.json", 30, "2026-08-30T10:00:00",
+            [lead_row(disposition_evidence={**ev, **ev30})])
+    return receipt(tmp_path, f"hunt-2026-09-12-s{sector2}.json", sector2,
+                   "2026-09-12T10:00:00",
+                   [lead_row(disposition_evidence={**ev, **ev31})])
+
+
+def test_depth_consistency_is_graded_from_the_vetting_fold_when_depth_err_is_absent(tmp_path):
+    """Every receipt since 2026-08-19 carries depth_odd/depth_even and the
+    fold's S/N; no receipt has ever carried depth_err. The shelf reads the
+    producer's number instead of parking on a key nothing writes."""
+    hunts = _two_sector(tmp_path, _vet(0.036, 0.036, 49.0), _vet(0.038, 0.037, 48.0))
+    row = next(r for r in shelf.register(hunts, None, date(2026, 9, 12)) if r["tic"] == 234518605)
+    assert not any("depth consistency ungradeable" in p for p in row["parked_on"]), row["parked_on"]
+    assert not any("depths differ" in p for p in row["parked_on"]), row["parked_on"]
+
+
+def test_fold_depths_that_disagree_park_the_star_with_both_measurements_named(tmp_path):
+    hunts = _two_sector(tmp_path, _vet(0.036, 0.036, 49.0), _vet(0.060, 0.061, 48.0))
+    row = next(r for r in shelf.register(hunts, None, date(2026, 9, 12)) if r["tic"] == 234518605)
+    assert any("fold depths differ beyond 3 sigma" in p and "0.0360" in p
+               for p in row["parked_on"]), row["parked_on"]
+
+
+def test_a_severely_blended_star_is_graded_on_its_corrected_radius(tmp_path):
+    """Audit item 9: the physical gate grades the uncorrected radius and only
+    reports the corrected one. When the receipt itself says the aperture is
+    severely blended, the corrected radius is the physical claim."""
+    from lab.a05_physical import R_JUP_IN_R_SUN
+    phys = {"physical": {"verdict": None, "reason": None, "r_companion_jup": 1.8,
+                         "severely_blended": True, "crowdsap": 0.34,
+                         "r_companion_corrected_sun": 3.1 * R_JUP_IN_R_SUN}}
+    hunts = _two_sector(tmp_path, {**phys, **_vet(0.034, 0.031, 11.0)},
+                        {**phys, **_vet(0.028, 0.034, 10.0)}, sector2=42)
+    row = next(r for r in shelf.register(hunts, None, date(2026, 9, 12)) if r["tic"] == 234518605)
+    assert any("companion-too-large after crowding correction" in p and "3.10 R_Jup" in p
+               for p in row["parked_on"]), row["parked_on"]
+    assert row["promotable"] is False
