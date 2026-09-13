@@ -33,7 +33,14 @@ def _shelf_counts():
                           date.today())
     counts = {"refuted": 0, "parked": 0, "awaiting": 0, "promoted": 0}
     for r in rows:
-        counts[r.get("state", "awaiting")] = counts.get(r.get("state", "awaiting"), 0) + 1
+        state = r.get("state", "awaiting")
+        # A promotable lead is one the machine has cleared and a HUMAN now
+        # owes an answer on — it is awaiting review in exactly the sense the
+        # pot's counter means. First reached 2026-09-12 (TIC 374861595);
+        # until then this branch had never been exercised.
+        if state == "promotable-awaiting-ben":
+            state = "awaiting"
+        counts[state] = counts.get(state, 0) + 1
     return rows, counts
 
 

@@ -134,6 +134,40 @@ def _fap(row: dict, scheme: str):
         return None
 
 
+def _depth_measurement(row: dict) -> tuple[float, float] | None:
+    """``(depth, sigma_depth)`` for one lead observation, or ``None``.
+
+    Until 2026-09-12 this read ``row["depth_err"]`` — a key no producer has
+    ever written — so every two-sector lead was parked on "receipts carry no
+    depth uncertainty" while the uncertainty sat in the same row under
+    another name. The vetting fold (``a04.vet_fold``) measures the in-window
+    depth per parity and reports ``depth_sigma = min(d_odd, d_even) /
+    sigma_depth``; ``sigma_depth`` is the median standard error of the in-window
+    points against the out-of-transit baseline (``a04._median_se``). So the
+    measured pair is recoverable from what every receipt since 2026-08-19
+    already carries: depth = mean(d_odd, d_even), sigma = min(d_odd, d_even)
+    / depth_sigma. That is the fold's own depth — the same instrument in every
+    sector — not the BLS box depth in ``row["depth"]``, which is a search
+    statistic and, per audit item 10, can disagree with the fold by a factor
+    that is itself sector-dependent.
+
+    An explicit ``depth_err`` on the row still wins, so a future producer can
+    write the number directly.
+    """
+    err = row.get("depth_err")
+    if err is not None and float(err) > 0:
+        return float(row["depth"]), float(err)
+    vet = (row.get("disposition_evidence") or {}).get("vet") or {}
+    try:
+        d_odd, d_even = float(vet["depth_odd"]), float(vet["depth_even"])
+        snr = float(vet["depth_sigma"])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if not (snr > 0) or min(d_odd, d_even) <= 0:
+        return None
+    return 0.5 * (d_odd + d_even), min(d_odd, d_even) / snr
+
+
 def _persistence(lead_obs: list[dict]) -> list[str]:
     reasons = []
     sectors = sorted({o["sector"] for o in lead_obs})
@@ -148,22 +182,24 @@ def _persistence(lead_obs: list[dict]) -> list[str]:
         reasons.append(
             f"persistence: period disagrees across sectors beyond "
             f"PERIOD_TOL_FRAC={a04.PERIOD_TOL_FRAC}")
-    errs = [o["row"].get("depth_err") for o in lead_obs]
-    if any(e is None or not (float(e) > 0) for e in errs):
+    measured = [_depth_measurement(o["row"]) for o in lead_obs]
+    if any(m is None for m in measured):
         reasons.append(
-            "persistence: depth consistency ungradeable — receipts carry no "
-            "depth uncertainty (§4 needs a measured sigma_depth; an ungraded "
-            "criterion is not a passed criterion)")
+            "persistence: depth consistency ungradeable — a lead observation "
+            "carries neither depth_err nor a vetting fold with depth_sigma "
+            "(§4 needs a measured sigma_depth; an ungraded criterion is not a "
+            "passed criterion)")
     else:
-        depths = [float(o["row"]["depth"]) for o in lead_obs]
-        for i in range(len(depths)):
-            for j in range(i + 1, len(depths)):
-                sigma = math.hypot(float(errs[i]), float(errs[j]))
-                if abs(depths[i] - depths[j]) > DEPTH_SIGMA_TOL * sigma:
+        for i in range(len(measured)):
+            for j in range(i + 1, len(measured)):
+                (di, si), (dj, sj) = measured[i], measured[j]
+                sigma = math.hypot(si, sj)
+                if abs(di - dj) > DEPTH_SIGMA_TOL * sigma:
                     reasons.append(
-                        f"persistence: depths differ beyond "
+                        f"persistence: fold depths differ beyond "
                         f"{DEPTH_SIGMA_TOL:g} sigma between sectors "
-                        f"{lead_obs[i]['sector']} and {lead_obs[j]['sector']}")
+                        f"{lead_obs[i]['sector']} and {lead_obs[j]['sector']} "
+                        f"({di:.4f}±{si:.4f} vs {dj:.4f}±{sj:.4f})")
                     return reasons
     return reasons
 
@@ -266,6 +302,26 @@ def _admissible(lead_obs: list[dict]) -> list[str]:
                     f"(a missing radius is not a small radius)"]
         if phys.get("verdict"):
             return [f"physically inadmissible: {phys['verdict']}"]
+        # Audit item 9 (2026-09-12): the gate grades the UNCORRECTED radius,
+        # and reports the crowding-corrected one beside it. When the receipt
+        # itself says the aperture is severely blended (CROWDSAP below
+        # a05_physical.CROWDSAP_SEVERE), the corrected radius is the physical
+        # claim, and a star whose corrected companion exceeds the planet
+        # ceiling is not a lead the shelf may call promotable. TIC 212950885
+        # (r_c 1.8 R_Jup graded, 3.1 R_Jup corrected, CROWDSAP 0.34) is the
+        # live case.
+        if phys.get("severely_blended"):
+            r_cc = phys.get("r_companion_corrected_sun")
+            if r_cc is None:
+                return ["physical admissibility ungraded — severely blended "
+                        "and no corrected radius (a missing correction is not "
+                        "a small one)"]
+            from .a05_physical import MAX_PLANET_R_SUN, R_JUP_IN_R_SUN
+            if float(r_cc) > MAX_PLANET_R_SUN:
+                return [f"physically inadmissible: companion-too-large after "
+                        f"crowding correction — {float(r_cc) / R_JUP_IN_R_SUN:.2f} "
+                        f"R_Jup corrected vs the {MAX_PLANET_R_SUN / R_JUP_IN_R_SUN:.1f} "
+                        f"R_Jup ceiling (CROWDSAP {phys.get('crowdsap')})"]
     return []
 
 
