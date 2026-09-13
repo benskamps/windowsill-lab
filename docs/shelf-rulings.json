@@ -40,5 +40,12 @@
     "date": "2026-08-20",
     "by": "machine — sky gates (2026-08-20 investigation; transcribed 2026-08-22)",
     "why": "The light curve was never wrong; the pipeline never asked whose light it was. The dip is HATS-16 b (TOI 228.01, TFOPWG KP) on neighbour TIC 77044471, 0.71 px away, at a direct period match. Refutation of this TARGET, not of the signal. docs/investigations/2026-08-20-tic77044472-is-hats16b-on-the-neighbour.md."
+  },
+  {
+    "tic": "144122210",
+    "ruling": "refuted",
+    "by": "Ben",
+    "date": "2026-09-12",
+    "why": "Second look in sector 31 (followup-144122210-s31.json): the machine dispositioned it eclipsing-binary-secondary. Audit item 6 had it documented as an EB missed by 0.13 sigma in sector 30; the second sector settled it."
   }
 ]
