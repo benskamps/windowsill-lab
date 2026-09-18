@@ -1,5 +1,13 @@
 # Paper outline — the survey, the triage gap, and TIC 374861595
 
+> **SUPERSEDED 2026-09-18.** A full draft written against this outline now lives
+> on `claude/project-thread-alqen7` (commit `1c8a7f1`), together with
+> `scripts/survey_paper_numbers.py`, which re-derives every census figure from
+> `reports/hunts/*.json` and asserts agreement with `lab.publish.hunt_block`.
+> **Write from the draft, not from this file.** Kept for the section plan and the
+> blocker list; its §2 numbers were corrected here after the re-derivation
+> contradicted three of them.
+
 **Status: outline, not a draft.** Two of the numbers the paper turns on (the
 limb-darkened radius and the Gaia-anchored R★) do not exist yet, and drafting
 prose around numbers that will move is how a paper acquires sentences nobody
@@ -41,19 +49,43 @@ is about the cost structure of triage at survey volume, which is a real and
 uncontroversial constraint.
 
 ### 2 · The survey
-All verified against `pot.json` on 2026-09-18.
+`pot.json` is the aggregator's own summary; the figures below come from
+re-deriving it out of the receipts.
+
+Re-derived 2026-09-18 with `scripts/survey_paper_numbers.py`. **Three of the
+figures this outline first carried did not survive that pass** — they are struck
+through below, because a referee checks the census first and the imprecise forms
+had already reached two documents.
 
 | | |
 |---|---|
-| targets blind-searched | **12,898** |
-| above threshold | **116** |
-| dispositioned | **116 / 116**, from a closed 14-term vocabulary |
-| known planets recovered | **9** |
+| target-**searches** (sum of work) | **12,898** — ~~"targets"~~ |
+| distinct stars | **12,151** recorded + 551 pilot counted by a floor → **sample is 12,151–12,702 stars** |
+| rows attempted / no usable product / errored | 13,524 / 1,094 / 83 |
+| above threshold (SDE 8.0) | **116** |
+| dispositioned | **116 / 116**, vocabulary **18 defined, 14 used** — ~~"closed 14-term vocabulary"~~ |
+| known planets recovered | **9** (named in the reader's output) |
 | leads minted | **7** |
-| leads refuted by the pipeline's own gates | **5** |
+| refuted by the survey's own gates | **5 counted**, of **7 refutation rulings** — ~~"5 refutations"~~ full stop. A ruling counts only while its star is a currently-minted lead; the two uncounted include TIC 77044472, where the dip was HATS-16 b on a neighbour 0.71 px away |
 | leads parked / awaiting human review | 1 / 1 |
 | planets claimed | **0** |
 | hunt files refused by their own controls | **5** (`uniformity-failed` ×3, `budget-over-share` ×2) |
+
+Three more things the paper must state, all from the same reader, none of them
+flattering and all of them checkable:
+
+- **The SDE 8.0 threshold sits *below* the pooled scramble null's maximum of
+  8.650** (325,000 draws) — about **0.82 expected false crossings** over the
+  sample. Say this before a referee finds it.
+- **The graded FAP floors at (1+0)/257 = 3.891e-3** with B = 256, and **all seven
+  leads sit exactly at that floor.** No lead can grade below it; the number is a
+  property of the bootstrap budget, not of the leads.
+- **384 of 1,565 hosts with a measured depth limit cannot see a 1 % transit** at
+  any ladder period, and are barred from aggregate sensitivity claims.
+
+*Caveat for anyone re-running the reader:* `lab.publish._shelf_states` swallows
+`ImportError`, so without numpy installed it silently returns `{}` and the
+refutation count degrades to 0. Install numpy before trusting a local pass.
 
 State the claim boundary verbatim from `pot.json` — completeness of *disposition*
 over the sample, **not** completeness of detection, **not** an occurrence rate,
