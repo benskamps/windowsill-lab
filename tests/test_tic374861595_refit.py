@@ -608,6 +608,17 @@ def test_load_from_dir_refuses_an_empty_directory(tmp_path):
         refit.load_from_dir(tmp_path)
 
 
+def test_error_formatting_stays_readable():
+    """Two significant figures, and no exponent where fixed notation fits."""
+    assert refit._fmt_err(372.27) == "372"
+    assert refit._fmt_err(0.0186475) == "0.019"
+    assert refit._fmt_err(0.1119763) == "0.11"
+    assert refit._fmt_err(2.4707e-06) == "2.5e-06"
+    # %g strips trailing zeros, so the value keeps only its significant digits.
+    assert refit._fmt(1.9369093, 2.4707e-06, 10) == "1.9369093 ± 2.5e-06"
+    assert refit._fmt(float("nan")) == "—"
+
+
 def test_no_network_import_at_module_level():
     """Importing the script must not reach for lightkurve, astropy or MAST.
 

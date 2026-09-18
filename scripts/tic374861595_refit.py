@@ -171,8 +171,7 @@ TIC = "374861595"
 #: catalogue lookup. Pass --kmag with the real 2MASS Ks and its error before
 #: putting any of this in a paper. The script prints a warning when it uses the
 #: default.
-DEFAULT_KMAG = None          # computed at runtime from DEFAULT_ABS_KMAG
-DEFAULT_ABS_KMAG = 4.98      # package §5d
+DEFAULT_ABS_KMAG = 4.98      # package §5d; K is derived from this and the parallax
 DEFAULT_KMAG_ERR = 0.025     # typical 2MASS Ks error at K~11.7; a placeholder
 DEFAULT_PARALLAX_MAS = 4.47
 DEFAULT_PARALLAX_ERR_MAS = 0.03
@@ -1267,8 +1266,24 @@ def _fmt(value, err=None, digits=6):
         return "—"
     s = f"{value:.{digits}g}"
     if err is not None and np.isfinite(err):
-        s += f" ± {err:.2g}"
+        s += f" ± {_fmt_err(err)}"
     return s
+
+
+def _fmt_err(err: float) -> str:
+    """Two significant figures, in fixed notation wherever that is readable.
+
+    ``f"{372.27:.2g}"`` is ``3.7e+02``, which next to a depth written 84140 is
+    just noise for the reader to decode. Anything between 1e-4 and 1e5 gets
+    written out.
+    """
+    err = float(err)
+    if not np.isfinite(err) or err == 0.0:
+        return f"{err:.2g}"
+    mag = math.floor(math.log10(abs(err)))
+    if -4 <= mag <= 4:
+        return f"{err:.{max(0, 1 - mag)}f}"
+    return f"{err:.2g}"
 
 
 def print_summary(fit, star, *, out=sys.stdout):
@@ -1399,6 +1414,11 @@ def print_summary(fit, star, *, out=sys.stdout):
     w("  * PDCSAP flux is already crowding-corrected by SPOC, so no dilution\n"
       "    correction is applied here. If you feed this SAP flux instead, the\n"
       "    depth will be too shallow and nothing in this script will notice.\n")
+    w("  * A dash in the T23 or ingress column is not a missing number. b > 1-k\n"
+      "    means the transit has no flat bottom and no second contact, so both\n"
+      "    are undefined. SPOC's DV nonetheless prints an ingress of 1.0767 h\n"
+      "    for the same grazing geometry — exactly half its own T14. Read that\n"
+      "    as its fitter's convention, not as a measured second contact.\n")
     w("=" * 78 + "\n")
 
 
