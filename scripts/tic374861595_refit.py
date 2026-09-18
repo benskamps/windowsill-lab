@@ -1000,24 +1000,40 @@ def read_fits_light_curve(path: Path) -> dict:
     Quality flags are applied: any non-zero QUALITY cadence is dropped, which
     is SPOC's own "default" bitmask taken at its most conservative.
     """
-    blob = Path(path).read_bytes()
-    curve = None
+    path = Path(path)
+    blob = path.read_bytes()
+
+    # The two readers are tried in a fixed order and the choice is NOT made by
+    # catching exceptions from the first one: an exception from lab.a01 on a
+    # file it *should* have read (a truncated download, a wrong product) is a
+    # thing the operator needs to see, not a reason to quietly reach for a
+    # different library. Only the ImportError routes to the fallback.
+    a01 = None
+    src = str(REPO_ROOT / "src")
+    if src not in sys.path:
+        sys.path.insert(0, src)
     try:
-        sys.path.insert(0, str(REPO_ROOT / "src"))
-        from lab import a01  # noqa: WPS433
-        curve = a01.read_tess_light_curve(blob)
-        t = np.asarray(curve["time"], dtype=float)
-        f = np.asarray(curve["flux"], dtype=float)
-        ferr = np.asarray(curve.get("flux_err", np.full_like(f, np.nan)), dtype=float)
-        qual = np.asarray(curve.get("quality", np.zeros_like(f)), dtype=float)
+        from lab import a01 as _a01  # noqa: WPS433
+        a01 = _a01
     except Exception:
+        a01 = None
+
+    if a01 is not None:
+        # Column names are the FITS ones, verbatim: lab.a01 returns the TESS
+        # TTYPEs untouched ("TIME", "PDCSAP_FLUX", …), not lower-cased aliases.
+        curve = a01.read_tess_light_curve(blob)
+        t = np.asarray(curve["TIME"], dtype=float)
+        f = np.asarray(curve["PDCSAP_FLUX"], dtype=float)
+        ferr = np.asarray(curve["PDCSAP_FLUX_ERR"], dtype=float)
+        qual = np.asarray(curve["QUALITY"], dtype=float)
+    else:
         try:
             from astropy.io import fits
         except Exception as exc:
             raise RefitError(
                 f"cannot read {path.name}: neither lab.a01 nor astropy is "
-                f"importable ({exc}). Run from the repo root, or "
-                "pip install astropy.") from exc
+                f"importable ({exc}). Run this from the repo root so `src/lab` "
+                "is on the path, or pip install astropy.") from exc
         with fits.open(str(path)) as hdul:
             data = hdul[1].data
             t = np.asarray(data["TIME"], dtype=float)
@@ -1241,11 +1257,17 @@ def summarise(best, errs, n_ld, model, rho_star, *, chi2=None, ndata=None,
 
 
 def _fmt(value, err=None, digits=6):
+    """Value ± error, with the error always at two significant figures.
+
+    Two, not one: an error printed as "0.02" cannot be told from 0.015 or
+    0.024, and on a parameter like b those are different conclusions about
+    whether the transit is grazing.
+    """
     if value is None or (isinstance(value, float) and not np.isfinite(value)):
         return "—"
     s = f"{value:.{digits}g}"
     if err is not None and np.isfinite(err):
-        s += f" ± {err:.{digits - 3 if digits > 3 else 1}g}"
+        s += f" ± {err:.2g}"
     return s
 
 
@@ -1358,9 +1380,9 @@ def print_summary(fit, star, *, out=sys.stdout):
          f"{density_from_ar(SPOC_DV['period_days'], 7.71):.3f} (shape)",
          f"{fit['rho_circ_cgs']:.3f} (shape) / {star['rho_star_cgs']:.3f} (star)"),
     ]
-    w(f"  {'quantity':<16}{'lab trapezoid':<26}{'SPOC DV':<26}{'this refit'}\n")
+    w(f"  {'quantity':<15}{'lab trapezoid':<29}{'SPOC DV':<29}{'this refit'}\n")
     for name, a, b_, c in rows:
-        w(f"  {name:<16}{a:<26}{b_:<26}{c}\n")
+        w(f"  {name:<15}{a:<29}{b_:<29}{c}\n")
     w("\n")
     w("CAVEATS a reader must carry out of this table\n")
     w("-" * 78 + "\n")
@@ -1987,4 +2009,12 @@ def main(argv=None) -> int:
 
 if __name__ == "__main__":
     warnings.simplefilter("once")
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except RefitError as exc:
+        # A RefitError is a refusal, not a crash: the script has decided it
+        # cannot produce an honest number. Print it as the sentence it is and
+        # exit 2, so a caller can tell "refused" from "blew up" (1) and from
+        # "fine" (0).
+        print(f"\nREFUSED: {exc}", file=sys.stderr)
+        sys.exit(2)

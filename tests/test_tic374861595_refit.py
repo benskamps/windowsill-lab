@@ -517,6 +517,97 @@ def test_summary_renders_without_a_network():
     assert "g/cm^3" in text and "rho_sun" in text, "densities lack both units"
 
 
+def _fits_card(key, value):
+    if isinstance(value, bool):
+        body = f"{'T' if value else 'F':>20}"
+    elif isinstance(value, int):
+        body = f"{value:>20}"
+    else:
+        body = f"'{value:<8}'" if len(str(value)) <= 8 else f"'{value}'"
+    return f"{key:<8}= {body:<70}"[:80].ljust(80)
+
+
+def _write_minimal_tess_fits(path, t, f, ferr, quality):
+    """A SPOC-shaped light-curve FITS, written by hand.
+
+    Only enough of the standard to be read: a null primary HDU and a BINTABLE
+    with the four columns ``lab.a01.read_tess_light_curve`` requires. Writing
+    it here rather than committing a real 4 MB TESS file keeps the offline path
+    — the one Ben uses with ``--fits-dir`` — under test without a fixture that
+    nobody can regenerate.
+    """
+    primary = "".join([_fits_card("SIMPLE", True), _fits_card("BITPIX", 8),
+                       _fits_card("NAXIS", 0), _fits_card("EXTEND", True),
+                       "END".ljust(80)])
+    primary += " " * ((2880 - len(primary) % 2880) % 2880)
+
+    row = np.dtype([("TIME", ">f8"), ("PDCSAP_FLUX", ">f4"),
+                    ("PDCSAP_FLUX_ERR", ">f4"), ("QUALITY", ">i4")])
+    rows = np.zeros(len(t), dtype=row)
+    rows["TIME"] = t
+    rows["PDCSAP_FLUX"] = f
+    rows["PDCSAP_FLUX_ERR"] = ferr
+    rows["QUALITY"] = quality
+
+    cards = [_fits_card("XTENSION", "BINTABLE"), _fits_card("BITPIX", 8),
+             _fits_card("NAXIS", 2), _fits_card("NAXIS1", row.itemsize),
+             _fits_card("NAXIS2", len(t)), _fits_card("PCOUNT", 0),
+             _fits_card("GCOUNT", 1), _fits_card("TFIELDS", 4)]
+    for i, (name, form) in enumerate(
+            [("TIME", "D"), ("PDCSAP_FLUX", "E"),
+             ("PDCSAP_FLUX_ERR", "E"), ("QUALITY", "J")], start=1):
+        cards += [_fits_card(f"TTYPE{i}", name), _fits_card(f"TFORM{i}", form)]
+    header = "".join(cards) + "END".ljust(80)
+    header += " " * ((2880 - len(header) % 2880) % 2880)
+
+    data = rows.tobytes()
+    data += b"\0" * ((2880 - len(data) % 2880) % 2880)
+    Path(path).write_bytes(primary.encode("ascii") + header.encode("ascii") + data)
+
+
+def test_fits_dir_path_reads_and_fits_a_synthetic_file(tmp_path):
+    """The offline route, end to end: FITS on disk -> windows -> fit.
+
+    This is the path that runs on Ben's machine when MAST is unreachable, and
+    it is the one no amount of selftest exercises, because the selftest hands
+    arrays straight to the fitter. It also pins the column names: the lab's
+    reader returns FITS TTYPEs verbatim ("TIME", "PDCSAP_FLUX"), and reaching
+    for lower-case aliases silently routed this into the astropy fallback.
+    """
+    truth = {"period": 1.9369484, "epoch": 2036.5479415,
+             "k": 0.300, "a_rstar": 7.700, "b": 0.450}
+    model = refit.TransitModel("nonlinear", refit.CLARET_TESS, backend="numpy")
+    rng = np.random.default_rng(3)
+    for sector, start in enumerate((2036.0, 2065.0), start=30):
+        t = np.arange(start, start + 24.0, 10.0 / 1440.0)
+        clean = model(t, truth["epoch"], truth["period"], truth["k"],
+                      truth["a_rstar"], truth["b"])
+        flux = 1234.0 * (clean + rng.normal(0.0, 3e-4, t.size))
+        qual = np.zeros(t.size, dtype=int)
+        qual[::97] = 128                     # some flagged cadences to drop
+        _write_minimal_tess_fits(
+            tmp_path / f"tess-s00{sector}-0000000374861595-s_lc.fits",
+            t, flux, np.full(t.size, 1234.0 * 3e-4), qual)
+
+    curves = refit.load_from_dir(tmp_path)
+    assert len(curves) == 2
+    for c in curves:
+        assert np.all(np.isfinite(c["t"])) and np.all(np.isfinite(c["f"]))
+        assert float(np.median(c["f"])) == pytest.approx(1.0, abs=1e-3), (
+            "flux was not normalised by its median")
+        assert c["t"].size < 24 * 144, "flagged cadences were not dropped"
+
+    guess = (truth["period"] + 2e-5, truth["epoch"] + 2e-3, 0.36, 6.6, 0.70)
+    got, *_ = _fit(model, curves, guess)
+    assert got["period"] == pytest.approx(truth["period"], abs=5e-5)
+    assert got["k"] == pytest.approx(truth["k"], rel=0.05)
+
+
+def test_load_from_dir_refuses_an_empty_directory(tmp_path):
+    with pytest.raises(refit.RefitError):
+        refit.load_from_dir(tmp_path)
+
+
 def test_no_network_import_at_module_level():
     """Importing the script must not reach for lightkurve, astropy or MAST.
 
