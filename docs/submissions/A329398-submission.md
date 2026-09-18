@@ -24,6 +24,16 @@ corollary rather than the contribution.
 The two sets are not merely equinumerous — they are **the same set**, composition
 by composition. That is what makes the proof short.
 
+**Credit where it is due: Wiseman conjectured this, set-equality and all.** The
+live entry's comment reads *"Conjecture: Also the number of compositions of n
+that are either weakly increasing or weakly decreasing. Hence a(n) =
+2*A000041(n) - A000005(n)"* (read on oeis.org, 2026-09-18). So the
+characterisation is his, the derivation of the formula from it is his, and the
+only thing new here is **the proof**. An earlier draft of this file read as
+though noticing the set-equality were part of the contribution; it was noticed
+independently, which is not the same as first. The comment as submitted says
+"This proves Wiseman's conjecture", which is the correct claim.
+
 Proof, with every lemma machine-checked over all 65,535 compositions of n ≤ 16:
 `scripts/a329398_proof_check.py` in this repository. The proof is reproduced in
 §3 below in the form it should go into the entry.
