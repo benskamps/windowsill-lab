@@ -81,6 +81,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import sys
 import warnings
 from pathlib import Path
@@ -1129,6 +1130,29 @@ def load_from_lightkurve(tic: str, *, exptime=120, max_sectors=None,
     return out
 
 
+def sector_coverage(curves) -> dict:
+    """Which TESS sectors these light curves actually are.
+
+    ``load_from_lightkurve`` already stamps each curve's ``source`` as
+    ``"sector <n>"``; nothing read it back, so every coverage number this script
+    produced was a range a human typed from the product count. Returns the sorted
+    sector list, how many curves could not be identified, and the span -- so a
+    reader can check the count against the list instead of trusting a label.
+    """
+    sectors, unknown = [], 0
+    for c in curves:
+        m = re.fullmatch(r"sector (\d+)", str(c.get("source", "")))
+        if m:
+            sectors.append(int(m.group(1)))
+        else:
+            unknown += 1
+    sectors = sorted(set(sectors))
+    return {"sectors": sectors, "unknown": unknown,
+            "n_curves": len(curves),
+            "lowest": sectors[0] if sectors else None,
+            "highest": sectors[-1] if sectors else None}
+
+
 def window_and_detrend(curves, period, epoch, duration_hours, *,
                        window_factor=3.0, poly_order=1):
     """Cut ±window_factor·T14 around each transit and flatten each window.
@@ -1841,6 +1865,9 @@ def build_parser() -> argparse.ArgumentParser:
                         "files; skips all network access")
     p.add_argument("--max-sectors", type=int, default=None,
                    help="cap how many sectors lightkurve downloads")
+    p.add_argument("--chain", type=Path, default=None,
+                   help="write the joint MCMC samples to this .npz (the k-b "
+                        "degeneracy needs the joint posterior, not marginals)")
     p.add_argument("--exptime", type=int, default=120,
                    help="cadence to request from MAST, seconds (default 120)")
 
@@ -1969,6 +1996,17 @@ def main(argv=None) -> int:
     log(f"  {len(curves)} light curves, {n_pts} good cadences, "
         f"BTJD {min(c['t'].min() for c in curves):.3f} to "
         f"{max(c['t'].max() for c in curves):.3f}")
+    # The coverage the paper quotes has to be derived, not typed. The 2026-09-18
+    # run reported "24 sectors (27-97)" and nothing recorded which 24 -- the
+    # range label was a human summary, and its top end does not survive
+    # arithmetic on the DV baseline. Print the list and ship it in the JSON.
+    coverage = sector_coverage(curves)
+    log(f"  sectors ({len(coverage['sectors'])}): "
+        + (", ".join(str(x) for x in coverage["sectors"])
+           if coverage["sectors"] else "UNKNOWN - no SECTOR keyword in these products"))
+    if coverage["unknown"]:
+        log(f"  WARNING: {coverage['unknown']} light curve(s) carry no SECTOR "
+            f"keyword; the list above is incomplete, do not quote it")
 
     guess = (args.period, args.epoch, args.k, args.a_rstar, args.b)
     t14_guess = transit_durations(*[guess[0], guess[2], guess[3], guess[4]])[0]
@@ -2024,6 +2062,7 @@ def main(argv=None) -> int:
             "fit": fit,
             "star": star,
             "comparison": {"lab_trapezoid": LAB_TRAPEZOID, "spoc_dv": SPOC_DV},
+            "coverage": coverage,
             "inputs": {k_: (str(v) if isinstance(v, Path) else v)
                        for k_, v in vars(args).items()},
         }
@@ -2031,6 +2070,20 @@ def main(argv=None) -> int:
             payload["fit"]["posterior_percentiles"] = {
                 name: [float(x) for x in np.percentile(chain[:, i], [16, 50, 84])]
                 for i, name in enumerate(PARAM_NAMES)}
+            # Marginals are not a joint posterior, and the joint is exactly what
+            # the k-b degeneracy argument needs: at b ~ 1 the two trade off hard,
+            # so "k = 0.54 +0.11/-0.10" read alone overstates how determined the
+            # radius is. Ship the samples so the valley can be plotted.
+            if args.chain:
+                args.chain.parent.mkdir(parents=True, exist_ok=True)
+                np.savez_compressed(args.chain, names=np.array(PARAM_NAMES),
+                                    samples=chain.astype(np.float64))
+                log(f"wrote {args.chain}  ({chain.shape[0]:,} x "
+                    f"{chain.shape[1]} joint samples)")
+            else:
+                payload["fit"]["posterior_note"] = (
+                    "16/50/84 marginals only; pass --chain to write the joint "
+                    "samples the k-b degeneracy argument needs")
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(payload, indent=1), encoding="utf-8")
         log(f"\nwrote {args.json}")
