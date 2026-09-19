@@ -205,13 +205,29 @@ The draft went to review and came back the same day.
 
 | who | what |
 |---|---|
-| Alois P. Heinz | Proposed the changes for review. |
+| Alois P. Heinz | Proposed the changes for review (three times across the evening). |
 | Andrew Howroyd | "See edit screen. (usual length is 260 chars counting spaces and commas). This is currently at 216, so space for a few more terms." |
 | Andrew Howroyd | Proposed for review and commented: "Can you add another 10 terms. This is still short of the usual length." |
+| Jianing Song | Proposed for review and commented: "Easy since A000041 and A000005 both are." |
 
-Neither reviewer raised the proof, the formula, or the comment — the only ask is
-length. That is a good sign and not a verdict: a draft is proposed for review
-many times before an editor accepts it.
+**Three editors are now on it, and none of them has raised the proof, the
+formula or the comment.** The only explicit ask is length. That is a good sign
+and not a verdict: a draft is proposed for review many times before an editor
+accepts it.
+
+**Song's comment is the interesting one, and it is not about length.** It argues
+for `keyword: easy` — the terms are easy to compute because A000041 (partitions)
+and A000005 (number of divisors) both are. That argument only works through
+`a(n) = 2*A000041(n) - A000005(n)`, which until this submission was a
+*conjecture* on the entry. Reading the sequence's difficulty off that formula
+treats the formula as established, so Song's remark is, implicitly, the proof
+being used. It is not an acceptance of the proof and should not be reported as
+one — but it is the first sign a reviewer is reasoning *from* the theorem rather
+than about the term count.
+
+It also settles the keyword question in the direction §6 predicted, from the
+other side: `easy` going on and `more` coming off are the same observation, that
+every term is now computable in closed form.
 
 **The one thing to notice.** Howroyd's 216-character count for the 40-term line
 is exactly reproduced by counting the DATA string with its commas and spaces, so
@@ -222,6 +238,9 @@ both his comments push the same direction — so §1 leads with the 50-term line
 The 45-term line exists so that a length objection costs a paste, not a round
 trip.
 
-**Still nobody's call but the editors'.** `keyword: more` coming off, whether the
-b-file is wanted, and whether the proof is accepted are all theirs. Do not argue
-any of them into the edit summary.
+**Still nobody's call but the editors'.** `keyword: more` coming off,
+`keyword: easy` going on, whether the b-file is wanted, and whether the proof is
+accepted are all theirs. Do not argue any of them into the edit summary — and in
+particular, do not reply to Song to point out that his argument presupposes the
+theorem. If he is right, the keyword lands on its own; saying it out loud reads
+as claiming credit for someone else's edit.
