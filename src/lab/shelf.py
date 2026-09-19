@@ -44,6 +44,12 @@ from pathlib import Path
 
 from . import a04
 from .a05_sensitivity import FAP_ALPHA
+from .a05_vocab import (
+    GATE_DISPOSITIONS as _GATE_DISPOSITIONS,
+    IDENTITY_DISPOSITIONS as _IDENTITY_DISPOSITIONS,
+    LEAD_DISPOSITION as _LEAD_DISPOSITION,
+    MACHINE_VOCABULARY as _MACHINE_VOCABULARY,
+)
 
 #: §5 — the two deadlines. 14 days: the lead surfaces with its question.
 #: 60 days: auto-parked ``stale-unruled``, recorded as a bandwidth admission.
@@ -53,24 +59,24 @@ STALE_AFTER_DAYS = 60
 #: §4 depth consistency: pairwise depths must agree within this many sigma.
 DEPTH_SIGMA_TOL = 3.0
 
-LEAD = "lead-awaiting-human-review"
+LEAD = _LEAD_DISPOSITION
 
 #: Physics refutations — a named astrophysical or instrumental explanation.
 #: Any of these on ANY sector of a star parks the star (§4: "every gate
 #: silent, on every sector — not silent on the sector it was found in").
-GATE_VERDICTS = frozenset({
-    "stellar-pulsation", "harmonic-alias", "eclipsing-binary-odd-even",
-    "eclipsing-binary-secondary", "eclipsing-binary-p2-alias",
-    "phased-brightening", "low-significance", "insufficient-coverage",
-    "period-railed", "centroid-shift", "companion-too-large",
-    "blended-known-planet", "blend-favours-neighbour",
-})
+#:
+#: DERIVED from :mod:`lab.a05_vocab`, never restated. Until 2026-09-19 these
+#: two sets were hand-copied literals — exactly the shape that put the checker
+#: five verdicts behind the engine in VET-F1, and worse here: the checker's
+#: drift quarantined a receipt loudly, whereas shelf's drift was SILENT. A
+#: word the engine knew and this file did not matched neither branch of
+#: :func:`_gates_silent`, contributed no parking reason, and left the star
+#: ``promotable-awaiting-ben`` on the strength of a gate nobody read.
+GATE_VERDICTS = frozenset(_GATE_DISPOSITIONS)
 
 #: Catalog identities — somebody already filed this signal. Not a claim about
-#: what it is; only "not a fresh lead".
-IDENTITY_VERDICTS = frozenset({
-    "recovery-or-known", "known-planet", "toi-known-fp", "ctoi-known",
-})
+#: what it is; only "not a fresh lead". Derived, for the same reason.
+IDENTITY_VERDICTS = frozenset(_IDENTITY_DISPOSITIONS)
 
 #: The rulings a human may enter (§1's three exits; ``parked`` is machine-side
 #: and never appears here). Anything else in the rulings file is refused
@@ -279,6 +285,17 @@ def _star_gate(tic: int, all_obs: list[dict]) -> list[str]:
 
 
 def _gates_silent(all_obs: list[dict]) -> list[str]:
+    """Every parking reason the star's own rows carry.
+
+    The three branches are exhaustive over the vocabulary by construction —
+    ``GATE_VERDICTS | IDENTITY_VERDICTS | {LEAD}`` IS
+    ``a05_vocab.MACHINE_VOCABULARY`` — and the final branch is what makes the
+    exhaustiveness load-bearing rather than incidental. A word from outside
+    the vocabulary (a receipt from a forked or newer engine, a hand-edited
+    file) used to fall through all of them and contribute nothing, which
+    reads identically to "every gate silent" and promotes the star. An
+    ungraded word is not a passed gate: it parks, with the word named.
+    """
     reasons = []
     for o in all_obs:
         if o["disposition"] in GATE_VERDICTS:
@@ -287,6 +304,13 @@ def _gates_silent(all_obs: list[dict]) -> list[str]:
         elif o["disposition"] in IDENTITY_VERDICTS:
             reasons.append(f"catalogued: {o['disposition']} in sector "
                            f"{o['sector']} — not novel")
+        elif o["disposition"] != LEAD:
+            reasons.append(
+                f"ungraded disposition: {o['disposition']!r} in sector "
+                f"{o['sector']} ({o['receipt']}) is outside "
+                "lab.a05_vocab.MACHINE_VOCABULARY — this file cannot "
+                "grade a word it does not know, and an unread word is not a "
+                "silent gate")
     return reasons
 
 
