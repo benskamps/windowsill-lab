@@ -179,6 +179,12 @@ DEFAULT_PARALLAX_ERR_MAS = 0.03
 #: Mann et al. (2015), ApJ 804, 64 — Table 1 / Eq. 4, the metallicity-free
 #: M_K → R★ relation:  R★/R☉ = a + b·M_K + c·M_K² .
 #: Valid 4.6 < M_K < 9.8; quoted scatter 2.89 % in R★.
+#:
+#: **Cite the 2016 erratum, ApJ 819, 87, not the original article.** The journal
+#: printed Tables 1-3 with press errors; the erratum reprinted them, and it is
+#: the erratum's values that these constants match. Checked digit for digit by
+#: ``scripts/mann_coefficients_check.py``. A paper that cites "Mann+2015 Table 1"
+#: from the article as printed cites numbers that are not these.
 MANN15_R_COEFFS = (1.9515, -0.3520, 0.01680)
 MANN15_R_SCATTER = 0.0289
 MANN15_MK_RANGE = (4.6, 9.8)
@@ -186,6 +192,10 @@ MANN15_MK_RANGE = (4.6, 9.8)
 #: Mann et al. (2019), ApJ 871, 63 — Table 6, the n = 5, metallicity-free
 #: M_K → M★ relation:  M★/M☉ = 10^( Σ_{i=0..5} a_i · (M_K − 7.5)^i ).
 #: Valid 4.0 < M_K < 11.0; quoted scatter ~2–3 % in M★.
+#: All six checked against the authors' own 400,000-sample posterior by
+#: ``scripts/mann_coefficients_check.py`` (within 1.31 σ; −0.86 % in the mass at
+#: this star's M_K). Prefer this relation over Mann+2015's mass row, which
+#: disagrees by 6 % here and rests on model-derived rather than dynamical masses.
 MANN19_M_COEFFS = (-0.642, -0.208, -8.43e-4, 7.87e-3, 1.42e-4, -2.13e-4)
 MANN19_M_ZP = 7.5
 MANN19_M_SCATTER = 0.030
