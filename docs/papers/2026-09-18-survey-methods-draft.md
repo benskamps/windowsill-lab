@@ -26,8 +26,6 @@ table against that reader, cell by cell.
 
 ## Abstract
 
-*(draft; the bracketed clause resolves when the refit in §7 runs)*
-
 We describe a small archival transit search built to be checkable rather than
 productive, and report the full disposition record of its first 12,898
 target-searches over seven TESS sectors. Every one of the 116 detections above
@@ -46,8 +44,14 @@ remains open. We present that object as a worked example rather than as a
 result: the survey's contribution to it is an independent blind recovery inside
 a sample with a denominator, and one measurement the standard promotion path
 does not make, namely a surface-brightness bound from the absent secondary
-eclipse that is independent of the grazing degeneracy [and a limb-darkened
-reanalysis of the transit shape]. **We claim no planet.** We argue that the
+eclipse that is independent of the grazing degeneracy. A limb-darkened refit
+over 24 sectors and 5.3 years, with a host radius derived from 2MASS photometry
+and a Gaia DR3 parallax rather than adopted from a catalogue, leaves the
+companion's radius *less* constrained than the catalogue pipeline did — the
+fitted geometry is grazing to the point of being marginally non-transiting — and
+leaves a 7.7 σ disagreement between the stellar density implied by the transit
+shape and the density of the host. We report both rather than resolve them.
+**We claim no planet.** We argue that the
 useful publishable content of a small survey is its disposition record and its
 refusals, and that both are cheap to produce and almost never reported.
 
@@ -645,13 +649,13 @@ This is the paper's one observational ask.
 
 | quantity | state |
 |---|---|
-| radius | **bounded, not measured.** *k* and *b* trade off at b = 0.90. **[BLOCKED on the refit]** — the deliverable is a *k*–*b* posterior, not a point estimate. |
-| R★ | **catalogue.** TIC adopts Mann+2015 from M_K, so quoting TIC is not an independent check. Gaia GSP-Phot's 0.80 R☉ is model-based and unreliable for M dwarfs. **[BLOCKED on a Gaia-anchored R★.]** |
+| radius | **bounded, not measured — and the refit widened the bound rather than closing it.** A limb-darkened Mandel–Agol fit over 24 sectors (§7) returns *k* = 0.544 (+0.111 / −0.101) and *b* = 1.053 ± 0.134: the median geometry places the companion's centre *outside* the stellar disc, and roughly two-thirds of the marginal *b* posterior lies above *b* = 1. Across 1 σ in *k*, R_p spans **2.65 to 3.92 R_Jup**, against SPOC's 2.59 ± 0.46. The *k*–*b* valley is the result here; a point estimate on it would be an artefact of where the sampler sat. *Quote k with b or not at all.* One deliverable is still outstanding: the run serialises 16/50/84 marginals, and the **joint** (*k*, *b*) posterior this row asks for needs the chain written out. |
+| R★ | **0.6148 ± 0.0186 R☉, derived here** (M_K = 4.982 ± 0.028) from the measured 2MASS Ks = 11.710 ± 0.026 — PSC 05542154−6407473, Qflg AAA, Cflg 000 — and the **Gaia DR3** parallax 4.512610 ± 0.023275 mas (RUWE 1.05; TIC v8's 4.47187 is DR2). It reproduces TIC's 0.6159 to 0.2 %, which converts a copy into a check: TIC adopts Mann+2015 from M_K, so the agreement is expected, and the point is that the inputs are now measured rather than back-derived. Gaia GSP-Phot's 0.80 R☉ remains model-based and unreliable for M dwarfs, and is not adopted. |
 | M★ | **0.600 ± 0.013 M☉, settled 2026-09-18.** Mann+2019 at this star's M_K, from coefficients now checked against the authors' own 400,000-sample MCMC posterior by `scripts/mann_coefficients_check.py` — a better reference than Table 6, which reports that posterior's medians. Those medians give 0.605; the 0.9 % difference from this repo's implementation sits inside the relation's own 1.3 % spread. **The package's "Mann+2019 mass 0.72 M☉" is retracted**: the relation reaches 0.72 only at M_K = 4.19, 0.79 mag brighter than this star — a different object, not a different rounding — and Mann+2015's own M_Ks→M★ row gives 0.637, so it is not that older relation misattributed either. No derivation for the 0.72 exists. What survives is a smaller real systematic worth carrying: Mann+2015's and Mann+2019's mass relations **disagree by 6 % at this M_K, more than either one's quoted scatter**. Mann+2019 is the one to use — dynamical masses, against Mann+2015's semi-empirical model-derived ones. |
 | mass of the companion | **unknown**, and no photometry can fix it. |
-| ρ★ | **in tension.** The transit shape gives 1.644 ρ☉ (from SPOC's a/R★); the TIC catalogue gives 2.571 ρ☉. A factor of 1.56, like-for-like in solar units. A 2026-09-18 revision briefly claimed the two agree to 11 % by converting one side to cgs and not the other; that claim is retracted and **the tension is real**. At fixed period it means a non-circular orbit, an R★ smaller than TIC's, or a grazing fit sitting on a low-a/R★ branch — which is the radius problem seen from a second side. |
+| ρ★ | **in tension, and the tension survived both a better fit and a derived radius.** The transit shape gives 1.644 ρ☉ from SPOC's a/R★ and 1.685 ρ☉ (2.375 g/cm³) from the refit's own; the star gives 2.581 ρ☉ (3.640 g/cm³). Stated as the quantity the shape actually constrains: the star implies a/R★ = 8.971, the refit returns **7.781 ± 0.155 — a 7.7 σ disagreement**. A 2026-09-18 revision briefly claimed the two agree to 11 % by converting one side to cgs and not the other; that claim is retracted and the tension is real. Three explanations remain, and the refit removed the easiest one: **"R★ is smaller than TIC's" is now the weakest**, because R★ is derived above from measured photometry and DR3 astrometry rather than copied. What is left is a non-circular orbit, a fit sitting on the wrong branch of the grazing valley, or **an unresolved blend — the transit not being on the star these relations describe**. This is a result to report, not a number to average away. |
 | out-of-transit modulation | 3.80–3.87 d at 0.6–1.6 % in three sectors, ≈ 2 P_orb. Probably host rotation near a 2:1 commensurability. **Reported, not explained.** |
-| O−C drift | +5.2, +3.2, +0.8 min over 73 cycles against SPOC's ephemeris, monotone. Almost certainly trapezoid mid-time bias. **[BLOCKED on the refit.]** If it survives the refit it is a different and more interesting paper. |
+| O−C drift | **Explained, and it is not a TTV.** The guess above — trapezoid bias — was right in spirit and wrong in detail: the error is in the trapezoid's *period*, not in its mid-times. The trapezoid period sits **3.382 s per cycle** short of SPOC's, 16 σ on its own quoted error, and a period error alone predicts **−4.12 min** of drift across 73 cycles against the **−4.40 min** observed. That is agreement to 7 %, from one number, with nothing fitted to it. No TTV is required and none is claimed; this is not the more interesting paper. Supporting: a single linear ephemeris fits all 289 transit windows over the 5.3-year baseline at **χ²ᵥ = 0.919** on 105,227 points, so there is no large timing structure left to find. One residual is recorded rather than resolved: the refit's own period, 1.936952791 ± 1.1 × 10⁻⁷ d, differs from SPOC's 1.936948445 ± 2.1 × 10⁻⁷ by 0.376 s per cycle — formally 18 σ, across different sector coverage (27–97 against 1–96), and most likely systematic. **SPOC's ephemeris is the one this paper quotes.** |
 
 ### 6.5 What the survey contributed, stated narrowly
 
@@ -668,56 +672,61 @@ is not part of the standard promotion path.
 
 ## 7 · What is blocked, and what it blocks
 
-Two things in this draft are not finishable from the archive alone. A third was
-listed here on 2026-09-18 and is recorded as resolved at the end of the section
-rather than deleted, on the same principle as Appendix B: a blocker list that quietly
-loses entries cannot be audited.
+One thing in this draft is not finishable from the archive alone. Two others
+were listed here on 2026-09-18 and are recorded as resolved at the end of the
+section rather than deleted, on the same principle as Appendix B: a blocker list
+that quietly loses entries cannot be audited.
 
-1. **The limb-darkened refit and the Gaia-anchored R★.**
-   `scripts/tic374861595_refit.py` performs a Mandel–Agol fit with Claret limb
-   darkening returning (P, T₀, k, a/R★, b) **with their covariance**, so the
-   grazing degeneracy appears as a posterior rather than as a point estimate,
-   and implements the Mann+2015/2019 relations from published coefficients so
-   R★ is derived rather than copied. Its offline self-test passes 8/8 including
-   injection-recovery at SPOC's grazing geometry. **A first run on real light
-   curves is under way** as of 2026-09-18 on a machine with archive access — the
-   environments the rest of this work was done in could not reach MAST. Its
-   numbers are **not** in this draft: §6.4's radius, R★ and O−C rows stay
-   blocked and the abstract's bracketed clause stays bracketed until the
-   posterior is in hand and has been read.
-   Two things about that run are already worth recording, because both change
-   what the finished rows can say. First, **the archive holds 24 SPOC 2-minute
-   sectors for this target, not the three the search used** — sectors 27 to 97,
-   378,654 cadences, BTJD 2036.3 to 3988.3, a **5.3-year baseline** carrying 289
-   transit windows. The O−C row was scoped against 73 cycles; it will be
-   answerable against several thousand, which is the difference between
-   "probably trapezoid mid-time bias" and a measurement. Second, the run must be
-   given `--backend numpy`: the optional `batman` path rebuilds its model inside
-   every likelihood call and is ~90× slower here (348 ms against 3.9 ms), which
-   makes the MCMC impractical rather than merely slow. The two backends agree to
-   1.54 ppm in the self-test, so this costs nothing but the flag.
-   *A caveat travelled with that script from its author — the Mann coefficients
-   were reproduced from memory and corroborated only by reproducing TIC's own
-   R★ and M★ to four decimals, which is a weak check because TIC adopts the same
-   relation. That caveat is discharged as of 2026-09-18; see the resolved item
-   below. It does not unblock the refit itself, only the coefficients the refit
-   will use.*
-2. **The population estimate for the generalisation in §8.** Not in this
+1. **The population estimate for the generalisation in §8.** Not in this
    repository and not attempted here.
 
-**Resolved, and kept on the list.** A third entry stood here: *the Mann+2019
-0.72 M☉ line*, which §6.4 had flagged suspect because nobody in the loop had
-read Mann+2019 Table 6. That is now done, from a stronger source than the
-printed table — the authors' own 400,000-sample MCMC posterior, of which Table 6
-reports the medians. `scripts/mann_coefficients_check.py` performs the
-comparison and exits nonzero if it ever stops holding. Findings: Mann+2015's
-three radius coefficients match the published table digit for digit; all six
-Mann+2019 mass coefficients sit within 1.31 σ of the authors' posterior median,
-and the zero point of 7.5 is confirmed against the authors' own `mk_mass.py`.
-The 0.72 is retracted (§6.4, Appendix B). One citation consequence: **Mann+2015
-Table 1 must be cited as corrected by the 2016 erratum, ApJ 819, 87** — the
-journal printed Tables 1–3 with press errors, and it is the erratum's values,
-not the original article's, that the relation here matches.
+**Resolved: the limb-darkened refit and the Gaia-anchored R★.**
+`scripts/tic374861595_refit.py` — a Mandel–Agol fit with Claret limb darkening
+returning (P, T₀, k, a/R★, b), plus the Mann relations so R★ is derived rather
+than copied — **was run against MAST on 2026-09-18**, on a machine with archive
+access; the environments the rest of this work was done in could not reach it.
+Output is committed at `docs/submissions/TIC374861595-refit-2026-09-18.{json,log}`
+and feeds §6.4's radius, R★, ρ★ and O−C rows. Four things about that run belong
+here rather than in the table:
+
+- **The archive holds 24 SPOC 2-minute sectors, not the three the search used** —
+  sectors 27 to 97, 378,654 cadences, BTJD 2036.3 to 3988.3, a **5.3-year
+  baseline** with 289 transit windows and 105,227 cadences in the fit. Every
+  statement in §6.4 that was scoped against three sectors is now scoped against
+  twenty-four.
+- **It did not close the radius; it opened it further.** The row was written
+  expecting a *k*–*b* posterior to replace a point estimate. What came back is a
+  posterior whose median geometry is *non-transiting in the strict sense* — b =
+  1.053 ± 0.134, with the companion's centre outside the disc — and a *k* spanning
+  2.65 to 3.92 R_Jup at 1 σ. That is the honest answer, and it is worse for the
+  object than SPOC's was.
+- **One deliverable is still outstanding inside a resolved blocker.** The script
+  writes 16/50/84 marginals, not the chain, and the argument §6.4 makes is about
+  the *joint* (*k*, *b*) posterior. Marginals cannot show a valley. Writing the
+  chain out is a small change to the script and does not need new data.
+- **Use `--backend numpy`.** `--backend auto` selects `batman` whenever it is
+  installed, and that path rebuilds its model inside every likelihood call:
+  348 ms per evaluation against 3.9 ms, about 90×, which is the difference
+  between a roughly three-hour MCMC and one on the order of ten days. The two
+  agree to 1.54 ppm in the self-test, so the flag costs nothing.
+A caveat travelled with that script from its author — the Mann coefficients were
+reproduced from memory and corroborated only by reproducing TIC's own R★ and M★
+to four decimals, which is a weak check, because TIC adopts the same relation.
+That caveat is discharged; see the second resolved entry below.
+
+**Resolved: the Mann+2019 0.72 M☉ line.** §6.4 had flagged it suspect because
+nobody in the loop had read Mann+2019 Table 6. That is now done, from a stronger
+source than the printed table — the authors' own 400,000-sample MCMC posterior,
+of which Table 6 reports the medians. `scripts/mann_coefficients_check.py`
+performs the comparison and is explicit about its three outcomes: agrees,
+disagrees, or could not be run. Findings: Mann+2015's three radius coefficients
+match the published table digit for digit; all six Mann+2019 mass coefficients
+sit within 1.31 σ of the authors' posterior median; the 7.5 zero point is
+confirmed against the authors' own `mk_mass.py`. The 0.72 is retracted (§6.4,
+Appendix B). One citation consequence: **Mann+2015 Table 1 must be cited as
+corrected by the 2016 erratum, ApJ 819, 87** — the journal printed Tables 1–3
+with press errors, and it is the erratum's values, not the original article's,
+that the relation here matches.
 
 Two further things gate publication rather than the draft: the repository's
 public-or-private status (§9), and the standing project rule that papers are
