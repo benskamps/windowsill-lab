@@ -44,6 +44,7 @@ import html as _html
 import numpy as np
 
 from . import a04
+from .a05_vocab import DOSSIER_REQUIRED_PANELS as _DOSSIER_REQUIRED_PANELS
 
 #: Predeclared injection ladder — depths in fractional flux. Predeclared means
 #: exactly that: chosen before any hunt ran, never tuned to make a host pass.
@@ -97,10 +98,11 @@ FOLD_BINS = 120
 DOSSIER_STATUS = "lead-awaiting-human-review"
 
 #: Every dossier must carry all of these panels or a check refuses it.
-DOSSIER_REQUIRED_PANELS = (
-    "fold_p", "fold_half_p", "fold_2p",
-    "odd_even", "secondary", "self_injection",
-)
+#: Re-exported from :mod:`lab.a05_vocab`, not defined here: ``lab.checks``
+#: grades dossiers against it and must stay importable without numpy, which
+#: this module needs. One definition, two readers — the same arrangement the
+#: disposition vocabulary already uses, and for the same reason.
+DOSSIER_REQUIRED_PANELS = _DOSSIER_REQUIRED_PANELS
 
 
 class A05SensitivityError(RuntimeError):

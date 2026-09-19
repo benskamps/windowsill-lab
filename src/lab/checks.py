@@ -27,6 +27,7 @@ from .m01_quality import (
     nonequilibrated_indices,
 )
 from .a05_vocab import (
+    DOSSIER_REQUIRED_PANELS as _A05_DOSSIER_PANELS,
     MACHINE_VOCABULARY as _A05_MACHINE_VOCABULARY,
     TOI_REFUTED_DISPOSITIONS as _A05_TOI_REFUTED,
 )
@@ -198,9 +199,15 @@ A05_MACHINE_VOCABULARY = _A05_MACHINE_VOCABULARY
 # recovery nor a lead (the TIC 278866211 / TOI 189.01 lesson). Same single
 # source of truth as the vocabulary above.
 A05_TOI_REFUTED = _A05_TOI_REFUTED
-# Panels a lead's dossier must carry (echo of the dossier contract).
-A05_DOSSIER_PANELS = ("fold_p", "fold_half_p", "fold_2p",
-                      "odd_even", "secondary", "self_injection")
+# Panels a lead's dossier must carry — DERIVED from lab.a05_vocab, the same
+# single source the producer (lab.a05_sensitivity) builds against. This was a
+# hand-copied literal and its own comment called it an echo; an echo of a
+# contract is not a contract, and the vocabulary two definitions above is on
+# this file for having fallen five words behind the engine exactly that way.
+# The reason it could not simply import the producer is that gate 6 must stay
+# readable without numpy, so the contract moved to the stdlib-only module
+# instead and BOTH sides read it there.
+A05_DOSSIER_PANELS = _A05_DOSSIER_PANELS
 # Residual-entropy tolerance for M13. A physically-justified band, NOT a fudge: the
 # integrated residual carries a few-percent systematic from the finite temperature
 # window and the trapezoidal integration of a Monte-Carlo C(T). Empirically it lands
