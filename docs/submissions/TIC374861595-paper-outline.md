@@ -25,7 +25,7 @@ survive a referee.
 
 An automated blind search with a closed disposition vocabulary, run over 12,898
 archival TESS targets, surfaced a high-significance transit signal that the SPOC
-pipeline has detected 259 times across 25+ sectors and that was never promoted to
+pipeline has detected 259 times across 23 sectors and that was never promoted to
 TOI — and the measurement that discriminates it from the eclipsing binary it
 resembles was available in the same archive the whole time.
 
@@ -111,7 +111,10 @@ The DV record: TCE 1, MES 508.6, model SNR 507.4, bootstrap FAP 0, 259 observed
 transits, `suspectedEclipsingBinary: false`, odd/even statistic 1.288, centroid
 0.60″ ± 2.50″ on target across 23 difference images with 23/23 good quality
 metrics, ghost diagnostic core 260.5 / halo 65.2. Then: no TOI, in any sector,
-since 2018.
+since sector 27 (July 2020) — the first sector in which TESS observed this
+target at all. **Not "since 2018":** the DV `sectorsObserved` bitmap has no bit
+set below 27, and the 1,897-day baseline it spans is what reproduces the DV's
+own expectedTransitCount of 980.
 
 The obvious reading, stated as the likeliest and not as fact: the DV summary prints
 Rp = 28.9 ± 5.2 R⊕ in red, and a 10 % V-shaped transit on a Tmag 14 M dwarf giving

@@ -697,6 +697,59 @@ def test_joint_summary_declines_rather_than_raises_on_a_useless_chain():
 
 def test_chain_flag_is_offered():
     parser = refit.build_parser()
-    args = parser.parse_args(["--chain", "c.csv"])
-    assert str(args.chain) == "c.csv"
+    args = parser.parse_args(["--chain", "c.npz"])
+    assert str(args.chain) == "c.npz"
     assert parser.parse_args([]).chain is None
+# --- sector_coverage ---------------------------------------------------------
+# Added 2026-09-19. The 2026-09-18 run reported "24 sectors (27-97)" and no
+# artifact recorded which 24: the range was typed from the product count, and
+# arithmetic on the DV baseline does not support its top end. These pin the
+# derived replacement, including the degenerate cases that would otherwise let
+# a wrong list look authoritative.
+
+def _curves(*sources):
+    return [{"source": s} for s in sources]
+
+
+def test_sector_coverage_sorts_and_counts():
+    cov = refit.sector_coverage(_curves("sector 35", "sector 27", "sector 96"))
+    assert cov["sectors"] == [27, 35, 96]
+    assert (cov["lowest"], cov["highest"]) == (27, 96)
+    assert cov["unknown"] == 0
+    assert cov["n_curves"] == 3
+
+
+def test_sector_coverage_collapses_duplicates():
+    cov = refit.sector_coverage(_curves("sector 27", "sector 27"))
+    assert cov["sectors"] == [27]
+    assert cov["n_curves"] == 2, "n_curves counts products, not distinct sectors"
+
+
+def test_sector_coverage_flags_unidentified_products():
+    # A curve with no SECTOR keyword must be counted, not silently dropped --
+    # otherwise the printed list is short and nothing says so.
+    cov = refit.sector_coverage(_curves("sector 27", "lightkurve", "sector 28"))
+    assert cov["sectors"] == [27, 28]
+    assert cov["unknown"] == 1
+    assert cov["n_curves"] == 3
+
+
+def test_sector_coverage_survives_nothing_identified():
+    cov = refit.sector_coverage(_curves("lightkurve"))
+    assert cov["sectors"] == []
+    assert cov["lowest"] is None and cov["highest"] is None
+    assert cov["unknown"] == 1
+
+
+def test_sector_coverage_does_not_invent_a_range():
+    # The defect this replaces: 24 products summarised as the range "27-97",
+    # which silently asserts sectors that were never observed. The derived list
+    # must name only what is there.
+    observed = [27, 28, 30, 31, 35, 36, 37, 38, 61, 62, 63, 65, 66, 67, 68, 69,
+                87, 88, 89, 90, 93, 94, 96, 98]
+    cov = refit.sector_coverage(_curves(*[f"sector {n}" for n in observed]))
+    assert cov["sectors"] == observed
+    assert len(cov["sectors"]) == 24
+    gaps = set(range(cov["lowest"], cov["highest"] + 1)) - set(cov["sectors"])
+    assert gaps, "the range form would have claimed these sectors"
+    assert 97 in gaps

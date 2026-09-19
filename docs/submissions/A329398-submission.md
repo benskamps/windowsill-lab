@@ -50,19 +50,41 @@ reproduced all 25 published terms and a(26) = 4868 by direct enumeration of all
 
 ## 1 · DATA — paste this whole line, replacing what is there
 
-OEIS wants the FULL sequence, not only the new terms. These 40 terms are each
-computed **twice by different machinery** — by enumeration and by the formula —
-so they stand whether or not an editor accepts the proof.
+**Extended 2026-09-18 at Andrew Howroyd's request** (see §10). He noted the
+40-term line was 216 characters against a usual length of ~260 and asked for ten
+more terms. Ten more is **a(50), at 295 characters** — past the 260 he cited, so
+both lines are given. Paste the first one; the second is the fallback if he
+asks for something inside 260.
+
+**a(1)-a(50) — what was asked for (295 chars):**
 
 ```
-1, 2, 4, 7, 12, 18, 28, 40, 57, 80, 110, 148, 200, 266, 348, 457, 592, 764, 978, 1248, 1580, 2000, 2508, 3142, 3913, 4868, 6016, 7430, 9128, 11200, 13682, 16692, 20282, 24616, 29762, 35945, 43272, 52026, 62366, 74668
+1, 2, 4, 7, 12, 18, 28, 40, 57, 80, 110, 148, 200, 266, 348, 457, 592, 764, 978, 1248, 1580, 2000, 2508, 3142, 3913, 4868, 6016, 7430, 9128, 11200, 13682, 16692, 20282, 24616, 29762, 35945, 43272, 52026, 62366, 74668, 89164, 106340, 126520, 150344, 178262, 211112, 249506, 294536, 347047, 408446
 ```
+
+**a(1)-a(45) — the strict-260 version (255 chars), only if he objects to length:**
+
+```
+1, 2, 4, 7, 12, 18, 28, 40, 57, 80, 110, 148, 200, 266, 348, 457, 592, 764, 978, 1248, 1580, 2000, 2508, 3142, 3913, 4868, 6016, 7430, 9128, 11200, 13682, 16692, 20282, 24616, 29762, 35945, 43272, 52026, 62366, 74668, 89164, 106340, 126520, 150344, 178262
+```
+
+Every term is computed by **three independent routes** that share no machinery:
+definition-based enumeration of all 2^(n-1) compositions (n ≤ 24), the proved
+closed form `2*A000041(n) - A000005(n)`, and a dynamic program counting weakly
+increasing compositions directly. All three agree, and rows 1..50 of the b-file
+in §7 match. Terms past n = 24 rest on the theorem rather than on enumeration —
+that is what the proof buys, and it is the reason the proof should go in with
+them.
 
 ## 2 · Extensions field
 
 ```
-a(26)-a(40) from <YOUR NAME>, <Mon DD YYYY>
+a(26)-a(50) from _Benjamin Schippers_, Sep 18 2026
 ```
+
+This replaces the `a(26)-a(40)` line already in the draft — it is the same
+unpublished edit, so it stays one line with its original date rather than
+becoming two. Use `a(26)-a(45)` if you paste the shorter DATA line.
 
 ## 3 · The comment that matters — the conjecture, proved
 
@@ -142,7 +164,7 @@ the file was written.
 **Send it only if you send the proof.** A 1000-term b-file backed by an unproved
 conjecture would be exactly the overclaim this package exists to avoid; backed by
 the theorem it is just arithmetic. If an editor takes the terms but not the proof,
-drop the b-file and keep the 40-term DATA line.
+drop the b-file and keep the 45-term DATA line.
 
 ---
 
@@ -174,3 +196,32 @@ drop the b-file and keep the 40-term DATA line.
    off."*
 6. **Save changes**, then **"These changes are ready for review by an OEIS
    editor"**.
+
+---
+
+## 10 · Editor correspondence — 2026-09-18
+
+The draft went to review and came back the same day.
+
+| who | what |
+|---|---|
+| Alois P. Heinz | Proposed the changes for review. |
+| Andrew Howroyd | "See edit screen. (usual length is 260 chars counting spaces and commas). This is currently at 216, so space for a few more terms." |
+| Andrew Howroyd | Proposed for review and commented: "Can you add another 10 terms. This is still short of the usual length." |
+
+Neither reviewer raised the proof, the formula, or the comment — the only ask is
+length. That is a good sign and not a verdict: a draft is proposed for review
+many times before an editor accepts it.
+
+**The one thing to notice.** Howroyd's 216-character count for the 40-term line
+is exactly reproduced by counting the DATA string with its commas and spaces, so
+his convention and the one used in §1 are the same. Ten more terms therefore
+lands at 295 characters, which is over the 260 he named. The likeliest reading
+is that he wants it *longer* and 260 was a rough target rather than a ceiling —
+both his comments push the same direction — so §1 leads with the 50-term line.
+The 45-term line exists so that a length objection costs a paste, not a round
+trip.
+
+**Still nobody's call but the editors'.** `keyword: more` coming off, whether the
+b-file is wanted, and whether the proof is accepted are all theirs. Do not argue
+any of them into the edit summary.
