@@ -629,7 +629,7 @@ This is the paper's one observational ask.
 |---|---|
 | radius | **bounded, not measured.** *k* and *b* trade off at b = 0.90. **[BLOCKED on the refit]** — the deliverable is a *k*–*b* posterior, not a point estimate. |
 | R★ | **catalogue.** TIC adopts Mann+2015 from M_K, so quoting TIC is not an independent check. Gaia GSP-Phot's 0.80 R☉ is model-based and unreliable for M dwarfs. **[BLOCKED on a Gaia-anchored R★.]** |
-| M★ | **disputed within the package.** Three routes give 0.60 M☉ (TIC v8, an independent implementation at 0.6001, and the same M_K relation); one line in the package says "Mann+2019 mass 0.72 M☉" with **no derivation recorded**. Flagged suspect, not silently corrected, because nobody involved has read Mann+2019 Table 6. |
+| M★ | **0.600 ± 0.013 M☉, settled 2026-09-18.** Mann+2019 at this star's M_K, from coefficients now checked against the authors' own 400,000-sample MCMC posterior by `scripts/mann_coefficients_check.py` — a better reference than Table 6, which reports that posterior's medians. Those medians give 0.605; the 0.9 % difference from this repo's implementation sits inside the relation's own 1.3 % spread. **The package's "Mann+2019 mass 0.72 M☉" is retracted**: the relation reaches 0.72 only at M_K = 4.19, 0.79 mag brighter than this star — a different object, not a different rounding — and Mann+2015's own M_Ks→M★ row gives 0.637, so it is not that older relation misattributed either. No derivation for the 0.72 exists. What survives is a smaller real systematic worth carrying: Mann+2015's and Mann+2019's mass relations **disagree by 6 % at this M_K, more than either one's quoted scatter**. Mann+2019 is the one to use — dynamical masses, against Mann+2015's semi-empirical model-derived ones. |
 | mass of the companion | **unknown**, and no photometry can fix it. |
 | ρ★ | **in tension.** The transit shape gives 1.644 ρ☉ (from SPOC's a/R★); the TIC catalogue gives 2.571 ρ☉. A factor of 1.56, like-for-like in solar units. A 2026-09-18 revision briefly claimed the two agree to 11 % by converting one side to cgs and not the other; that claim is retracted and **the tension is real**. At fixed period it means a non-circular orbit, an R★ smaller than TIC's, or a grazing fit sitting on a low-a/R★ branch — which is the radius problem seen from a second side. |
 | out-of-transit modulation | 3.80–3.87 d at 0.6–1.6 % in three sectors, ≈ 2 P_orb. Probably host rotation near a 2:1 commensurability. **Reported, not explained.** |
@@ -650,7 +650,10 @@ the standard promotion path.
 
 ## 7 · What is blocked, and what it blocks
 
-Three things in this draft are not finishable from the archive alone.
+Two things in this draft are not finishable from the archive alone. A third was
+listed here on 2026-09-18 and is recorded as resolved at the end of the section
+rather than deleted, on the same principle as Appendix B: a blocker list that quietly
+loses entries cannot be audited.
 
 1. **The limb-darkened refit and the Gaia-anchored R★.**
    `scripts/tic374861595_refit.py` performs a Mandel–Agol fit with Claret limb
@@ -658,19 +661,45 @@ Three things in this draft are not finishable from the archive alone.
    grazing degeneracy appears as a posterior rather than as a point estimate,
    and implements the Mann+2015/2019 relations from published coefficients so
    R★ is derived rather than copied. Its offline self-test passes 8/8 including
-   injection-recovery at SPOC's grazing geometry. **It has not been run on real
-   light curves**, because MAST is unreachable from the environments this work
-   was done in; it needs one run on a machine with archive access. Until then,
-   §6.4's radius, R★ and O−C rows stay blocked, and the abstract's bracketed
-   clause stays bracketed.
-   *One caveat travels with that script from its author: the Mann coefficients
+   injection-recovery at SPOC's grazing geometry. **A first run on real light
+   curves is under way** as of 2026-09-18 on a machine with archive access — the
+   environments the rest of this work was done in could not reach MAST. Its
+   numbers are **not** in this draft: §6.4's radius, R★ and O−C rows stay
+   blocked and the abstract's bracketed clause stays bracketed until the
+   posterior is in hand and has been read.
+   Two things about that run are already worth recording, because both change
+   what the finished rows can say. First, **the archive holds 24 SPOC 2-minute
+   sectors for this target, not the three the search used** — sectors 27 to 97,
+   378,654 cadences, BTJD 2036.3 to 3988.3, a **5.3-year baseline** carrying 289
+   transit windows. The O−C row was scoped against 73 cycles; it will be
+   answerable against several thousand, which is the difference between
+   "probably trapezoid mid-time bias" and a measurement. Second, the run must be
+   given `--backend numpy`: the optional `batman` path rebuilds its model inside
+   every likelihood call and is ~90× slower here (348 ms against 3.9 ms), which
+   makes the MCMC impractical rather than merely slow. The two backends agree to
+   1.54 ppm in the self-test, so this costs nothing but the flag.
+   *A caveat travelled with that script from its author — the Mann coefficients
    were reproduced from memory and corroborated only by reproducing TIC's own
-   R★ and M★ to four decimals. They must be checked against the published
-   tables before anything derived from them goes into print.*
-2. **The Mann+2019 0.72 M☉ line.** Flagged suspect in §6.4. Resolving it means
-   reading the table, not re-deriving from the same M_K a fourth time.
-3. **The population estimate for the generalisation in §8.** Not in this
+   R★ and M★ to four decimals, which is a weak check because TIC adopts the same
+   relation. That caveat is discharged as of 2026-09-18; see the resolved item
+   below. It does not unblock the refit itself, only the coefficients the refit
+   will use.*
+2. **The population estimate for the generalisation in §8.** Not in this
    repository and not attempted here.
+
+**Resolved, and kept on the list.** A third entry stood here: *the Mann+2019
+0.72 M☉ line*, which §6.4 had flagged suspect because nobody in the loop had
+read Mann+2019 Table 6. That is now done, from a stronger source than the
+printed table — the authors' own 400,000-sample MCMC posterior, of which Table 6
+reports the medians. `scripts/mann_coefficients_check.py` performs the
+comparison and exits nonzero if it ever stops holding. Findings: Mann+2015's
+three radius coefficients match the published table digit for digit; all six
+Mann+2019 mass coefficients sit within 1.31 σ of the authors' posterior median,
+and the zero point of 7.5 is confirmed against the authors' own `mk_mass.py`.
+The 0.72 is retracted (§6.4, Appendix B). One citation consequence: **Mann+2015
+Table 1 must be cited as corrected by the 2016 erratum, ApJ 819, 87** — the
+journal printed Tables 1–3 with press errors, and it is the erratum's values,
+not the original article's, that the relation here matches.
 
 Two further things gate publication rather than the draft: the repository's
 public-or-private status (§9), and the standing project rule that papers are
@@ -740,7 +769,7 @@ say "available on request".
 
 ## Appendix B · Corrections carried forward
 
-Three claims made during preparation were withdrawn and are recorded rather
+Four claims made during preparation were withdrawn and are recorded rather
 than overwritten, because a package that hides its retractions is not one a
 referee should trust:
 
@@ -749,3 +778,4 @@ referee should trust:
 | "stellar and L-type companions excluded by two orders of magnitude" | overstated; correct answer is 10–48× for stars, early-L marginal, cut-off T ≲ 1,800 K |
 | "the fit and catalogue densities agree to 11 %" | wrong; caused by converting one side to cgs and not the other. The factor-1.56 tension is real |
 | "12,898 targets searched" | a count of target-searches, not of stars; §3.1 |
+| "Mann+2019 mass 0.72 M☉" | wrong, and no derivation for it ever existed. Mann+2019 gives 0.605 M☉ at this star's M_K and reaches 0.72 only at M_K = 4.19, 0.79 mag brighter. Retracted 2026-09-18 against the authors' own posterior; §6.4, §7 |
