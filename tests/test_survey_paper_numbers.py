@@ -105,3 +105,50 @@ def test_draft_never_calls_the_searches_targets():
     bad = re.compile(r'(?<!")' + re.escape(searches) + r"\s+(targets|stars)\b", re.I)
     offenders = [line for line in text.splitlines() if bad.search(line)]
     assert not offenders, offenders
+
+
+DVR = ROOT / "docs" / "submissions" / "TIC374861595-spoc-s1-s96-dvr.xml"
+
+
+def _dv_sectors_observed():
+    """(count, lowest, highest) from the DV product's own bitmap, one-indexed.
+
+    Read one-indexed here because that is the stricter of the two readings the
+    draft names: it puts the earliest sector one number LATER, so a test that
+    passes under it also passes under the zero-indexed reading the draft
+    prefers. The draft states only what both readings agree on.
+    """
+    text = DVR.read_text(encoding="utf-8", errors="replace")
+    m = re.search(r'sectorsObserved="([01]+)"', text)
+    assert m, "the committed DV XML has no sectorsObserved bitmap"
+    on = [i + 1 for i, c in enumerate(m.group(1)) if c == "1"]
+    return len(on), min(on), max(on)
+
+
+def test_draft_does_not_claim_2018_coverage():
+    """§6.2 said "every 2-minute sector since 2018" and "seven years" until
+    2026-09-19. The DV product's own bitmap marks no sector early enough for
+    either to be true, and this is the grep that keeps them retracted.
+
+    A quoted occurrence is allowed: Appendix B prints the withdrawn wording.
+    """
+    count, lowest, highest = _dv_sectors_observed()
+    assert lowest > 20, (
+        f"the DV bitmap's earliest sector is {lowest}; if that ever drops into "
+        "TESS's first year the draft's 2020-onward statement needs rewriting")
+    text = DRAFT.read_text(encoding="utf-8")
+    banned = re.compile(r"(since 2018|in seven years|for seven years)", re.I)
+    quoted = re.compile(r'"[^"]*"')
+    offenders = [line for line in text.splitlines()
+                 if banned.search(quoted.sub("", line))]
+    assert not offenders, offenders
+
+
+def test_draft_sector_count_matches_the_dv_bitmap():
+    """The draft says 23 sectors. That number comes from the bitmap, and both
+    of the draft's two candidate readings agree on it, so it is the one sector
+    figure the paper is entitled to state without the light-curve files."""
+    count, _, _ = _dv_sectors_observed()
+    text = DRAFT.read_text(encoding="utf-8")
+    assert f"{count} sectors" in text, (
+        f"the DV bitmap marks {count} sectors; the draft does not say so")

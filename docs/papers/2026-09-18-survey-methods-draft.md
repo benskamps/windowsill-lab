@@ -99,8 +99,8 @@ and §4.4 describes the three weeks in 2026 when ours was exactly that, and how
 we found out.
 
 §6 works one object end to end. TIC 374861595 is not a discovery: SPOC found
-the signal first, in 2018, and has redetected it in every 2-minute sector
-since. What the survey adds is a blind recovery inside a sample whose size is
+the signal first, in 2020, and has redetected it in every 2-minute sector the
+target has been observed in since. What the survey adds is a blind recovery inside a sample whose size is
 known, and one measurement — a companion bound from the absent secondary
 eclipse that survives the grazing degeneracy — that the promotion path does not
 make and that was available in the same archive the whole time. We present it
@@ -570,13 +570,31 @@ object has stayed.
 ### 6.2 What SPOC saw first
 
 SPOC detected this signal as TCE 1 and has redetected it in every 2-minute
-sector since 2018. Its multi-sector Data Validation fit (sectors 1–96,
-`spoc-5.0.125`) reports 259 observed transits, MES 508.6, model SNR 507.4,
-bootstrap false-alarm probability 0, `suspectedEclipsingBinary: false`, an
-odd/even statistic of 1.288, and a difference-image centroid 0.60″ ± 2.50″ from
-the catalogue position across 23 sectors with all 23 quality metrics good.
+sector the target has been observed in. Its multi-sector Data Validation fit
+(product label `s1-s96`, `spoc-5.0.125`) reports 259 observed transits against
+980 expected, MES 508.6, model SNR 507.4, bootstrap false-alarm probability 0,
+`suspectedEclipsingBinary: false`, an odd/even statistic of 1.288, and a
+difference-image centroid 0.60″ ± 2.50″ from the catalogue position across 23
+sectors with all 23 quality metrics good.
 
-It was never promoted to TOI, in any sector, in seven years.
+**The coverage is 2020 onward, not 2018.** The DV product's own
+`sectorsObserved` bitmap marks 23 sectors and none of them early: the first
+falls in the high 20s and the last in the mid 90s, and the run described in §7
+found light curves for this target beginning at sector 27 — mid-2020, two years
+after TESS began. The span between the first and last cadence of the
+multi-sector fit is 1,365,963 two-minute cadences, **1,897 days ≈ 5.2 years**.
+An earlier revision of this section said "every 2-minute sector since 2018" and
+"seven years"; both were wrong, and both are retracted in Appendix B.
+
+*One detail is deliberately left imprecise here.* Read one-indexed, the bitmap
+names sectors 28–97; read zero-indexed it names 27–96, which is the reading
+that agrees with the product's own `s1-s96` label and with the sector-27 start
+the §7 run observed. The two readings differ by one sector number and agree on
+everything the argument uses — 23 sectors, first in 2020, a 5.2-year baseline.
+The exact list is settled by the light-curve files the §7 run already holds and
+should be stated from those, not from this bitmap.
+
+It was never promoted to TOI, in any sector, across that whole baseline.
 
 The likeliest reading — stated as a reading and not as fact — is on the DV
 summary sheet itself, which prints R_p = 28.9 ± 5.2 R⊕ in red. A 10 % V-shaped
@@ -643,8 +661,8 @@ signal was recovered without prior knowledge inside a sample of known size with
 a full disposition record, so its survival means something quantifiable rather
 than meaning that somebody found it interesting. And the surface-brightness
 bound in §6.3 is a measurement that was available in the same public archive
-for seven years, costs one pass over data already on disk, and is not part of
-the standard promotion path.
+for the whole 5.2-year baseline, costs one pass over data already on disk, and
+is not part of the standard promotion path.
 
 ---
 
@@ -769,7 +787,7 @@ say "available on request".
 
 ## Appendix B · Corrections carried forward
 
-Four claims made during preparation were withdrawn and are recorded rather
+Five claims made during preparation were withdrawn and are recorded rather
 than overwritten, because a package that hides its retractions is not one a
 referee should trust:
 
@@ -778,4 +796,5 @@ referee should trust:
 | "stellar and L-type companions excluded by two orders of magnitude" | overstated; correct answer is 10–48× for stars, early-L marginal, cut-off T ≲ 1,800 K |
 | "the fit and catalogue densities agree to 11 %" | wrong; caused by converting one side to cgs and not the other. The factor-1.56 tension is real |
 | "12,898 targets searched" | a count of target-searches, not of stars; §3.1 |
+| "SPOC has redetected it in every 2-minute sector since 2018" / "never promoted to TOI in seven years" | wrong on both counts. The DV product's own `sectorsObserved` bitmap marks 23 sectors, none early; the §7 run found light curves beginning at sector 27. Coverage starts in 2020 and spans 1,897 days ≈ 5.2 years. Retracted 2026-09-19 against the committed DV XML; §1, §6.2, §6.5 |
 | "Mann+2019 mass 0.72 M☉" | wrong, and no derivation for it ever existed. Mann+2019 gives 0.605 M☉ at this star's M_K and reaches 0.72 only at M_K = 4.19, 0.79 mag brighter. Retracted 2026-09-18 against the authors' own posterior; §6.4, §7 |
