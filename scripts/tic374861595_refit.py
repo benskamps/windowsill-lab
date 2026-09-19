@@ -1826,6 +1826,72 @@ def selftest(verbose=True) -> int:
 # ------------------------------------------------------------------ main --
 
 
+def joint_summary(chain, names=PARAM_NAMES, *, nbins=40):
+    """What the 16/50/84 marginals cannot say: how the parameters covary.
+
+    §6.4 of the survey paper argues that this fit does not measure a radius,
+    and the evidence for that is a *valley* in the (k, b) plane — a ridge of
+    near-equally-good solutions running from small-k/moderate-b to large-k/
+    past-grazing. A marginal percentile per parameter cannot show a valley;
+    it reports the shadow the valley casts on each axis, which looks like two
+    independent wide errors rather than one narrow correlated ridge. Quoting
+    marginals for a correlated posterior overstates the volume the data
+    actually allow, in the direction that makes the fit look worse behaved
+    than it is.
+
+    So this writes three things the marginals lose:
+
+    * the **covariance matrix and Pearson correlations**, which is the valley's
+      orientation and tightness in two numbers per pair;
+    * a **2-D histogram of (k, b)**, normalised, so the valley can be plotted
+      or re-read by anyone holding only this JSON — the chain itself need not
+      survive for the figure to be reproducible;
+    * two **physical fractions** that are the question a referee actually
+      asks. ``b > 1`` is the companion's centre leaving the stellar disc, which
+      is a strange but perfectly transiting geometry. ``b > 1 + k`` is no
+      overlap at all — *no transit* — and any posterior mass there is mass the
+      data demonstrably exclude, so a non-trivial fraction is a diagnostic of
+      the sampler or the priors, not a statement about the star.
+
+    Returns ``None`` for an empty or single-sample chain rather than raising:
+    a run whose error method produced no samples should lose this block, not
+    its receipt.
+    """
+    chain = np.asarray(chain, dtype=float)
+    if chain.ndim != 2 or chain.shape[0] < 2:
+        return None
+    ndim = min(len(names), chain.shape[1])
+    used = list(names[:ndim])
+    cols = chain[:, :ndim]
+    cov = np.cov(cols, rowvar=False, ddof=1)
+    sd = np.sqrt(np.diag(cov))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        corr = cov / np.outer(sd, sd)
+    corr = np.where(np.isfinite(corr), corr, 0.0)
+
+    out = {
+        "n_samples": int(cols.shape[0]),
+        "parameters": used,
+        "covariance": [[float(v) for v in row] for row in cov],
+        "correlation": [[float(v) for v in row] for row in corr],
+    }
+
+    if "k" in used and "b" in used:
+        ik, ib = used.index("k"), used.index("b")
+        k, b = cols[:, ik], cols[:, ib]
+        hist, kedges, bedges = np.histogram2d(k, b, bins=nbins)
+        total = hist.sum()
+        out["k_b"] = {
+            "correlation": float(corr[ik, ib]),
+            "k_edges": [float(x) for x in kedges],
+            "b_edges": [float(x) for x in bedges],
+            "density": [[float(v / total) for v in row] for row in hist],
+            "fraction_b_above_1": float(np.mean(b > 1.0)),
+            "fraction_no_overlap_b_above_1_plus_k": float(np.mean(b > 1.0 + k)),
+        }
+    return out
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description=("Limb-darkened transit refit + Gaia-anchored stellar "
@@ -1900,6 +1966,11 @@ def build_parser() -> argparse.ArgumentParser:
 
     p.add_argument("--json", type=Path, default=None,
                    help="write the full result as JSON")
+    p.add_argument("--chain", type=Path, default=None,
+                   help="write the flat posterior sample as CSV. The JSON's "
+                        "joint block summarises the (k, b) valley, but only "
+                        "the chain lets somebody else re-summarise it a way "
+                        "this script did not anticipate")
     p.add_argument("--quiet", action="store_true")
     return p
 
@@ -2031,9 +2102,26 @@ def main(argv=None) -> int:
             payload["fit"]["posterior_percentiles"] = {
                 name: [float(x) for x in np.percentile(chain[:, i], [16, 50, 84])]
                 for i, name in enumerate(PARAM_NAMES)}
+            joint = joint_summary(chain)
+            if joint is not None:
+                payload["fit"]["joint"] = joint
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(payload, indent=1), encoding="utf-8")
         log(f"\nwrote {args.json}")
+
+    if args.chain is not None:
+        if chain is None:
+            log("\n--chain asked for, but this error method produced no "
+                "samples; nothing written")
+        else:
+            arr = np.asarray(chain, dtype=float)
+            ndim = min(len(PARAM_NAMES), arr.shape[1])
+            args.chain.parent.mkdir(parents=True, exist_ok=True)
+            with args.chain.open("w", encoding="utf-8", newline="") as fh:
+                fh.write(",".join(PARAM_NAMES[:ndim]) + "\n")
+                for row in arr[:, :ndim]:
+                    fh.write(",".join(f"{v:.12g}" for v in row) + "\n")
+            log(f"wrote {args.chain} ({arr.shape[0]} samples)")
     return 0
 
 

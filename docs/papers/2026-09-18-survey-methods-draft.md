@@ -649,7 +649,7 @@ This is the paper's one observational ask.
 
 | quantity | state |
 |---|---|
-| radius | **bounded, not measured — and the refit widened the bound rather than closing it.** A limb-darkened Mandel–Agol fit over 24 sectors (§7) returns *k* = 0.544 (+0.111 / −0.101) and *b* = 1.053 ± 0.134: the median geometry places the companion's centre *outside* the stellar disc, and roughly two-thirds of the marginal *b* posterior lies above *b* = 1. Across 1 σ in *k*, R_p spans **2.65 to 3.92 R_Jup**, against SPOC's 2.59 ± 0.46. The *k*–*b* valley is the result here; a point estimate on it would be an artefact of where the sampler sat. *Quote k with b or not at all.* One deliverable is still outstanding: the run serialises 16/50/84 marginals, and the **joint** (*k*, *b*) posterior this row asks for needs the chain written out. |
+| radius | **bounded, not measured — and the refit widened the bound rather than closing it.** A limb-darkened Mandel–Agol fit over 24 sectors (§7) returns *k* = 0.544 (+0.111 / −0.101) and *b* = 1.053 ± 0.134: the median geometry places the companion's centre *outside* the stellar disc, and roughly two-thirds of the marginal *b* posterior lies above *b* = 1. Across 1 σ in *k*, R_p spans **2.65 to 3.92 R_Jup**, against SPOC's 2.59 ± 0.46. The *k*–*b* valley is the result here; a point estimate on it would be an artefact of where the sampler sat. *Quote k with b or not at all.* The joint posterior this row rests on is now serialisable — `--chain` writes the flat sample and the JSON carries a `joint` block with the covariance, the (*k*, *b*) correlation and a normalised 2-D density — but **the 2026-09-18 run predates that flag**, so the valley is asserted here from the marginals and the two-thirds figure rather than measured. One short re-run closes it; see §7. |
 | R★ | **0.6148 ± 0.0186 R☉, derived here** (M_K = 4.982 ± 0.028) from the measured 2MASS Ks = 11.710 ± 0.026 — PSC 05542154−6407473, Qflg AAA, Cflg 000 — and the **Gaia DR3** parallax 4.512610 ± 0.023275 mas (RUWE 1.05; TIC v8's 4.47187 is DR2). It reproduces TIC's 0.6159 to 0.2 %, which converts a copy into a check: TIC adopts Mann+2015 from M_K, so the agreement is expected, and the point is that the inputs are now measured rather than back-derived. Gaia GSP-Phot's 0.80 R☉ remains model-based and unreliable for M dwarfs, and is not adopted. |
 | M★ | **0.600 ± 0.013 M☉, settled 2026-09-18.** Mann+2019 at this star's M_K, from coefficients now checked against the authors' own 400,000-sample MCMC posterior by `scripts/mann_coefficients_check.py` — a better reference than Table 6, which reports that posterior's medians. Those medians give 0.605; the 0.9 % difference from this repo's implementation sits inside the relation's own 1.3 % spread. **The package's "Mann+2019 mass 0.72 M☉" is retracted**: the relation reaches 0.72 only at M_K = 4.19, 0.79 mag brighter than this star — a different object, not a different rounding — and Mann+2015's own M_Ks→M★ row gives 0.637, so it is not that older relation misattributed either. No derivation for the 0.72 exists. What survives is a smaller real systematic worth carrying: Mann+2015's and Mann+2019's mass relations **disagree by 6 % at this M_K, more than either one's quoted scatter**. Mann+2019 is the one to use — dynamical masses, against Mann+2015's semi-empirical model-derived ones. |
 | mass of the companion | **unknown**, and no photometry can fix it. |
@@ -700,10 +700,25 @@ here rather than in the table:
   1.053 ± 0.134, with the companion's centre outside the disc — and a *k* spanning
   2.65 to 3.92 R_Jup at 1 σ. That is the honest answer, and it is worse for the
   object than SPOC's was.
-- **One deliverable is still outstanding inside a resolved blocker.** The script
-  writes 16/50/84 marginals, not the chain, and the argument §6.4 makes is about
-  the *joint* (*k*, *b*) posterior. Marginals cannot show a valley. Writing the
-  chain out is a small change to the script and does not need new data.
+- **One deliverable was outstanding inside a resolved blocker; the code half is
+  now done, the data half is not.** The 2026-09-18 run wrote 16/50/84 marginals
+  and discarded the chain, and the argument §6.4 makes is about the *joint*
+  (*k*, *b*) posterior — marginals report the shadow a valley casts on each
+  axis, which looks like two independent wide errors rather than one narrow
+  correlated ridge, and therefore *overstates* the volume the data allow. As of
+  2026-09-19 the script takes `--chain <path>` and, whenever a sample exists,
+  writes a `joint` block into its JSON: the covariance and Pearson correlations
+  over all five parameters, a normalised 40 × 40 density in (*k*, *b*) so the
+  valley is plottable by anyone holding only the JSON, and two fractions —
+  *b* > 1 (centre outside the disc, strange but transiting) and *b* > 1 + *k*
+  (**no overlap at all, i.e. no transit**, where any posterior mass is mass the
+  data exclude and a non-trivial fraction indicts the sampler or the priors
+  rather than the star).
+  **What is still needed is one re-run**, and it is cheap rather than another
+  three hours: the walkers can start at the published solution, so a short
+  chain characterises the ridge's orientation and width long before the tails
+  converge. The published 16/50/84 marginals stay from the long run; the short
+  run supplies the joint only, and the draft must say which came from which.
 - **Use `--backend numpy`.** `--backend auto` selects `batman` whenever it is
   installed, and that path rebuilds its model inside every likelihood call:
   348 ms per evaluation against 3.9 ms, about 90×, which is the difference
