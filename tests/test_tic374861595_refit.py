@@ -637,6 +637,69 @@ def test_selftest_exits_zero():
     assert refit.selftest(verbose=False) == 0
 
 
+# --- the joint posterior (2026-09-19) ---------------------------------------
+#
+# The 2026-09-18 run wrote 16/50/84 marginals and dropped the chain, which is
+# the one thing §6.4 of the survey paper cannot argue from: its claim is that
+# k and b lie on a correlated ridge, and a marginal is that ridge's shadow on
+# one axis. These cover `joint_summary`, the block that fixes it.
+
+def _valley_chain(n=4000, seed=7):
+    """A synthetic posterior with a deliberate k-b ridge and known fractions."""
+    import numpy as _np
+    rng = _np.random.default_rng(seed)
+    k = rng.normal(0.54, 0.10, n)
+    b = 0.55 + 0.92 * k + rng.normal(0, 0.03, n)
+    return _np.column_stack([
+        _np.full(n, 1.9369), _np.full(n, 2036.5), k, 7.8 + 2 * (k - 0.54), b])
+
+
+def test_joint_summary_recovers_a_planted_correlation():
+    import numpy as _np
+    chain = _valley_chain()
+    j = refit.joint_summary(chain)
+    ik = j["parameters"].index("k")
+    ib = j["parameters"].index("b")
+    planted = float(_np.corrcoef(chain[:, ik], chain[:, ib])[0, 1])
+    assert j["k_b"]["correlation"] == pytest.approx(planted, abs=1e-9)
+    assert j["correlation"][ik][ib] == pytest.approx(planted, abs=1e-9)
+    assert j["k_b"]["correlation"] > 0.9, "a planted ridge must read as a ridge"
+
+
+def test_joint_density_is_normalised_and_gridded():
+    j = refit.joint_summary(_valley_chain(), nbins=25)
+    density = j["k_b"]["density"]
+    assert len(density) == 25 and all(len(row) == 25 for row in density)
+    assert len(j["k_b"]["k_edges"]) == 26
+    assert sum(map(sum, density)) == pytest.approx(1.0, abs=1e-9)
+
+
+def test_joint_reports_the_two_physical_fractions():
+    """b > 1 is odd geometry; b > 1 + k is no transit at all. The second is the
+    one that indicts the sampler rather than the star, so it is reported
+    separately and must be zero for a well-behaved planted posterior."""
+    import numpy as _np
+    chain = _valley_chain()
+    k, b = chain[:, 2], chain[:, 4]
+    j = refit.joint_summary(chain)
+    assert j["k_b"]["fraction_b_above_1"] == pytest.approx(float(_np.mean(b > 1)))
+    assert j["k_b"]["fraction_no_overlap_b_above_1_plus_k"] == 0.0
+
+
+def test_joint_summary_declines_rather_than_raises_on_a_useless_chain():
+    """An error method that produced no samples should cost the run its joint
+    block, never its receipt."""
+    import numpy as _np
+    assert refit.joint_summary(_np.zeros((1, 5))) is None
+    assert refit.joint_summary(_np.zeros((0, 5))) is None
+    assert refit.joint_summary(_np.zeros(5)) is None
+
+
+def test_chain_flag_is_offered():
+    parser = refit.build_parser()
+    args = parser.parse_args(["--chain", "c.npz"])
+    assert str(args.chain) == "c.npz"
+    assert parser.parse_args([]).chain is None
 # --- sector_coverage ---------------------------------------------------------
 # Added 2026-09-19. The 2026-09-18 run reported "24 sectors (27-97)" and no
 # artifact recorded which 24: the range was typed from the product count, and

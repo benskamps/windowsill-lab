@@ -1124,6 +1124,13 @@ def load_from_lightkurve(tic: str, *, exptime=120, max_sectors=None,
         sector = getattr(lcf.meta, "get", lambda *_: None)("SECTOR") \
             if hasattr(lcf, "meta") else None
         out.append({"t": t, "f": f / med, "ferr": ferr / med,
+                    # Keep the sector as a NUMBER, not only inside a display
+                    # string. The 2026-09-18 run's receipts recorded no sector
+                    # list at all, so "sectors 27 to 97" entered two documents
+                    # as prose read off a console and could not afterwards be
+                    # checked against anything. A range nobody can re-derive is
+                    # a claim, not a measurement.
+                    "sector": int(sector) if sector is not None else None,
                     "source": f"sector {sector}" if sector else "lightkurve"})
     if not out:
         raise RefitError("lightkurve returned products but none had usable cadences")
@@ -1141,6 +1148,11 @@ def sector_coverage(curves) -> dict:
     """
     sectors, unknown = [], 0
     for c in curves:
+        # Prefer the number the loader keeps; fall back to parsing the display
+        # string for curves produced before it did.
+        if isinstance(c.get("sector"), int):
+            sectors.append(c["sector"])
+            continue
         m = re.fullmatch(r"sector (\d+)", str(c.get("source", "")))
         if m:
             sectors.append(int(m.group(1)))
@@ -1850,6 +1862,72 @@ def selftest(verbose=True) -> int:
 # ------------------------------------------------------------------ main --
 
 
+def joint_summary(chain, names=PARAM_NAMES, *, nbins=40):
+    """What the 16/50/84 marginals cannot say: how the parameters covary.
+
+    §6.4 of the survey paper argues that this fit does not measure a radius,
+    and the evidence for that is a *valley* in the (k, b) plane — a ridge of
+    near-equally-good solutions running from small-k/moderate-b to large-k/
+    past-grazing. A marginal percentile per parameter cannot show a valley;
+    it reports the shadow the valley casts on each axis, which looks like two
+    independent wide errors rather than one narrow correlated ridge. Quoting
+    marginals for a correlated posterior overstates the volume the data
+    actually allow, in the direction that makes the fit look worse behaved
+    than it is.
+
+    So this writes three things the marginals lose:
+
+    * the **covariance matrix and Pearson correlations**, which is the valley's
+      orientation and tightness in two numbers per pair;
+    * a **2-D histogram of (k, b)**, normalised, so the valley can be plotted
+      or re-read by anyone holding only this JSON — the chain itself need not
+      survive for the figure to be reproducible;
+    * two **physical fractions** that are the question a referee actually
+      asks. ``b > 1`` is the companion's centre leaving the stellar disc, which
+      is a strange but perfectly transiting geometry. ``b > 1 + k`` is no
+      overlap at all — *no transit* — and any posterior mass there is mass the
+      data demonstrably exclude, so a non-trivial fraction is a diagnostic of
+      the sampler or the priors, not a statement about the star.
+
+    Returns ``None`` for an empty or single-sample chain rather than raising:
+    a run whose error method produced no samples should lose this block, not
+    its receipt.
+    """
+    chain = np.asarray(chain, dtype=float)
+    if chain.ndim != 2 or chain.shape[0] < 2:
+        return None
+    ndim = min(len(names), chain.shape[1])
+    used = list(names[:ndim])
+    cols = chain[:, :ndim]
+    cov = np.cov(cols, rowvar=False, ddof=1)
+    sd = np.sqrt(np.diag(cov))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        corr = cov / np.outer(sd, sd)
+    corr = np.where(np.isfinite(corr), corr, 0.0)
+
+    out = {
+        "n_samples": int(cols.shape[0]),
+        "parameters": used,
+        "covariance": [[float(v) for v in row] for row in cov],
+        "correlation": [[float(v) for v in row] for row in corr],
+    }
+
+    if "k" in used and "b" in used:
+        ik, ib = used.index("k"), used.index("b")
+        k, b = cols[:, ik], cols[:, ib]
+        hist, kedges, bedges = np.histogram2d(k, b, bins=nbins)
+        total = hist.sum()
+        out["k_b"] = {
+            "correlation": float(corr[ik, ib]),
+            "k_edges": [float(x) for x in kedges],
+            "b_edges": [float(x) for x in bedges],
+            "density": [[float(v / total) for v in row] for row in hist],
+            "fraction_b_above_1": float(np.mean(b > 1.0)),
+            "fraction_no_overlap_b_above_1_plus_k": float(np.mean(b > 1.0 + k)),
+        }
+    return out
+
+
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
         description=("Limb-darkened transit refit + Gaia-anchored stellar "
@@ -2052,6 +2130,11 @@ def main(argv=None) -> int:
     fit["n_cadences"] = int(t.size)
     fit["error_method"] = args.errors
     fit["sigma_ppm"] = float(sigma * 1e6)
+    # The list, not a range: a range implies every sector between its ends was
+    # observed, and for this target that is false by a wide margin.
+    fit["coverage"] = coverage
+    fit["btjd_first"] = float(min(c["t"].min() for c in curves))
+    fit["btjd_last"] = float(max(c["t"].max() for c in curves))
 
     print_summary(fit, star)
 
@@ -2073,7 +2156,17 @@ def main(argv=None) -> int:
             # Marginals are not a joint posterior, and the joint is exactly what
             # the k-b degeneracy argument needs: at b ~ 1 the two trade off hard,
             # so "k = 0.54 +0.11/-0.10" read alone overstates how determined the
-            # radius is. Ship the samples so the valley can be plotted.
+            # radius is.
+            #
+            # Two artifacts, because they fail differently. The `joint` block
+            # below is a SUMMARY and always written: covariance, correlations,
+            # a normalised (k, b) density, and the two physical fractions. It
+            # travels inside the receipt, so the valley stays plottable even if
+            # the chain is lost. `--chain` writes the SAMPLES, because a summary
+            # this script chose is not one somebody else can re-choose.
+            joint = joint_summary(chain)
+            if joint is not None:
+                payload["fit"]["joint"] = joint
             if args.chain:
                 args.chain.parent.mkdir(parents=True, exist_ok=True)
                 np.savez_compressed(args.chain, names=np.array(PARAM_NAMES),
@@ -2082,11 +2175,12 @@ def main(argv=None) -> int:
                     f"{chain.shape[1]} joint samples)")
             else:
                 payload["fit"]["posterior_note"] = (
-                    "16/50/84 marginals only; pass --chain to write the joint "
-                    "samples the k-b degeneracy argument needs")
+                    "16/50/84 marginals and a joint summary block; pass "
+                    "--chain to write the joint samples themselves")
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(payload, indent=1), encoding="utf-8")
         log(f"\nwrote {args.json}")
+
     return 0
 
 
