@@ -87,9 +87,24 @@ MASS_TOL_FRAC = 0.02
 TARGET_MK = 4.98  # the CTOI package's value for TIC 374861595
 
 
+class PosteriorUnavailable(RuntimeError):
+    """The 2019 half could not be RUN. Distinct from the check failing.
+
+    Exiting 1 for a missing import would say "the coefficients are wrong" in the
+    same breath as "astropy is not installed", and the whole point of this file
+    is that those two must never be confused.
+    """
+
+
 def _load_posterior(path: str | None):
     """Return the (n, 7) posterior array: a0..a5 and the [Fe/H] term f."""
-    from astropy.io import fits
+    try:
+        from astropy.io import fits
+    except ImportError as exc:                 # not a verification failure
+        raise PosteriorUnavailable(
+            "astropy is needed to read the authors' posterior "
+            "(pip install astropy). The Mann+2015 half above still ran."
+        ) from exc
 
     if path:
         return np.asarray(fits.getdata(path), dtype=float)
@@ -146,7 +161,16 @@ def main(argv=None):
     print("             github.com/awmann/M_-M_K- . Table 6 reports medians")
     print("             of this posterior, so sigma is the right yardstick.")
     print("=" * 78)
-    post = _load_posterior(args.posterior)
+    try:
+        post = _load_posterior(args.posterior)
+    except PosteriorUnavailable as exc:
+        print(f"  SKIPPED: {exc}")
+        print()
+        print("=" * 78)
+        print("Mann+2015: checked.  Mann+2019: NOT CHECKED (could not run).")
+        print("Exit 3 means undetermined, never 'the coefficients disagree'.")
+        print("=" * 78)
+        return 3
     print(f"  posterior: {post.shape[0]:,} samples x {post.shape[1]} parameters")
     med = np.median(post[:, :6], axis=0)
     sig = np.std(post[:, :6], axis=0)
@@ -191,12 +215,34 @@ def main(argv=None):
     print("-" * 78)
     print("the package's \"Mann+2019 mass 0.72 Msun\" line, flagged suspect")
     print("-" * 78)
-    from scipy.optimize import brentq
+    # scipy is a heavy dependency to carry for one root-find on a monotone
+    # function, and an unguarded import here would exit 1 — indistinguishable
+    # from "the coefficients disagree", which is the one confusion this file
+    # exists to prevent. Bisect it ourselves instead.
+    def _mk_at_mass(target, lo=3.0, hi=7.0):
+        # mass falls monotonically with M_K over this range, so plain bisection
+        # converges and needs nothing but the relation already in hand.
+        if (float(_mass_from(med, lo)) - target) * \
+           (float(_mass_from(med, hi)) - target) > 0:
+            return None                         # not bracketed; say so, do not guess
+        for _ in range(200):
+            mid = 0.5 * (lo + hi)
+            if (float(_mass_from(med, lo)) - target) * \
+               (float(_mass_from(med, mid)) - target) <= 0:
+                hi = mid
+            else:
+                lo = mid
+        return 0.5 * (lo + hi)
 
-    mk_072 = brentq(lambda mk: float(_mass_from(med, mk)) - 0.72, 3.0, 7.0)
+    mk_072 = _mk_at_mass(0.72)
+    if mk_072 is None:
+        print("  Mann+2019 never returns 0.72 Msun for 3 < M_K < 7 at all.")
+        mk_072 = float("nan")
+    # Absolute magnitude runs backwards: a SMALLER M_K is a brighter star. The
+    # 0.72 root sits below this star's M_K, so it is brighter, not fainter.
     print(f"  Mann+2019 returns 0.72 Msun at M_K = {mk_072:.3f}, which is "
           f"{args.mk - mk_072:.2f} mag")
-    print(f"  fainter than this star's {args.mk}. At this star's M_K the "
+    print(f"  brighter than this star's {args.mk}. At this star's M_K the "
           f"relation gives {m_med:.4f}.")
     print("  Mann+2015's own mass relation (Table 1, 4th order) gives "
           f"{_mann15_mass(args.mk):.4f},")
