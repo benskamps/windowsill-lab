@@ -1,0 +1,84 @@
+transit model backend: numpy  (pip install batman-package for the analytic model; the numpy integrator here is checked against it in --selftest)
+searching MAST for TIC 374861595 (SPOC, 120s)…
+  24 products; downloading…
+  24 light curves, 378654 good cadences, BTJD 2036.279 to 3988.285
+  289 transit windows kept, 105227 cadences in the fit, per-point sigma 13419 ppm
+fitting…
+  period=1.9369528, epoch=2036.5458, k=0.50515109, a_rstar=7.7811383, b=1.0024358
+sampling (32 walkers x 4000 steps)…
+  emcee acceptance fraction 0.299, 80000 samples after burn-in
+==============================================================================
+TIC 374861595 — limb-darkened refit + Gaia-anchored host
+==============================================================================
+HOST STAR (derived here, not copied from a catalogue)
+------------------------------------------------------------------------------
+  K (2MASS)            11.71 ± 0.026 mag
+  parallax             4.513 ± 0.023 mas   -> 221.6 pc
+  A_K applied          0.000 mag
+  M_K                  4.982 ± 0.028 mag
+  R* (Mann+2015)       0.6148 ± 0.019 Rsun      [TIC v8: 0.6159 ± 0.0186]
+  M* (Mann+2019)       0.5998 ± 0.019 Msun
+  rho* (M*/R*^3)       3.64 ± 0.35 g/cm^3   = 2.581 ± 0.25 rho_sun
+TRANSIT FIT (this script)
+------------------------------------------------------------------------------
+  model backend        numpy
+  limb darkening       nonlinear, fixed: 0.690942, 0.137553, -0.0282718, -0.0297318
+  period               1.936952791 ± 1.1e-07 d
+  epoch                2036.545753 ± 7e-05 BTJD
+                       2459036.545753 BJD_TDB
+  Rp/R*                0.5052 ± 0.098
+  a/R*                 7.781 ± 0.15
+  b                    1.002 ± 0.12   (GRAZING, i = 82.598 deg)
+  depth (of the model) 105516.5 ppm
+  T14 / T23 / ingress  2.1608 / — / — h
+  chi2 / dof           96652.0 / 105227 pts   -> reduced 0.9186
+  Rp = k x R*          3.022 ± 0.59 R_Jup  = 33.91 ± 6.6 R_Earth
+DENSITY CROSS-CHECK  (the one place star and light curve meet)
+------------------------------------------------------------------------------
+  Two routes with NO shared inputs: the transit shape (a/R*, P) knows no
+  stellar model; the Mann relations know no photometry of this transit.
+  rho from transit shape   2.3754 g/cm^3   = 1.6845 rho_sun
+  rho from Mann relations  3.6399 g/cm^3   = 2.5812 rho_sun
+  ratio (transit/star)     0.653
+  a/R* the star implies    8.971   (fit says 7.781)
+  -> These do not agree. A circular orbit around this star cannot
+     produce this transit shape. The live explanations are (i) the
+     grazing degeneracy put the fit on the wrong branch, (ii) the
+     orbit is eccentric, (iii) the host is not the star the Mann
+     relations describe (unresolved blend). This is a result to
+     report, not a number to average away.
+COMPARISON  (lab trapezoid | SPOC DV s1-s96 | this refit)
+------------------------------------------------------------------------------
+  quantity       lab trapezoid                SPOC DV                      this refit
+  period (d)     1.936909299 ± 2.5e-06        1.936948445 ± 2.1e-07        1.936952791 ± 1.1e-07
+  epoch (BTJD)   2172.136531 ± 7.9e-05        2036.547942 ± 4.7e-05        2036.545753 ± 7e-05
+  depth (ppm)    84140 ± 372                  104603 ± 405                 105516
+  T14 (h)        1.5731 ± 0.0044              2.1534                       2.1608
+  ingress (h)    — (fixed 0.15 T14)           1.0767                       —
+  Rp/R*          0.301                        0.4299 ± 0.076               0.5052 ± 0.098
+  a/R*           10.68                        7.71 ± 0.05                  7.781 ± 0.15
+  b              0.29                         0.9 ± 0.11                   1.002 ± 0.12
+  R* (Rsun)      0.6159 (TIC)                 0.6159 (TIC)                 0.6148 ± 0.019 (Mann+15)
+  rho* (g/cm^3)  6.142 (shape)                2.311 (shape)                2.375 (shape) / 3.640 (star)
+CAVEATS a reader must carry out of this table
+------------------------------------------------------------------------------
+  * A grazing transit does not determine k. Along the b-vs-k valley, a
+    deeper planet further off-centre fits as well as a shallower one
+    nearer the middle; SPOC's own +/-0.076 on k = 0.430 is that valley,
+    not a measurement error. Quote k with b, or do not quote it.
+  * These errors are photometric only. They contain no dilution error,
+    no limb-darkening-coefficient error (the Claret values are held
+    fixed unless --free-ld), and no stellar-model error beyond the Mann
+    relation scatter.
+  * Nothing here measures a mass. The package's disposition is still
+    'planet candidate', and only a radial-velocity follow-up moves it.
+  * PDCSAP flux is already crowding-corrected by SPOC, so no dilution
+    correction is applied here. If you feed this SAP flux instead, the
+    depth will be too shallow and nothing in this script will notice.
+  * A dash in the T23 or ingress column is not a missing number. b > 1-k
+    means the transit has no flat bottom and no second contact, so both
+    are undefined. SPOC's DV nonetheless prints an ingress of 1.0767 h
+    for the same grazing geometry — exactly half its own T14. Read that
+    as its fitter's convention, not as a measured second contact.
+==============================================================================
+wrote C:\Users\beschipp\AppData\Local\Temp\claude\C--Users-beschipp\e2232ebc-e587-407a-a6de-b3cca10dec75\scratchpad\TIC374861595-refit.json
