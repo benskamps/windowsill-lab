@@ -655,7 +655,8 @@ This is the paper's one observational ask.
 | mass of the companion | **unknown**, and no photometry can fix it. |
 | ρ★ | **in tension, and the tension survived both a better fit and a derived radius.** The transit shape gives 1.644 ρ☉ from SPOC's a/R★ and 1.685 ρ☉ (2.375 g/cm³) from the refit's own; the star gives 2.581 ρ☉ (3.640 g/cm³). Stated as the quantity the shape actually constrains: the star implies a/R★ = 8.971, the refit returns **7.781 ± 0.155 — a 7.7 σ disagreement**. A 2026-09-18 revision briefly claimed the two agree to 11 % by converting one side to cgs and not the other; that claim is retracted and the tension is real. Three explanations remain, and the refit removed the easiest one: **"R★ is smaller than TIC's" is now the weakest**, because R★ is derived above from measured photometry and DR3 astrometry rather than copied. What is left is a non-circular orbit, a fit sitting on the wrong branch of the grazing valley, or **an unresolved blend — the transit not being on the star these relations describe**. This is a result to report, not a number to average away. |
 | out-of-transit modulation | 3.80–3.87 d at 0.6–1.6 % in three sectors, ≈ 2 P_orb. Probably host rotation near a 2:1 commensurability. **Reported, not explained.** |
-| O−C drift | **Explained, and it is not a TTV.** The guess above — trapezoid bias — was right in spirit and wrong in detail: the error is in the trapezoid's *period*, not in its mid-times. The trapezoid period sits **3.382 s per cycle** short of SPOC's, 16 σ on its own quoted error, and a period error alone predicts **−4.12 min** of drift across 73 cycles against the **−4.40 min** observed. That is agreement to 7 %, from one number, with nothing fitted to it. No TTV is required and none is claimed; this is not the more interesting paper. Supporting: a single linear ephemeris fits all 289 transit windows over the 5.3-year baseline at **χ²ᵥ = 0.919** on 105,227 points, so there is no large timing structure left to find. One residual is recorded rather than resolved: the refit's own period, 1.936952791 ± 1.1 × 10⁻⁷ d, differs from SPOC's 1.936948445 ± 2.1 × 10⁻⁷ by 0.376 s per cycle — formally 18 σ, across different sector coverage (27–97 against 1–96), and most likely systematic. **SPOC's ephemeris is the one this paper quotes.** |
+| O−C drift | **Explained, and it is not a TTV.** The guess above — trapezoid bias — was right in spirit and wrong in detail: the error is in the trapezoid's *period*, not in its mid-times. The trapezoid period sits **3.382 s per cycle** short of SPOC's, 16 σ on its own quoted error, and a period error alone predicts **−4.12 min** of drift across 73 cycles against the **−4.40 min** observed. That is agreement to 7 %, from one number, with nothing fitted to it. No TTV is required and none is claimed; this is not the more interesting paper. Supporting: a single linear ephemeris fits all 289 transit windows over the 5.3-year baseline at **χ²ᵥ = 0.919** on 105,227 points, so there is no large timing structure left to find. One residual is recorded rather than resolved: the refit's own period, 1.936952791 ± 1.1 × 10⁻⁷ d, differs from SPOC's 1.936948445 ± 2.1 × 10⁻⁷ by 0.376 s per cycle — formally 18 σ, across different sector coverage (the refit's 24 downloaded sectors against
+SPOC's multi-sector product), and most likely systematic. **SPOC's ephemeris is the one this paper quotes.** |
 
 ### 6.5 What the survey contributed, stated narrowly
 
@@ -690,7 +691,8 @@ and feeds §6.4's radius, R★, ρ★ and O−C rows. Four things about that run
 here rather than in the table:
 
 - **The archive holds 24 SPOC 2-minute sectors, not the three the search used** —
-  sectors 27 to 97, 378,654 cadences, BTJD 2036.3 to 3988.3, a **5.3-year
+  24 sectors beginning at sector 27, 378,654 cadences, BTJD 2036.3 to 3988.3,
+  a **5.3-year
   baseline** with 289 transit windows and 105,227 cadences in the fit. Every
   statement in §6.4 that was scoped against three sectors is now scoped against
   twenty-four.
@@ -719,6 +721,20 @@ here rather than in the table:
   chain characterises the ridge's orientation and width long before the tails
   converge. The published 16/50/84 marginals stay from the long run; the short
   run supplies the joint only, and the draft must say which came from which.
+- **The sector list is not in the receipts, and a range was asserted where one
+  should not have been.** The 2026-09-18 run's committed JSON and log record
+  the cadence count and the BTJD span but no sector numbers, so "sectors 27 to
+  97" reached two documents as prose read off a console. It does not survive
+  checking: 24 sectors ending at 97 requires the DV bitmap to be read
+  one-indexed, while the product's own `s1-s96` label requires the opposite,
+  and no committed artifact settles it (§6.2 says the same). What is safe is
+  the count and the start — **24 sectors, the first of them sector 27** — and
+  that is all this draft now says. As of 2026-09-19 the script keeps each
+  sector as a number rather than only inside a display string and writes
+  `fit.sectors`, `fit.n_sectors` and the BTJD endpoints into its JSON, so the
+  next run records the list instead of a reader inferring a range. A range
+  implies every sector between its ends was observed, and for this target that
+  is false by a wide margin.
 - **Use `--backend numpy`.** `--backend auto` selects `batman` whenever it is
   installed, and that path rebuilds its model inside every likelihood call:
   348 ms per evaluation against 3.9 ms, about 90×, which is the difference
@@ -811,7 +827,7 @@ say "available on request".
 
 ## Appendix B · Corrections carried forward
 
-Five claims made during preparation were withdrawn and are recorded rather
+Six claims made during preparation were withdrawn and are recorded rather
 than overwritten, because a package that hides its retractions is not one a
 referee should trust:
 
@@ -820,5 +836,6 @@ referee should trust:
 | "stellar and L-type companions excluded by two orders of magnitude" | overstated; correct answer is 10–48× for stars, early-L marginal, cut-off T ≲ 1,800 K |
 | "the fit and catalogue densities agree to 11 %" | wrong; caused by converting one side to cgs and not the other. The factor-1.56 tension is real |
 | "12,898 targets searched" | a count of target-searches, not of stars; §3.1 |
+| "the refit covered sectors 27–97" | a range nobody can re-derive: the 2026-09-18 receipts record no sector list, and the two readings of the DV bitmap disagree about the top end. What is supported is 24 sectors beginning at sector 27. Corrected 2026-09-19; §6.4, §7 |
 | "SPOC has redetected it in every 2-minute sector since 2018" / "never promoted to TOI in seven years" | wrong on both counts. The DV product's own `sectorsObserved` bitmap marks 23 sectors, none early; the §7 run found light curves beginning at sector 27. Coverage starts in 2020 and spans 1,897 days ≈ 5.2 years. Retracted 2026-09-19 against the committed DV XML; §1, §6.2, §6.5 |
 | "Mann+2019 mass 0.72 M☉" | wrong, and no derivation for it ever existed. Mann+2019 gives 0.605 M☉ at this star's M_K and reaches 0.72 only at M_K = 4.19, 0.79 mag brighter. Retracted 2026-09-18 against the authors' own posterior; §6.4, §7 |

@@ -1123,6 +1123,13 @@ def load_from_lightkurve(tic: str, *, exptime=120, max_sectors=None,
         sector = getattr(lcf.meta, "get", lambda *_: None)("SECTOR") \
             if hasattr(lcf, "meta") else None
         out.append({"t": t, "f": f / med, "ferr": ferr / med,
+                    # Keep the sector as a NUMBER, not only inside a display
+                    # string. The 2026-09-18 run's receipts recorded no sector
+                    # list at all, so "sectors 27 to 97" entered two documents
+                    # as prose read off a console and could not afterwards be
+                    # checked against anything. A range nobody can re-derive is
+                    # a claim, not a measurement.
+                    "sector": int(sector) if sector is not None else None,
                     "source": f"sector {sector}" if sector else "lightkurve"})
     if not out:
         raise RefitError("lightkurve returned products but none had usable cadences")
@@ -2040,6 +2047,13 @@ def main(argv=None) -> int:
     log(f"  {len(curves)} light curves, {n_pts} good cadences, "
         f"BTJD {min(c['t'].min() for c in curves):.3f} to "
         f"{max(c['t'].max() for c in curves):.3f}")
+    sectors = sorted({c["sector"] for c in curves
+                      if isinstance(c.get("sector"), int)})
+    if sectors:
+        log(f"  sectors {', '.join(str(s) for s in sectors)}")
+    else:
+        log("  sector numbers unavailable from these products — the receipt "
+            "will say so rather than imply a range")
 
     guess = (args.period, args.epoch, args.k, args.a_rstar, args.b)
     t14_guess = transit_durations(*[guess[0], guess[2], guess[3], guess[4]])[0]
@@ -2085,6 +2099,12 @@ def main(argv=None) -> int:
     fit["n_cadences"] = int(t.size)
     fit["error_method"] = args.errors
     fit["sigma_ppm"] = float(sigma * 1e6)
+    # The list, not a range: a range implies every sector between its ends was
+    # observed, and for this target that is false by a wide margin.
+    fit["sectors"] = sectors or None
+    fit["n_sectors"] = len(sectors) or None
+    fit["btjd_first"] = float(min(c["t"].min() for c in curves))
+    fit["btjd_last"] = float(max(c["t"].max() for c in curves))
 
     print_summary(fit, star)
 
