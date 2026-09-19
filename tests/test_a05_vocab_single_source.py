@@ -28,15 +28,13 @@ derivation.
 """
 from __future__ import annotations
 
-import builtins
 import importlib
 import importlib.util
-import json
+import os
+import subprocess
 import sys
-from datetime import date
+import textwrap
 from pathlib import Path
-
-import pytest
 
 from lab import a05_sensitivity, a05_vocab, checks, shelf
 
@@ -168,25 +166,40 @@ def test_the_checker_stays_importable_without_numpy():
     numpy into `lab.checks`, so the contract moved to the stdlib-only module.
     A future simplification that points checks.py back at `a05_sensitivity`
     passes every test above and fails this one.
+
+    It runs in a SUBPROCESS, and that is not incidental. Blocking numpy means
+    clearing `lab.*` out of `sys.modules` — anything already imported would
+    sail past the block — and putting them back is not enough: reloading
+    `lab.checks` rebinds every function it defines, so a module that did
+    `from lab.checks import check_controls` at import time is left holding an
+    object the fresh `CHECKS` dict no longer contains. An earlier draft of this
+    file did exactly that and broke
+    `test_controls.py::test_registered_in_checks` from two files away. A child
+    process has its own `sys.modules` and cannot reach this one's.
     """
-    real_import = builtins.__import__
+    probe = textwrap.dedent("""
+        import builtins, sys
+        _real = builtins.__import__
 
-    def no_numpy(name, *args, **kwargs):
-        if name == "numpy" or name.startswith("numpy."):
-            raise ImportError("numpy is unavailable in this test")
-        return real_import(name, *args, **kwargs)
+        def _no_numpy(name, *args, **kwargs):
+            if name == "numpy" or name.startswith("numpy."):
+                raise ImportError("numpy is unavailable in this probe")
+            return _real(name, *args, **kwargs)
 
-    stashed = {k: v for k, v in sys.modules.items()
-               if k == "numpy" or k.startswith("numpy.")
-               or k in ("lab.checks", "lab.a05_vocab")}
-    for k in stashed:
-        del sys.modules[k]
-    builtins.__import__ = no_numpy
-    try:
-        fresh = importlib.import_module("lab.checks")
-        assert fresh.A05_DOSSIER_PANELS
-        assert fresh.A05_MACHINE_VOCABULARY
-    finally:
-        builtins.__import__ = real_import
-        sys.modules.update(stashed)
-        importlib.reload(importlib.import_module("lab.checks"))
+        builtins.__import__ = _no_numpy
+        for _m in [m for m in sys.modules if m == "numpy" or m.startswith("numpy.")]:
+            del sys.modules[_m]
+
+        import lab.checks as checks
+        assert checks.A05_DOSSIER_PANELS, "the dossier contract did not arrive"
+        assert checks.A05_MACHINE_VOCABULARY, "the vocabulary did not arrive"
+        assert "numpy" not in sys.modules, "importing lab.checks pulled in numpy"
+        print("OK")
+    """)
+    src = Path(__file__).resolve().parents[1] / "src"
+    env = {**os.environ, "PYTHONPATH": str(src)}
+    result = subprocess.run([sys.executable, "-c", probe], capture_output=True,
+                            text=True, env=env)
+    assert result.returncode == 0, (
+        "lab.checks is no longer importable without numpy:\n" + result.stderr)
+    assert "OK" in result.stdout
