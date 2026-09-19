@@ -238,6 +238,33 @@ both his comments push the same direction — so §1 leads with the 50-term line
 The 45-term line exists so that a length objection costs a paste, not a round
 trip.
 
+### 10a · The editors may have already done it — 2026-09-18, later
+
+A report reaching this branch says that within about 80 minutes the editors
+made the change themselves: **Heinz extended DATA to a(46) and set EXTENSIONS to
+`a(26)-a(46)`, Song swapped `more` for `easy`, Howroyd trimmed the FORMULA and
+COMMENT wording, and Heinz added `Cf. A000005, A000041`.**
+
+**This is unverified from here.** The OEIS draft page is not fetchable in this
+session, and the *published* entry still shows 25 terms, which proves nothing
+either way because a draft is not merged until an editor accepts it. So it is
+recorded as a report, not as fact.
+
+**If it is accurate, §1 is superseded and must not be pasted** — the 50-term
+line would revert three editors' edits in one save, which is the fastest way to
+lose the goodwill this draft currently has. The check is the last number on the
+DATA line: `211112` means 46 terms and the editors have it; `74668` means 40 and
+§1 still applies; `408446` means the 50-term line already went in.
+
+a(46) = 211112 agrees with the closed form, the enumeration route and the b-file
+in §7, so if the editors' line ends there, their terms are right and there is
+nothing to correct.
+
+**What this vindicates.** §6 said to leave `keyword: more` to the editor and say
+so in the comment box rather than editing it. Song removed it unprompted. The
+editors also wrote the terms themselves rather than waiting — which is the
+normal way an OEIS draft converges, and a reason not to race them.
+
 **Still nobody's call but the editors'.** `keyword: more` coming off,
 `keyword: easy` going on, whether the b-file is wanted, and whether the proof is
 accepted are all theirs. Do not argue any of them into the edit summary — and in
