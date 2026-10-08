@@ -203,3 +203,41 @@ def test_a_foreign_receipt_is_not_graded(tmp_path, monkeypatch):
     _unused, checks = _receipt(tmp_path, monkeypatch)
     ok, _detail = checks.check_a02({"experiment": "a05-survey-hunt"})
     assert ok is None
+
+
+def _two_copies(tmp_path, monkeypatch):
+    """One filename, two byte streams: the AE UMa case from 2026-09-06, where
+    MAST served the Windows box different bytes under the Linux box's name."""
+    import hashlib
+    from lab import checks
+
+    monkeypatch.setattr(checks, "REPORTS_DIR", tmp_path / "reports")
+    name = "tess-same-name_lc.fits"
+    first = tmp_path / "evidence" / "a02" / name
+    first.parent.mkdir(parents=True)
+    first.write_bytes(b"linux box bytes")
+    other = b"windows box bytes"
+    keyed = tmp_path / "evidence" / "a02" / hashlib.sha256(other).hexdigest()[:12] / name
+    keyed.parent.mkdir(parents=True)
+    keyed.write_bytes(other)
+    return checks, name, first, keyed, hashlib.sha256(other).hexdigest()
+
+
+def test_a_second_copy_under_its_pin_is_found(tmp_path, monkeypatch):
+    checks, name, _first, keyed, pin = _two_copies(tmp_path, monkeypatch)
+    assert checks._evidence_path(name, None, sha256=pin) == keyed
+
+
+def test_the_unkeyed_copy_still_answers_its_own_pin(tmp_path, monkeypatch):
+    import hashlib
+    checks, name, first, _keyed, _pin = _two_copies(tmp_path, monkeypatch)
+    pin = hashlib.sha256(b"linux box bytes").hexdigest()
+    assert checks._evidence_path(name, None, sha256=pin) == first
+
+
+def test_no_matching_copy_falls_back_so_the_pin_check_still_fires(tmp_path, monkeypatch):
+    """The lookup must never launder a mismatch: with no copy matching, it hands
+    back the first candidate and the caller's pin check reports tampering."""
+    checks, name, first, _keyed, _pin = _two_copies(tmp_path, monkeypatch)
+    assert checks._evidence_path(name, None, sha256="0" * 64) == first
+    assert checks._evidence_path(name, None) == first
