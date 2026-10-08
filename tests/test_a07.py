@@ -168,7 +168,11 @@ def test_a_tampered_cache_is_false_never_a_shrug(tmp_path, monkeypatch):
 
 
 def test_a_missing_cache_is_none_cannot_rederive(tmp_path, monkeypatch):
+    from lab import checks
     report = _passing_report(tmp_path, monkeypatch)
+    # Point evidence/ somewhere empty: the repo now commits the real tables
+    # under these same names, which would otherwise be found instead.
+    monkeypatch.setattr(checks, "REPORTS_DIR", tmp_path / "no-repo" / "reports")
     (tmp_path / a07.cache_basename("503")).unlink()
     ok, why = check_a07(report)
     assert ok is None
@@ -178,3 +182,16 @@ def test_a_missing_cache_is_none_cannot_rederive(tmp_path, monkeypatch):
 def test_a_foreign_receipt_is_not_graded(tmp_path):
     ok, why = check_a07({"experiment": "A04-blind-transit-search"})
     assert ok is None
+
+
+def test_the_committed_evidence_copy_stands_in_for_a_missing_cache(tmp_path, monkeypatch):
+    """A clean checkout has no ~/.lab cache; evidence/a07/ must carry the run."""
+    from lab import checks
+    report = _passing_report(tmp_path, monkeypatch)
+    repo = tmp_path / "repo"
+    (repo / "evidence" / "a07").mkdir(parents=True)
+    monkeypatch.setattr(checks, "REPORTS_DIR", repo / "reports")
+    name = a07.cache_basename("503")
+    (tmp_path / name).rename(repo / "evidence" / "a07" / name)
+    ok, why = check_a07(report)
+    assert ok is True, why
