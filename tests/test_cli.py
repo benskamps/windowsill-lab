@@ -373,7 +373,7 @@ def test_every_runners_entry_resolves_to_a_real_dispatch_branch():
     import re
     from lab.curriculum import RUNNERS
 
-    source = inspect.getsource(cli.main)
+    source = inspect.getsource(cli._main)
     branches = set(re.findall(r'cmd\s*(?:==|in\s*\()\s*\(?["\']([\w-]+)["\']', source))
     branches |= set(re.findall(r'["\']([\w-]+)["\']', " ".join(
         m.group(1) for m in re.finditer(r'cmd\s+in\s+\(([^)]*)\)', source))))

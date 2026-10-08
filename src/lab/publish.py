@@ -1898,6 +1898,9 @@ def publish(gist_id: str | None = None, quiet: bool = False) -> Path:
     secret required. A nightly run commits + pushes it. ``gist_id`` (or the
     ``POT_GIST_ID`` env var) remains an optional legacy push target.
     """
+    from . import quickrun
+    if quickrun.active():
+        raise quickrun.QuickRunNotPublished()
     # Receipts must exist before collect(): the archive ledger then publishes a
     # stable evidence URL for each run in this very snapshot.
     ensure_public_receipts()
