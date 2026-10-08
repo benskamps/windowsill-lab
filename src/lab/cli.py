@@ -552,7 +552,7 @@ def _parse_m02(args):
                    help="'wolff' (cluster, near-T_c; unlocks L≥512) or 'metropolis'")
     p.add_argument("--wolff-init", default="ordered",
                    help="wolff start: 'ordered' (fast burn-in at scale) or 'random'")
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m03(args):
@@ -570,7 +570,7 @@ def _parse_m03(args):
     p.add_argument("--seed", type=int, default=42)
     p.add_argument("--updater", default="wolff",
                    help="'wolff' (cluster, near-T_c) or 'metropolis'")
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m06(args):
@@ -591,7 +591,7 @@ def _parse_m06(args):
                         "'wolff' (3D cluster updater, beats critical slowing for larger L)")
     p.add_argument("--device", default="cpu",
                    help="torch device for the wolff updater (ignored by metropolis)")
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m04(args):
@@ -607,7 +607,7 @@ def _parse_m04(args):
     p.add_argument("--burnin", type=int, default=8000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m05(args):
@@ -625,7 +625,7 @@ def _parse_m05(args):
     p.add_argument("--burnin", type=int, default=8000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m05_hex(args):
@@ -646,7 +646,7 @@ def _parse_m05_hex(args):
     p.add_argument("--burnin", type=int, default=8000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m07(args):
@@ -678,7 +678,7 @@ def _parse_m07(args):
                    help="'wolff' (cluster, default) or 'metropolis' (cross-check)")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m08(args):
@@ -704,7 +704,7 @@ def _parse_m08(args):
                    help="'metropolis' (+ over-relaxation; default) or 'wolff'")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m09(args):
@@ -731,7 +731,7 @@ def _parse_m09(args):
                    help="'metropolis' (+ over-relaxation; default) or 'wolff'")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m10(args):
@@ -750,7 +750,7 @@ def _parse_m10(args):
     p.add_argument("--burnin", type=int, default=8000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m11(args):
@@ -792,7 +792,7 @@ def _parse_m11(args):
     p.add_argument("--burnin", type=int, default=30000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m12(args):
@@ -822,7 +822,7 @@ def _parse_m12(args):
                    help="attempt a parallel-tempering even/odd swap round every N sweeps")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m13(args):
@@ -847,7 +847,7 @@ def _parse_m13(args):
     p.add_argument("--burnin", type=int, default=8000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m14(args):
@@ -871,7 +871,7 @@ def _parse_m14(args):
     p.add_argument("--burnin", type=int, default=4000)
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m15(args):
@@ -896,7 +896,7 @@ def _parse_m15(args):
                    help="log-spaced measurement times (default 52)")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m16(args):
@@ -910,7 +910,7 @@ def _parse_m16(args):
     p.add_argument("--delta-times", default="8,16,32,64,128,256")
     p.add_argument("--device", default="cuda")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m18(args):
@@ -932,7 +932,7 @@ def _parse_m18(args):
     p.add_argument("--device", default="cuda", help="cuda (ROCm HIP) or cpu")
     p.add_argument("--quick", action="store_true",
                    help="small fast pass — proves bracket + controls end to end on CPU")
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_m17(args):
@@ -962,7 +962,7 @@ def _parse_m17(args):
     p.add_argument("--p-flip", type=float, default=0.5,
                    help="corner-flip probability, strictly in (0,1) (default 0.5)")
     p.add_argument("--seed", type=int, default=42)
-    return p.parse_args(args)
+    return _quick_guard(p.parse_args(args))
 
 
 def _parse_k01(args):
@@ -991,6 +991,7 @@ def _parse_k01(args):
     p.add_argument("--t-measure", type=float, default=300.0)
     p.add_argument("--seed", type=int, default=42)
     ns = p.parse_args(args)
+    _quick_guard(ns)
     if ns.quick:
         ns.n, ns.points = 500, 13
         ns.t_burn, ns.t_measure = 50.0, 150.0
@@ -1028,6 +1029,7 @@ def _parse_k02(args):
     p.add_argument("--critical-t-burn", type=float, default=k02_mod.CRITICAL_T_BURN)
     p.add_argument("--critical-t-measure", type=float, default=k02_mod.CRITICAL_T_MEASURE)
     ns = p.parse_args(args)
+    _quick_guard(ns)
     if ns.quick:
         ns.ladder, ns.seeds = "250,500", "42"
         ns.t_burn, ns.t_measure = 20.0, 60.0
@@ -1061,6 +1063,7 @@ def _parse_k03(args):
     p.add_argument("--t-measure", type=float, default=k03_mod.T_MEASURE)
     p.add_argument("--seed", type=int, default=42)
     ns = p.parse_args(args)
+    _quick_guard(ns)
     if ns.quick:
         ns.n, ns.points, ns.rungs = 200, 4, 2
         ns.t_burn, ns.t_measure = 30.0, 60.0
@@ -1331,7 +1334,26 @@ def _run_next(args, dry, lock_path=None):
         receipt_mod.clear_planned_decision()
 
 
+def _quick_guard(ns):
+    """A --quick pass never writes the live feed, tracked reports, or receipts."""
+    if getattr(ns, "quick", False):
+        from . import quickrun
+        quickrun.enter()
+    return ns
+
+
 def main(argv=None):
+    # The --quick switch lives exactly as long as one command: a quick run never
+    # leaks into the next in-process call (or into a test that follows it).
+    from . import quickrun
+    quickrun.reset()
+    try:
+        return _main(argv)
+    finally:
+        quickrun.reset()
+
+
+def _main(argv=None):
     # Windows consoles default to the cp1252 codec, which can't encode the
     # unicode the CLI prints (→ ✓ · 🌱) or the reports carry — without this,
     # every `lab` invocation crashes with a UnicodeEncodeError. A no-op where

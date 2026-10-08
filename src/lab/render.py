@@ -205,6 +205,18 @@ def _commit_report(date: str, slug: str, html: str, json_dump: str) -> Path:
                 "is stamped — refusing to write divergent evidence")
     json_dump = stamped_dump
 
+    from . import quickrun
+    if quickrun.active():
+        # A --quick pass is a pipeline proof, not evidence: keep its report for
+        # the person who ran it, but out of the tracked reports/, with no public
+        # receipt and no latest.html (BACKLOG #6 — see quickrun).
+        scratch = quickrun.scratch_dir()
+        scratch.mkdir(parents=True, exist_ok=True)
+        html_path = scratch / f"{date}-{slug}.html"
+        atomic_write_text(html_path, html, encoding="utf-8")
+        atomic_write_text(scratch / f"{date}-{slug}.json", json_dump, encoding="utf-8")
+        return html_path
+
     REPO_REPORTS.mkdir(parents=True, exist_ok=True)
     html_path = REPO_REPORTS / f"{date}-{slug}.html"
     json_path = REPO_REPORTS / f"{date}-{slug}.json"
