@@ -124,6 +124,10 @@ pinned in `docs/assays/2026-08-19-fold-gates-and-tempering-prior-art.md`):
    work, because it touches every milestone's path in a production-critical file
    and deserves its own diff. Anyone dogfooding this repo hits it on their first
    sanity run.
+   **Fixed 2026-10-08:** `src/lab/quickrun.py` — a parsed `--quick` arms one
+   switch; `render._commit_report` then writes to `$LAB_HOME/quick/` (no
+   receipt, no `latest.html`) and `publish.publish` refuses. Pinned by
+   `tests/test_quickrun.py`, including a tripwire for new parsers.
 7. **Close the assay pinning gap.** Both 2026-08-19 assays pin citations at
    abstract level, not equation level, which PROTOCOL section 7 requires. Four
    papers to read.
