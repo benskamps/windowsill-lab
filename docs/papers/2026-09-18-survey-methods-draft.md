@@ -770,9 +770,10 @@ corrected by the 2016 erratum, ApJ 819, 87** — the journal printed Tables 1–
 with press errors, and it is the erratum's values, not the original article's,
 that the relation here matches.
 
-Two further things gate publication rather than the draft: the repository's
-public-or-private status (§9), and the standing project rule that papers are
-the last phase and nothing may describe a send that has not happened. **No send
+Two further things gate publication rather than the draft: a citable archived
+release of the now-public repository (§9; no DOI exists yet), and the standing
+project rule that papers are the last phase and nothing may describe a send
+that has not happened. **No send
 has happened.**
 
 ---
@@ -948,13 +949,20 @@ against that reader on every test run. Cached FITS bytes are pinned by
 SHA-256 in each receipt for spot reproduction within the checker's numerical
 tolerance; the fits are seed-pinned, not bit-for-bit across platforms.
 
-**[BLOCKED — do not write a "reproduce this" sentence until this is
-resolved.]** The repository is private as of 2026-09-18. Rule 5 of the
-project's publication contract requires that any invitation to reproduce
-resolve to something a reader can reach, or carry a same-sentence statement
-that it is not published yet. This section will name a public repository and a
-Zenodo DOI, or it will say plainly that the code is not yet public. It will not
-say "available on request".
+The code and every committed receipt are public at
+https://github.com/benskamps/windowsill-lab, under the MIT licence; the
+repository was private when this section was first drafted on 2026-09-18 and
+was confirmed public on 2026-10-08. **No archived release and no Zenodo DOI
+exist yet**, so the repository's `main` branch is the only published copy and
+it can change under a reader. A citable snapshot is planned before
+submission, and until it is, this sentence is the statement Rule 5 of the
+project's publication contract requires. The code is not "available on
+request": it is available.
+
+The 531 MB of SPOC TCE catalogues behind §8 are not in the repository. They are
+public at MAST and pinned by SHA-256 in
+`docs/survey/2026-10-08-s8-class-census.json`, so a reader fetches the same
+bytes rather than trusting ours.
 
 ---
 
