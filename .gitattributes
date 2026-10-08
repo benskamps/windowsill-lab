@@ -1,0 +1,2 @@
+# Evidence is pinned by SHA-256; never let git rewrite its line endings.
+evidence/** -text
