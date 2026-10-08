@@ -1,0 +1,32 @@
+{
+  "schema": "windowsill.selftest-receipt.v1",
+  "generated_at": "2026-10-08T02:11:50.849985+00:00",
+  "provenance": {
+    "python": "3.14.4",
+    "platform": "linux-x86_64",
+    "dependencies": {
+      "torch": "2.10.0.dev20251031+rocm6.4",
+      "numpy": "2.5.1"
+    }
+  },
+  "selftest": {
+    "passed": 2498,
+    "failed": 8,
+    "skipped": 2,
+    "errors": 0,
+    "gpu_skipped": 0,
+    "total": 2508,
+    "gpu_modules_seen": [
+      "tests.test_ising",
+      "tests.test_ising_hex"
+    ],
+    "gpu_tests_ran": true,
+    "status": "fail",
+    "detail": "2498 passed, 8 failed, 2 skipped; the GPU-gated tests ran",
+    "schema": 1,
+    "at": "2026-10-08T02:11:50.849985+00:00",
+    "utc_date": "2026-10-08",
+    "machine": "linux-rocm",
+    "duration_s": 2288.3
+  }
+}
