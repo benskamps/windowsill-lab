@@ -51,7 +51,11 @@ companion's radius *less* constrained than the catalogue pipeline did — the
 fitted geometry is grazing to the point of being marginally non-transiting — and
 leaves a 7.7 σ disagreement between the stellar density implied by the transit
 shape and the density of the host. We report both rather than resolve them.
-**We claim no planet.** We argue that the
+**We claim no planet.** A pre-registered census of the public SPOC catalogue
+finds the object's signature — high MES, grazing, R_p > 2 R_Jup, faint M dwarf —
+on 130 stars, 125 of them never promoted to TOI, and shows that the
+secondary-eclipse bound is only safe paired with an odd/even test: unpaired it
+"excludes" a stellar companion on 63 of them, paired on 20. We argue that the
 useful publishable content of a small survey is its disposition record and its
 refusals, and that both are cheap to produce and almost never reported.
 
@@ -673,13 +677,20 @@ is not part of the standard promotion path.
 
 ## 7 · What is blocked, and what it blocks
 
-One thing in this draft is not finishable from the archive alone. Two others
-were listed here on 2026-09-18 and are recorded as resolved at the end of the
-section rather than deleted, on the same principle as Appendix B: a blocker list
-that quietly loses entries cannot be audited.
+Nothing in this draft is now blocked on the archive. Three items were listed
+here on 2026-09-18; all three are recorded as resolved below rather than
+deleted, on the same principle as Appendix B: a blocker list that quietly loses
+entries cannot be audited.
 
-1. **The population estimate for the generalisation in §8.** Not in this
-   repository and not attempted here.
+**Resolved 2026-10-08: the population estimate for the generalisation in §8.**
+Listed here as "not in this repository and not attempted". It was pre-registered
+(`docs/preregistrations/2026-10-08-paper-s8-class-census.md`), counted by
+`scripts/paper_s8_class_census.py` over the public SPOC TCE and ExoFOP TOI
+tables, and is reported in §8 with its uncertainty. The archive itself was
+fetched on a machine with MAST access, as for the refit, and is pinned by
+SHA-256 in `docs/survey/2026-10-08-s8-class-census.json` rather than committed.
+It answered more than it was asked: the count is §8.2, and §8.3 found that the
+§6.3 test needs an odd/even gate before it can be run on a class at all.
 
 **Resolved: the limb-darkened refit and the Gaia-anchored R★.**
 `scripts/tic374861595_refit.py` — a Mandel–Agol fit with Claret limb darkening
@@ -766,7 +777,7 @@ has happened.**
 
 ---
 
-## 8 · The generalisable claim
+## 8 · The generalisable claim, and the size of the class it acts on
 
 The survey-methods claim is that the disposition record and the refusals are
 the publishable content of a small archival search, and that both are nearly
@@ -776,19 +787,155 @@ input. The refusal gate is the checker already required to grade a receipt. No
 part of this required new observations, new instruments or new statistics — it
 required deciding that the record was the product.
 
-The astrophysical claim is narrower and stated as a proposal: the
-secondary-eclipse surface-brightness bound of §6.3 is cheap, needs no new
-observations, and is *independent of the grazing degeneracy that makes this
-class of signal awkward to triage in the first place*. It is not part of the
-standard promotion path. The class it would act on — high MES, high b, inferred
-R_p > 2 R_Jup, faint late-type host — is enumerable from the public DV
-catalogue, and applying the test to that class is one pass over data already on
-disk.
+The astrophysical claim is narrower. The secondary-eclipse surface-brightness
+bound of §6.3 is cheap, needs no new observations, and is independent of the
+grazing degeneracy that makes this class of signal awkward to triage. It is not
+part of the standard promotion path. An earlier revision of this section said
+the class it would act on — high MES, high *b*, inferred R_p > 2 R_Jup, faint
+late-type host — was enumerable from the public DV catalogue, declined to
+enumerate it, and called the section a suggestion until someone did. This
+revision does, and the count changes what the section can say in both
+directions: the class is real and mostly unpromoted, and the test as §6.3 states
+it is **not safe to run on it alone**.
 
-**We do not estimate the size of that class here.** That count is not in this
-repository and is item 3 of §7. Without it, this section is a suggestion;
-with it, it is a result. We would rather ship §8 as a suggestion, labelled,
-than ship a number we did not compute.
+### 8.1 How the count was fixed
+
+The cuts, the catalogue, the secondary-eclipse rule, the uncertainty treatment
+and what each outcome would mean were committed in
+`docs/preregistrations/2026-10-08-paper-s8-class-census.md` before any row of
+any TCE file was read. The count is made by `scripts/paper_s8_class_census.py`
+over the SPOC TCE statistics files from the MAST bulk-download page and the
+ExoFOP TOI and CTOI tables, all fetched 2026-10-08, with Tmag from TIC v8.2 for
+the 1,851 candidates the TCE files could not place; output, input SHA-256s and
+the Tmag table are committed under `docs/survey/2026-10-08-s8-*`.
+
+**Table 4 — class C.** A TCE is in C if all five hold.
+
+| cut | value |
+|---|---|
+| MES (`tce_max_mult_ev`) | ≥ 50 |
+| impact parameter | ≥ 0.7 |
+| R_p | ≥ 2 R_Jup (22.42 R⊕) |
+| host T_eff | ≤ 4,000 K |
+| Tmag | ≥ 12.0 |
+
+A star is *promoted* if it appears in the ExoFOP TOI table under any
+disposition, FP and FA included. For each unpromoted member, SPOC's own
+weak-secondary search supplies the ceiling: if its strongest event is below the
+7.1 TCE threshold, the 3 σ ceiling on a secondary anywhere in the orbit is
+divided by the primary depth and converted to a companion temperature by the
+same band integration §6.3 uses, unchanged; a cut-off below 2,300 K counts as
+*stellar companion excluded*. Run on TIC 374861595's catalogue row, this
+reproduces §6.3 from the catalogue alone: 1,832 K, against the 1,825 K the
+DV-file numbers give and the ≲ 1,800 K §6.3 quotes.
+
+### 8.2 The pre-registered count
+
+The primary catalogue is SPOC's multi-sector product for sectors 1–96 — the one
+that holds TIC 374861595's fit — with 20,207 TCEs on 10,282 stars.
+
+| | stars |
+|---|---|
+| in C | **8** (9 TCEs) |
+| promoted to TOI | 2 |
+| **never promoted** | **6** (one is a CTOI) |
+| — significant secondary found by SPOC | 3 |
+| — stellar companion excluded by the §6.3 bound | **2** |
+| — not testable from the catalogue | 1 |
+
+The two exclusions are TIC 374861595 (cut-off 1,832 K) and TIC 29786532, a
+CTOI, at 2,268 K — 32 K inside the boundary, which is to say marginal and
+reported as marginal. The untestable member, TIC 307433122, has a positive
+weak-secondary MES and a negative fitted secondary depth, for which the
+pre-registered ceiling is undefined; it is counted as untestable rather than
+assigned a ceiling after the fact, and is recorded as the one place the
+pre-registration's text did not anticipate the data.
+
+**Uncertainty.** The count is a census of a finite catalogue, so there is no
+sampling error. Perturbing R_p, *b* and T_eff by their catalogue errors over
+2,000 draws gives a class of **8 (6–10)** stars and **7 (5–8)** unpromoted,
+median and 16th–84th percentiles. The definition matters far more than the
+measurements: across the pre-registered grid of 243 cut combinations the class
+runs from 1 to 35 stars and the unpromoted count from 1 to 30. One axis at a
+time from the primary cell, the unpromoted count moves 12 / 6 / 4 over MES
+20 / 50 / 100, 6 / 6 / 4 over *b* 0.6 / 0.7 / 0.8, 7 / 6 / 5 over R_p
+1.5 / 2.0 / 2.5 R_Jup, 6 / 6 / 9 over T_eff 3,900 / 4,000 / 4,500 K and
+9 / 6 / 4 over Tmag 11 / 12 / 13. MES and brightness carry most of it.
+
+By the outcome table fixed in advance, six unpromoted stars is a **short
+follow-up list, not a population**, and on this catalogue that is what §8 can
+claim.
+
+### 8.3 The breadth check, and what it showed about the test
+
+The multi-sector product is a narrow window. Of the 125 unpromoted class
+members found when every TCE product on the bulk-download page is read — 132
+single- and multi-sector files, sectors 1–107, unioned by star — **114 have no
+TCE at all in the sectors 1–96 product**. The breadth union, also
+pre-registered as a reported number, is:
+
+| | stars |
+|---|---|
+| in C in any product | **130** |
+| never promoted | **125** (9 are CTOIs) |
+
+So the class is not a singleton. By this count roughly 96 % of SPOC 2-minute
+signals with this signature never reached the TOI list.
+
+What follows was **not pre-registered** and is labelled exploratory wherever it
+is quoted. The same §6.3 rule, applied to each of the 125 on its highest-MES
+class TCE, returns:
+
+| verdict | stars |
+|---|---|
+| significant secondary found by SPOC | 43 |
+| stellar companion **excluded** by the bound | 63 |
+| not excluded | 18 |
+| not testable | 1 |
+
+Sixty-three looks like a result. It is mostly an artefact, and the reason is
+the most useful thing this section found. **The surface-brightness bound is
+independent of the grazing degeneracy; it is not independent of the period.**
+An equal-eclipse binary folded at half its true period puts its secondary
+exactly on top of its primary, where a weak-secondary search cannot see it,
+and the bound then "excludes" a stellar companion that is producing every
+eclipse in the light curve. The odd/even depth statistic exists to catch this
+configuration, and §6.1 checked it for TIC 374861595 before §6.3 was written.
+Read from the same TCE rows — reported, never used as a cut — **40 of the 63
+have odd/even depths differing at more than 3 σ**, three carry no odd/even
+statistic, and **20 pass**: no significant secondary, no odd/even difference
+above 3 σ, and a stellar companion excluded by the bound. Four of the 20 are
+CTOIs; TIC 374861595 is one of the other sixteen.
+
+Two further facts about the 20 belong beside the number. Eleven have periods
+under a day. And for five, the period is shorter than the Roche-limit period
+for a 13 M_Jup object at the catalogue radius (Rappaport et al. 2013), so the
+catalogue radius is not survivable for anything of planetary mass at that
+orbit: those five are a brown dwarf, a wrong radius, or a blend, and on none of
+those readings a planet. The catalogue R_p is a grazing fit, and §6.4 has
+already shown how far such a fit can move.
+
+### 8.4 What the section now claims
+
+1. **The class exists and is mostly unpromoted.** Six stars on the
+   pre-registered catalogue, 125 across every SPOC 2-minute product; a floor,
+   because full-frame-image pipelines were not read.
+2. **The test must be paired.** As stated in §6.3 the bound is necessary and
+   not sufficient. A pass that runs it without an odd/even gate would have
+   reported 63 stellar exclusions where at most 20 survive. That is a
+   correction to how this paper first framed the test, and it is recorded in
+   Appendix B.
+3. **Paired, it leaves 20 stars** — exploratory, catalogue-level, with no new
+   photometry — on which SPOC's own products already exclude a stellar
+   companion and show no half-period alias. That is the list a radial-velocity
+   follow-up would start from, and every member of it needs the per-event
+   secondary measurement TIC 374861595 got (§6.3) before its catalogue ceiling
+   is trusted.
+
+None of the 20 is called a planet. An excluded stellar companion leaves a giant
+planet and a cool brown dwarf undistinguished, and the census counts objects on
+which one photometric test is decisive about one alternative. **It does not
+count planets.**
 
 ---
 
@@ -824,10 +971,12 @@ say "available on request".
 | threshold, pooled null, §2.3 | receipt `pooled_null` blocks | 5 receipts |
 | candidate parameters, §6 | `docs/submissions/TIC374861595-CTOI.md` §1 | SPOC DV XML, committed |
 | secondary-eclipse bound, §6.3 | `scripts/tic374861595_secondary_limit.py` | SPOC DV + lab per-event fit |
+| class census, §8 | `scripts/paper_s8_class_census.py` | MAST TCE statistics + ExoFOP TOI/CTOI, SHA-256 in `docs/survey/2026-10-08-s8-class-census.json` |
+| class cuts and outcome rule, §8 | `docs/preregistrations/2026-10-08-paper-s8-class-census.md` | committed before the catalogue was read |
 
 ## Appendix B · Corrections carried forward
 
-Six claims made during preparation were withdrawn and are recorded rather
+Seven claims made during preparation were withdrawn and are recorded rather
 than overwritten, because a package that hides its retractions is not one a
 referee should trust:
 
@@ -839,3 +988,4 @@ referee should trust:
 | "the refit covered sectors 27–97" | a range nobody can re-derive: the 2026-09-18 receipts record no sector list, and the two readings of the DV bitmap disagree about the top end. What is supported is 24 sectors beginning at sector 27. Corrected 2026-09-19; §6.4, §7 |
 | "SPOC has redetected it in every 2-minute sector since 2018" / "never promoted to TOI in seven years" | wrong on both counts. The DV product's own `sectorsObserved` bitmap marks 23 sectors, none early; the §7 run found light curves beginning at sector 27. Coverage starts in 2020 and spans 1,897 days ≈ 5.2 years. Retracted 2026-09-19 against the committed DV XML; §1, §6.2, §6.5 |
 | "Mann+2019 mass 0.72 M☉" | wrong, and no derivation for it ever existed. Mann+2019 gives 0.605 M☉ at this star's M_K and reaches 0.72 only at M_K = 4.19, 0.79 mag brighter. Retracted 2026-09-18 against the authors' own posterior; §6.4, §7 |
+| "independent of the grazing degeneracy … applying the test to that class is one pass over data already on disk" (§8, 2026-09-18) | half right. It is independent of the grazing (*k*, *b*) degeneracy and blind to a half-period alias, where an equal-eclipse binary's secondary is folded onto its primary. Run unpaired over the class it reported 63 stellar exclusions, 40 of them on odd/even differences above 3 σ. The test must be paired with odd/even. Corrected 2026-10-08; §8.3 |
