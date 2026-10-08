@@ -26,7 +26,7 @@
   <title>windowsill — live | Broken Branch</title>
   <meta name="description" content="AI agents run this free lab across seven kinds of patient science. Every result is machine-checked, a human decides what counts, and the misses stay visible.">
   <meta name="author" content="Ben Schippers">
-  <meta name="theme-color" content="#0d0c0a">
+  <meta name="theme-color" content="#1a1410">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://www.brokenbranch.dev/windowsill/">
   <meta property="og:title" content="windowsill — AI agents running a real physics lab, aimed at new science in the open">
@@ -54,15 +54,23 @@
   </script>
   <style>
     :root {
-      --bg: #0d0c0a;
-      --border: #2a2722;
-      --text: #faf8f4;
-      --text-secondary: #a8a39a;
-      --text-muted: #8a857c;
-      --clay: #c97b54;
-      --leaf: #7fae6b;
-      --review: #d2aa67;
-      --null: #8f9288;
+      /* The house palette (brokenbranch.dev css/tokens.css: bark, parchment,
+         moss, gold, brass, ember), carried inline because this page has to
+         stand alone when it is downloaded and opened from disk. */
+      --bg: #1a1410;
+      --bg-raised: #241b13;
+      --border: #3a2f26;
+      --border-strong: #4a3b28;
+      --text: #ece1cc;
+      --text-secondary: #b8a98c;
+      --text-muted: #a0926f;
+      --clay: #d2875c;
+      --leaf: #8aa86b;
+      --review: #d9a441;
+      --null: #a39b8c;
+      --brass: #c9a86a;
+      --ember: #e8833a;
+      --moss-deep: #4a6741;
       --font-sans: 'Fraunces', Georgia, serif;
       --font-mono: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
@@ -196,12 +204,12 @@
       padding:0.95rem 1.15rem 0.9rem;
       border:1px solid var(--border); border-left:3px solid var(--clay);
       border-radius:12px; text-decoration:none;
-      background:linear-gradient(135deg, rgba(201,123,84,0.10), rgba(201,123,84,0.02));
+      background:linear-gradient(135deg, rgba(210,135,92,0.10), rgba(210,135,92,0.02));
       transition:border-color .25s ease, background .25s ease;
     }
     .shelf-hero:hover, .shelf-hero:focus-visible {
       border-color:var(--clay);
-      background:linear-gradient(135deg, rgba(201,123,84,0.17), rgba(201,123,84,0.05));
+      background:linear-gradient(135deg, rgba(210,135,92,0.17), rgba(210,135,92,0.05));
     }
     .shelf-kicker {
       font-family:var(--font-mono); font-size:0.68rem; letter-spacing:0.14em;
@@ -410,10 +418,10 @@
     .sill-specimen:focus-visible { outline:2px solid var(--leaf); outline-offset:2px; }
     .sill-stem { fill:none; stroke:#5f8f4c; stroke-width:5; stroke-linecap:round; }
     .sill-branch { fill:none; stroke:#6f9c58; stroke-width:3.2; stroke-linecap:round; }
-    .sill-branch.review { stroke:#d2aa67; }
+    .sill-branch.review { stroke:#d9a441; }
     .sill-branch.null { stroke:#8a8f82; }
     .sill-leaf { fill:#7fae6b; }
-    .sill-leaf.review { fill:#d2aa67; }
+    .sill-leaf.review { fill:#d9a441; }
     .sill-leaf.null { fill:#8a8f82; opacity:0.78; }
     .sill-leaf.unreached { fill:none; stroke:#6b7566; stroke-width:2; stroke-dasharray:4 5; opacity:0.4; }
     .sill-stem.unreached { stroke:#6b7566; stroke-width:3; stroke-dasharray:5 7; opacity:0.32; }
@@ -489,7 +497,7 @@
 
     .report {
       display:grid; gap:0.25rem; padding:0.72rem 0.8rem;
-      background:rgba(13,12,10,0.78); border:1px solid rgba(250,248,244,0.14); border-radius:9px;
+      background:rgba(26,20,16,0.78); border:1px solid rgba(236,225,204,0.14); border-radius:9px;
       backdrop-filter:blur(10px);
       font-family:var(--font-mono); font-size:0.78rem; color:var(--text-secondary);
     }
@@ -504,12 +512,12 @@
        plain-language story from the feed; hidden if there's no open milestone. */
     .expedition {
       display:grid; gap:0.18rem; padding:0.72rem 0.8rem;
-      border:1px solid rgba(250,248,244,0.14); border-radius:9px;
-      background:linear-gradient(180deg, rgba(13,12,10,0.84), rgba(13,12,10,0.67));
+      border:1px solid rgba(236,225,204,0.14); border-radius:9px;
+      background:linear-gradient(180deg, rgba(26,20,16,0.84), rgba(26,20,16,0.67));
       backdrop-filter:blur(10px); width:100%; min-height:44px; text-align:left;
       font:inherit; font-size:0.82rem; cursor:pointer;
     }
-    .expedition:hover, .expedition:focus-visible { border-color:rgba(250,248,244,0.34); outline:none; }
+    .expedition:hover, .expedition:focus-visible { border-color:rgba(236,225,204,0.34); outline:none; }
     .exp-tag { color:var(--leaf); text-transform:uppercase; letter-spacing:0.06em;
                font-size:0.66rem; font-family:var(--font-mono); }
     .exp-label { color:var(--text); font-weight:600; }
@@ -538,11 +546,11 @@
       font:0.72rem var(--font-mono); cursor:pointer; white-space:nowrap;
     }
     .milestone-chip:hover, .milestone-chip:focus-visible { color:var(--text); border-color:var(--text-muted); outline:none; }
-    .milestone-chip.verified { color:var(--leaf); border-color:rgba(127,174,107,0.42); }
-    .milestone-chip.review { color:var(--review); border-color:rgba(210,170,103,0.45); }
+    .milestone-chip.verified { color:var(--leaf); border-color:rgba(138,168,107,0.42); }
+    .milestone-chip.review { color:var(--review); border-color:rgba(217,164,65,0.45); }
     .milestone-chip.null { color:var(--null); border-style:dashed; }
     .milestone-chip.open { color:var(--text-secondary); }
-    .milestone-chip.is-selected { color:var(--text); border-color:var(--clay); box-shadow:0 0 0 2px rgba(196,117,77,0.14); }
+    .milestone-chip.is-selected { color:var(--text); border-color:var(--clay); box-shadow:0 0 0 2px rgba(210,135,92,0.14); }
 
     .instrument-record {
       display:flex; flex-wrap:wrap; gap:0.55rem 1rem; align-items:center;
@@ -555,9 +563,9 @@
     .record-state i { display:inline-block; width:0.48rem; height:0.48rem; margin-right:0.35rem;
                       border-radius:50%; background:var(--text-muted); box-shadow:0 0 0 3px rgba(138,133,124,0.1); }
     .record-state.fresh { color:var(--leaf); }
-    .record-state.fresh i { background:var(--leaf); box-shadow:0 0 0 3px rgba(127,174,107,0.12); }
+    .record-state.fresh i { background:var(--leaf); box-shadow:0 0 0 3px rgba(138,168,107,0.12); }
     .record-state.quiet { color:var(--review); }
-    .record-state.quiet i { background:var(--review); box-shadow:0 0 0 3px rgba(210,170,103,0.12); }
+    .record-state.quiet i { background:var(--review); box-shadow:0 0 0 3px rgba(217,164,65,0.12); }
 
     .portable-release {
       display:grid; grid-template-columns:120px minmax(0, 700px); gap:clamp(1.5rem, 5vw, 4rem);
@@ -590,7 +598,7 @@
     }
     @keyframes fn-in { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
     .fieldnote.null { background:rgba(24,25,22,0.98); }
-    .fieldnote.review { background:rgba(31,26,18,0.98); border-color:rgba(210,170,103,0.28); }
+    .fieldnote.review { background:rgba(31,26,18,0.98); border-color:rgba(217,164,65,0.28); }
     .fn-close { position:absolute; top:0.3rem; right:0.35rem; width:44px; height:44px; background:none; border:none;
                 color:var(--text-muted); font-size:1.15rem; line-height:1; cursor:pointer; }
     .fn-close:hover { color:var(--text); }
@@ -721,8 +729,8 @@
     .phase-rail li + li { padding-left:1rem; }
     .phase-rail li::before { content:''; position:absolute; width:7px; height:7px; border-radius:50%; background:var(--border); top:-4px; left:0; }
     .phase-rail li + li::before { left:1rem; }
-    .phase-rail li.reached::before { background:var(--leaf); box-shadow:0 0 0 4px rgba(127,174,107,0.1); }
-    .phase-rail li.current::before { background:var(--review); box-shadow:0 0 0 4px rgba(210,170,103,0.12); }
+    .phase-rail li.reached::before { background:var(--leaf); box-shadow:0 0 0 4px rgba(138,168,107,0.1); }
+    .phase-rail li.current::before { background:var(--review); box-shadow:0 0 0 4px rgba(217,164,65,0.12); }
     .phase-rail span { display:block; color:var(--text-muted); font:0.68rem var(--font-mono); }
     .phase-rail strong { display:block; margin-top:2rem; color:var(--text-secondary); font-size:0.96rem; font-weight:520; }
     .phase-rail li.reached strong { color:var(--text); }
@@ -734,11 +742,11 @@
       margin-top:2.5rem; border-top:1px solid var(--border); border-bottom:1px solid var(--border);
     }
     .garden-specimen {
-      --specimen:#7fae6b; position:relative; min-width:0; min-height:424px;
+      --specimen:#8aa86b; position:relative; min-width:0; min-height:424px;
       border-right:1px solid var(--border); color:var(--text-muted); overflow:hidden;
     }
     .garden-specimen[data-track="coherence"] { --specimen:#8f86c9; }
-    .garden-specimen[data-track="compute"] { --specimen:#d2aa67; }
+    .garden-specimen[data-track="compute"] { --specimen:#d9a441; }
     .garden-specimen[data-track="astronomy"] { --specimen:#6e97b3; }
     .garden-specimen[data-track="instrument"] { --specimen:#b882a2; }
     .garden-specimen[data-track="boinc"] { --specimen:#8f9d72; }
@@ -776,7 +784,7 @@
       transform-origin:50% 90%; transition:transform 0.55s cubic-bezier(0.25,0.46,0.45,0.94);
     }
     .specimen-action:hover svg, .specimen-action:focus-visible svg { transform:translateY(-4px) scale(1.018); }
-    .garden-specimen path.specimen-stem { fill:none; stroke:color-mix(in srgb, var(--specimen) 52%, #faf8f4); stroke-width:1.65; stroke-linecap:round; opacity:0.72; }
+    .garden-specimen path.specimen-stem { fill:none; stroke:color-mix(in srgb, var(--specimen) 52%, #ece1cc); stroke-width:1.65; stroke-linecap:round; opacity:0.72; }
     .garden-specimen path.specimen-branch { fill:none; stroke:var(--specimen); stroke-width:1.1; stroke-linecap:round; opacity:0.52; }
     .garden-specimen path.specimen-branch.review { stroke:var(--review); opacity:0.72; }
     .garden-specimen path.specimen-branch.null { stroke:var(--null); stroke-dasharray:2 2; opacity:0.8; }
@@ -790,7 +798,7 @@
        card: present enough to show where the plant is going, never mistakable
        for a measured leaf. */
     .garden-specimen path.specimen-stem.unreached {
-      stroke:color-mix(in srgb, var(--specimen) 30%, #faf8f4);
+      stroke:color-mix(in srgb, var(--specimen) 30%, #ece1cc);
       stroke-width:1.1; stroke-dasharray:2.5 3.5; opacity:0.3;
     }
     .garden-specimen path.specimen-branch.unreached { stroke:var(--text-muted); stroke-dasharray:1.5 2.5; opacity:0.26; }
@@ -959,6 +967,193 @@
       .rail-tools { position:sticky; left:0; }
     }
 
+    /* ══ The house look (2026-10-08 level-up) ═════════════════════════════════
+       Bark ground, parchment ink, Fraunces for the human voice and JetBrains
+       Mono for the machine's. Moss is reserved for what a human promoted, so
+       green on this page always means "earned"; links take the house ember. */
+    html { overflow-x:clip; }
+    body {
+      background:
+        radial-gradient(ellipse 70% 38% at 50% -6%, rgba(232,166,74,0.10), transparent 70%),
+        radial-gradient(ellipse 45% 30% at 12% 100%, rgba(138,168,107,0.05), transparent 70%),
+        radial-gradient(ellipse 70% 50% at 50% 8%, var(--warmth), transparent 70%),
+        var(--bg);
+    }
+    /* The workshop patina: the same fractal grain every house page wears. */
+    body::before {
+      content:''; position:fixed; inset:0; pointer-events:none; z-index:9999; opacity:0.35;
+      background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix values='0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.05 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size:160px 160px;
+    }
+    .lab-kicker, .section-kicker { color:var(--brass); }
+    .section-intro h2, .portable-release h2, .hunt h2 { font-style:italic; font-weight:480; }
+    .section-intro a, .explainer a, .instrument-prov a { color:var(--ember); }
+    .release-links a { color:var(--ember); }
+    .release-links a:hover, .section-intro a:hover, .explainer a:hover { color:var(--text); }
+
+    /* ── The hero: one frame that says what the lab is ───────────────────────── */
+    .hero {
+      position:relative; isolation:isolate;
+      min-height:clamp(560px, 82vh, 780px);
+      display:flex; flex-direction:column; justify-content:center;
+      padding:2.5rem 0 3.25rem; margin-bottom:1rem;
+    }
+    .hero-field {
+      position:absolute; z-index:-1; pointer-events:none;
+      top:-9rem; bottom:0; left:50%; width:100vw; transform:translateX(-50%);
+      overflow:hidden;
+    }
+    .hero-rings { position:absolute; inset:0; width:100%; height:100%; display:block; }
+    /* A mask, not a wash: the type sits on calm ground, the rings stand at full
+       strength only where nothing is written, and the section fades into the
+       page's own lamplight instead of ending on a flat edge. */
+    .hero-field {
+      -webkit-mask-image:linear-gradient(0deg, transparent 0%, #000 16%), linear-gradient(90deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.14) 32%, rgba(0,0,0,0.7) 60%, #000 80%);
+      -webkit-mask-composite:source-in;
+      mask-image:linear-gradient(0deg, transparent 0%, #000 16%), linear-gradient(90deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.14) 32%, rgba(0,0,0,0.7) 60%, #000 80%);
+      mask-composite:intersect;
+    }
+    .crumbs { position:relative; z-index:1; }
+    .hero .lab-kicker { display:inline-flex; align-items:center; gap:0.6rem; }
+    .hero .lab-kicker::before {
+      content:''; width:7px; height:7px; border-radius:50%; background:var(--leaf);
+      box-shadow:0 0 0 4px rgba(138,168,107,0.16); animation:hero-live 4s ease-in-out infinite;
+    }
+    @keyframes hero-live { 50% { box-shadow:0 0 0 7px rgba(138,168,107,0.04); } }
+    .hero .label { font-style:italic; font-weight:420; letter-spacing:-0.045em; }
+    .hero-what {
+      max-width:640px; margin:1.1rem 0 0.9rem;
+      font-size:clamp(1.25rem, 2.6vw, 1.7rem); line-height:1.32; letter-spacing:-0.01em;
+      color:var(--text);
+    }
+    .hero-what em { font-style:italic; color:var(--brass); }
+    .hero .sowhat-goal {
+      max-width:560px; font-size:clamp(1rem, 1.7vw, 1.15rem); line-height:1.5;
+      letter-spacing:0; margin-bottom:1.6rem; color:var(--text-secondary);
+    }
+    .hero .sowhat-goal strong { font-weight:520; color:var(--text-secondary); }
+    .hero-tally {
+      list-style:none; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr));
+      max-width:680px; border-top:1px solid var(--border);
+    }
+    .hero-tally li { padding:0.85rem 1rem 0 0; }
+    .hero-tally li + li { padding-left:1rem; border-left:1px solid var(--border); }
+    .hero-tally b {
+      display:block; font-size:clamp(1.6rem, 3.4vw, 2.4rem); font-weight:440; line-height:1;
+      font-variant-numeric:tabular-nums lining-nums; color:var(--text);
+    }
+    .hero-tally span {
+      display:block; margin-top:0.45rem; color:var(--text-muted);
+      font:0.68rem/1.4 var(--font-mono); letter-spacing:0.04em; text-transform:uppercase;
+    }
+    .hero-tally .tally-earned b { color:var(--leaf); }
+    .hero-tally .tally-earned b::after {
+      content:'✓'; display:inline-grid; place-items:center; width:1.1rem; height:1.1rem; margin-left:0.3rem;
+      vertical-align:0.9em; border-radius:50%;
+      background:radial-gradient(circle at 35% 35%, #b9d39a, var(--leaf) 55%, var(--moss-deep));
+      color:var(--bg); font:700 0.62rem/1 var(--font-mono);
+      box-shadow:0 0 0 3px rgba(138,168,107,0.16);
+    }
+    .hero-key {
+      position:absolute; right:0; bottom:4.6rem; max-width:300px; text-align:right;
+      color:var(--text-muted); font:0.66rem/1.5 var(--font-mono); letter-spacing:0.02em;
+    }
+    .hero-key i { font-style:normal; color:var(--leaf); }
+
+    /* ── The milestone ladder: the rail laid on its side ─────────────────────────
+       Two stiles run the length of the rail; every milestone is a rung between
+       them. A promoted rung is filled and sealed; a rung still waiting is only
+       an outline; a null is kept, struck through, on the books. */
+    .milestone-rail {
+      position:relative; gap:0.4rem; align-items:stretch;
+      padding:1.05rem 0.25rem 1.05rem;
+      background:
+        linear-gradient(var(--border-strong), var(--border-strong)) 0 0.55rem / 100% 2px no-repeat,
+        linear-gradient(var(--border-strong), var(--border-strong)) 0 calc(100% - 0.55rem) / 100% 2px no-repeat;
+      background-attachment:local;
+    }
+    .rail-track {
+      flex:0 0 auto; align-self:center; padding:0 0.35rem 0 0.9rem; white-space:nowrap;
+      color:var(--brass); font:0.62rem/1 var(--font-mono); letter-spacing:0.14em; text-transform:uppercase;
+    }
+    .rail-track:first-child { padding-left:0.1rem; }
+    .milestone-chip {
+      position:relative; flex:0 0 auto; align-self:center; min-width:50px; height:66px; padding:0 0.55rem;
+      border-radius:5px; border:1px solid var(--border-strong); background:var(--bg);
+      color:var(--text-muted); font:0.72rem var(--font-mono); letter-spacing:0.02em;
+      transition:transform .2s ease, border-color .2s ease, color .2s ease;
+    }
+    .milestone-chip:hover, .milestone-chip:focus-visible { transform:translateY(-2px); }
+    .milestone-chip:focus-visible { outline:2px solid var(--ember); outline-offset:2px; }
+    .milestone-chip.verified {
+      color:var(--text); font-weight:600; border-color:rgba(138,168,107,0.7);
+      background:linear-gradient(180deg, rgba(138,168,107,0.30), rgba(74,103,65,0.22));
+      box-shadow:inset 0 1px 0 rgba(236,225,204,0.10), 0 0 0 1px rgba(26,20,16,0.6);
+    }
+    /* The seal: pressed into every promoted rung, and only those. */
+    .milestone-chip.verified::after {
+      content:'✓'; position:absolute; top:-0.5rem; right:-0.4rem; width:1.05rem; height:1.05rem;
+      display:grid; place-items:center; border-radius:50%;
+      background:radial-gradient(circle at 35% 35%, #b9d39a, var(--leaf) 55%, var(--moss-deep));
+      color:var(--bg); font:700 0.6rem/1 var(--font-mono);
+      box-shadow:0 0 0 2px var(--bg);
+    }
+    .milestone-chip.review { color:var(--review); border-color:rgba(217,164,65,0.6); background:rgba(217,164,65,0.07); }
+    .milestone-chip.pending { border-style:dashed; background:transparent; }
+    .milestone-chip.null {
+      color:var(--null); border-style:dashed; border-color:rgba(163,155,140,0.5); background:transparent;
+      text-decoration:line-through; text-decoration-color:rgba(163,155,140,0.6);
+    }
+    .milestone-chip.open {
+      color:var(--ember); border-color:var(--ember); background:rgba(232,131,58,0.08);
+      box-shadow:0 0 0 3px rgba(232,131,58,0.14);
+    }
+    .milestone-chip.is-selected { color:var(--text); border-color:var(--ember); box-shadow:0 0 0 2px rgba(232,131,58,0.3); }
+    .rail-now { color:var(--ember); }
+    .rail-action:hover, .rail-action:focus-visible { color:var(--ember); }
+    .rail-action:focus-visible { outline-color:var(--ember); }
+
+    /* ── The curriculum as a staircase ─────────────────────────────────────────
+       Four treads climbing left to right. A reached tread is moss and holds one
+       pip per rung in its band, filled when that rung was promoted. */
+    .phase-rail { border-top:none; align-items:start; }
+    .phase-rail li {
+      border-right:none; border-top:2px solid var(--border-strong); min-height:0;
+      padding-top:1.1rem;
+    }
+    .phase-rail li[data-curriculum-phase="1"] { margin-top:4.5rem; }
+    .phase-rail li[data-curriculum-phase="2"] { margin-top:3rem; }
+    .phase-rail li[data-curriculum-phase="3"] { margin-top:1.5rem; }
+    .phase-rail li + li { border-left:1px solid var(--border); }
+    .phase-rail li.reached { border-top-color:var(--leaf); }
+    .phase-rail li.current { border-top-color:var(--review); }
+    .phase-rail li::before { top:-5px; width:8px; height:8px; }
+    .phase-rail strong { margin-top:1.2rem; font-size:1.05rem; }
+    .phase-rail span.phase-rungs { display:flex; gap:5px; margin-top:0.85rem; }
+    .phase-rungs i {
+      width:9px; height:9px; border-radius:2px; border:1px dashed var(--text-muted);
+    }
+    .phase-rungs i.verified { border:none; background:var(--leaf); box-shadow:0 0 0 2px rgba(138,168,107,0.14); }
+    .phase-rungs i.review { border:1px solid var(--review); }
+    .phase-rungs i.null { border-color:var(--null); }
+
+    /* Verified everywhere looks earned: the conservatory's state chips too. */
+    .specimen-status.verified::before { width:7px; height:7px; box-shadow:0 0 0 3px color-mix(in srgb, var(--specimen) 22%, transparent); }
+
+    @media (max-width: 720px) {
+      .hero { min-height:0; padding:1.5rem 0 4.25rem; }
+      .hero-field {
+        top:-7rem;
+        -webkit-mask-image:linear-gradient(180deg, #000 0%, rgba(0,0,0,0.32) 34%, rgba(0,0,0,0.14) 62%, rgba(0,0,0,0.6) 86%, transparent 100%);
+        mask-image:linear-gradient(180deg, #000 0%, rgba(0,0,0,0.32) 34%, rgba(0,0,0,0.14) 62%, rgba(0,0,0,0.6) 86%, transparent 100%);
+      }
+      .hero-tally { grid-template-columns:repeat(2, minmax(0, 1fr)); }
+      .hero-tally li:nth-child(3) { padding-left:0; border-left:none; }
+      .hero-tally li:nth-child(n+3) { border-top:1px solid var(--border); margin-top:0.85rem; }
+      .hero-key { position:static; max-width:none; text-align:left; margin-top:1.4rem; }
+      .phase-rail li[data-curriculum-phase] { margin-top:0; }
+      .phase-rail li + li { border-left:none; }
+    }
     @media (prefers-reduced-motion: reduce) {
       body { transition: none; }
       #plant, .dust, .star, .clouds, .leaf, .firefly, #bud-halo, .meteor { animation: none; }
@@ -976,6 +1171,10 @@
       .garden-specimen.is-open .specimen-status::before { animation:none; }
       .garden-specimen svg, .specimen-action::before { transition:none; }
       .ip-reveal { animation:none; }
+      /* the hero's live dot holds still; the ladder's rungs do not lift */
+      .hero .lab-kicker::before { animation:none; }
+      .milestone-chip { transition:none; }
+      .milestone-chip:hover, .milestone-chip:focus-visible { transform:none; }
     }
     /* Skip link: off-screen until a keyboard user focuses it. */
     .skip-link { position:absolute; left:0.75rem; top:-4rem; z-index:1000; padding:0.55rem 0.9rem;
@@ -998,15 +1197,34 @@
       <a class="home" href="https://www.brokenbranch.dev/">broken branch</a>
     </nav>
 
-    <p class="lab-kicker">Windowsill Lab · a patient home instrument</p>
-    <div class="topbar">
-      <h1 class="label"><span class="sky" id="sky">☀</span>windowsill</h1>
-      <div class="phase-mood"><span id="phase">day</span> · <span id="season">spring</span> · feels <span class="mood" id="mood">—</span></div>
-    </div>
-    <!-- The ambition. One line, verbatim, and still the largest sentence in
-         the text column. It is a stated goal rather than a claimed result,
-         which is why it is allowed to lead. The picture arrives on line five. -->
-    <p class="sowhat-goal"><strong>The goal is a measurement nobody has made yet, given away free.</strong></p>
+    <!-- THE HERO. One frame that says what the lab is. Behind it, a tree-ring
+         section drawn from the feed itself: one ring per day the lab filed a
+         run (oldest at the pith), each as wide as that day was busy, moss where
+         a run on that day verified. Under it, the same days as a trace. Nothing
+         here is stock or hand-drawn; with no feed it draws a plain seeded
+         section and the caption says so. paintHero() below owns it. -->
+    <section class="hero" id="hero" aria-labelledby="hero-title">
+      <div class="hero-field" aria-hidden="true"><canvas class="hero-rings" id="hero-rings" width="300" height="150"></canvas></div>
+      <p class="lab-kicker">Windowsill Lab · a patient home instrument</p>
+      <div class="topbar">
+        <h1 class="label" id="hero-title"><span class="sky" id="sky">☀</span>windowsill</h1>
+        <div class="phase-mood"><span id="phase">day</span> · <span id="season">spring</span> · feels <span class="mood" id="mood">—</span></div>
+      </div>
+      <p class="hero-what">Two computers in a house run small science around the clock: <em>physics</em>, <em>astronomy</em> and <em>mathematics</em>, one checked experiment at a time.</p>
+      <!-- The ambition. One line, verbatim, and still the largest sentence in
+           the text column. It is a stated goal rather than a claimed result,
+           which is why it is allowed to lead. -->
+      <p class="sowhat-goal"><strong>The goal is a measurement nobody has made yet, given away free.</strong></p>
+      <!-- Every number in the tally is the feed's own; the strip stays hidden
+           until a feed arrives, so no hand-typed figure can go stale here. -->
+      <ul class="hero-tally" id="hero-tally" hidden>
+        <li class="tally-earned"><b id="tally-verified">—</b><span>milestones verified</span></li>
+        <li><b id="tally-turns">—</b><span>turns on the record</span></li>
+        <li><b id="tally-stars">—</b><span>stars searched blind</span></li>
+        <li class="tally-zero"><b id="tally-planets">0</b><span>planets claimed</span></li>
+      </ul>
+      <p class="hero-key" id="hero-key">Behind this: a seeded ring section, waiting for the feed.</p>
+    </section>
 
     <!-- THE MEASUREMENT. Moved up from five screens down, and no longer
          `hidden`: the Onsager triptych plus three cross-checking curves IS the
@@ -2528,6 +2746,278 @@
   </script>
   <!-- END pots.js (inlined) -->
 
+  <script>
+  /* ── The hero's ring section ────────────────────────────────────────────────
+   * A tree-ring cross-section drawn from the feed's own run ledger. One ring
+   * per day the lab filed a run, oldest at the pith; a day's ring is as wide as
+   * that day was busy, and a stretch with no runs leaves a tight dark band, the
+   * way a dry year does. A day on which some run verified is drawn in moss; a
+   * day of nulls only, in ash; anything else, in brass. One check runs out from
+   * the pith: the broken branch.
+   *
+   * Along the foot, the same days as a trace: runs per day, left to right.
+   *
+   * With no feed it draws a plain seeded section and its caption says so — it
+   * never invents a history. Calm by design: it draws in once, then only the
+   * newest ring breathes, and not at all under prefers-reduced-motion.
+   */
+  (function () {
+    var canvas = document.getElementById('hero-rings');
+    var key = document.getElementById('hero-key');
+    if (!canvas || !canvas.getContext) return;
+    var ctx = canvas.getContext('2d');
+    var still = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    var days = null;          // [{date, n, verified, nul}] oldest first
+    var fromFeed = false;
+    var base = null;          // offscreen canvas holding the static section
+    var geo = null;           // geometry of the last layout
+    var t0 = 0, raf = 0;
+
+    var INK = {
+      moss:  [138, 168, 107],
+      ash:   [163, 155, 140],
+      brass: [201, 168, 106],
+      ember: [232, 131, 58]
+    };
+    function rgba(c, a) { return 'rgba(' + c[0] + ',' + c[1] + ',' + c[2] + ',' + a + ')'; }
+
+    // Small deterministic PRNG so the section is the same on every load.
+    function rng(seed) {
+      var x = seed >>> 0 || 1;
+      return function () { x ^= x << 13; x ^= x >>> 17; x ^= x << 5; return ((x >>> 0) % 100000) / 100000; };
+    }
+    function hash(str) {
+      var h = 2166136261;
+      for (var i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+      return h >>> 0;
+    }
+
+    function ledgerDays(reports) {
+      var by = {};
+      (reports || []).forEach(function (r) {
+        if (!r || typeof r.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(r.date)) return;
+        var d = by[r.date] || (by[r.date] = { date: r.date, n: 0, verified: 0, nul: 0 });
+        d.n++;
+        if (r.verdict === 'verified') d.verified++;
+        if (r.verdict === 'null') d.nul++;
+      });
+      return Object.keys(by).sort().map(function (k) { return by[k]; });
+    }
+    function seededDays() {
+      var r = rng(20260601), out = [];
+      for (var i = 0; i < 64; i++) out.push({ date: '', n: 1 + Math.floor(r() * 4), verified: 0, nul: 0, gap: r() < 0.12 ? 3 : 0 });
+      return out;
+    }
+    function dayGap(a, b) {
+      if (!a || !b || !a.date || !b.date) return 0;
+      return Math.max(0, Math.round((Date.parse(b.date) - Date.parse(a.date)) / 86400000) - 1);
+    }
+
+    function layout() {
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var w = canvas.clientWidth, h = canvas.clientHeight;
+      if (!w || !h) return false;
+      canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
+      var narrow = w < 720;
+      // The pith sits to the right of the text column, or up behind the title
+      // on a phone; the outer rings run off the frame, as a real section would.
+      var cx = narrow ? w * 0.86 : Math.min(w * 0.76, w / 2 + 470);
+      var cy = narrow ? h * 0.2 : h * 0.47;
+      var rMax = narrow ? Math.max(w, h * 0.55) * 0.95 : Math.min(h * 0.86, w * 0.5);
+      geo = { w: w, h: h, dpr: dpr, cx: cx, cy: cy, rMax: rMax, narrow: narrow };
+      return true;
+    }
+
+    // The radius of every ring boundary, pith outward.
+    function ringRadii(list) {
+      var raw = [], acc = 0;
+      list.forEach(function (d, i) {
+        var gap = d.gap != null ? d.gap : dayGap(list[i - 1], d);
+        acc += Math.min(gap, 8) * 0.55;           // a dry spell: tight latewood
+        acc += 2.2 + 1.6 * Math.min(d.n, 8);      // a busy day grows a wide ring
+        raw.push(acc);
+      });
+      var k = acc ? (geo.rMax - 14) / acc : 1;
+      return raw.map(function (r) { return 14 + r * k; });
+    }
+
+    function ringPath(c, cx, cy, r, seed, ecc) {
+      var R = rng(seed), p1 = R() * 6.283, p2 = R() * 6.283, p3 = R() * 6.283;
+      var a1 = 0.018 + R() * 0.012, a2 = 0.010 + R() * 0.008, a3 = 0.005;
+      c.beginPath();
+      for (var i = 0; i <= 160; i++) {
+        var th = i / 160 * 6.2832;
+        var wob = 1 + a1 * Math.sin(2 * th + p1) + a2 * Math.sin(3 * th + p2) + a3 * Math.sin(7 * th + p3);
+        // Eccentric growth: the wood is thicker on the sunward side.
+        var rr = r * wob * (1 + ecc * Math.cos(th - 2.4));
+        var x = cx + rr * Math.cos(th), y = cy + rr * Math.sin(th);
+        if (i) c.lineTo(x, y); else c.moveTo(x, y);
+      }
+      c.closePath();
+    }
+
+    function inkFor(d) {
+      if (!fromFeed) return INK.brass;
+      if (d.verified) return INK.moss;
+      if (d.nul && d.nul === d.n) return INK.ash;
+      return INK.brass;
+    }
+
+    function paintBase() {
+      var g = geo, list = days || seededDays();
+      base = document.createElement('canvas');
+      base.width = canvas.width; base.height = canvas.height;
+      var c = base.getContext('2d');
+      c.setTransform(g.dpr, 0, 0, g.dpr, 0, 0);
+      var radii = ringRadii(list);
+      g.radii = radii; g.list = list;
+      // Wood first, outside in: alternating early- and latewood tones.
+      for (var i = list.length - 1; i >= 0; i--) {
+        ringPath(c, g.cx, g.cy, radii[i], hash(list[i].date || String(i)) + i, 0.06 * (i / list.length));
+        c.fillStyle = i % 2 ? 'rgba(46,35,25,0.55)' : 'rgba(36,27,19,0.55)';
+        c.fill();
+      }
+      // Then the ring boundaries, brighter toward the bark (the recent past).
+      for (var j = 0; j < list.length; j++) {
+        var age = j / Math.max(1, list.length - 1);
+        ringPath(c, g.cx, g.cy, radii[j], hash(list[j].date || String(j)) + j, 0.06 * (j / list.length));
+        c.strokeStyle = rgba(inkFor(list[j]), (0.16 + 0.34 * age).toFixed(3));
+        c.lineWidth = list[j].verified && fromFeed ? 1.6 : 1;
+        c.stroke();
+      }
+      // The pith.
+      c.beginPath(); c.arc(g.cx, g.cy, 5, 0, 6.2832);
+      c.fillStyle = rgba(INK.brass, 0.5); c.fill();
+      // The check: one radial crack from the pith, the broken branch.
+      var R = rng(7), th = -2.25, r = 8;
+      c.beginPath(); c.moveTo(g.cx, g.cy);
+      while (r < radii[radii.length - 1] * 0.92) {
+        r += 10 + R() * 14; th += (R() - 0.5) * 0.05;
+        c.lineTo(g.cx + r * Math.cos(th), g.cy + r * Math.sin(th));
+      }
+      c.strokeStyle = 'rgba(8,6,4,0.75)'; c.lineWidth = 2.2; c.stroke();
+      // The trace along the foot: runs per day, oldest at the left.
+      if (fromFeed && list.length > 1) {
+        var x0 = g.narrow ? 16 : Math.max(24, g.w / 2 - 520), x1 = g.w - x0;
+        var yb = g.h - (g.narrow ? 22 : 34), amp = g.narrow ? 24 : 40;
+        var t0d = Date.parse(list[0].date), t1d = Date.parse(list[list.length - 1].date);
+        var span = Math.max(1, t1d - t0d), peak = 1;
+        list.forEach(function (d) { peak = Math.max(peak, d.n); });
+        c.beginPath();
+        c.moveTo(x0, yb);
+        list.forEach(function (d) {
+          var x = x0 + (Date.parse(d.date) - t0d) / span * (x1 - x0);
+          c.lineTo(x - 1.5, yb); c.lineTo(x, yb - amp * d.n / peak); c.lineTo(x + 1.5, yb);
+        });
+        c.lineTo(x1, yb);
+        c.strokeStyle = rgba(INK.brass, 0.7); c.lineWidth = 1.2; c.stroke();
+        list.forEach(function (d) {
+          if (!d.verified) return;
+          var x = x0 + (Date.parse(d.date) - t0d) / span * (x1 - x0);
+          c.beginPath(); c.arc(x, yb - amp * d.n / peak, 1.8, 0, 6.2832);
+          c.fillStyle = rgba(INK.moss, 0.9); c.fill();
+        });
+      }
+    }
+
+    function frame(now) {
+      if (!base || !geo) return;
+      var g = geo;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      var grow = still ? 1 : Math.min(1, (now - t0) / 1800);
+      var ease = 1 - Math.pow(1 - grow, 3);
+      // Draw-in: the section is revealed from the pith outward.
+      ctx.save();
+      if (ease < 1) {
+        ctx.beginPath();
+        ctx.arc(g.cx * g.dpr, g.cy * g.dpr, Math.max(1, ease * (g.rMax + 40) * g.dpr), 0, 6.2832);
+        ctx.clip();
+      }
+      ctx.drawImage(base, 0, 0);
+      ctx.restore();
+      // The newest ring breathes, once the section has grown in.
+      if (fromFeed && g.radii && g.radii.length) {
+        var i = g.radii.length - 1, d = g.list[i];
+        var pulse = still ? 0.5 : 0.5 + 0.5 * Math.sin((now - t0) / 1400);
+        ctx.setTransform(g.dpr, 0, 0, g.dpr, 0, 0);
+        ringPath(ctx, g.cx, g.cy, g.radii[i], hash(d.date || String(i)) + i, 0.06 * (i / g.list.length));
+        ctx.strokeStyle = rgba(d.verified ? INK.moss : INK.ember, (0.25 + 0.45 * pulse * ease).toFixed(3));
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+      if (!still) raf = requestAnimationFrame(frame);
+    }
+
+    function redraw(restart) {
+      cancelAnimationFrame(raf);
+      if (!layout()) return;
+      paintBase();
+      if (restart) t0 = performance.now();
+      if (still) frame(performance.now());
+      else raf = requestAnimationFrame(frame);
+    }
+
+    function fmt(n) { return Number(n).toLocaleString('en-US'); }
+
+    window.paintHero = function (state) {
+      state = state || {};
+      var ledger = ledgerDays(state.reports);
+      var had = fromFeed;
+      fromFeed = !state.empty && ledger.length > 1;
+      days = fromFeed ? ledger : null;
+      if (key) {
+        if (fromFeed) {
+          var first = ledger[0].date, last = ledger[ledger.length - 1].date;
+          key.innerHTML = '';
+          key.appendChild(document.createTextNode('Behind this: ' + ledger.length + ' rings, one per day the lab filed a run, ' +
+            first + ' at the pith to ' + last + ' at the bark. Wider is busier; '));
+          var i = document.createElement('i'); i.textContent = 'moss';
+          key.appendChild(i);
+          key.appendChild(document.createTextNode(' is a day a run verified.'));
+        } else {
+          key.textContent = 'Behind this: a seeded ring section, waiting for the feed.';
+        }
+      }
+      // The tally: every figure is the feed's, and the strip stays hidden
+      // until a feed has carried them.
+      var tally = document.getElementById('hero-tally');
+      var ms = Array.isArray(state.milestones) ? state.milestones : [];
+      var turns = state.turns && typeof state.turns.count === 'number' ? state.turns.count : null;
+      var hunt = state.hunt || null;
+      if (tally && !state.empty && ms.length && turns != null) {
+        document.getElementById('tally-verified').textContent =
+          ms.filter(function (m) { return m && m.status === 'verified'; }).length;
+        document.getElementById('tally-turns').textContent = fmt(turns);
+        var stars = document.getElementById('tally-stars');
+        var starsCell = stars && stars.parentNode;
+        if (hunt && typeof hunt.targets_searched === 'number') {
+          stars.textContent = fmt(hunt.targets_searched);
+          starsCell.hidden = false;
+        } else if (starsCell) {
+          starsCell.hidden = true;
+        }
+        document.getElementById('tally-planets').textContent =
+          String(Number(hunt && hunt.planets_discovered) || 0);
+        tally.hidden = false;
+      }
+      redraw(!had || !base);
+    };
+
+    var lastW = 0;
+    window.addEventListener('resize', function () {
+      if (canvas.clientWidth === lastW) return;
+      lastW = canvas.clientWidth;
+      redraw(false);
+    });
+    document.addEventListener('visibilitychange', function () {
+      if (document.hidden) cancelAnimationFrame(raf);
+      else if (!still && base) raf = requestAnimationFrame(frame);
+    });
+    lastW = canvas.clientWidth;
+    redraw(true);
+  })();
+  </script>
   <script>
   (function () {
     'use strict';
@@ -4231,8 +4721,20 @@
         || _railMilestones.slice().reverse().find(isClosed)
         || _railMilestones[0];
       var chips = [];
+      var lastTrack = null;
       (milestones || []).forEach(function (m) {
         if (!m || !m.id) return;
+        // A stile label wherever the ladder changes science. Decorative: each
+        // rung's own name already says what it is.
+        if (m.track && m.track !== lastTrack) {
+          var spec = GARDEN_SPECS.find(function (g) { return g.track === m.track; });
+          var tag = document.createElement('span');
+          tag.className = 'rail-track';
+          tag.setAttribute('aria-hidden', 'true');
+          tag.textContent = spec ? spec.label : m.track;
+          rail.appendChild(tag);
+          lastTrack = m.track;
+        }
         var allowed = milestoneStatusOrPending(m.status);
         var b = document.createElement('button');
         b.type = 'button';
@@ -4341,6 +4843,30 @@
         li.classList.toggle('current', !frontier.complete && !!stage && n === stage);
         if (!frontier.complete && stage && n === stage) li.setAttribute('aria-current', 'step');
         else li.removeAttribute('aria-current');
+        // One pip per rung in this tread, filled where a human promoted it.
+        var band = (milestones || []).filter(function (m) { return curriculumStage(m) === n; });
+        var old = li.querySelector('.phase-rungs');
+        if (old) old.remove();
+        var oldSr = li.querySelector('.phase-rungs-sr');
+        if (oldSr) oldSr.remove();
+        if (!band.length) return;
+        var pips = document.createElement('span');
+        pips.className = 'phase-rungs';
+        pips.setAttribute('aria-hidden', 'true');
+        var promoted = 0;
+        band.forEach(function (m) {
+          var st = milestoneStatusOrPending(m.status);
+          if (st === 'verified') promoted++;
+          var pip = document.createElement('i');
+          pip.className = st;
+          pip.title = m.id + ' · ' + (FN_STATUS[st] || st);
+          pips.appendChild(pip);
+        });
+        var sr = document.createElement('span');
+        sr.className = 'sr-only phase-rungs-sr';
+        sr.textContent = promoted + ' of ' + band.length + ' rungs promoted';
+        li.appendChild(pips);
+        li.appendChild(sr);
       });
       var line = $('phase-frontier');
       if (!line) return;
@@ -4999,6 +5525,7 @@
       applyMoisture(moisture);
       drawMilestoneRail(milestones);
       paintCurriculum(milestones);
+      if (typeof window.paintHero === 'function') window.paintHero(state);
       var garden = drawGarden(milestones, state.reports);
       updateInstrumentRecord(state, freshness);
 
