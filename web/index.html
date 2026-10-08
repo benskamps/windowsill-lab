@@ -977,10 +977,22 @@
       .garden-specimen svg, .specimen-action::before { transition:none; }
       .ip-reveal { animation:none; }
     }
+    /* Skip link: off-screen until a keyboard user focuses it. */
+    .skip-link { position:absolute; left:0.75rem; top:-4rem; z-index:1000; padding:0.55rem 0.9rem;
+      background:var(--bg); color:var(--text); border:1px solid var(--leaf); border-radius:4px;
+      font:0.85rem var(--font-mono); text-decoration:none; }
+    .skip-link:focus { top:0.75rem; outline:2px solid var(--leaf); outline-offset:2px; }
+    #main-content:focus { outline:none; }
+    /* Hidden text for screen readers only (extra context on a visible label). */
+    .sr-only { position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden;
+      clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0; }
+    /* The rails scroll sideways on phones; keyboard users can focus and arrow them. */
+    .phase-rail:focus-visible, .garden-row:focus-visible { outline:2px solid var(--leaf); outline-offset:3px; }
   </style>
 </head>
 <body data-phase="day">
-  <main class="wrap" id="main-content">
+  <a href="#main-content" class="skip-link">Skip to content</a>
+  <main class="wrap" id="main-content" tabindex="-1">
     <nav class="crumbs" aria-label="breadcrumb">
       <a class="home" href="https://www.brokenbranch.dev/labs/">← the lab</a>
       <a class="home" href="https://www.brokenbranch.dev/">broken branch</a>
@@ -1449,7 +1461,7 @@
         new result. The lab earns the top of the ladder by climbing the first three rungs in public,
         misses included &mdash; which is the only reason anyone would believe the fourth.</p>
       </div>
-      <ol class="phase-rail" id="phase-rail">
+      <ol class="phase-rail" id="phase-rail" tabindex="0" aria-label="the four phases of the physics ladder">
         <li data-curriculum-phase="1"><span>01</span><strong>Verify the instrument</strong><em>M01–M05 · exact answers</em></li>
         <li data-curriculum-phase="2"><span>02</span><strong>Map known territory</strong><em>M06–M10 · new models</em></li>
         <li data-curriculum-phase="3"><span>03</span><strong>Push the edge</strong><em>M11–M14 · disorder</em></li>
@@ -1467,7 +1479,7 @@
         <h2 id="garden-title">Seven instruments. One standard of proof.</h2>
         <p>Height tracks how far each track has climbed. Amber waits for a human read; grey is a null.</p>
       </div>
-      <ul class="garden-row" id="garden-row"></ul>
+      <ul class="garden-row" id="garden-row" tabindex="0" aria-labelledby="garden-title"></ul>
     </section>
 
     <!-- The hunt ledger. Every counter is re-derived by the publisher from the
