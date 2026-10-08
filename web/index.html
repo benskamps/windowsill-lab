@@ -1055,8 +1055,12 @@
       box-shadow:0 0 0 3px rgba(138,168,107,0.16);
     }
     .hero-key {
-      position:absolute; right:0; bottom:4.6rem; max-width:300px; text-align:right;
+      max-width:520px; margin-top:1.4rem;
       color:var(--text-muted); font:0.66rem/1.5 var(--font-mono); letter-spacing:0.02em;
+    }
+    /* Only where there is room beside the tally does the key move under the rings. */
+    @media (min-width: 1180px) {
+      .hero-key { position:absolute; right:0; bottom:4.6rem; max-width:300px; margin:0; text-align:right; }
     }
     .hero-key i { font-style:normal; color:var(--leaf); }
 
@@ -1150,7 +1154,6 @@
       .hero-tally { grid-template-columns:repeat(2, minmax(0, 1fr)); }
       .hero-tally li:nth-child(3) { padding-left:0; border-left:none; }
       .hero-tally li:nth-child(n+3) { border-top:1px solid var(--border); margin-top:0.85rem; }
-      .hero-key { position:static; max-width:none; text-align:left; margin-top:1.4rem; }
       .phase-rail li[data-curriculum-phase] { margin-top:0; }
       .phase-rail li + li { border-left:none; }
     }
