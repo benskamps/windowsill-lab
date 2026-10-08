@@ -1078,6 +1078,12 @@
     .door-lead .door-k { color:var(--leaf); }
     .door-t { font-size:1.12rem; font-weight:500; line-height:1.2; letter-spacing:-0.01em; }
     .door-d { color:var(--text-muted); font-size:0.86rem; line-height:1.4; }
+    .primer { margin:1.6rem 0 0.4rem; padding:1.2rem 1.3rem; border:1px solid var(--border); border-radius:10px; background:rgba(236,225,204,0.03); }
+    .primer-title { font-size:1.25rem; font-style:italic; font-weight:480; margin:0 0 0.7rem; }
+    .primer-list { margin:0; padding-left:1.3rem; display:grid; gap:0.6rem; }
+    .primer-list li { line-height:1.55; font-size:0.95rem; }
+    .primer-list b { font-weight:600; }
+    .primer-list a { color:var(--ember); }
     .hero-key {
       max-width:520px; margin-top:1.4rem;
       color:var(--text-muted); font:0.66rem/1.5 var(--font-mono); letter-spacing:0.02em;
@@ -1279,6 +1285,19 @@
         <li class="tally-zero"><b id="tally-planets">0</b><span>planets claimed</span></li>
       </ul>
       <p class="hero-key" id="hero-key">Behind this: a seeded ring section, waiting for the feed.</p>
+    </section>
+
+    <!-- THE PRIMER. A stranger with no science background meets the magnet
+         panel next, so three plain sentences come first: what this is, why it
+         opens on a solved problem, and that the page gets more technical as it
+         goes down. Static text; nothing here depends on the feed. -->
+    <section class="primer" aria-labelledby="primer-title">
+      <h2 class="primer-title" id="primer-title">New here? Three things first.</h2>
+      <ol class="primer-list">
+        <li><b>What this is.</b> Two ordinary computers in a house take turns running experiments. AI agents wrote the code and run it; a person signs off on every result before it counts.</li>
+        <li><b>Why it opens on magnets.</b> Before you trust a home instrument with an open question, you make it re-measure answers already known exactly. The panel below is one: a 1944 pen-and-paper result for the temperature where a magnet loses its pull, re-measured by simulating a sheet of thousands of tiny magnets. Matching it proves the instrument works. It discovers nothing.</li>
+        <li><b>How to read the page.</b> It gets more technical as you scroll: the measurement, then a plant where every leaf is one experiment (green: a person checked it; amber: waiting; grey: a miss, kept on purpose), then the ladder of experiments, then the receipts. For the star most visitors come for, start at <a href="https://www.brokenbranch.dev/windowsill/tic-374861595/">TIC 374861595</a>, which begins from zero.</li>
+      </ol>
     </section>
 
     <!-- THE MEASUREMENT. Moved up from five screens down, and no longer
