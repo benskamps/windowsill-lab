@@ -4287,7 +4287,8 @@ def check_a02(report: dict) -> tuple[bool | None, str]:
         # ── the catalogue half, re-read from its pinned bytes ──
         vsx = row.get("vsx") or {}
         prov = vsx.get("provenance") or {}
-        vsx_path = _evidence_path(str(prov.get("cache_file", "")), a02_mod.CACHE_DIR)
+        vsx_path = _evidence_path(str(prov.get("cache_file", "")), a02_mod.CACHE_DIR,
+                                  sha256=prov.get("sha256"))
         if vsx_path is None:
             raise EvidenceNotHere(f"the VSX record for {ident} is absent")
         blob = vsx_path.read_bytes()
@@ -4298,7 +4299,8 @@ def check_a02(report: dict) -> tuple[bool | None, str]:
 
         # ── the photometry half, re-measured from the pinned FITS ──
         phot = row.get("photometry") or {}
-        fits_path = _evidence_path(str(phot.get("cache_file", "")), a01_mod.CACHE_DIR)
+        fits_path = _evidence_path(str(phot.get("cache_file", "")), a01_mod.CACHE_DIR,
+                                   sha256=phot.get("sha256"))
         if fits_path is None:
             raise EvidenceNotHere(
                 f"the light curve for {ident} ({phot.get('cache_file')}) is absent")
@@ -4792,27 +4794,47 @@ CHECKS = {"M01": check_m01, "M02": check_m02, "M03": check_m03,
           "H01": check_hypothesis, "U-A01": check_hypothesis}
 
 
-def _evidence_path(name: str, *cache_dirs) -> "Path | None":
+def _evidence_path(name: str, *cache_dirs, sha256: str | None = None) -> "Path | None":
     """Find a run's pinned bytes: the box's cache first, then the repo.
 
     ``evidence/<milestone>/`` is the committed copy — the difference between a
     milestone anyone can re-derive and one only the box that ran it can check.
     The local cache is tried first purely for speed; both are byte-identical or
     the SHA-256 pin fails, which is the point.
+
+    One filename can name two different byte streams: MAST served the Windows
+    box a different ``tess2020020091053-s0021-…357132618…`` for AE UMa than the
+    Linux box got, under the same name, so whichever copy is committed at
+    ``evidence/<m>/<name>`` fails the other box's pin. Given the receipt's pin,
+    a second copy can sit beside the first at ``evidence/<m>/<sha256[:12]>/<name>``
+    and the copy whose bytes match the pin is returned. When nothing matches,
+    the first candidate found is returned exactly as before, so the caller's
+    own pin check still reports tampering rather than this lookup hiding it.
     """
     from pathlib import Path as _P
+    candidates: list[_P] = []
     for base in cache_dirs:
         if base is None:
             continue
         candidate = _P(base) / name
         if candidate.is_file():
-            return candidate
+            candidates.append(candidate)
     committed = REPORTS_DIR.parent / "evidence"
-    for sub in committed.glob("*"):
+    for sub in sorted(committed.glob("*")):
         candidate = sub / name
         if candidate.is_file():
-            return candidate
-    return None
+            candidates.append(candidate)
+        if sha256:
+            keyed = sub / str(sha256)[:12] / name
+            if keyed.is_file():
+                candidates.append(keyed)
+    if not candidates:
+        return None
+    if sha256:
+        for candidate in candidates:
+            if hashlib.sha256(candidate.read_bytes()).hexdigest() == sha256:
+                return candidate
+    return candidates[0]
 
 
 class EvidenceNotHere(Exception):

@@ -359,16 +359,16 @@
     },
     {
       "id": "A02",
-      "title": "Recover a known variable star's light curve and period; register an AAVSO observer code and submit one validated observation",
+      "title": "Recover a known variable star's light curve and period",
       "status": "review",
       "track": "astronomy",
       "growth_form": "creeper",
       "runner_available": true,
-      "result": "recovery half measured 2026-08-23, machine gate PASSED, awaiting human review; the AAVSO half is untouched and stays open \u2014 registering an observer code and submitting a validated observation is an account action a human takes, and no part of it is claimed here. Six known variables across four pulsator classes, recovered blind: 6/6 inside their own resolution element, 6/6 clear of control. The sample is declared as NAMES, not TIC ids, because a TIC id is already an answer to \"which star is this?\" \u2014 the question A05 got wrong on TIC 77044472 \u2014 so coordinate resolution is inside what gets graded, and a cone holding two TICs refuses rather than taking the first row. Periods come from the dominant frequency of a least-squares amplitude spectrum over a band fixed before any spectrum was computed (0.05-120 c/d), refined below the grid by parabolic interpolation; the catalogued period is read only at grading time, from AAVSO VSX \u2014 the milestone's own venue \u2014 cached and SHA-256 pinned so `check_a02` re-derives every number offline from the photometry and never from the receipt. The bar is derived, not chosen: one Rayleigh element, dP = P^2/T, the smallest period difference the baseline can distinguish; the tightest margin still beats it 16x and the widest by ~1e4. Measured: AI Vel 0.1115740 d vs 0.111574 (rel 5.0e-08), SX Phe 4.8e-06, AE UMa 5.7e-06, XX Cyg 9.5e-06, beta Cep 5.0e-05, RR Lyr 7.4e-04. The ordering was predicted before the run: RR Lyr is Blazhko-modulated (VSX type RRAB/BL), so a single 27-day sector measures that sector's period and not the published mean \u2014 the module says so in a comment written before any star was fetched, and its residual came back the largest of the six by more than an order of magnitude over the next worst. Every target also carries a control: the same flux shuffled against the same timestamps, which keeps the noise and destroys the coherence; the real peaks stand 19-29x above it. Boundary: six bright, well-studied stars whose periods are decades old, so this is a calibration of the instrument against the catalogue, not a new period for anything; amplitudes are reported and never graded, since PDCSAP's corrections are tuned for transits and only approximately right for a high-amplitude pulsator; delta Cep and DY Peg were declared and skipped with a named reason \u2014 no SPOC two-minute photometry. Receipt `reports/receipts/run-2026-08-23-1425-a02.json` (the dated render `reports/2026-08-23-a02.html` is gitignored like every other per-run render); rerun `lab a02`.",
+      "result": "measured 2026-08-23, machine gate PASSED, awaiting human review. The AAVSO half this milestone used to carry was split out as A08 on 2026-10-08 so the recovery can be promoted without claiming a submission nobody has made. Six known variables across four pulsator classes, recovered blind: 6/6 inside their own resolution element, 6/6 clear of control. The sample is declared as NAMES, not TIC ids, because a TIC id is already an answer to \"which star is this?\" \u2014 the question A05 got wrong on TIC 77044472 \u2014 so coordinate resolution is inside what gets graded, and a cone holding two TICs refuses rather than taking the first row. Periods come from the dominant frequency of a least-squares amplitude spectrum over a band fixed before any spectrum was computed (0.05-120 c/d), refined below the grid by parabolic interpolation; the catalogued period is read only at grading time, from AAVSO VSX \u2014 the milestone's own venue \u2014 cached and SHA-256 pinned so `check_a02` re-derives every number offline from the photometry and never from the receipt. The bar is derived, not chosen: one Rayleigh element, dP = P^2/T, the smallest period difference the baseline can distinguish; the tightest margin still beats it 28x and the widest by ~9e4. Measured: AI Vel 0.1115740 d vs 0.111574 (rel 5.0e-08), SX Phe 4.8e-06, AE UMa 5.7e-06, XX Cyg 9.5e-06, beta Cep 5.0e-05, RR Lyr 7.4e-04. The ordering was predicted before the run: RR Lyr is Blazhko-modulated (VSX type RRAB/BL), so a single 27-day sector measures that sector's period and not the published mean \u2014 the module says so in a comment written before any star was fetched, and its residual came back the largest of the six by more than an order of magnitude over the next worst. Every target also carries a control: the same flux shuffled against the same timestamps, which keeps the noise and destroys the coherence; the real peaks stand 19-29x above it. Boundary: six bright, well-studied stars whose periods are decades old, so this is a calibration of the instrument against the catalogue, not a new period for anything; amplitudes are reported and never graded, since PDCSAP's corrections are tuned for transits and only approximately right for a high-amplitude pulsator; delta Cep and DY Peg were declared and skipped with a named reason \u2014 no SPOC two-minute photometry. Receipt `reports/receipts/run-2026-08-23-1425-a02.json` (the dated render `reports/2026-08-23-a02.html` is gitignored like every other per-run render); rerun `lab a02`.",
       "short_label": "Track a pulsing star",
-      "question_plain": "Can we follow a star that brightens and dims, time its rhythm, and add a real observation to the amateur record?",
+      "question_plain": "Can we follow a star that brightens and dims, and time its rhythm from public telescope data without being told the answer?",
       "why_it_matters": "Some stars pulse like a heartbeat, swelling and shrinking on a rhythm you could set a clock by. Timing one is how you prove a telescope pipeline actually works, because the right answer is already written down by other people \u2014 so there is nowhere to hide.",
-      "result_plain": "Six stars, given to the lab as names and nothing else. It found each one in the public telescope archive, watched it brighten and dim, and worked out its rhythm without ever being told the answer \u2014 then checked all six against the catalogue afterwards. All six right. The best was a star called AI Vel, whose pulse the lab timed to within about five thousandths of a second per day. The hardest was RR Lyrae, and we said before starting that it would be: its rhythm slowly wanders, so a month of watching can only ever catch that month's version of it. It came last, exactly as predicted. The other half of this experiment is still open \u2014 sending an observation to the amateur astronomers' database is something a person has to do, not a program.",
+      "result_plain": "Six stars, given to the lab as names and nothing else. It found each one in the public telescope archive, watched it brighten and dim, and worked out its rhythm without ever being told the answer \u2014 then checked all six against the catalogue afterwards. All six right. The best was a star called AI Vel, whose pulse the lab timed to within about five thousandths of a second per day. The hardest was RR Lyrae, and we said before starting that it would be: its rhythm slowly wanders, so a month of watching can only ever catch that month's version of it. It came last, exactly as predicted. Sending a real observation to the amateur astronomers' database is a separate step (A08), because that is something a person has to do, not a program.",
       "venue": "AAVSO"
     },
     {
@@ -430,12 +430,24 @@
       "track": "astronomy",
       "growth_form": "creeper",
       "runner_available": true,
-      "result": "machine gate PASSED, awaiting human review \u2014 all four sidereal periods recovered: Io 1.769138 d vs published 1.769137786 (rel 1.2e-7), Europa 3.551206 vs 3.551181, Ganymede 7.154529 vs 7.154553, Callisto 16.688573 vs 16.689018, all within the 5e-4 bar; T\u00b2/a\u00b3 constant to 2.08e-4 across the four moons; GM_Jupiter from the fit within 5.33e-4 of the JPL 126686531.9 km\u00b3/s\u00b2; Laplace relation closes at 1.2e-5 of n_Io while the Callisto-substituted control stays open at 0.28 \u2014 the resonance is the trio's, not the arithmetic's. Receipt `reports/2026-08-22-a07.json`; rerun `lab a07` \u2014 the fixed window makes the rerun a cache hit and byte-comparable.",
+      "result": "machine gate PASSED, awaiting human review \u2014 all four sidereal periods recovered: Io 1.769138 d vs published 1.769137786 (rel 1.6e-7), Europa 3.551206 vs 3.551181, Ganymede 7.154529 vs 7.154553, Callisto 16.688573 vs 16.689018, all within the 5e-4 bar; T\u00b2/a\u00b3 constant to 2.08e-4 across the four moons; GM_Jupiter from the fit within 5.33e-4 of the JPL 126686531.9 km\u00b3/s\u00b2; Laplace relation closes at 1.2e-5 of n_Io while the Callisto-substituted control stays open at 0.28 \u2014 the resonance is the trio's, not the arithmetic's. Receipt `reports/2026-08-22-a07.json`; rerun `lab a07` \u2014 the fixed window makes the rerun a cache hit and byte-comparable.",
       "short_label": "Jupiter's clockwork",
       "question_plain": "If you watch Jupiter's four big moons for four months, do they keep the exact mathematical rhythm Kepler and Laplace wrote down centuries ago?",
       "why_it_matters": "Three of the moons are locked in a gravitational waltz so precise it has held for billions of years \u2014 recovering it from public ephemerides proves this lab can measure celestial clockwork end to end.",
       "result_plain": "Yes \u2014 all four moons land on Kepler's line, Jupiter's mass falls out of the fit, and Io, Europa and Ganymede keep the Laplace rhythm while Callisto, the outsider, proves the rhythm is real by breaking it.",
       "venue": "JPL-Horizons"
+    },
+    {
+      "id": "A08",
+      "title": "Register an AAVSO observer code and submit one validated observation of a variable star",
+      "status": "pending",
+      "track": "astronomy",
+      "growth_form": "creeper",
+      "runner_available": false,
+      "short_label": "Join the amateur record",
+      "question_plain": "Can the lab's star-timing turn into a real observation that the amateur astronomers' database accepts under a registered observer's name?",
+      "why_it_matters": "Timing a star against a catalogue proves the pipeline works; adding to the catalogue is the step where the work stops being practice. That step needs a person with an account, so it is kept separate from what the machine did and is never claimed on its behalf.",
+      "venue": "AAVSO"
     },
     {
       "id": "I01",
@@ -477,11 +489,11 @@
     {
       "id": "P01",
       "title": "Fold HP lattice sequences blind and recover ground states proven in-house.",
-      "status": "review",
+      "status": "verified",
       "track": "misc",
       "growth_form": "sprout",
       "runner_available": true,
-      "result": "machine gate PASSED, awaiting human review.",
+      "result": "7/7 proven ground states recovered blind, shuffles and parity controls included; machine gate PASSED; promoted 2026-10-08 \u2014 Ben reviewed: all three receipts (Aug 24, Aug 30, Sep 6) re-derive under check_p01, an independently written enumerator agrees on all 18 graded, shuffled and parity optima, and the ungraded L=20/24 best-found folds (\u22129, \u22129) match the published Unger\u2013Moult benchmark optima.",
       "short_label": "Fold a protein",
       "question_plain": "A protein is a chain of beads that folds itself into one particular shape, and the shape is what it does for a living. If you strip that down to its simplest honest version \u2014 beads that either love water or don't, folded on graph paper \u2014 can a computer find the single best fold out of the millions available?",
       "why_it_matters": "Finding the best fold is one of those problems that gets impossibly harder as the chain gets longer, which is why it has been the standard test for folding software for thirty years. The trap is that a search can always report SOME fold and call it the best one. So for short chains this lab checks every single possible fold first, one by one, until the true answer is proven rather than believed \u2014 and only then lets the search loose, knowing nothing, to see if it finds the same thing.",
@@ -512,7 +524,7 @@
       "venue": "BOINC"
     }
   ],
-  "total": 40,
+  "total": 41,
   "last_run": "2026-09-11T22:08:18.923771+00:00",
   "runs": 77,
   "temp_c": 91.9,
