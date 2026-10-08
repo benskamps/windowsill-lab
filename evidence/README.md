@@ -36,3 +36,8 @@ and would put gigabytes in a public repo to no benefit, because A05's claim is a
 
 * `a02/` — six TESS SPOC light curves (2 MB each) and six AAVSO VSX records
   (~5 KB each), one pair per star in the graded sample.
+* `a02/8737781a3ae9/` — the Windows box's copy of the AE UMa sector-21 light
+  curve. MAST served it different bytes than the Linux box under the same
+  filename; the A02 receipts from 2026-09-06 and 2026-09-09 pin this copy.
+* `a07/` — the four JPL Horizons hourly vector tables (Io, Europa, Ganymede,
+  Callisto; 2026-01-01 to 2026-05-01, ~567 KB each) pinned by the A07 receipts.
