@@ -107,7 +107,9 @@ def main() -> int:
     ax[0].plot(bx, by, "o", ms=4, color="#e8833a", label="binned, 7.5 min")
     xx = np.linspace(-6, 6, 800); ax[0].plot(xx, trapezoid(t0 + xx / 24, t0, P, depth, t14), "-", color="#ece1cc", lw=1.2, label="trapezoid model")
     ax[0].set_ylabel("detrended flux"); ax[0].legend(loc="lower right", fontsize=8)
-    ax[0].set_title(f"TIC {args.tic} — P = {P:.6f} d, depth {depth*100:.2f} %, T14 {t14*24:.2f} h — sectors {eph['sectors']}, {eph['n_transits_total']} transits")
+    # two lines: on one, the title ran past the 8-inch canvas and was clipped
+    ax[0].set_title(f"TIC {args.tic} — P = {P:.6f} d, depth {depth*100:.2f} %, T14 {t14*24:.2f} h\n"
+                    f"sectors {', '.join(map(str, eph['sectors']))} · {eph['n_transits_total']} transits", fontsize=11)
     ph2 = (np.mod(t - t0, P) - 0.5 * P) * 24; m2 = np.abs(ph2) < 6
     idx2 = np.digitize(ph2[m2], bins); by2 = np.array([np.median(f[m2][idx2 == i]) if (idx2 == i).sum() > 3 else np.nan for i in range(1, len(bins))])
     ax[1].plot(ph2[m2], f[m2], ".", ms=2, alpha=.25, color="#847660"); ax[1].plot(bx, by2, "o", ms=4, color="#e8833a")
