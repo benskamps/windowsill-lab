@@ -1364,7 +1364,7 @@
           <g id="leaf-hits"></g>
           <circle id="bud-halo" cx="400" cy="270" r="11" fill="#7fae6b" filter="url(#soft)"/>
           <g id="bud-tip" aria-hidden="true"></g>
-          <circle id="bud" cx="400" cy="270" r="6" fill="#7fae6b" opacity="0"/>
+          <circle id="bud" cx="400" cy="270" r="6" fill="#7fae6b" opacity="0" aria-hidden="true"/>
           <g id="flower" opacity="0"></g>
         </g>
 
@@ -1378,6 +1378,7 @@
           <span class="exp-tag" id="exp-tag">on the bench</span>
           <span class="exp-label" id="exp-label">—</span>
           <span class="exp-q" id="exp-q"></span>
+          <span class="sr-only" id="exp-open">Open current field note.</span>
         </button>
 
         <div class="report" id="report" hidden>
@@ -3223,6 +3224,8 @@
         $('bud').appendChild(bt);
         // The bud opens the current expedition's field note (story + receipt).
         _openMilestone = open;
+        $('bud').setAttribute('role', 'button');
+        $('bud').removeAttribute('aria-hidden');
         $('bud').setAttribute('tabindex', '0');
         $('bud').setAttribute('aria-label',
           (open.id ? open.id + ': ' : '') + (open.short_label || open.title || 'open experiment') +
@@ -3230,7 +3233,11 @@
           ' Open field note.');
       } else {
         _openMilestone = null;
+        // Nothing open: the bud is invisible decoration, not an unnamed button.
         $('bud').removeAttribute('tabindex');
+        $('bud').removeAttribute('role');
+        $('bud').removeAttribute('aria-label');
+        $('bud').setAttribute('aria-hidden', 'true');
       }
 
       // Ladder complete → it flowers. Months out, and honest when it happens.
@@ -4233,7 +4240,7 @@
         b.setAttribute('data-mid', m.id);
         b.textContent = m.id;
         b.title = (m.short_label || m.title || m.id) + ' · ' + (FN_STATUS[allowed] || allowed);
-        b.setAttribute('aria-label', b.title + '. Open field note.');
+        b.setAttribute('aria-label', m.id + ': ' + b.title + '. Open field note.');
         if (allowed === 'open') b.setAttribute('aria-current', 'step');
         b.addEventListener('click', function () { openFieldNote(m, b); });
         rail.appendChild(b);
@@ -4437,9 +4444,12 @@
         var action = document.createElement('button');
         action.type = 'button';
         action.className = 'specimen-action';
-        action.setAttribute('aria-label', spec.label + ': ' + closed.length + ' of ' + total +
-          ' milestones measured; ' + promoted + ' promoted, ' + reviews + ' in review, ' + nulls +
-          ' null. ' + status.label + (focusMilestone ? '. Open ' + focusMilestone.id + ' field note.' : '.'));
+        // No aria-label: the card's visible text (track, status, latest result,
+        // measured / green / amber / grey counts) is its name, so speech-input
+        // users can say what they see. Only the action rides along as hidden text.
+        var actionNote = document.createElement('span');
+        actionNote.className = 'sr-only';
+        actionNote.textContent = focusMilestone ? 'Open ' + focusMilestone.id + ' field note.' : '';
         if (focusMilestone) {
           action.addEventListener('click', function () {
             openFieldNote(focusMilestone, action);
@@ -4600,6 +4610,7 @@
         nextText.textContent = next;
         foot.appendChild(nextText);
         action.appendChild(foot);
+        action.appendChild(actionNote);
 
         item.appendChild(action);
         row.appendChild(item);
@@ -5085,8 +5096,9 @@
         if (open.question_plain) { eq.textContent = open.question_plain; _setHidden(eq, false); }
         else _setHidden(eq, true);
         exp.hidden = false;
-        exp.setAttribute('aria-label', 'Open current field note: ' +
-          (open.id || '') + ' ' + (open.short_label || open.title || ''));
+        // No aria-label: the button's name is its visible text plus the
+        // hidden "open" hint, so speech-input users can say what they see.
+        $('exp-open').textContent = 'Open ' + (open.id ? open.id + ' ' : '') + 'field note.';
       } else if (exp) {
         exp.hidden = true;
       }
@@ -5214,7 +5226,7 @@
       });
       var bud = $('bud');
       if (bud) {
-        bud.setAttribute('role', 'button');
+        // role="button" is set by the render only while the bud opens a note.
         bud.addEventListener('click', function () { if (_openMilestone) openFieldNote(_openMilestone, bud); });
         bud.addEventListener('keydown', function (e) {
           if (e.key === 'Enter' || e.key === ' ' || e.key === 'Spacebar') {
