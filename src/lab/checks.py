@@ -4356,8 +4356,12 @@ def check_a07(report: dict) -> tuple[bool | None, str]:
     name_to_id = {v: k for k, v in a07_mod.MOONS.items()}
     per_moon: dict[str, dict] = {}
     for name, pin in cache.items():
-        path = a07_mod.CACHE_DIR / str(pin.get("file", ""))
-        if not path.is_file():
+        # Box cache first, then the committed evidence/a07/ copy, choosing
+        # whichever bytes match this receipt's pin (the Windows and Linux boxes
+        # fetched different bytes under the same name).
+        path = _evidence_path(str(pin.get("file", "")), a07_mod.CACHE_DIR,
+                              sha256=pin.get("sha256"))
+        if path is None:
             return None, (f"A07 cache missing: {pin.get('file')} — cannot "
                           "re-derive the physics on this box")
         blob = path.read_bytes()
