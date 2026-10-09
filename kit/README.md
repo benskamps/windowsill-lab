@@ -23,6 +23,7 @@ You can run your first search in the browser without installing anything.
 |---|---|
 | [`START-HERE.md`](START-HERE.md) | Three ways in: read, run in the browser (no install), or run locally |
 | [`JOURNEY.md`](JOURNEY.md) | **Start here.** The whole path, from learning what a transit is to sharing a result and coming back |
+| [`DASHBOARD.md`](DASHBOARD.md) | The page every run writes: the system, the star and the candidate, drawn only from the receipt |
 | [`CONFORMANCE.md`](CONFORMANCE.md) | Where the runner enforces each rule and the field's path, and where it departs on purpose |
 | [`PROTOCOL.md`](PROTOCOL.md) | The method, written down as ten rules, with where each one came from and an honest note on what is and isn't new |
 | [`BEFORE-YOU-POST.md`](BEFORE-YOU-POST.md) | What you can truthfully say for each result, and the path from "signal" to "planet" (it is long) |
@@ -53,7 +54,9 @@ git add my-prereg.md && git commit -m "prereg: TIC 100100827 s2"
 python -m lab.planetkit run --prereg my-prereg.md --download
 
 # 3. Read what you're allowed to say. The run also drew a fold plot per
-#    sector (receipt-...-s2-fold.svg): every dip lined up on top of each other.
+#    sector (receipt-...-s2-fold.svg): every dip lined up on top of each other,
+#    and one dashboard page (receipt-....html): the system, the star and the
+#    candidate. Open it in any browser; it works offline.
 python -m lab.planetkit explain receipt-TIC100100827-*.json
 
 # 4. Every star you search joins your own survey. Keep the receipts.

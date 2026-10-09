@@ -1,7 +1,9 @@
 # A dashboard for one run
 
-After a run, turn the receipt into one page: the system, the star and the
-candidate, side by side.
+Every `planetkit run` writes one page beside its receipt
+(`receipt-....html`): the system, the star and the candidate, side by side.
+To redraw it, for example with the light curves or a star file, run the
+dashboard yourself:
 
 ```bash
 python -m lab.planetkit_dashboard receipt-TIC100100827-2026-10-09.json \
