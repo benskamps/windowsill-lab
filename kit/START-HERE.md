@@ -23,12 +23,10 @@ All three lead to the same search, the same rules and the same six answers.
 The right answer is `already-known`, because WASP-18's planet has been known
 since 2009. Getting it means your setup can find a real signal.
 
-## What it won't do
+## The strongest answer
 
-It won't tell you that you found a planet. No automated search can, and the
-kit has no word for it. The strongest thing it can say is that a signal is a
-*lead awaiting human review*. Why, and what comes after, is in
-[`BEFORE-YOU-POST.md`](BEFORE-YOU-POST.md).
+The most a run can say is *lead awaiting human review*. What comes after
+that is in [`BEFORE-YOU-POST.md`](BEFORE-YOU-POST.md).
 
 ## After the first run
 

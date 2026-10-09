@@ -215,7 +215,8 @@ def test_cli_end_to_end(tmp_path, capsys):
     assert rc == 0
     receipt = json.loads(out.read_text())
     assert receipt["star"]["status"] == "incomplete"
-    assert "Do not say" in capsys.readouterr().out
+    printed = capsys.readouterr().out
+    assert "incomplete" in printed and "Do not say" not in printed
     assert planetkit.main(["explain", str(out)]) == 0
     fig = tmp_path / "receipt-s2-fold.svg"
     root = ET.fromstring(fig.read_text())
@@ -265,7 +266,7 @@ def test_ledger_regrades_a_lead_across_two_preregistrations(tmp_path):
     assert book["quick_ignored"] == 1 and book["refused_ignored"] == 1
     assert book["planets_claimed"] == 0
     text = planetkit.ledger_text(book)
-    assert text.startswith("1 star, 2 sector searches, 0 planets claimed.")
+    assert text.startswith("1 star, 2 sector searches.")
     assert "WASP-18" in text
 
 

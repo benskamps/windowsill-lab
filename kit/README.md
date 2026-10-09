@@ -93,8 +93,6 @@ My search found a repeating dip that every automatic test failed to explain. It 
 
   sector 20: SDE 9.5, P = 3.1791 d, word = lead-awaiting-human-review, placebo passed
   ! The preregistration was never committed, so nobody can tell it was written before the data were seen.
-
-Do not say: I found a planet; I discovered a planet; NASA confirmed it; a new world
 ```
 
 That is a real run of the kit at full size, on a **synthetic** star: a 0.4%
