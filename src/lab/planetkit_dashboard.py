@@ -37,7 +37,7 @@ import numpy as np
 
 from . import a04, a05
 from .a05_vocab import LEAD_DISPOSITION
-from .planetkit import (CLAIM_BOUNDARY, PLAIN, STAR_STATUSES, KitError,
+from .planetkit import (PLAIN, STAR_STATUSES, KitError,
                         _CLAIM, check_receipt, curve_from_csv, identify_fits)
 
 #: Star statuses for which a companion outline is drawn. Anything else gets
@@ -255,11 +255,6 @@ background:var(--panel);padding:20px;display:grid;
 grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:22px}
 @media (max-width:760px){.verdict{grid-template-columns:minmax(0,1fr)}}
 .say{font:19px/1.45 var(--serif);margin:8px 0}
-.nosay{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-wrap:wrap;
-gap:8px}
-.nosay li{font-family:var(--serif);text-decoration:line-through;
-text-decoration-color:var(--clay);color:var(--ink-2);
-border:1px dashed var(--line);padding:3px 10px;border-radius:6px}
 footer{margin-top:44px;border-top:1px solid var(--line);padding-top:16px;
 color:var(--ink-2);font-size:13px}
 svg text{font:11px var(--mono);fill:var(--ink-2)}
@@ -342,7 +337,6 @@ def render(receipt: dict, *, curves: dict | None = None,
       f'receipt ({esc(receipt["created_utc"])}). Numbers marked "worked out" '
       'are computed on this page from the inputs named beside them.</p>'
       f'<div class="chips"><span class="chip on">{esc(status)}</span>'
-      f'<span class="chip">0 planets claimed</span>'
       f'<span class="chip">{len(receipt["observations"])} sector'
       f'{"s" * (len(receipt["observations"]) != 1)} searched</span></div>')
     for warning in v.get("warnings", []):
@@ -451,17 +445,13 @@ def render(receipt: dict, *, curves: dict | None = None,
     w(f'<div class="verdict"><div><div class="eyebrow">the verdict</div>'
       f'<h3>The kit\'s word for this star</h3><p><span class="word">'
       f'{esc(status)}</span></p><p class="src">One of six: '
-      f'{esc(", ".join(STAR_STATUSES))}. None of them is "planet".</p></div>'
-      f'<div><div class="eyebrow">what you may say</div><p class="say">'
-      f'{esc(v["may_say"])}</p><div class="eyebrow">what you may not</div>'
-      '<ul class="nosay">'
-      + "".join(f"<li>{esc(x)}</li>" for x in v["may_not_say"])
-      + "</ul></div></div></section>")
+      f'{esc(", ".join(STAR_STATUSES))}.</p></div>'
+      f'<div><div class="eyebrow">in plain words</div><p class="say">'
+      f'{esc(v["may_say"])}</p></div></div></section>')
 
     pre = receipt.get("prereg") or {}
     git = pre.get("git") or {}
-    w(f'<footer><p>{esc(receipt.get("claim_boundary") or CLAIM_BOUNDARY)}</p>'
-      f'<p>Preregistration <code>{esc(str(pre.get("path", "")))}</code>, '
+    w(f'<footer><p>Preregistration <code>{esc(str(pre.get("path", "")))}</code>, '
       f'SHA-256 <code>{esc(str(pre.get("sha256", ""))[:12])}</code>, '
       f'{"committed" if git.get("committed") else "not committed"}. Kit '
       f'{esc(str(receipt.get("kit")))} v{esc(str(receipt.get("kit_version")))}'
@@ -470,10 +460,10 @@ def render(receipt: dict, *, curves: dict | None = None,
       'BEFORE-YOU-POST.md">before you post</a>.</p></footer>')
     w("</div></body></html>\n")
     page = "".join(h)
-    # The "what you may not" list quotes the claims in order to forbid them;
-    # everything else on the page is held to the receipt's own rule.
-    said = re.sub(r'<ul class="nosay">.*?</ul>', " ", page, flags=re.S)
-    if _CLAIM.search(html.unescape(re_strip_tags(said))):
+    # The page says the verdict once and holds every word of it, and the
+    # receipt's boundary it no longer prints, to the receipt's own rule.
+    if (_CLAIM.search(html.unescape(re_strip_tags(page)))
+            or _CLAIM.search(str(receipt.get("claim_boundary") or ""))):
         raise KitError("the dashboard text makes a planet claim")
     return page
 

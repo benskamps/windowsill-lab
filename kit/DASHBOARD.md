@@ -18,7 +18,7 @@ offline and passes a strict content-security policy.
 |---|---|---|
 | The system | the star, and the orbit drawn to scale in star radii | the receipt's period; the orbit size is worked out with Kepler's third law only when the star file gives a mass |
 | The star | radius, CROWDSAP and centroid offset per sector, plus anything in the star file | the receipt and the light-curve headers |
-| The candidate | each sector folded on its own period, the per-sector table, the verdict, and what you may and may not say | light curves you pass with `--fits` or `--csv`, or the fold plots the runner writes beside the receipt |
+| The candidate | each sector folded on its own period, the per-sector table, the verdict, and its plain sentence | light curves you pass with `--fits` or `--csv`, or the fold plots the runner writes beside the receipt |
 
 ## The rules it keeps
 
@@ -28,8 +28,7 @@ offline and passes a strict content-security policy.
   was refuted, and a star with nothing above threshold gets no orbit.
 - **It checks the receipt first.** A receipt that `check_receipt` refuses
   never becomes a page. The finished page is checked against the same claim
-  pattern too. The "what you may not say" list is the only place those
-  phrases appear.
+  pattern too.
 - **The light curve has to be the one the receipt searched.** A `--fits` or
   `--csv` file whose SHA-256 differs from the receipt's is refused.
 - **Worked-out numbers say so.** The orbit radius is labelled "worked out",

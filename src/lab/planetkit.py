@@ -700,7 +700,6 @@ def explain(receipt: dict) -> str:
                      f"placebo {'passed' if obs['placebo']['pass'] else 'FAILED'}")
     for w in v["warnings"]:
         lines.append(f"  ! {w}")
-    lines += ["", "Do not say: " + "; ".join(v["may_not_say"])]
     return "\n".join(lines)
 
 
@@ -771,7 +770,7 @@ def ledger_text(book: dict) -> str:
                          + [skipped] * bool(book["quick_ignored"]
                                             or book["refused_ignored"]))
     lines = [f"{n} star{'s' * (n != 1)}, {book['sector_searches']} sector "
-             f"searches, 0 planets claimed.", ""]
+             f"searches.", ""]
     for w, c in book["counts"].items():
         if c:
             lines.append(f"  {c:4d}  {w}")
