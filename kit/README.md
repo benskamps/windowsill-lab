@@ -1,4 +1,4 @@
-# Find your own planet (honestly)
+# Find your own planet
 
 You saw the posts. Someone pointed Claude Code at NASA's TESS data, found a
 repeating dip in a star's light, and a million people watched. Now you want to
@@ -14,20 +14,25 @@ cut down to one person and one star.
 It will not let you say you found a planet. Nothing automated can, and every
 step here is built around that.
 
+**New here, or don't code?** Start with [`START-HERE.md`](START-HERE.md).
+You can run your first search in the browser without installing anything.
+
 ## What you get
 
 | Piece | What it does |
 |---|---|
-| [`JOURNEY.md`](JOURNEY.md) | **Start here.** The whole path in ten steps, from learning what a transit is to sharing a result |
+| [`START-HERE.md`](START-HERE.md) | Three ways in: read, run in the browser (no install), or run locally |
+| [`JOURNEY.md`](JOURNEY.md) | **Start here.** The whole path, from learning what a transit is to sharing a result and coming back |
+| [`CONFORMANCE.md`](CONFORMANCE.md) | Where the runner enforces each rule and the field's path, and where it departs on purpose |
 | [`PROTOCOL.md`](PROTOCOL.md) | The method, written down as ten rules, with where each one came from and an honest note on what is and isn't new |
 | [`BEFORE-YOU-POST.md`](BEFORE-YOU-POST.md) | What you can truthfully say for each result, and the path from "signal" to "planet" (it is long) |
 | [`PREREGISTRATION.md`](PREREGISTRATION.md) | The form you fill in and commit **before** you look at the data |
-| [`skill/find-your-own-planet/`](skill/find-your-own-planet/SKILL.md) | A Claude Code skill that makes your agent follow the protocol |
+| [`skills/find-your-own-planet/`](skills/find-your-own-planet/SKILL.md) | A Claude Code skill that makes your agent follow the protocol |
 | [`LEARN.md`](LEARN.md) | A five-rung learning ladder, from never having seen a light curve to knowing where results go |
 | [`DATA.md`](DATA.md) | Where TESS data and the catalogs live, how to pull them, and the traps |
 | [`PROCEDURES.md`](PROCEDURES.md) | How the professional field runs the same path, and where this kit stands against it |
 | [`COMMUNITIES.md`](COMMUNITIES.md) | Every venue (ExoFOP, TFOP, Planet Hunters, AAVSO, journals) and what each asks of you |
-| `python -m lab.planetkit` | The runner: the lab's survey pipeline on one star, with its own placebo and a plain-English verdict |
+| `python -m lab.planetkit` | The runner (`prereg`, `run`, `explain`, `ledger`, `doctor`): the lab's survey pipeline on one star, with its own placebo and a plain-English verdict |
 
 ## Quickstart
 
@@ -47,17 +52,30 @@ git add my-prereg.md && git commit -m "prereg: TIC 100100827 s2"
 # 2. Run the ladder. --download fetches the declared sectors from MAST.
 python -m lab.planetkit run --prereg my-prereg.md --download
 
-# 3. Read what you're allowed to say.
+# 3. Read what you're allowed to say. The run also drew a fold plot per
+#    sector (receipt-...-s2-fold.svg): every dip lined up on top of each other.
 python -m lab.planetkit explain receipt-TIC100100827-*.json
+
+# 4. Every star you search joins your own survey. Keep the receipts.
+python -m lab.planetkit ledger
 ```
 
 Have SPOC files already? Use `--fits path/to/*.fits`. Only have a
 `time,flux` table? Use `--csv` (one file per declared sector). In that case the
 centroid and size gates can't run, and the receipt says so.
 
-To use the skill, copy `kit/skill/find-your-own-planet` into your project's
-`.claude/skills/` (or `~/.claude/skills/`) and ask Claude to "find a planet
-the windowsill way".
+To give the rules to Claude Code, add the lab as a plugin marketplace and
+install the kit from it:
+
+```
+/plugin marketplace add benskamps/windowsill-lab
+/plugin install find-your-own-planet@windowsill-lab
+```
+
+On Claude Code 2.1.275 or later, one line does both:
+`/plugin install find-your-own-planet --marketplace benskamps/windowsill-lab`.
+Then ask Claude to "find a planet the windowsill way". The skill still runs
+the code in this repo, so keep the clone.
 
 A full run (B = 256 permutations, 3,000 trial periods, ten placebo scrambles)
 takes about three minutes per sector on one core. `--quick` checks the plumbing in

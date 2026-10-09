@@ -7,7 +7,7 @@ covers it, and when you're done.
 | # | Step | Read | You're done when |
 |---|---|---|---|
 | 0 | Learn what a transit is | [`LEARN.md`](LEARN.md) | you can explain why a dip that repeats isn't automatically a planet |
-| 1 | Set up | [`README.md`](README.md#quickstart) | `python -m lab.planetkit doctor` is all green, or you know which line isn't and why |
+| 1 | Set up | [`START-HERE.md`](START-HERE.md) (browser, no install) or [`README.md`](README.md#quickstart) | `python -m lab.planetkit doctor` is all green, or you know which line isn't and why |
 | 2 | Calibrate on a known star | [`README.md`](README.md#quickstart) | WASP-18 (TIC 100100827, sector 2) ends `already-known` |
 | 3 | Pick your star | [`DATA.md`](DATA.md) | you have a TIC number, its sectors, and a reason |
 | 4 | Preregister | [`PREREGISTRATION.md`](PREREGISTRATION.md) | the form is committed, before you've opened the light curve |
@@ -16,6 +16,7 @@ covers it, and when you're done.
 | 7 | Decide what's next | [`PROCEDURES.md`](PROCEDURES.md) | a lead gets a second sector, everything else gets written down |
 | 8 | Share | [`BEFORE-YOU-POST.md`](BEFORE-YOU-POST.md) | your post uses only words from the table, and links the receipt and the commit |
 | 9 | Find your people | [`COMMUNITIES.md`](COMMUNITIES.md) | you know which venue fits your result and what it asks of you |
+| 10 | Come back | `python -m lab.planetkit ledger` | your ledger lists every star you've searched and what each one needs next |
 
 ## Notes on each step
 
@@ -29,6 +30,8 @@ search flagged 116 signals, and 66 of them were one of those.
 the NASA Exoplanet Archive and ExoFOP are reachable from your machine. Some
 sandboxes and cloud agents can't reach them. If so, download the SPOC
 `_lc.fits` files in a browser and use `--fits`.
+No terminal at all? The [browser notebook](START-HERE.md) does steps 1 and 2
+for you on Google's computers.
 
 **2. Calibrate.** Running a star whose answer is known first tells you the
 setup works. If WASP-18 doesn't come back `already-known`, nothing you find
@@ -65,7 +68,15 @@ anything else.
 AAVSO, Exoplanet Watch) each have their own rules. Since 2026-08-19, a
 community candidate on ExoFOP needs a published paper first.
 
+**10. Come back.** Every receipt you keep joins your own survey. The
+ledger regrades each star across all your receipts, so a lead from one
+sector turns persistent (or doesn't) when you search another. TESS goes
+back to most of the sky every couple of years, so a provisional lead often
+gets a new sector to check. Most stars end in `nothing-above-threshold`, and
+each one still counts: the lab's own record is 12,898 searches and zero
+planets claimed, and that denominator is the result.
+
 ## If you're an agent
 
-Install the skill in [`skill/find-your-own-planet/`](skill/find-your-own-planet/SKILL.md)
-and follow it. It is this page, as hard rules.
+Install the plugin (see [`README.md`](README.md#quickstart)) or read
+[`skills/find-your-own-planet/`](skills/find-your-own-planet/SKILL.md), and follow it. It is this page, as hard rules.
