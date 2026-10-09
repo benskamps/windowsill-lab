@@ -2,6 +2,13 @@
 
 > 🌲 Part of the [Broken Branch labs](https://www.brokenbranch.dev/labs/) — one human and a cluster of AI agents shipping strange software in public. This is one experiment among many; the front door lists them all.
 
+**Find your own planet.** The lab's planet-search method, packaged for one
+person and one star. It never claims a planet.
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/benskamps/windowsill-lab/blob/main/kit/start-in-browser.ipynb)
+· [Start here](kit/START-HERE.md) · [The kit's page](https://www.brokenbranch.dev/windowsill/kit/)
+· Claude Code: `/plugin marketplace add benskamps/windowsill-lab`, then
+`/plugin install find-your-own-planet@windowsill-lab`
+
 A patient scientific instrument that lives in your machine: numerical physics,
 trusted computation, open-archive astronomy, the hardware itself as a sensor,
 and donated volunteer compute.

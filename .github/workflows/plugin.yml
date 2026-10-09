@@ -1,0 +1,131 @@
+name: Planet kit plugin
+
+# Checks the find-your-own-planet plugin the way Anthropic's plugin directory
+# will (`claude plugin validate --strict`), and on demand cuts a GitHub Release
+# with the kit as downloads. Releases are manual: run "Planet kit plugin" from
+# the Actions tab (or workflow_dispatch) after bumping kit/.claude-plugin/plugin.json.
+
+on:
+  pull_request:
+    paths: [".claude-plugin/**", "kit/**", ".github/workflows/plugin.yml"]
+  push:
+    branches: [main]
+    paths: [".claude-plugin/**", "kit/**", ".github/workflows/plugin.yml"]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Cut a GitHub Release for the version in kit/.claude-plugin/plugin.json"
+        type: boolean
+        default: false
+
+concurrency:
+  group: plugin-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CLAUDE_CODE_VERSION: "2.1.295"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+      - name: Validate marketplace and plugin (strict)
+        run: |
+          if [ ! -f kit/.claude-plugin/plugin.json ]; then
+            echo "::notice::kit/.claude-plugin/plugin.json not on this ref yet; nothing to validate"
+            exit 0
+          fi
+          export CLAUDE_CONFIG_DIR="$RUNNER_TEMP/claude"
+          npx --yes "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" plugin validate --strict .
+          npx --yes "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" plugin validate --strict ./kit
+      - name: Install from this checkout as a marketplace
+        run: |
+          [ -f .claude-plugin/marketplace.json ] || exit 0
+          export CLAUDE_CONFIG_DIR="$RUNNER_TEMP/claude"
+          cc() { npx --yes "@anthropic-ai/claude-code@$CLAUDE_CODE_VERSION" "$@"; }
+          cc plugin marketplace add "$PWD"
+          cc plugin install find-your-own-planet@windowsill-lab
+          cc plugin details find-your-own-planet | tee details.txt
+          grep -q "Skills (1)" details.txt
+
+  release:
+    needs: validate
+    if: github.event_name == 'workflow_dispatch' && inputs.release
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+      - name: Build the downloads
+        id: build
+        run: |
+          set -euo pipefail
+          version=$(python -c "import json;print(json.load(open('kit/.claude-plugin/plugin.json'))['version'])")
+          tag="find-your-own-planet--v$version"
+          if git ls-remote --exit-code --tags origin "refs/tags/$tag" >/dev/null; then
+            echo "::error::$tag already exists. Bump version in kit/.claude-plugin/plugin.json first."
+            exit 1
+          fi
+          mkdir -p dist
+          # 1. The plugin alone: load with `claude --plugin-dir <zip>`.
+          (cd kit && zip -qr "../dist/find-your-own-planet-$version-plugin.zip" . -x '*/__pycache__/*')
+          # 2. The kit with the code it runs: no git clone needed for a first look.
+          stage="windowsill-planet-kit-$version"
+          mkdir -p "$stage/src"
+          cp -r kit LICENSE pyproject.toml "$stage/"
+          cp -r src/lab "$stage/src/"
+          find "$stage" -name __pycache__ -prune -exec rm -rf {} +
+          cat > "$stage/README.txt" <<EOF
+          Find your own planet, version $version, from benskamps/windowsill-lab.
+
+          Start with kit/START-HERE.md. To check your machine:
+
+              pip install numpy
+              PYTHONPATH=src python -m lab.planetkit doctor
+
+          For a real search the kit dates your preregistration from a public git
+          commit, so fork https://github.com/benskamps/windowsill-lab instead of
+          using this folder (kit/START-HERE.md says how).
+          EOF
+          zip -qr "dist/$stage.zip" "$stage"
+          # Smoke test the bundle: it must run with numpy alone.
+          pip -q install numpy
+          (cd "$stage" && PYTHONPATH=src python -m lab.planetkit --help >/dev/null)
+          (cd dist && sha256sum *.zip > SHA256SUMS)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.build.outputs.version }}
+          TAG: ${{ steps.build.outputs.tag }}
+        run: |
+          cat > notes.md <<EOF
+          The lab's planet-search method, packaged for one person and one star. It never claims a planet: the strongest thing it can say is *a lead awaiting human review*.
+
+          **Start here:** [kit/START-HERE.md](https://github.com/benskamps/windowsill-lab/blob/$TAG/kit/START-HERE.md) · [Open in Colab](https://colab.research.google.com/github/benskamps/windowsill-lab/blob/main/kit/start-in-browser.ipynb) · [The kit's page](https://www.brokenbranch.dev/windowsill/kit/)
+
+          **Claude Code:**
+          \`\`\`
+          /plugin marketplace add benskamps/windowsill-lab
+          /plugin install find-your-own-planet@windowsill-lab
+          \`\`\`
+
+          **Downloads**
+          - \`find-your-own-planet-$VERSION-plugin.zip\`: the plugin alone. \`claude --plugin-dir find-your-own-planet-$VERSION-plugin.zip\` loads it for one session.
+          - \`windowsill-planet-kit-$VERSION.zip\`: the kit plus the code it runs (numpy only). For a real search, fork the repo instead so your preregistration gets a public date.
+          - \`SHA256SUMS\`
+
+          The method is ten rules in [PROTOCOL.md](https://github.com/benskamps/windowsill-lab/blob/$TAG/kit/PROTOCOL.md). MIT licence.
+          EOF
+          gh release create "$TAG" dist/* --target "$GITHUB_SHA" \
+            --title "Find your own planet $VERSION" --notes-file notes.md
