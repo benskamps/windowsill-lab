@@ -1,0 +1,19 @@
+{
+  "name": "find-your-own-planet",
+  "displayName": "Find your own planet (honestly)",
+  "version": "1.0.0",
+  "description": "Search NASA TESS light curves for transits the windowsill lab's way: preregister first, run the full null, placebo and vetting ladder, and report in a closed vocabulary that never claims a planet.",
+  "author": {
+    "name": "brokenbranch.dev",
+    "url": "https://www.brokenbranch.dev/windowsill/"
+  },
+  "homepage": "https://github.com/benskamps/windowsill-lab/tree/main/kit",
+  "repository": "https://github.com/benskamps/windowsill-lab",
+  "keywords": [
+    "astronomy",
+    "exoplanets",
+    "tess",
+    "science",
+    "preregistration"
+  ]
+}

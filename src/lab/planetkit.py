@@ -632,6 +632,91 @@ def explain(receipt: dict) -> str:
     return "\n".join(lines)
 
 
+#: What a ledger tells you to do next, per star status. The ledger is the
+#: reason to come back: every star you search joins your own denominator,
+#: and some of them hand you a next step.
+NEXT_STEP = {
+    "nothing-above-threshold": "done; it counts in your denominator",
+    "refuted": "done; the receipt says what it was",
+    "already-known": "done; your search re-found a catalogued signal",
+    "incomplete": "rerun online so the catalog gate can run",
+    "control-failed": "report the failed control; do not tune until it passes",
+}
+
+
+def ledger(receipts: list[dict]) -> dict:
+    """Your own survey: every star you searched, regraded across receipts.
+
+    A star searched under two preregistrations (say sector 20, then sector
+    47 to check a lead) is graded on all its sectors together, the latest
+    receipt winning per sector. Quick runs and receipts that fail
+    :func:`check_receipt` are counted and left out, never graded.
+    """
+    quick, refused, stars = 0, 0, {}
+    for r in sorted(receipts, key=lambda r: r.get("created_utc", "")):
+        try:
+            check_receipt(r)
+        except (KitError, KeyError, TypeError):
+            refused += 1
+            continue
+        if r.get("quick"):
+            quick += 1
+            continue
+        star = stars.setdefault(str(r["tic"]), {"by_sector": {}, "receipts": 0})
+        star["receipts"] += 1
+        for obs in r["observations"]:
+            star["by_sector"][obs["sector"]] = obs
+    rows = []
+    for tic, star in sorted(stars.items()):
+        status = star_status(list(star["by_sector"].values()))
+        word = status["status"]
+        if word == LEAD_DISPOSITION:
+            nxt = ("ready for a human reviewer: see BEFORE-YOU-POST.md"
+                   if status["persistent"] else
+                   "preregister and search another sector"
+                   if status["provisional_single_sector"] else
+                   "periods disagree across sectors; a human should look")
+        else:
+            nxt = NEXT_STEP[word]
+        rows.append({"tic": tic, "status": word,
+                     "sectors": sorted(star["by_sector"]),
+                     "receipts": star["receipts"], "next": nxt})
+    counts = {w: sum(r["status"] == w for r in rows) for w in STAR_STATUSES}
+    return {"stars": rows, "counts": counts,
+            "sector_searches": sum(len(r["sectors"]) for r in rows),
+            "calibrated": counts["already-known"] > 0,
+            "quick_ignored": quick, "refused_ignored": refused,
+            "planets_claimed": 0}
+
+
+def ledger_text(book: dict) -> str:
+    n = len(book["stars"])
+    skipped = (f"(left out: {book['quick_ignored']} quick runs, "
+               f"{book['refused_ignored']} refused receipts)")
+    if not n:
+        return "\n".join(["No graded receipts here yet. Run a star first "
+                          "(kit/JOURNEY.md, steps 2 to 5)."]
+                         + [skipped] * bool(book["quick_ignored"]
+                                            or book["refused_ignored"]))
+    lines = [f"{n} star{'s' * (n != 1)}, {book['sector_searches']} sector "
+             f"searches, 0 planets claimed.", ""]
+    for w, c in book["counts"].items():
+        if c:
+            lines.append(f"  {c:4d}  {w}")
+    lines.append("")
+    for r in book["stars"]:
+        lines.append(f"TIC {r['tic']} (sectors "
+                     f"{', '.join(map(str, r['sectors']))}): {r['status']}. "
+                     f"Next: {r['next']}.")
+    if not book["calibrated"]:
+        lines += ["", "! None of your stars has come back already-known yet. "
+                  "Run a known planet (WASP-18, TIC 100100827) so you know "
+                  "your setup can find one."]
+    if book["quick_ignored"] or book["refused_ignored"]:
+        lines.append(skipped)
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="planetkit", description=__doc__.split(
         "\n\n")[0])
@@ -655,6 +740,9 @@ def main(argv: list[str] | None = None) -> int:
     ex = sub.add_parser("explain", help="print a receipt in plain words")
     ex.add_argument("receipt", type=Path)
     sub.add_parser("doctor", help="check this machine can run the journey")
+    lg = sub.add_parser("ledger", help="your own survey: every star so far")
+    lg.add_argument("receipts", type=Path, nargs="*",
+                    help="receipt files (default: receipt-*.json here)")
     a = p.parse_args(argv)
     try:
         if a.cmd == "prereg":
@@ -684,6 +772,15 @@ def main(argv: list[str] | None = None) -> int:
                 if not r["ok"]:
                     print(f"       {r['fix']}")
             return 0 if all(r["ok"] for r in rows) else 1
+        elif a.cmd == "ledger":
+            paths = a.receipts or sorted(Path(".").glob("receipt-*.json"))
+            loaded = []
+            for q in paths:
+                try:
+                    loaded.append(json.loads(q.read_text()))
+                except (OSError, ValueError):
+                    loaded.append({})      # unreadable: counted as refused
+            print(ledger_text(ledger(loaded)))
         else:
             print(explain(json.loads(a.receipt.read_text())))
     except KitError as exc:

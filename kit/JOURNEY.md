@@ -16,6 +16,7 @@ covers it, and when you're done.
 | 7 | Decide what's next | [`PROCEDURES.md`](PROCEDURES.md) | a lead gets a second sector, everything else gets written down |
 | 8 | Share | [`BEFORE-YOU-POST.md`](BEFORE-YOU-POST.md) | your post uses only words from the table, and links the receipt and the commit |
 | 9 | Find your people | [`COMMUNITIES.md`](COMMUNITIES.md) | you know which venue fits your result and what it asks of you |
+| 10 | Come back | `python -m lab.planetkit ledger` | your ledger lists every star you've searched and what each one needs next |
 
 ## Notes on each step
 
@@ -65,7 +66,15 @@ anything else.
 AAVSO, Exoplanet Watch) each have their own rules. Since 2026-08-19, a
 community candidate on ExoFOP needs a published paper first.
 
+**10. Come back.** Every receipt you keep joins your own survey. The
+ledger regrades each star across all your receipts, so a lead from one
+sector turns persistent (or doesn't) when you search another. TESS goes
+back to most of the sky every couple of years, so a provisional lead often
+gets a new sector to check. Most stars end in `nothing-above-threshold`, and
+each one still counts: the lab's own record is 12,898 searches and zero
+planets claimed, and that denominator is the result.
+
 ## If you're an agent
 
-Install the skill in [`skill/find-your-own-planet/`](skill/find-your-own-planet/SKILL.md)
-and follow it. It is this page, as hard rules.
+Install the plugin (see [`README.md`](README.md#quickstart)) or read
+[`skills/find-your-own-planet/`](skills/find-your-own-planet/SKILL.md), and follow it. It is this page, as hard rules.

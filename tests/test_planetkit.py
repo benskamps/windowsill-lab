@@ -226,3 +226,51 @@ def test_doctor_reports_each_requirement_with_a_fix(tmp_path):
     assert git_row["ok"] is False and "git init" in git_row["fix"]
     mast = next(r for r in rows if r["check"].startswith("MAST"))
     assert mast["ok"] is False and "--fits" in mast["fix"]
+
+
+# ------------------------------------------------------------------ ledger
+
+def _roundtrip(receipt: dict) -> dict:
+    return json.loads(json.dumps(receipt, default=planetkit._json_default))
+
+
+def test_ledger_regrades_a_lead_across_two_preregistrations(tmp_path):
+    """Sector 2 gives a provisional lead; a second preregistration on
+    sector 3 makes it persistent. The ledger is where that shows."""
+    a, b = tmp_path / "a", tmp_path / "b"
+    a.mkdir(), b.mkdir()
+    first = planetkit.run(_prereg(a), fits=[_fits(a, 2, depth=PLANT_DEPTH)],
+                          catalog=_uncatalogued)
+    book = planetkit.ledger([_roundtrip(first)])
+    assert book["stars"][0]["next"] == "preregister and search another sector"
+    assert book["calibrated"] is False
+    second = planetkit.run(_prereg(b, sectors=(3,)),
+                           fits=[_fits(b, 3, depth=PLANT_DEPTH, seed=2)],
+                           catalog=_uncatalogued)
+    quick = planetkit.run(_prereg(b, sectors=(3,)),
+                          fits=[_fits(b, 3, seed=3)], catalog=_uncatalogued,
+                          quick=True)
+    forged = {**_roundtrip(first), "planets_claimed": 1}
+    book = planetkit.ledger([_roundtrip(r) for r in (first, second, quick)]
+                            + [forged])
+    (star,) = book["stars"]
+    assert star["sectors"] == [2, 3] and star["receipts"] == 2
+    assert star["status"] == "lead-awaiting-human-review"
+    assert star["next"].startswith("ready for a human reviewer")
+    assert book["quick_ignored"] == 1 and book["refused_ignored"] == 1
+    assert book["planets_claimed"] == 0
+    text = planetkit.ledger_text(book)
+    assert text.startswith("1 star, 2 sector searches, 0 planets claimed.")
+    assert "WASP-18" in text
+
+
+def test_ledger_cli_reads_receipts_in_the_folder(tmp_path, capsys, monkeypatch):
+    out = tmp_path / "receipt-TIC4206066-test.json"
+    assert planetkit.main(["run", "--prereg", str(_prereg(tmp_path)),
+                           "--fits", str(_fits(tmp_path, 2)), "--offline",
+                           "--out", str(out)]) == 0
+    capsys.readouterr()
+    monkeypatch.chdir(tmp_path)
+    assert planetkit.main(["ledger"]) == 0
+    printed = capsys.readouterr().out
+    assert "TIC 4206066 (sectors 2): nothing-above-threshold" in printed

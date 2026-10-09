@@ -57,8 +57,16 @@ the reasons.
 6. If the user wants to share the result, draft it from the table in
    `kit/BEFORE-YOU-POST.md`, linking the receipt and the preregistration
    commit.
+7. Run `python -m lab.planetkit ledger` in the folder holding the
+   receipts. It regrades every star the user has searched across all their
+   receipts and says what each one needs next. Relay its first line (the
+   user's own denominator) and every "Next:" that isn't "done".
 
 ## Setup
+
+The skill runs code from benskamps/windowsill-lab. If the current folder is
+not a clone of it, clone it first (installing the plugin does not bring the
+code):
 
 ```bash
 git clone https://github.com/benskamps/windowsill-lab && cd windowsill-lab

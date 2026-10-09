@@ -42,9 +42,9 @@ named gap, and one — TIC 374861595, an uncatalogued 10.5 % signal on a mid-M
 dwarf that the SPOC pipeline has detected 259 times without promotion to TOI —
 remains open. We present that object as a worked example rather than as a
 result: the survey's contribution to it is an independent blind recovery inside
-a sample with a denominator, and one measurement the standard promotion path
-does not make, namely a surface-brightness bound from the absent secondary
-eclipse that is independent of the grazing degeneracy. A limb-darkened refit
+a sample with a denominator, and a sharper use of one measurement the standard
+promotion path already makes: a surface-brightness bound from the absent
+secondary eclipse that is independent of the grazing degeneracy. A limb-darkened refit
 over 24 sectors and 5.3 years, with a host radius derived from 2MASS photometry
 and a Gaia DR3 parallax rather than adopted from a catalogue, leaves the
 companion's radius *less* constrained than the catalogue pipeline did — the
@@ -110,8 +110,9 @@ we found out.
 the signal first, in 2020, and has redetected it in every 2-minute sector the
 target has been observed in since. What the survey adds is a blind recovery inside a sample whose size is
 known, and one measurement — a companion bound from the absent secondary
-eclipse that survives the grazing degeneracy — that the promotion path does not
-make and that was available in the same archive the whole time. We present it
+eclipse that survives the grazing degeneracy — drawn from a depth the promotion
+path already computes but does not turn into this bound, and available in the
+same archive the whole time. We present it
 as the survey's worked example because a methods paper whose method never meets
 a hard case has not been tested.
 
@@ -614,7 +615,7 @@ high-significance but awkward signals — grazing, implausibly large, faint
 late-type host — are cheap to defer and expensive to resolve, and therefore
 accumulate.
 
-### 6.3 The measurement the promotion path does not make
+### 6.3 The bound the promotion path does not draw
 
 The discriminating test is the absent secondary eclipse, and the reason it
 works here is geometric.
@@ -642,6 +643,15 @@ cool-dwarf flux, which makes the true cut-off looser than quoted.
 An earlier revision of the package claimed exclusion "by two orders of
 magnitude". That was wrong, is retracted in the package, and is not recovered
 here.
+
+The measurement itself is not new. SPOC's Data Validation, inherited from
+Kepler's, already turns the weak-secondary depth into planet effective-temperature
+and geometric-albedo comparison statistics (Twicken et al. 2018, PASP 130,
+064502). What this section adds is narrower: a band-integrated exclusion of
+stellar companions, and the observation that the geometry cancels in the depth
+ratio. It holds only if the signal is on this star. Under a blend, the eclipsing
+pair's primary is not this M dwarf and the conversion no longer applies — the
+case the ρ★ tension in §6.4 leaves open.
 
 **Conclusion: a stellar companion is excluded. A giant planet and a cool brown
 dwarf are not distinguished, and no photometry can distinguish them.** Only
@@ -671,7 +681,8 @@ a full disposition record, so its survival means something quantifiable rather
 than meaning that somebody found it interesting. And the surface-brightness
 bound in §6.3 is a measurement that was available in the same public archive
 for the whole 5.2-year baseline, costs one pass over data already on disk, and
-is not part of the standard promotion path.
+is not drawn by the standard promotion path, which computes the same depth
+(§6.3) but does not turn it into this bound.
 
 ---
 
@@ -790,8 +801,8 @@ required deciding that the record was the product.
 
 The astrophysical claim is narrower. The secondary-eclipse surface-brightness
 bound of §6.3 is cheap, needs no new observations, and is independent of the
-grazing degeneracy that makes this class of signal awkward to triage. It is not
-part of the standard promotion path. An earlier revision of this section said
+grazing degeneracy that makes this class of signal awkward to triage. The
+promotion path computes the same depth but does not draw this bound (§6.3). An earlier revision of this section said
 the class it would act on — high MES, high *b*, inferred R_p > 2 R_Jup, faint
 late-type host — was enumerable from the public DV catalogue, declined to
 enumerate it, and called the section a suggestion until someone did. This
@@ -984,7 +995,7 @@ bytes rather than trusting ours.
 
 ## Appendix B · Corrections carried forward
 
-Seven claims made during preparation were withdrawn and are recorded rather
+Eight claims made during preparation were withdrawn and are recorded rather
 than overwritten, because a package that hides its retractions is not one a
 referee should trust:
 
@@ -997,3 +1008,4 @@ referee should trust:
 | "SPOC has redetected it in every 2-minute sector since 2018" / "never promoted to TOI in seven years" | wrong on both counts. The DV product's own `sectorsObserved` bitmap marks 23 sectors, none early; the §7 run found light curves beginning at sector 27. Coverage starts in 2020 and spans 1,897 days ≈ 5.2 years. Retracted 2026-09-19 against the committed DV XML; §1, §6.2, §6.5 |
 | "Mann+2019 mass 0.72 M☉" | wrong, and no derivation for it ever existed. Mann+2019 gives 0.605 M☉ at this star's M_K and reaches 0.72 only at M_K = 4.19, 0.79 mag brighter. Retracted 2026-09-18 against the authors' own posterior; §6.4, §7 |
 | "independent of the grazing degeneracy … applying the test to that class is one pass over data already on disk" (§8, 2026-09-18) | half right. It is independent of the grazing (*k*, *b*) degeneracy and blind to a half-period alias, where an equal-eclipse binary's secondary is folded onto its primary. Run unpaired over the class it reported 63 stellar exclusions, 40 of them on odd/even differences above 3 σ. The test must be paired with odd/even. Corrected 2026-10-08; §8.3 |
+| "one measurement the standard promotion path does not make" (abstract, §1, §6.3, §6.5, §8) | overstated. SPOC/Kepler DV already converts the weak-secondary depth into planet-temperature and albedo statistics (Twicken et al. 2018). The new part is the band-integrated stellar exclusion and the geometry cancelling in the ratio, conditional on the signal being on the target. Corrected 2026-10-09; §6.3 |

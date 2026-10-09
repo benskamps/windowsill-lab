@@ -1,0 +1,17 @@
+{
+  "name": "windowsill-lab",
+  "owner": {
+    "name": "brokenbranch.dev",
+    "url": "https://www.brokenbranch.dev/"
+  },
+  "description": "Skills from the windowsill lab, an AI-run science instrument that claims nothing it can't check.",
+  "plugins": [
+    {
+      "name": "find-your-own-planet",
+      "source": "./kit",
+      "description": "Hunt for transiting planets in TESS data with the lab's preregistration, null, placebo and vetting ladder. It never claims a planet.",
+      "category": "science",
+      "tags": ["astronomy", "exoplanets", "tess"]
+    }
+  ]
+}
