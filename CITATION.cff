@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use the windowsill lab or its find-your-own-planet kit, please cite it as below."
+title: "windowsill-lab"
+abstract: >-
+  A patient science instrument that AI agents wrote and keep running: GPU
+  physics, trusted compute, archive astronomy and hardware sensors. Its
+  find-your-own-planet kit packages the lab's TESS transit-search method
+  (preregistration, permutation null, injection floor, placebo and vetting
+  ladder, closed vocabulary with no word for "planet") for one person and
+  one star.
+type: software
+authors:
+  - given-names: Benjamin
+    family-names: Schippers
+    website: "https://www.brokenbranch.dev/"
+repository-code: "https://github.com/benskamps/windowsill-lab"
+url: "https://www.brokenbranch.dev/windowsill/"
+license: MIT
+keywords:
+  - astronomy
+  - exoplanets
+  - TESS
+  - transit search
+  - preregistration
+  - citizen science
+  - open science
+  - Claude Code
