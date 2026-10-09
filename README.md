@@ -160,6 +160,12 @@ contributions carry their record (`venue` / `url` / `doi`) and every published
 snapshot ships a `provenance` block (code SHA + environment) so any number can be
 traced and re-run. See [CITIZEN_SCIENCE.md](CITIZEN_SCIENCE.md).
 
+**Want to hunt for transits yourself?** [`kit/`](kit/README.md) packages the
+lab's TESS survey for one person and one star: a preregistration it won't run
+without, the full null/placebo/vetting ladder, a plain-English verdict with no
+word for "planet", and a Claude Code skill that keeps an agent on those rules.
+The method is written down as ten rules in [`kit/PROTOCOL.md`](kit/PROTOCOL.md).
+
 ## Feeding the seed
 
 The lab feeds the **windowsill** — its calm, public face (the page now ships

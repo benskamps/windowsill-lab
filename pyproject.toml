@@ -23,6 +23,7 @@ camera = [
 
 [project.scripts]
 lab = "lab.cli:main"
+planetkit = "lab.planetkit:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
