@@ -106,3 +106,14 @@ def test_cli_writes_the_page_beside_the_receipt(tmp_path, capsys):
     page = out.with_suffix(".html").read_text()
     _offline_safe(page)
     assert "TIC 4206066" in page and 'class="curve"' in page
+
+
+def test_run_writes_the_dashboard_beside_the_receipt(tmp_path, capsys):
+    out = tmp_path / "receipt-TIC4206066-auto.json"
+    assert planetkit.main(["run", "--prereg", str(_prereg(tmp_path)),
+                           "--fits", str(_fits(tmp_path, 2, depth=PLANT_DEPTH)),
+                           "--offline", "--out", str(out)]) == 0
+    assert "dashboard:" in capsys.readouterr().out
+    page = out.with_suffix(".html").read_text()
+    _offline_safe(page)
+    assert "data:image/svg+xml;base64," in page   # the kit's own fold plot

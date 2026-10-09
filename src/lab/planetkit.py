@@ -841,6 +841,15 @@ def main(argv: list[str] | None = None) -> int:
                 fig = out.with_name(f"{out.stem}-s{sector}-fold.svg")
                 fig.write_text(svg)
                 print(f"fold plot: {fig}")
+            # One page with the system, the star and the candidate, drawn
+            # from the receipt and the fold plots just written beside it.
+            from .planetkit_dashboard import render as render_dashboard
+            images = {s: out.with_name(f"{out.stem}-s{s}-fold.svg").read_text()
+                      for s in figures}
+            page = out.with_suffix(".html")
+            page.write_text(render_dashboard(
+                json.loads(out.read_text()), fold_images=images))
+            print(f"dashboard: {page}")
         elif a.cmd == "doctor":
             rows = doctor()
             for r in rows:
