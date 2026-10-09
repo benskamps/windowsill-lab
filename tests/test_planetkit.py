@@ -216,3 +216,13 @@ def test_cli_end_to_end(tmp_path, capsys):
     assert receipt["star"]["status"] == "incomplete"
     assert "Do not say" in capsys.readouterr().out
     assert planetkit.main(["explain", str(out)]) == 0
+
+
+def test_doctor_reports_each_requirement_with_a_fix(tmp_path):
+    rows = planetkit.doctor(tmp_path, reach=lambda url: (False, "blocked"))
+    names = [r["check"] for r in rows]
+    assert names[0].startswith("Python") and "numpy" in names
+    git_row = next(r for r in rows if r["check"].startswith("git"))
+    assert git_row["ok"] is False and "git init" in git_row["fix"]
+    mast = next(r for r in rows if r["check"].startswith("MAST"))
+    assert mast["ok"] is False and "--fits" in mast["fix"]

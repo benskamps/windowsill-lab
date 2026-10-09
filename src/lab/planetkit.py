@@ -549,6 +549,62 @@ def check_receipt(receipt: dict) -> None:
         raise KitError("the plain verdict makes a planet claim")
 
 
+# ------------------------------------------------------------------- doctor
+
+#: The three services a full run talks to, and what breaks without each.
+SERVICES = (
+    ("MAST (light curves)", "https://mast.stsci.edu/api/v0/invoke",
+     "--download will not work; fetch SPOC _lc.fits files by hand and "
+     "use --fits"),
+    ("NASA Exoplanet Archive (TOIs, known planets)",
+     "https://exoplanetarchive.ipac.caltech.edu/TAP/sync?query=select+1+from+toi&format=json",
+     "the catalog gate cannot run, so no lead can be minted (--offline)"),
+    ("ExoFOP (community candidates)",
+     "https://exofop.ipac.caltech.edu/tess/",
+     "the CTOI part of the catalog gate cannot run"),
+)
+
+
+def _reachable(url: str, timeout: float = 8.0) -> tuple[bool, str]:
+    import urllib.request
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "planetkit"})
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return True, f"HTTP {r.status}"
+    except Exception as exc:  # noqa: BLE001 — reported, never raised
+        code = getattr(exc, "code", None)
+        if code is not None and 400 <= int(code) < 500 and int(code) != 403:
+            return True, f"HTTP {code} (reachable)"
+        return False, f"{type(exc).__name__}: {exc}"[:120]
+
+
+def doctor(where: Path = Path("."), reach=_reachable) -> list[dict]:
+    """Can this machine run the whole journey? One row per requirement."""
+    rows = [{"check": "Python >= 3.11", "ok": sys.version_info >= (3, 11),
+             "detail": sys.version.split()[0],
+             "fix": "install Python 3.11 or newer"},
+            {"check": "numpy", "ok": True, "detail": np.__version__,
+             "fix": ""}]
+    try:
+        inside = subprocess.run(
+            ["git", "-C", str(where), "rev-parse", "--is-inside-work-tree"],
+            capture_output=True, text=True, timeout=10).stdout.strip()
+        git_ok, git_detail = inside == "true", (
+            "inside a git repository" if inside == "true"
+            else "not a git repository")
+    except (OSError, subprocess.SubprocessError) as exc:
+        git_ok, git_detail = False, f"git not available ({exc})"
+    rows.append({"check": "git, for dating your preregistration",
+                 "ok": git_ok, "detail": git_detail,
+                 "fix": "run `git init` here (a public repo is better: the "
+                        "commit time is your proof of order)"})
+    for name, url, without in SERVICES:
+        ok, detail = reach(url)
+        rows.append({"check": name, "ok": ok, "detail": detail,
+                     "fix": f"without it, {without}"})
+    return rows
+
+
 # ---------------------------------------------------------------------- CLI
 
 def _json_default(o):
@@ -598,6 +654,7 @@ def main(argv: list[str] | None = None) -> int:
     rn.add_argument("--out", type=Path)
     ex = sub.add_parser("explain", help="print a receipt in plain words")
     ex.add_argument("receipt", type=Path)
+    sub.add_parser("doctor", help="check this machine can run the journey")
     a = p.parse_args(argv)
     try:
         if a.cmd == "prereg":
@@ -619,6 +676,14 @@ def main(argv: list[str] | None = None) -> int:
                                       default=_json_default))
             print(explain(receipt))
             print(f"\nreceipt: {out}")
+        elif a.cmd == "doctor":
+            rows = doctor()
+            for r in rows:
+                mark = "ok " if r["ok"] else "NO "
+                print(f"[{mark}] {r['check']}: {r['detail']}")
+                if not r["ok"]:
+                    print(f"       {r['fix']}")
+            return 0 if all(r["ok"] for r in rows) else 1
         else:
             print(explain(json.loads(a.receipt.read_text())))
     except KitError as exc:
