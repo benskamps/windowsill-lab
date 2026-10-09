@@ -23,6 +23,8 @@ step here is built around that.
 | [`BEFORE-YOU-POST.md`](BEFORE-YOU-POST.md) | What you can truthfully say for each result, and the path from "signal" to "planet" (it is long) |
 | [`PREREGISTRATION.md`](PREREGISTRATION.md) | The form you fill in and commit **before** you look at the data |
 | [`skill/find-your-own-planet/`](skill/find-your-own-planet/SKILL.md) | A Claude Code skill that makes your agent follow the protocol |
+| [`DATA.md`](DATA.md) | Where TESS data and the catalogs live, how to pull them, and the traps |
+| [`PROCEDURES.md`](PROCEDURES.md) | How the professional field runs the same path, and where this kit stands against it |
 | [`COMMUNITIES.md`](COMMUNITIES.md) | Every venue (ExoFOP, TFOP, Planet Hunters, AAVSO, journals) and what each asks of you |
 | `python -m lab.planetkit` | The runner: the lab's survey pipeline on one star, with its own placebo and a plain-English verdict |
 
@@ -82,6 +84,25 @@ Every star ends in exactly one of six words: `nothing-above-threshold`,
 `refuted`, `already-known`, `lead-awaiting-human-review`, `incomplete`,
 `control-failed`. Most stars, run honestly, end in the first three. That is the
 search working.
+
+## What the kit doesn't do (yet)
+
+The runner is the lab's survey pipeline, and that pipeline stops short of
+what the professional field does in a few places. They're listed here so
+you don't mistake a gap for a pass. The full comparison, with sources, is
+in [`PROCEDURES.md`](PROCEDURES.md#3--gap-table-windowsill-lab-against-the-field).
+
+| Gap | What it means for your result |
+|---|---|
+| No statistical validation (TRICERATOPS) | Nothing here can move a small-planet lead past "candidate", even in principle |
+| No difference imaging of its own | The centroid gate uses SPOC's flux-weighted centroids, which crowding can bias. CSV input has no centroid gate at all |
+| Fixed 0.5-day running median detrend | The field's benchmark prefers a biweight at about 3x the transit duration. Transits longer than about 5.5 hours lose depth |
+| BLS only, no TLS | TLS recovers more Earth-size signals at the same false-alarm rate |
+| One sector searched at a time | Periods beyond about 9 days, and signals too shallow to show in one sector, are missed. Persistence is graded across sectors afterwards |
+| SPOC 2-minute targets only | No FFI light curves, so most of the sky's faint stars are out of reach |
+
+These are known, documented, and not quietly patched: changing the
+pipeline changes every receipt the lab has published.
 
 ## Why bother with all this?
 

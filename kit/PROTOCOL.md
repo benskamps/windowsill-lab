@@ -200,6 +200,16 @@ observations, new instruments or new statistics."
    never promoted to TOI. Unpaired, the bound "excludes" a stellar companion
    on 63 of them. Paired with odd/even, it does so on only 20. A cheap test
    that is only safe in combination is a concrete, checkable result.
+   One correction to the paper's framing: its §6.3 says the secondary
+   bound "is not part of the standard promotion path". That overstates it.
+   SPOC and Kepler DV reports already turn the weak-secondary depth into
+   planet-temperature and albedo checks (Twicken et al. 2018). The lab's
+   version is a sharper use of the same number, and it only holds if the
+   signal is on the target star. The census result is the new part, not
+   the test.
+
+The field-by-field evidence for each of these calls is in
+[`PROCEDURES.md`](PROCEDURES.md#4--is-the-method-novel-evidence-claim-by-claim).
 
 **Others are converging on the same idea right now.**
 [klucilla/refute](https://github.com/klucilla/refute) (v0.1 locked

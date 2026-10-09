@@ -24,7 +24,7 @@ able to rerun your exact search from what you post.
 | 2. Lead | you + the kit | every gate ran and none explained it, and the placebo stayed clean |
 | 3. Persistent lead | you | the same period, independently, in a second sector |
 | 4. Published record | you | a refereed or moderated paper. RNAAS is the venue ExoFOP's help page names, but RNAAS calls itself "moderated, not peer reviewed", so **email exofop-support@ipac.caltech.edu first** and ask whether it clears the gate |
-| 5. Community candidate (CTOI) | you, then ExoFOP | since 2026-08-19, publication first, then a Published Candidate Upload Request ([help page](https://exofop.ipac.caltech.edu/tess/candidate_help.php); check the live page, it changes). At least two of period, epoch and depth, with uncertainties |
+| 5. Community candidate (CTOI) | you, then ExoFOP | since 2026-08-19, publication first, then a Published Candidate Upload Request ([help page](https://exofop.ipac.caltech.edu/tess/candidate_help.php); the rule is the lab's transcription of that page on 2026-09-14, and ExoFOP blocks automated reads, so re-check the live page yourself). At least two of period, epoch and depth, with uncertainties |
 | 6. TOI | the TESS team | their own vetting |
 | 7. Validated planet | astronomers | statistical validation (e.g. TRICERATOPS FPP < 0.015), usually with high-resolution imaging |
 | 8. Confirmed planet | astronomers | a mass from radial velocities, or equivalent independent evidence |
