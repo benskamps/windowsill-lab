@@ -14,11 +14,16 @@ cut down to one person and one star.
 It will not let you say you found a planet. Nothing automated can, and every
 step here is built around that.
 
+**New here, or don't code?** Start with [`START-HERE.md`](START-HERE.md).
+You can run your first search in the browser without installing anything.
+
 ## What you get
 
 | Piece | What it does |
 |---|---|
+| [`START-HERE.md`](START-HERE.md) | Three ways in: read, run in the browser (no install), or run locally |
 | [`JOURNEY.md`](JOURNEY.md) | **Start here.** The whole path, from learning what a transit is to sharing a result and coming back |
+| [`CONFORMANCE.md`](CONFORMANCE.md) | Where the runner enforces each rule and the field's path, and where it departs on purpose |
 | [`PROTOCOL.md`](PROTOCOL.md) | The method, written down as ten rules, with where each one came from and an honest note on what is and isn't new |
 | [`BEFORE-YOU-POST.md`](BEFORE-YOU-POST.md) | What you can truthfully say for each result, and the path from "signal" to "planet" (it is long) |
 | [`PREREGISTRATION.md`](PREREGISTRATION.md) | The form you fill in and commit **before** you look at the data |
@@ -47,7 +52,8 @@ git add my-prereg.md && git commit -m "prereg: TIC 100100827 s2"
 # 2. Run the ladder. --download fetches the declared sectors from MAST.
 python -m lab.planetkit run --prereg my-prereg.md --download
 
-# 3. Read what you're allowed to say.
+# 3. Read what you're allowed to say. The run also drew a fold plot per
+#    sector (receipt-...-s2-fold.svg): every dip lined up on top of each other.
 python -m lab.planetkit explain receipt-TIC100100827-*.json
 
 # 4. Every star you search joins your own survey. Keep the receipts.

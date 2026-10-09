@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import subprocess
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
@@ -216,6 +217,10 @@ def test_cli_end_to_end(tmp_path, capsys):
     assert receipt["star"]["status"] == "incomplete"
     assert "Do not say" in capsys.readouterr().out
     assert planetkit.main(["explain", str(out)]) == 0
+    fig = tmp_path / "receipt-s2-fold.svg"
+    root = ET.fromstring(fig.read_text())
+    assert root.tag.endswith("svg")
+    assert "A picture, not a verdict." in fig.read_text()
 
 
 def test_doctor_reports_each_requirement_with_a_fix(tmp_path):

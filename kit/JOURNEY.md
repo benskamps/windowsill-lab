@@ -7,7 +7,7 @@ covers it, and when you're done.
 | # | Step | Read | You're done when |
 |---|---|---|---|
 | 0 | Learn what a transit is | [`LEARN.md`](LEARN.md) | you can explain why a dip that repeats isn't automatically a planet |
-| 1 | Set up | [`README.md`](README.md#quickstart) | `python -m lab.planetkit doctor` is all green, or you know which line isn't and why |
+| 1 | Set up | [`START-HERE.md`](START-HERE.md) (browser, no install) or [`README.md`](README.md#quickstart) | `python -m lab.planetkit doctor` is all green, or you know which line isn't and why |
 | 2 | Calibrate on a known star | [`README.md`](README.md#quickstart) | WASP-18 (TIC 100100827, sector 2) ends `already-known` |
 | 3 | Pick your star | [`DATA.md`](DATA.md) | you have a TIC number, its sectors, and a reason |
 | 4 | Preregister | [`PREREGISTRATION.md`](PREREGISTRATION.md) | the form is committed, before you've opened the light curve |
@@ -30,6 +30,8 @@ search flagged 116 signals, and 66 of them were one of those.
 the NASA Exoplanet Archive and ExoFOP are reachable from your machine. Some
 sandboxes and cloud agents can't reach them. If so, download the SPOC
 `_lc.fits` files in a browser and use `--fits`.
+No terminal at all? The [browser notebook](START-HERE.md) does steps 1 and 2
+for you on Google's computers.
 
 **2. Calibrate.** Running a star whose answer is known first tells you the
 setup works. If WASP-18 doesn't come back `already-known`, nothing you find

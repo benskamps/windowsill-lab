@@ -334,6 +334,68 @@ def search_sector(curve: dict, tic: str, *, B: int, seed: int,
     return {"row": row, "placebo": placebo}
 
 
+def fold_svg(t, f, period: float, phase: float, *, title: str,
+             note: str) -> str:
+    """The folded light curve as a standalone SVG: every dip lined up on top
+    of each other at the period the search picked. Numpy and string
+    formatting only, so the kit still needs nothing beyond numpy.
+
+    ``phase`` is the search's own box centre (fraction of ``t mod P``), so
+    the dip sits at 0. Grey dots are cadences (thinned to 4,000), the dark
+    line is the median in 120 phase bins.
+    """
+    t, f = np.asarray(t, float), np.asarray(f, float)
+    x = np.mod(t / period - phase + 0.5, 1.0) - 0.5
+    hours = x * period * 24.0
+    W, H, L, R, T, B = 720, 360, 64, 16, 40, 48
+    lo, hi = np.percentile(f, [0.5, 99.5])
+    pad = 0.08 * (hi - lo or 1e-3)
+    lo, hi = lo - pad, hi + pad
+    xmax = 0.5 * period * 24.0
+
+    def px(h):
+        return L + (h + xmax) / (2 * xmax) * (W - L - R)
+
+    def py(v):
+        return T + (hi - v) / (hi - lo) * (H - T - B)
+
+    keep = np.random.default_rng(0).permutation(len(t))[:4000]
+    dots = "".join(f'<circle cx="{px(hours[i]):.1f}" cy="{py(f[i]):.1f}" r="1"/>'
+                   for i in keep if lo <= f[i] <= hi)
+    edges = np.linspace(-0.5, 0.5, 121)
+    idx = np.clip(np.digitize(x, edges) - 1, 0, 119)
+    centres = 0.5 * (edges[:-1] + edges[1:]) * period * 24.0
+    pts = [f"{px(c):.1f},{py(float(np.median(f[idx == k]))):.1f}"
+           for k, c in enumerate(centres) if np.any(idx == k)]
+    ticks = "".join(
+        f'<line x1="{px(h):.1f}" y1="{H - B}" x2="{px(h):.1f}" y2="{H - B + 5}"/>'
+        f'<text x="{px(h):.1f}" y="{H - B + 18}" text-anchor="middle">{h:g}</text>'
+        for h in np.linspace(-xmax, xmax, 5).round(1))
+    yt = "".join(
+        f'<text x="{L - 6}" y="{py(v) + 4:.1f}" text-anchor="end">{v:.4f}</text>'
+        for v in np.linspace(lo, hi, 4))
+    esc = lambda s: (s.replace("&", "&amp;").replace("<", "&lt;")  # noqa: E731
+                     .replace(">", "&gt;"))
+    return (
+        f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" '
+        f'width="{W}" height="{H}" font-family="system-ui, sans-serif" '
+        f'font-size="12">'
+        f'<rect width="{W}" height="{H}" fill="#ffffff"/>'
+        f'<text x="{L}" y="18" font-size="14" fill="#1a1a1a">{esc(title)}</text>'
+        f'<text x="{L}" y="33" fill="#5a5a5a">{esc(note)}</text>'
+        f'<g fill="#9aa4ad" fill-opacity="0.45">{dots}</g>'
+        f'<polyline fill="none" stroke="#1f4e79" stroke-width="2" '
+        f'points="{" ".join(pts)}"/>'
+        f'<g stroke="#5a5a5a" fill="#5a5a5a">{ticks}</g>'
+        f'<g fill="#5a5a5a">{yt}</g>'
+        f'<line x1="{L}" y1="{H - B}" x2="{W - R}" y2="{H - B}" stroke="#5a5a5a"/>'
+        f'<text x="{(L + W - R) / 2}" y="{H - 8}" text-anchor="middle" '
+        f'fill="#5a5a5a">hours from the middle of the dip</text>'
+        f'<text transform="translate(14 {(T + H - B) / 2}) rotate(-90)" '
+        f'text-anchor="middle" fill="#5a5a5a">relative brightness</text>'
+        "</svg>\n")
+
+
 def resolve(obs: dict, tic: str, catalog) -> None:
     """The catalog rungs, or an honest 'did not run'."""
     row = obs["row"]
@@ -444,6 +506,7 @@ def plain_verdict(status: dict, observations: list[dict], prereg: dict,
 
 def run(prereg_path: Path, *, fits: list[Path] = (), csvs: list[Path] = (),
         download: bool = False, catalog="default", quick: bool = False,
+        figures: dict | None = None,
         loader=None) -> dict:
     """Preregistration + light curves -> one receipt (a plain dict).
 
@@ -501,6 +564,15 @@ def run(prereg_path: Path, *, fits: list[Path] = (), csvs: list[Path] = (),
         resolve(obs, tic, catalog)
         observations.append({"sector": sector, "source": source,
                              "sha256": curve.get("sha256"), **obs})
+        if figures is not None:
+            r = obs["row"]
+            word = r.get("disposition") or "below threshold"
+            figures[sector] = fold_svg(
+                curve["t"], curve["f"], r["period_days"], r["phase"],
+                title=f"TIC {tic}, sector {sector}: folded at "
+                      f"P = {r['period_days']:.4f} d",
+                note=f"SDE {r['sde']:.1f} (threshold {a04.SDE_THRESHOLD:g})"
+                     f", word: {word}. A picture, not a verdict.")
 
     status = star_status(observations)
     receipt = {
@@ -754,16 +826,21 @@ def main(argv: list[str] | None = None) -> int:
             else:
                 print(text)
         elif a.cmd == "run":
+            figures: dict = {}
             receipt = run(a.prereg, fits=a.fits, csvs=a.csv,
                           download=a.download,
                           catalog=None if a.offline else "default",
-                          quick=a.quick)
+                          quick=a.quick, figures=figures)
             out = a.out or Path(f"receipt-TIC{receipt['tic']}-"
                                 f"{receipt['created_utc'][:10]}.json")
             out.write_text(json.dumps(receipt, indent=1,
                                       default=_json_default))
             print(explain(receipt))
             print(f"\nreceipt: {out}")
+            for sector, svg in sorted(figures.items()):
+                fig = out.with_name(f"{out.stem}-s{sector}-fold.svg")
+                fig.write_text(svg)
+                print(f"fold plot: {fig}")
         elif a.cmd == "doctor":
             rows = doctor()
             for r in rows:
