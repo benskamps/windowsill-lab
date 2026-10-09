@@ -1,4 +1,4 @@
-"""Find your own planet, honestly — the lab's method, packaged for one person
+"""Find your own planet — the lab's method, packaged for one person
 and one star.
 
 This is the A05 survey pipeline (``lab.a05``) cut down to the shape a

@@ -1,6 +1,6 @@
 {
   "name": "find-your-own-planet",
-  "displayName": "Find your own planet (honestly)",
+  "displayName": "Find your own planet",
   "version": "1.0.0",
   "description": "Search NASA TESS light curves for transits the windowsill lab's way: preregister first, run the full null, placebo and vetting ladder, and report in a closed vocabulary that never claims a planet.",
   "author": {

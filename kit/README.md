@@ -1,4 +1,4 @@
-# Find your own planet (honestly)
+# Find your own planet
 
 You saw the posts. Someone pointed Claude Code at NASA's TESS data, found a
 repeating dip in a star's light, and a million people watched. Now you want to
