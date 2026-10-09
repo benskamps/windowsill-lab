@@ -18,10 +18,12 @@ step here is built around that.
 
 | Piece | What it does |
 |---|---|
+| [`JOURNEY.md`](JOURNEY.md) | **Start here.** The whole path in ten steps, from learning what a transit is to sharing a result |
 | [`PROTOCOL.md`](PROTOCOL.md) | The method, written down as ten rules, with where each one came from and an honest note on what is and isn't new |
 | [`BEFORE-YOU-POST.md`](BEFORE-YOU-POST.md) | What you can truthfully say for each result, and the path from "signal" to "planet" (it is long) |
 | [`PREREGISTRATION.md`](PREREGISTRATION.md) | The form you fill in and commit **before** you look at the data |
 | [`skill/find-your-own-planet/`](skill/find-your-own-planet/SKILL.md) | A Claude Code skill that makes your agent follow the protocol |
+| [`COMMUNITIES.md`](COMMUNITIES.md) | Every venue (ExoFOP, TFOP, Planet Hunters, AAVSO, journals) and what each asks of you |
 | `python -m lab.planetkit` | The runner: the lab's survey pipeline on one star, with its own placebo and a plain-English verdict |
 
 ## Quickstart
