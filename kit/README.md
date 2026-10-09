@@ -58,16 +58,18 @@ Have SPOC files already? Use `--fits path/to/*.fits`. Only have a
 `time,flux` table? Use `--csv` (one file per declared sector). In that case the
 centroid and size gates can't run, and the receipt says so.
 
-To give the rules to Claude Code, install the kit as a plugin:
+To give the rules to Claude Code, add the lab as a plugin marketplace and
+install the kit from it:
 
 ```
-/plugin install find-your-own-planet --marketplace benskamps/windowsill-lab
+/plugin marketplace add benskamps/windowsill-lab
+/plugin install find-your-own-planet@windowsill-lab
 ```
 
-(On Claude Code older than 2.1.275, run `/plugin marketplace add
-benskamps/windowsill-lab` first, then `/plugin install
-find-your-own-planet@windowsill-lab`.) Then ask Claude to "find a planet the
-windowsill way". The skill still runs the code in this repo, so keep the clone.
+On Claude Code 2.1.275 or later, one line does both:
+`/plugin install find-your-own-planet --marketplace benskamps/windowsill-lab`.
+Then ask Claude to "find a planet the windowsill way". The skill still runs
+the code in this repo, so keep the clone.
 
 A full run (B = 256 permutations, 3,000 trial periods, ten placebo scrambles)
 takes about three minutes per sector on one core. `--quick` checks the plumbing in
