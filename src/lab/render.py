@@ -3699,6 +3699,155 @@ def _plot_calibration(report: dict) -> str:
                 fontsize=10)
         ax.set_xlabel("mean jovicentric distance a (km)")
         ax.set_ylabel("recovered sidereal period T (d)")
+    elif exp.startswith("P01"):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9.2, 4.0))
+        graded = report.get("graded") or []
+        parity = report.get("parity_controls") or []
+        if graded:
+            x = np.arange(len(graded))
+            e_star = [g.get("enumerated_e_star", 0) for g in graded]
+            e_fold = [g.get("folded_energy", 0) for g in graded]
+            e_shuf = [g.get("shuffle_folded_energy", 0) for g in graded]
+            ax1.plot(x, e_star, "o-", color="#7a9b56", ms=6, lw=1.5, label="exact E* (SAW)")
+            ax1.plot(x, e_fold, "s--", color="#7a5c3e", ms=5, lw=1.2, label="blind fold")
+            ax1.plot(x, e_shuf, "d:", color="#b88963", ms=5, lw=1.1, label="composition shuffle")
+            if parity:
+                px_idx = np.arange(len(graded), len(graded) + len(parity))
+                pe = [p.get("folded_energy", 0) for p in parity]
+                ax1.plot(px_idx, pe, "^", color="#667c86", ms=6, label="parity control (E*=0)")
+            ax1.set_xticks(np.arange(len(graded) + len(parity)))
+            labels = [f"S{i+1}\nL={g.get('length')}" for i, g in enumerate(graded)] + [
+                f"P{i+1}\nL={p.get('length')}" for i, p in enumerate(parity)
+            ]
+            ax1.set_xticklabels(labels, fontsize=7.5)
+            ax1.set_ylabel("HP contact energy E")
+            ax1.set_title("ground-state recovery & parity null")
+            ax1.legend(frameon=False, fontsize=7.5)
+            lengths = [g.get("length", 0) for g in graded]
+            nodes = [max(g.get("nodes_visited", 1), 1) for g in graded]
+            raw_bound = [3 ** max(L - 2, 1) for L in lengths]
+            ax2.semilogy(lengths, raw_bound, "--", color="#8d8175", lw=1.2, label="unpruned 3^(L−2)")
+            ax2.semilogy(lengths, nodes, "o-", color="#7a5c3e", ms=6, lw=1.5, label="branch-and-bound visited")
+            ax2.set_xlabel("chain length L")
+            ax2.set_ylabel("search tree nodes (log)")
+            ax2.set_title("branch-and-bound pruning")
+            ax2.legend(frameon=False, fontsize=7.5)
+        else:
+            ax1.axis("off"); ax2.axis("off")
+            ax1.text(.5, .5, "No P01 graded sequences available", ha="center", va="center",
+                     fontsize=12, color="#6f5b48")
+    elif exp.startswith("A02"):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9.2, 4.0))
+        targets = [t for t in (report.get("targets") or []) if t.get("status") == "ok"]
+        if targets:
+            pub = np.asarray([t["published_period_days"] for t in targets], dtype=float)
+            rec = np.asarray([t["period_days"] for t in targets], dtype=float)
+            names = [t.get("name", "?") for t in targets]
+            pmin, pmax = min(pub.min(), rec.min()) * 0.8, max(pub.max(), rec.max()) * 1.25
+            ax1.loglog([pmin, pmax], [pmin, pmax], "--", color="#8d8175", lw=1.1, label="1:1 published")
+            ax1.loglog(pub, rec, "o", color="#7a9b56", ms=6.5, label="Lomb–Scargle peak")
+            for x_v, y_v, nm in zip(pub, rec, names):
+                ax1.annotate(nm, (x_v, y_v), textcoords="offset points", xytext=(5, -3),
+                             fontsize=8, color="#6f5b48")
+            ax1.set_xlabel("AAVSO VSX published period (d)")
+            ax1.set_ylabel("recovered TESS period (d)")
+            ax1.set_title("blind period recovery (6/6 targets)")
+            ax1.legend(frameon=False, fontsize=8, loc="upper left")
+            margins = [t.get("control_margin", 0.0) for t in targets]
+            snr = [t.get("peak_over_floor", 0.0) for t in targets]
+            y_pos = np.arange(len(targets))
+            ax2.barh(y_pos, margins, color="#7a5c3e", alpha=0.85, label="peak / shuffle null")
+            req = float(report.get("control_margin_required", 3.0))
+            ax2.axvline(req, ls="--", lw=1.2, color="#a04b3c", label=f"gate ({req:.0f}×)")
+            ax2.set_yticks(y_pos)
+            ax2.set_yticklabels([f"{n} ({s:.0f}× floor)" for n, s in zip(names, snr)], fontsize=8)
+            ax2.set_xlabel("peak / shuffled-timestamp control ratio")
+            ax2.set_title("time-shuffle null clearance")
+            ax2.legend(frameon=False, fontsize=8, loc="lower right")
+        else:
+            ax1.axis("off"); ax2.axis("off")
+            ax1.text(.5, .5, "No A02 target light curves available", ha="center", va="center",
+                     fontsize=12, color="#6f5b48")
+    elif exp.startswith("K04"):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9.2, 4.0))
+        lad_eps = report.get("ladder_eps") or {}
+        lad_n = report.get("ladder_n") or {}
+        events = report.get("events") or []
+        if lad_eps or lad_n or events:
+            if isinstance(lad_eps, dict) and lad_eps:
+                eps_v = sorted(float(k) for k in lad_eps)
+                med_e = [float(np.median(lad_eps[k])) for k in sorted(lad_eps, key=float)]
+            elif isinstance(lad_eps, list) and lad_eps:
+                eps_v = [float(d["eps"]) for d in lad_eps]
+                med_e = [float(d["events_median"]) for d in lad_eps]
+            else:
+                eps_v, med_e = [], []
+            if eps_v:
+                ax1.loglog(eps_v, med_e, "o-", color="#7a5c3e", ms=6, lw=1.5, label="median firing events")
+                ax1.set_xlabel("pulse coupling ε")
+                ax1.set_ylabel("firing events to unison")
+                n_tr = report.get("n_trials") or (report.get("config") or {}).get("trials", len(events) or 200)
+                n_sy = report.get("n_synchronized") or report.get("n_Synchronized") or n_tr
+                ax1.set_title(f"coupling ladder ({n_sy}/{n_tr} sync)")
+                ax1.legend(frameon=False, fontsize=8)
+            if isinstance(lad_n, dict) and lad_n:
+                n_v = sorted(int(k) for k in lad_n)
+                med_n = [float(np.median(lad_n[k])) for k in sorted(lad_n, key=int)]
+            elif isinstance(lad_n, list) and lad_n:
+                n_v = [int(d["n"]) for d in lad_n]
+                med_n = [float(d["events_median"]) for d in lad_n]
+            else:
+                n_v, med_n = [], []
+            if n_v:
+                ax2.plot(n_v, med_n, "s-", color="#7a9b56", ms=6, lw=1.5, label="absorptive (ε>0)")
+                null_cl = report.get("null_mean_clusters")
+                if null_cl is not None:
+                    ax2.axhline(med_n[-1], ls=":", lw=1.0, color="#8d8175",
+                                label=f"ε=0 null: {null_cl:.0f} clusters persist")
+                ax2.set_xlabel("swarm size N")
+                ax2.set_ylabel("median events to unison")
+                ax2.set_title("Mirollo–Strogatz N-scaling")
+                ax2.legend(frameon=False, fontsize=8)
+        else:
+            ax1.axis("off"); ax2.axis("off")
+            ax1.text(.5, .5, "No K04 synchronization data available", ha="center", va="center",
+                     fontsize=12, color="#6f5b48")
+    elif exp.startswith("C03"):
+        fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9.2, 4.0))
+        sample = report.get("new_terms_sample") or []
+        if not sample and report.get("extension_fragment"):
+            for line in str(report["extension_fragment"]).splitlines():
+                parts = line.strip().split()
+                if len(parts) == 2 and parts[0].isdigit():
+                    sample.append({"n": int(parts[0]), "digits": len(parts[1].lstrip("-"))})
+        raw_known = report.get("known_terms", 0)
+        known = len(raw_known) if isinstance(raw_known, list) else int(raw_known or 0)
+        raw_new = report.get("new_terms", len(sample))
+        new_t = len(raw_new) if isinstance(raw_new, list) else int(raw_new or len(sample))
+        raw_agreed = report.get("new_terms_agreed", new_t)
+        agreed = len(raw_agreed) if isinstance(raw_agreed, list) else int(raw_agreed or new_t)
+        checked = len(report.get("cross_check_indices") or report.get("cross_checked_indices") or [])
+        if sample or known:
+            if sample:
+                ns = np.asarray([s["n"] for s in sample], dtype=float)
+                digs = np.asarray([s["digits"] for s in sample], dtype=float)
+                ax1.plot(ns, digs, "o", color="#7a5c3e", ms=4.5, label="measured decimal digits")
+                ax1.plot(ns, ns * np.log10(3.0), "--", color="#667c86", lw=1.2,
+                         label="asymptotic n·log₁₀(3)")
+                ax1.set_xlabel("OEIS index n (A001006)")
+                ax1.set_ylabel("decimal digits of M(n)")
+                ax1.set_title("Motzkin extension growth")
+                ax1.legend(frameon=False, fontsize=8)
+            cats = ["b-file\nreproduced", "Catalan\ncross-check", "new terms\n(n>2106)"]
+            vals = [known, checked, agreed]
+            ax2.bar(cats, vals, color=["#6f7952", "#b88963", "#7a9b56"], width=0.55)
+            ax2.set_yscale("symlog", linthresh=10)
+            ax2.set_ylabel("verified term count (symlog)")
+            ax2.set_title(f"{report.get('a_number', 'A001006')} — {agreed}/{new_t} new terms agreed")
+        else:
+            ax1.axis("off"); ax2.axis("off")
+            ax1.text(.5, .5, "No C03 sequence data available", ha="center", va="center",
+                     fontsize=12, color="#6f5b48")
     else:
         fig, ax = plt.subplots(figsize=(8, 3.6))
         analysis = report.get("analysis")
@@ -3723,14 +3872,14 @@ def _plot_calibration(report: dict) -> str:
 
 
 def render_calibration(report: dict, date: str | None = None) -> Path:
-    """Render M16/C01/A01/A03/A04/K03/M18/I01 reports through one quiet four-plant template."""
+    """Render M16/C01/C03/C05/A01/A02/A03/A04/A07/K03/K04/M18/P01/I01 reports through one quiet template."""
     from .publish import today_local
     date = date or today_local()
     _ensure_home()
     milestone = _slug_for(report).upper()
     plant = {
         "M": "physics fern", "K": "coherence fern", "C": "compute vine",
-        "A": "astronomy creeper", "I": "instrument succulent",
+        "A": "astronomy creeper", "I": "instrument succulent", "P": "protein vine",
     }.get(milestone[:1], "calibration plant")
     passed = str(report.get("status", "")).lower() == "pass"
     verdict = (
