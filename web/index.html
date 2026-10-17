@@ -137,9 +137,11 @@
     .home { display:inline-block; font-family:var(--font-mono);
             font-size:0.8rem; color:var(--text-secondary); text-decoration:none; }
     .home:hover { color: var(--text); }
+    /* Section names read as a quiet italic line, not a mono eyebrow (the
+       2026-10-17 calm pass): they still name the room, they no longer shout. */
     .lab-kicker, .section-kicker {
-      font-family:var(--font-mono); font-size:0.68rem; line-height:1.4;
-      color:var(--clay); letter-spacing:0.12em; text-transform:uppercase;
+      font-family:var(--font-sans); font-size:1rem; line-height:1.4; font-style:italic;
+      color:var(--clay); letter-spacing:0; text-transform:none;
     }
 
     .topbar {
@@ -991,108 +993,128 @@
     .release-links a { color:var(--ember); }
     .release-links a:hover, .section-intro a:hover, .explainer a:hover { color:var(--text); }
 
-    /* ── The hero: one frame that says what the lab is ───────────────────────── */
-    .hero {
-      position:relative; isolation:isolate;
-      min-height:clamp(560px, 82vh, 780px);
-      display:flex; flex-direction:column; justify-content:center;
-      padding:2.5rem 0 3.25rem; margin-bottom:1rem;
+    /* ── The hero: the band, then one frame that says what the lab is ────────
+       The 2026-10-17 calm pass. The ring section and the feed's four tallies
+       share one full-bleed band of tiles, pictures and numbers at one scale;
+       the type sits under it on plain ground, so nothing is read through a
+       texture, and the first screen holds one idea instead of six. */
+    .hero { position:relative; padding:0 0 3.5rem; margin-bottom:1rem; }
+    .masthead {
+      width:100vw; margin-left:calc(50% - 50vw);
+      display:grid; grid-template-columns:minmax(0, 1.35fr) minmax(0, 1fr);
+      height:clamp(340px, 58vh, 600px); background:var(--bg-raised);
     }
-    .hero-field {
-      position:absolute; z-index:-1; pointer-events:none;
-      top:-9rem; bottom:0; left:50%; width:100vw; transform:translateX(-50%);
-      overflow:hidden;
-    }
+    /* No feed yet: the tallies are hidden, and the rings take the band. */
+    .masthead:has(> .hero-tally[hidden]) { grid-template-columns:minmax(0, 1fr); }
+    .mast-rings { position:relative; overflow:hidden; min-width:0; background:#1d1611; }
     .hero-rings { position:absolute; inset:0; width:100%; height:100%; display:block; }
-    /* A mask, not a wash: the type sits on calm ground, the rings stand at full
-       strength only where nothing is written, and the section fades into the
-       page's own lamplight instead of ending on a flat edge. */
-    .hero-field {
-      -webkit-mask-image:linear-gradient(0deg, transparent 0%, #000 16%), linear-gradient(90deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.14) 32%, rgba(0,0,0,0.7) 60%, #000 80%);
-      -webkit-mask-composite:source-in;
-      mask-image:linear-gradient(0deg, transparent 0%, #000 16%), linear-gradient(90deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.14) 32%, rgba(0,0,0,0.7) 60%, #000 80%);
-      mask-composite:intersect;
-    }
     .crumbs { position:relative; z-index:1; }
-    .hero .lab-kicker { display:inline-flex; align-items:center; gap:0.6rem; }
+    .hero-tally {
+      list-style:none; display:grid; min-width:0;
+      grid-template-columns:repeat(2, minmax(0, 1fr)); grid-template-rows:repeat(2, minmax(0, 1fr));
+      background:var(--bg-raised);
+    }
+    .hero-tally li {
+      display:flex; flex-direction:column; justify-content:flex-end; min-width:0;
+      padding:clamp(1rem, 2.4vw, 2rem); background:var(--bg-raised);
+    }
+    .hero-tally li:nth-child(2), .hero-tally li:nth-child(3) { background:#2b2117; }
+    .hero-tally .tally-earned { background:var(--moss-deep); }
+    .hero-tally b {
+      display:block; font-size:clamp(2.5rem, 5.4vw, 4.6rem); font-weight:330; line-height:0.95;
+      letter-spacing:-0.035em; font-variant-numeric:tabular-nums lining-nums; color:var(--text);
+    }
+    .hero-tally span {
+      display:block; margin-top:0.6rem; max-width:14ch;
+      font-size:1rem; line-height:1.3; font-style:italic; color:var(--text-secondary);
+    }
+    .hero-tally .tally-earned span { color:#e3ead6; }
+    .hero-tally .tally-earned b::after {
+      content:'✓'; display:inline-grid; place-items:center; width:1.15rem; height:1.15rem; margin-left:0.4rem;
+      vertical-align:1.1em; border-radius:50%; background:var(--text); color:var(--moss-deep);
+      font:700 0.66rem/1 var(--font-sans);
+    }
+    .hero-key {
+      max-width:760px; margin:0.85rem 0 0;
+      color:var(--text-muted); font-size:0.95rem; line-height:1.5; font-style:italic;
+    }
+    .hero-key i { font-style:normal; color:var(--leaf); }
+    .hero .lab-kicker { display:inline-flex; align-items:center; gap:0.6rem; margin-top:4.5rem; }
     .hero .lab-kicker::before {
       content:''; width:7px; height:7px; border-radius:50%; background:var(--leaf);
       box-shadow:0 0 0 4px rgba(138,168,107,0.16); animation:hero-live 4s ease-in-out infinite;
     }
     @keyframes hero-live { 50% { box-shadow:0 0 0 7px rgba(138,168,107,0.04); } }
-    .hero .label { font-style:italic; font-weight:420; letter-spacing:-0.045em; }
+    .hero .topbar { align-items:flex-end; margin:0.6rem 0 1.6rem; }
+    .hero .label {
+      font-style:italic; font-weight:300; letter-spacing:-0.05em;
+      font-size:clamp(4rem, 12.5vw, 9.5rem); line-height:0.88;
+    }
+    .hero .phase-mood { font-family:var(--font-sans); font-style:italic; font-size:1rem; padding-bottom:0.9rem; }
     .hero-what {
-      max-width:640px; margin:1.1rem 0 0.9rem;
-      font-size:clamp(1.25rem, 2.6vw, 1.7rem); line-height:1.32; letter-spacing:-0.01em;
+      max-width:30ch; margin:0 0 1.1rem;
+      font-size:clamp(1.35rem, 2.7vw, 1.9rem); line-height:1.28; letter-spacing:-0.012em;
       color:var(--text);
     }
     .hero-what em { font-style:italic; color:var(--brass); }
     .hero .sowhat-goal {
-      max-width:560px; font-size:clamp(1rem, 1.7vw, 1.15rem); line-height:1.5;
-      letter-spacing:0; margin-bottom:1.6rem; color:var(--text-secondary);
+      max-width:44ch; font-size:clamp(1.05rem, 1.7vw, 1.2rem); line-height:1.5;
+      letter-spacing:0; margin-bottom:2.6rem; color:var(--text-secondary);
     }
-    .hero .sowhat-goal strong { font-weight:520; color:var(--text-secondary); }
-    .hero-tally {
-      list-style:none; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr));
-      max-width:680px; border-top:1px solid var(--border);
-    }
-    .hero-tally li { padding:0.85rem 1rem 0 0; }
-    .hero-tally li + li { padding-left:1rem; border-left:1px solid var(--border); }
-    .hero-tally b {
-      display:block; font-size:clamp(1.6rem, 3.4vw, 2.4rem); font-weight:440; line-height:1;
-      font-variant-numeric:tabular-nums lining-nums; color:var(--text);
-    }
-    .hero-tally span {
-      display:block; margin-top:0.45rem; color:var(--text-muted);
-      font:0.68rem/1.4 var(--font-mono); letter-spacing:0.04em; text-transform:uppercase;
-    }
-    .hero-tally .tally-earned b { color:var(--leaf); }
-    .hero-tally .tally-earned b::after {
-      content:'✓'; display:inline-grid; place-items:center; width:1.1rem; height:1.1rem; margin-left:0.3rem;
-      vertical-align:0.9em; border-radius:50%;
-      background:radial-gradient(circle at 35% 35%, #b9d39a, var(--leaf) 55%, var(--moss-deep));
-      color:var(--bg); font:700 0.62rem/1 var(--font-mono);
-      box-shadow:0 0 0 3px rgba(138,168,107,0.16);
-    }
+    .hero .sowhat-goal strong { font-weight:420; color:var(--text-secondary); }
+    /* The doors: three plain blocks, one gap apart, no frames. */
     .hero-doors {
-      display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0.7rem;
-      max-width:760px; margin:0 0 1.9rem;
+      display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:4px;
+      margin:0;
     }
     .hero-door {
-      position:relative; display:flex; flex-direction:column; gap:0.3rem;
-      padding:0.85rem 2rem 0.95rem 1rem; border:1px solid var(--border); border-radius:10px;
-      background:rgba(20,15,11,0.62); -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+      position:relative; display:flex; flex-direction:column; gap:0.4rem;
+      padding:1.25rem 2.6rem 1.45rem 1.25rem; background:var(--bg-raised);
       color:var(--text); text-decoration:none;
-      transition:border-color 160ms ease, background-color 160ms ease, transform 160ms ease;
+      transition:background-color 160ms ease;
     }
     .hero-door::after {
-      content:'→'; position:absolute; right:0.9rem; top:0.8rem;
-      color:var(--brass); font:0.9rem/1 var(--font-mono); transition:transform 160ms ease;
+      content:'→'; position:absolute; right:1.1rem; top:1.15rem;
+      color:var(--brass); font-size:1.05rem; line-height:1; transition:transform 160ms ease;
     }
-    .hero-door:hover, .hero-door:focus-visible {
-      border-color:var(--brass); background:rgba(36,27,19,0.8); transform:translateY(-1px);
-    }
+    .hero-door:hover, .hero-door:focus-visible { background:#30251a; }
     .hero-door:hover::after { transform:translateX(3px); }
     .hero-door:focus-visible { outline:2px solid var(--review); outline-offset:2px; }
-    .door-k { color:var(--brass); font:0.64rem/1.3 var(--font-mono); letter-spacing:0.12em; text-transform:uppercase; }
+    .door-k { color:var(--brass); font-size:0.95rem; font-style:italic; line-height:1.3; }
     .door-lead .door-k { color:var(--leaf); }
-    .door-t { font-size:1.12rem; font-weight:500; line-height:1.2; letter-spacing:-0.01em; }
-    .door-d { color:var(--text-muted); font-size:0.86rem; line-height:1.4; }
-    .primer { margin:1.6rem 0 0.4rem; padding:1.2rem 1.3rem; border:1px solid var(--border); border-radius:10px; background:rgba(236,225,204,0.03); }
-    .primer-title { font-size:1.25rem; font-style:italic; font-weight:480; margin:0 0 0.7rem; }
-    .primer-list { margin:0; padding-left:1.3rem; display:grid; gap:0.6rem; }
-    .primer-list li { line-height:1.55; font-size:0.95rem; }
-    .primer-list b { font-weight:600; }
+    .door-t { font-size:1.4rem; font-weight:440; line-height:1.15; letter-spacing:-0.015em; }
+    .door-d { color:var(--text-secondary); font-size:1rem; line-height:1.45; }
+    /* The primer: three sentences, read as rows, with the title beside them. */
+    .primer {
+      display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 2fr); gap:1.5rem 3rem;
+      margin:2.5rem 0 5rem; padding:0;
+    }
+    .primer-title {
+      font-size:clamp(1.6rem, 3vw, 2.2rem); font-style:italic; font-weight:340;
+      line-height:1.1; letter-spacing:-0.02em; margin:0;
+    }
+    .primer-list { margin:0; padding:0; list-style:none; display:grid; gap:1.4rem; counter-reset:primer; }
+    .primer-list li {
+      position:relative; padding-left:2.4rem; line-height:1.6; font-size:1.05rem; color:var(--text-secondary);
+      counter-increment:primer;
+    }
+    .primer-list li::before {
+      content:counter(primer); position:absolute; left:0; top:-0.1rem;
+      font-size:1.5rem; font-style:italic; font-weight:300; color:var(--brass); line-height:1.2;
+    }
+    .primer-list b { font-weight:520; color:var(--text); }
     .primer-list a { color:var(--ember); }
-    .hero-key {
-      max-width:520px; margin-top:1.4rem;
-      color:var(--text-muted); font:0.66rem/1.5 var(--font-mono); letter-spacing:0.02em;
+    @media (max-width: 760px) {
+      .masthead { height:auto; grid-template-columns:minmax(0, 1fr); }
+      .mast-rings { aspect-ratio:4 / 3; }
+      .hero-tally { grid-template-rows:auto; }
+      .hero-tally li { min-height:8.5rem; }
+      .hero .lab-kicker { margin-top:3rem; }
+      .hero .topbar { flex-direction:column; align-items:flex-start; gap:0.2rem; }
+      .hero .phase-mood { padding-bottom:0; }
+      .hero-doors { grid-template-columns:minmax(0, 1fr); }
+      .primer { grid-template-columns:minmax(0, 1fr); margin-bottom:3.5rem; }
     }
-    /* Only where there is room beside the tally does the key move under the rings. */
-    @media (min-width: 1180px) {
-      .hero-key { position:absolute; right:0; bottom:4.6rem; max-width:300px; margin:0; text-align:right; }
-    }
-    .hero-key i { font-style:normal; color:var(--leaf); }
 
     /* ── The milestone ladder: the rail laid on its side ─────────────────────────
        Two stiles run the length of the rail; every milestone is a rung between
@@ -1175,20 +1197,6 @@
     .specimen-status.verified::before { width:7px; height:7px; box-shadow:0 0 0 3px color-mix(in srgb, var(--specimen) 22%, transparent); }
 
     @media (max-width: 720px) {
-      .hero { min-height:0; padding:1.5rem 0 4.25rem; }
-      .hero-field {
-        top:-7rem;
-        -webkit-mask-image:linear-gradient(180deg, #000 0%, rgba(0,0,0,0.32) 34%, rgba(0,0,0,0.14) 62%, rgba(0,0,0,0.6) 86%, transparent 100%);
-        mask-image:linear-gradient(180deg, #000 0%, rgba(0,0,0,0.32) 34%, rgba(0,0,0,0.14) 62%, rgba(0,0,0,0.6) 86%, transparent 100%);
-      }
-      .hero-doors { grid-template-columns:1fr; gap:0.5rem; }
-      .hero-door { padding:0.7rem 2.2rem 0.75rem 0.9rem; }
-      .hero-door::after { top:50%; transform:translateY(-50%); }
-      .hero-door:hover::after { transform:translate(3px, -50%); }
-      .door-d { display:none; }
-      .hero-tally { grid-template-columns:repeat(2, minmax(0, 1fr)); }
-      .hero-tally li:nth-child(3) { padding-left:0; border-left:none; }
-      .hero-tally li:nth-child(n+3) { border-top:1px solid var(--border); margin-top:0.85rem; }
       .phase-rail li[data-curriculum-phase] { margin-top:0; }
       .phase-rail li + li { border-left:none; }
     }
@@ -1236,14 +1244,30 @@
       <a class="home" href="https://www.brokenbranch.dev/">broken branch</a>
     </nav>
 
-    <!-- THE HERO. One frame that says what the lab is. Behind it, a tree-ring
-         section drawn from the feed itself: one ring per day the lab filed a
-         run (oldest at the pith), each as wide as that day was busy, moss where
-         a run on that day verified. Under it, the same days as a trace. Nothing
-         here is stock or hand-drawn; with no feed it draws a plain seeded
-         section and the caption says so. paintHero() below owns it. -->
+    <!-- THE HERO. One frame that says what the lab is. It opens on a band of
+         tiles (the 2026-10-17 calm pass): a tree-ring section drawn from the
+         feed itself, one ring per day the lab filed a run (oldest at the pith),
+         each as wide as that day was busy, moss where a run on that day
+         verified, with the same days as a trace along its foot; beside it, the
+         feed's four tallies at one scale. Nothing here is stock or hand-drawn;
+         with no feed the rings draw a plain seeded section, the caption says
+         so, and the tallies stay hidden. paintHero() below owns both. The type
+         sits under the band on plain ground, never on top of a texture. -->
     <section class="hero" id="hero" aria-labelledby="hero-title">
-      <div class="hero-field" aria-hidden="true"><canvas class="hero-rings" id="hero-rings" width="300" height="150"></canvas></div>
+      <div class="masthead">
+        <div class="mast-rings" aria-hidden="true"><canvas class="hero-rings" id="hero-rings" width="300" height="150"></canvas></div>
+        <!-- Every number in the tally is the feed's own; the tiles stay hidden
+             until a feed arrives, so no hand-typed figure can go stale here,
+             and the rings take the whole band meanwhile. The zero sits at the
+             size of its neighbours (Ben's ruling, 2026-09-04). -->
+        <ul class="hero-tally" id="hero-tally" hidden>
+          <li class="tally-earned"><b id="tally-verified">—</b><span>milestones verified</span></li>
+          <li><b id="tally-turns">—</b><span>turns on the record</span></li>
+          <li><b id="tally-stars">—</b><span>stars searched blind</span></li>
+          <li class="tally-zero"><b id="tally-planets">0</b><span>planets claimed</span></li>
+        </ul>
+      </div>
+      <p class="hero-key" id="hero-key">Behind this: a seeded ring section, waiting for the feed.</p>
       <p class="lab-kicker">Windowsill Lab · a patient home instrument</p>
       <div class="topbar">
         <h1 class="label" id="hero-title"><span class="sky" id="sky">☀</span>windowsill</h1>
@@ -1276,15 +1300,6 @@
           <span class="door-d">Each run in a room of its own, live in your browser.</span>
         </a>
       </nav>
-      <!-- Every number in the tally is the feed's own; the strip stays hidden
-           until a feed arrives, so no hand-typed figure can go stale here. -->
-      <ul class="hero-tally" id="hero-tally" hidden>
-        <li class="tally-earned"><b id="tally-verified">—</b><span>milestones verified</span></li>
-        <li><b id="tally-turns">—</b><span>turns on the record</span></li>
-        <li><b id="tally-stars">—</b><span>stars searched blind</span></li>
-        <li class="tally-zero"><b id="tally-planets">0</b><span>planets claimed</span></li>
-      </ul>
-      <p class="hero-key" id="hero-key">Behind this: a seeded ring section, waiting for the feed.</p>
     </section>
 
     <!-- THE PRIMER. A stranger with no science background meets the magnet
@@ -2893,11 +2908,11 @@
       if (!w || !h) return false;
       canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
       var narrow = w < 720;
-      // The pith sits to the right of the text column, or up behind the title
-      // on a phone; the outer rings run off the frame, as a real section would.
-      var cx = narrow ? w * 0.86 : Math.min(w * 0.76, w / 2 + 470);
-      var cy = narrow ? h * 0.2 : h * 0.47;
-      var rMax = narrow ? Math.max(w, h * 0.55) * 0.95 : Math.min(h * 0.86, w * 0.5);
+      // The section fills its tile in the band: the pith a little left of
+      // centre, the outer rings running off the frame, as a real section would.
+      var cx = w * 0.46;
+      var cy = h * 0.48;
+      var rMax = Math.max(w, h) * 0.6;
       geo = { w: w, h: h, dpr: dpr, cx: cx, cy: cy, rMax: rMax, narrow: narrow };
       return true;
     }
@@ -2948,14 +2963,14 @@
       // Wood first, outside in: alternating early- and latewood tones.
       for (var i = list.length - 1; i >= 0; i--) {
         ringPath(c, g.cx, g.cy, radii[i], hash(list[i].date || String(i)) + i, 0.06 * (i / list.length));
-        c.fillStyle = i % 2 ? 'rgba(46,35,25,0.55)' : 'rgba(36,27,19,0.55)';
+        c.fillStyle = i % 2 ? '#3a2c1e' : '#2a1f15';
         c.fill();
       }
       // Then the ring boundaries, brighter toward the bark (the recent past).
       for (var j = 0; j < list.length; j++) {
         var age = j / Math.max(1, list.length - 1);
         ringPath(c, g.cx, g.cy, radii[j], hash(list[j].date || String(j)) + j, 0.06 * (j / list.length));
-        c.strokeStyle = rgba(inkFor(list[j]), (0.16 + 0.34 * age).toFixed(3));
+        c.strokeStyle = rgba(inkFor(list[j]), (0.14 + 0.3 * age).toFixed(3));
         c.lineWidth = list[j].verified && fromFeed ? 1.6 : 1;
         c.stroke();
       }
@@ -2970,9 +2985,13 @@
         c.lineTo(g.cx + r * Math.cos(th), g.cy + r * Math.sin(th));
       }
       c.strokeStyle = 'rgba(8,6,4,0.75)'; c.lineWidth = 2.2; c.stroke();
-      // The trace along the foot: runs per day, oldest at the left.
+      // The trace along the foot: runs per day, oldest at the left, on a
+      // darkened strip so it reads over the wood.
       if (fromFeed && list.length > 1) {
-        var x0 = g.narrow ? 16 : Math.max(24, g.w / 2 - 520), x1 = g.w - x0;
+        var foot = c.createLinearGradient(0, g.h - (g.narrow ? 64 : 96), 0, g.h);
+        foot.addColorStop(0, 'rgba(20,15,11,0)'); foot.addColorStop(1, 'rgba(20,15,11,0.88)');
+        c.fillStyle = foot; c.fillRect(0, g.h - (g.narrow ? 64 : 96), g.w, g.narrow ? 64 : 96);
+        var x0 = g.narrow ? 16 : 28, x1 = g.w - x0;
         var yb = g.h - (g.narrow ? 22 : 34), amp = g.narrow ? 24 : 40;
         var t0d = Date.parse(list[0].date), t1d = Date.parse(list[list.length - 1].date);
         var span = Math.max(1, t1d - t0d), peak = 1;
