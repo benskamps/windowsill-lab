@@ -815,3 +815,88 @@ def test_an_escaped_embed_is_stamped_not_refused(tmp_path, monkeypatch):
         "the escaped embed carries the STAMPED provenance"
     committed = json.loads((reports / "2026-06-15-c01.json").read_text(encoding="utf-8"))
     assert committed["provenance"]["source_tree_sha256"]
+
+
+def test_calibration_plots_for_p01_a02_k04_c03_do_not_fall_through_to_camera_null(tmp_path, monkeypatch):
+    """P01, A02, K04, and C03 must render their own calibration plots rather than
+    falling through to the I01 'No real capped-sensor frames were available' else branch."""
+    from lab.render import _plot_calibration, render_calibration
+    reports, _ = _patch_dirs(tmp_path, monkeypatch)
+
+    camera_null_b64 = _plot_calibration({"experiment": "I01-webcam-muons"})
+
+    p01_rep = {
+        "experiment": "P01-hp-lattice-folding",
+        "status": "pass",
+        "headline": "P01 test",
+        "claim_boundary": "2D HP lattice only",
+        "graded": [
+            {"sequence": "HPHPPHHPHPPHPHHPPHPH", "length": 10, "enumerated_e_star": -4,
+             "folded_energy": -4, "shuffle_folded_energy": -3, "nodes_visited": 65},
+            {"sequence": "HHPPHPPHPPHP", "length": 12, "enumerated_e_star": -4,
+             "folded_energy": -4, "shuffle_folded_energy": -4, "nodes_visited": 211},
+        ],
+        "parity_controls": [
+            {"sequence": "HPHPHPHPHP", "length": 10, "enumerated_e_star": 0, "folded_energy": 0},
+        ],
+    }
+    a02_rep = {
+        "experiment": "A02-variable-star-recovery",
+        "status": "pass",
+        "headline": "A02 test",
+        "claim_boundary": "period recovery only",
+        "control_margin_required": 3.0,
+        "targets": [
+            {"name": "RR Lyr", "status": "ok", "published_period_days": 0.5668,
+             "period_days": 0.5664, "peak_over_floor": 293.7, "control_margin": 19.5},
+            {"name": "SX Phe", "status": "ok", "published_period_days": 0.0550,
+             "period_days": 0.0550, "peak_over_floor": 432.2, "control_margin": 27.3},
+        ],
+    }
+    k04_rep = {
+        "experiment": "K04-firefly-synchronization",
+        "status": "pass",
+        "headline": "K04 test",
+        "claim_boundary": "all-to-all Mirollo-Strogatz",
+        "n_trials": 200,
+        "n_Synchronized": 200,
+        "null_mean_clusters": 100.0,
+        "ladder_eps": [{"eps": 0.0005, "events_median": 333.5}, {"eps": 0.001, "events_median": 167.0}],
+        "ladder_n": [{"n": 50, "events_median": 168.0}, {"n": 100, "events_median": 167.0}],
+    }
+    c03_rep = {
+        "experiment": "C03-oeis-bfile-extension",
+        "a_number": "A001006",
+        "status": "pass",
+        "headline": "C03 test",
+        "claim_boundary": "unsubmitted extension",
+        "known_terms": 2107,
+        "new_terms": 64,
+        "new_terms_agreed": 64,
+        "cross_checked_indices": list(range(64)),
+        "new_terms_sample": [{"n": 2107, "digits": 1001}, {"n": 2170, "digits": 1031}],
+    }
+
+    for rep in (p01_rep, a02_rep, k04_rep, c03_rep):
+        b64 = _plot_calibration(rep)
+        assert len(b64) > 5000
+        assert b64 != camera_null_b64, f"{rep['experiment']} fell through to camera null"
+
+    receipts_dir = Path(__file__).resolve().parents[1] / "reports" / "receipts"
+    for fname in (
+        "run-2026-09-06-0302-p01.json",
+        "run-2026-09-09-0009-a02.json",
+        "run-2026-09-08-1500-k04.json",
+        "run-2026-10-07-2132-c03.json",
+    ):
+        real_rep = json.loads((receipts_dir / fname).read_text(encoding="utf-8"))
+        b64 = _plot_calibration(real_rep)
+        assert len(b64) > 5000
+        assert b64 != camera_null_b64, f"real receipt {fname} fell through to camera null"
+
+    render_calibration(p01_rep, date="2026-09-06")
+    p01_html = (reports / "2026-09-06-p01.html").read_text(encoding="utf-8")
+    assert "protein vine" in p01_html
+    assert camera_null_b64 not in p01_html
+
+
