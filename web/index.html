@@ -1280,6 +1280,68 @@
       clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0; }
     /* The rails scroll sideways on phones; keyboard users can focus and arrow them. */
     .phase-rail:focus-visible, .garden-row:focus-visible { outline:2px solid var(--leaf); outline-offset:3px; }
+
+    /* ── The calm pass, below the fold (2026-10-17) ──────────────────────────
+       Ben's call on the redesign samples: keep every word, lose the density.
+       Nothing below changes what the page says or which number it shows; it
+       changes how loudly. Prose reads at 16px or more in the serif; the mono
+       stays only where the machine is talking (receipts, ids, run stamps,
+       ledger rows); section headings sit lighter and italic; hairline boxes
+       around prose become plain ground, and the sections get room between
+       them so each one reads as one idea. Anything sized here that the
+       honesty tests pin (the zero's rule above all) is left exactly alone. */
+    .section-intro { gap:1.75rem 2.5rem; }
+    .section-intro h2, .portable-release h2, .hunt h2 { font-weight:340; letter-spacing:-0.03em; }
+    .section-intro p { font-size:1rem; line-height:1.65; color:var(--text-secondary); }
+    .triptych-note { font-size:1rem; max-width:68ch; }
+    .lattice-fig figcaption { font-family:var(--font-sans); }
+    .lattice-fig .lf-t { font-size:0.95rem; letter-spacing:0; font-variant-numeric:tabular-nums lining-nums; }
+    .lattice-fig .lf-say { font-size:0.95rem; font-style:italic; }
+    .plots { gap:1.75rem; margin-top:3rem; }
+    .plot-fig figcaption { font-family:var(--font-sans); font-size:0.95rem; line-height:1.55; color:var(--text-muted); }
+    .plot-fig figcaption > b:first-child { display:block; margin-bottom:0.25rem; font-weight:480; color:var(--text); }
+    .sowhat-machines, .sowhat-who { font-size:clamp(1.02rem, 1.9vw, 1.15rem); line-height:1.6; }
+    .sowhat-now { font-family:var(--font-sans); font-size:1rem; font-style:italic; }
+    .sowhat-read { font-size:1rem; line-height:1.65; border-left:0; padding-left:0; }
+    .commitment-goal { font-size:1.05rem; }
+    .commitment-state { font-family:var(--font-sans); font-size:0.95rem; font-style:italic; }
+    .shelf-hero {
+      margin:2.5rem 0 3rem; padding:1.5rem 1.6rem 1.4rem;
+      border:0; border-radius:0; background:#2b2117;
+    }
+    .shelf-hero:hover, .shelf-hero:focus-visible { border-color:transparent; background:#33271b; }
+    .shelf-kicker { font-family:var(--font-sans); font-size:1rem; font-style:italic; letter-spacing:0; text-transform:none; }
+    .shelf-line { font-size:clamp(1.1rem, 2.2vw, 1.35rem); }
+    .shelf-cta { font-family:var(--font-sans); font-size:1rem; font-style:italic; color:var(--clay); }
+    .portable-release p { font-size:1rem; color:var(--text-secondary); }
+    .journey, .garden, .hunt { margin-top:clamp(5rem, 11vw, 9rem); padding-top:0; border-top:0; }
+    .specimen-domain { font-family:var(--font-sans); font-size:0.9rem; font-style:italic; }
+    .specimen-evidence { font-size:0.95rem; }
+    .hunt-asof { font-family:var(--font-sans); font-size:0.95rem; font-style:italic; letter-spacing:0; }
+    .hunt-strip li { border-right:0; }
+    .hunt-strip span { font-family:var(--font-sans); font-size:0.95rem; font-style:italic; line-height:1.35; }
+    .hunt-story { border-top:0; padding-top:0; margin-top:3rem; }
+    .hunt-story h3 { font-size:clamp(1.4rem, 2.6vw, 1.8rem); font-weight:400; font-style:italic; letter-spacing:-0.02em; }
+    .hunt-story p { font-size:1rem; line-height:1.65; color:var(--text-secondary); }
+    .hunt-boundary { border-left:0; padding:0; }
+    .hunt-boundary p { font-size:1rem; }
+    .explainer {
+      margin-top:clamp(5rem, 11vw, 9rem); padding-top:0; border-top:0;
+      font-size:1.02rem; line-height:1.7; color:var(--text-secondary);
+    }
+    .explainer .ex-h {
+      font-family:var(--font-sans); font-size:clamp(1.5rem, 2.8vw, 2rem); font-style:italic; font-weight:340;
+      letter-spacing:-0.02em; text-transform:none; color:var(--text); margin:3.25rem 0 0.6rem;
+    }
+    .explainer .ex-h:first-child { margin-top:0; }
+    .read-list > div { padding:0.6rem 0; }
+    .read-list dt { font-family:var(--font-sans); font-size:1rem; font-style:italic; }
+    details.curious { border-top:0; padding-top:0; margin-top:2.25rem; }
+    details.curious > summary { font-family:var(--font-sans); font-size:1.05rem; font-style:italic; letter-spacing:0; }
+    .ex-foot { font-size:0.95rem; }
+    @media (max-width: 720px) {
+      .hunt-strip li { border-bottom:0; }
+    }
   </style>
 </head>
 <body data-phase="day">
