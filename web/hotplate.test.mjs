@@ -51,6 +51,16 @@ test("the vendored kit keeps its licence and says what changed", () => {
   assert.ok(/github\.com\/wheresryan22\/anatomy/.test(kit), "the vendored kit no longer names its upstream");
 });
 
+// brokenbranch.dev's mirror-pull.mjs hangs the site chrome on these three
+// strings and refuses to publish unless each appears exactly once. Inlined
+// code is the easy way to add a second copy: the kit's pageHtml writes a whole
+// document, so its closing tags carry an escaped slash.
+test("the mirror's chrome anchors each appear exactly once in the page", () => {
+  for (const anchor of ["</head>", '<body data-phase="day">\n', "</body>"]) {
+    assert.equal(PAGE.split(anchor).length - 1, 1, `${JSON.stringify(anchor)} is not in index.html exactly once; the brokenbranch.dev mirror will refuse the page`);
+  }
+});
+
 /* ── The end grain is the report ledger, one ring per day ────────────────── */
 
 // The hero's ring section and the hot plate's base draw the same ledger. If one
