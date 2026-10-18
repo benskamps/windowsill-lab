@@ -224,7 +224,8 @@ them against a committed golden artifact
 Self-determinism is enforced hard on every platform; the golden is bit-exact on
 the platform that blessed it and graded within a tight, check-owned tolerance
 across torch builds. CI runs this too, so a silently nondeterministic instrument
-reds the build instead of shipping green.
+reds the build instead of shipping green. What CI runs, and when, is in
+[`docs/CI.md`](docs/CI.md).
 
 **Controls, not prose.** `lab controls` runs two re-derivable probes and grades
 them with `checks.check_controls`. A **positive** control: single-spin Metropolis
