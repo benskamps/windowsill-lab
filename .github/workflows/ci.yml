@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
   pull_request:
+  # A full run (every job) on any branch, without opening a PR: Actions -> CI
+  # -> Run workflow, or `gh workflow run ci.yml --ref <branch>`. The alarm job
+  # below stays push-only; a manual run is watched by whoever started it.
+  workflow_dispatch: {}
 
 # Superseded PR pushes cancel their in-flight runs. Pushes to main are NEVER
 # cancelled or coalesced — each campaign commit gets its own verdict, so every
