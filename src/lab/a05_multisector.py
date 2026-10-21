@@ -42,8 +42,9 @@ from . import a01, a04
 #: Pipelines this module knows how to read, and the flux column each carries.
 #: SPOC and TESS-SPOC carry PDCSAP (crowding-corrected); QLP carries its own
 #: detrended KSPSAP and no crowding keyword.
-FLUX_COLUMN = {"SPOC": "PDCSAP_FLUX", "TESS-SPOC": "PDCSAP_FLUX",
-               "QLP": "KSPSAP_FLUX"}
+FLUX_COLUMN = {"SPOC": ("PDCSAP_FLUX",), "TESS-SPOC": ("PDCSAP_FLUX",),
+               # the TGLC-based QLP release renamed its detrended flux DET_FLUX
+               "QLP": ("KSPSAP_FLUX", "DET_FLUX")}
 
 #: Seconds per day, for exposure times reported in seconds.
 DAY_S = 86400.0
@@ -155,9 +156,9 @@ def curve_from_product(blob: bytes, provenance: str) -> dict:
     """
     prov = provenance.upper()
     cols, table, primary = read_columns(blob)
-    flux_col = FLUX_COLUMN[prov]
-    if flux_col not in cols:
-        raise ValueError(f"{prov} product has no {flux_col} column")
+    flux_col = next((c for c in FLUX_COLUMN[prov] if c in cols), None)
+    if flux_col is None:
+        raise ValueError(f"{prov} product has no {'/'.join(FLUX_COLUMN[prov])} column")
     t = cols["TIME"]
     f = cols[flux_col]
     q = cols.get("QUALITY")
@@ -186,7 +187,7 @@ def curve_from_product(blob: bytes, provenance: str) -> dict:
         raise ValueError("detrend reordered cadences")
     cadence = float(np.median(np.diff(t))) if t.size > 1 else float("nan")
     return {"t": t, "f": fd, "f_raw": f, "cx": cx, "cy": cy,
-            "provenance": prov, "cadence_days": cadence,
+            "provenance": prov, "flux_column": flux_col, "cadence_days": cadence,
             "crowdsap": _num(table, "CROWDSAP"),
             "flfrcsap": _num(table, "FLFRCSAP"),
             "r_star_sun": _num(primary, "RADIUS"),
@@ -206,7 +207,7 @@ def load_product(product: dict, cache_dir=None) -> tuple[dict, dict]:
     row.update({"n_cadences": curve["n_cadences"],
                 "cadence_min": round(curve["cadence_days"] * 1440.0, 3),
                 "t_start": float(curve["t"][0]), "t_end": float(curve["t"][-1]),
-                "crowdsap": curve["crowdsap"]})
+                "crowdsap": curve["crowdsap"], "flux_column": curve["flux_column"]})
     return curve, row
 
 
