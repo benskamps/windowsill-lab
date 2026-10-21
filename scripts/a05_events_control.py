@@ -96,7 +96,13 @@ def main(argv=None) -> int:
     prods = ms.discover_products(C["tic"], provenances=("SPOC",))
     ts, fs, inputs = [], [], []
     for p in prods:
-        c, row = ms.load_product(p)
+        try:
+            c, row = ms.load_product(p)
+        except ValueError as exc:
+            # recorded, not hidden: a sector the reader refuses is a gap
+            inputs.append({"sector": p["sector"], "filename": p["filename"],
+                           "status": f"unusable: {exc}"})
+            continue
         ts.append(c["t"])
         fs.append(c["f"])
         inputs.append(row)
@@ -178,9 +184,10 @@ def main(argv=None) -> int:
     R["injection_summary"] = summ
     R.update({"code_commit": _git_head(), "generated_at": started,
               "wall_seconds": round(time.time() - clock, 1)})
-    OUT.parent.mkdir(parents=True, exist_ok=True)
-    OUT.write_text(json.dumps(_clean(R), indent=1) + "\n", encoding="utf-8", newline="\n")
-    print(OUT)
+    out = OUT.with_name("toi1231-control-quick.json") if a.quick else OUT
+    out.parent.mkdir(parents=True, exist_ok=True)
+    out.write_text(json.dumps(_clean(R), indent=1) + "\n", encoding="utf-8", newline="\n")
+    print(out)
     print(json.dumps(_clean({"positive_control": R["positive_control"],
                              "placebo_fap": pl["fap"], "masked": {k: R["masked"][k] for k in (
                                  "observed_inside_central_95", "placebo_pass")},
