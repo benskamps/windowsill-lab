@@ -195,8 +195,8 @@ def sky_block(tic, period, depth, crowdsap, r_star):
         out["flux_budget"] = a05_sky.flux_budget(depth, crowdsap, neigh, r_star)
         out["neighbour_crosscheck"] = a05_sky.neighbour_crosscheck(
             period, neigh, a05_sky.sky_catalog_lookup)
-    except a05_sky.SkyLookupError as exc:
-        out["error"] = f"pending_catalog: {exc}"
+    except Exception as exc:  # noqa: BLE001 - an unrun gate is pending, never passed
+        out["error"] = f"pending_catalog: {exc!r}"
     try:
         out["target_catalog"] = a04.catalog_crosscheck(tic, detected_period_days=period)
     except Exception as exc:  # noqa: BLE001
@@ -453,7 +453,9 @@ def disposition_l279(R) -> dict:
         word = "low-significance"
     else:
         word = "lead-awaiting-human-review"
+    pending = bool(sky.get("error"))
     return {"machine_disposition": word, "gates_fired": fired,
+            "sky_gates_pending": pending, "complete": not pending,
             "claimed_event_verdicts": verdicts, "sb_note": sb.get("stellar_companion_excluded")}
 
 
