@@ -211,6 +211,16 @@ def search(t: np.ndarray, f: np.ndarray, *, p_min: float = P_MIN,
             continue
         seen.add(key)
         n_trials += 1
+        # The reference depth is re-measured with the SAME box at the SAME
+        # duration the epochs are checked with. The scan's own depth is a
+        # different estimator (median in-box, its best duration), and against
+        # it a pair's own events vetoed every one of their aliases — caught by
+        # tests/test_a05_events.py before any real light curve was searched.
+        ref = [boxer.depth(events[k]["t_centre"], tr["duration_days"])
+               for k in tr["pair"]]
+        if any(r is None for r in ref):
+            continue
+        tr["depth"] = 0.5 * (ref[0][0] + ref[1][0])
         res = check_trial(boxer, tr["t_ref"], tr["period"], tr["duration_days"],
                           tr["depth"])
         if res["vetoed"]:
