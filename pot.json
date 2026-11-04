@@ -525,28 +525,28 @@
     }
   ],
   "total": 41,
-  "last_run": "2026-11-04T14:00:07.442107+00:00",
+  "last_run": "2026-11-04T20:00:07.171621+00:00",
   "runs": 84,
-  "temp_c": 91.4,
+  "temp_c": 90.8,
   "latest_report": {
     "date": "2026-11-04",
     "milestone": "C03",
     "verdict": "verified",
-    "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.137s [in-reach]",
+    "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.059s [in-reach]",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-04-0900-c03.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-04-1500-c03.json",
     "machine": "linux-rocm",
-    "at": "2026-11-04T14:00:07.442107+00:00",
-    "group_count": 2,
+    "at": "2026-11-04T20:00:07.171621+00:00",
+    "group_count": 3,
     "group_first_date": "2026-11-03",
     "group_machines": [
       "linux-rocm"
     ]
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-11-04T14:02:27.407296+00:00",
+  "updated": "2026-11-04T20:02:35.408031+00:00",
   "provenance": {
-    "code_sha": "a1d7c40",
+    "code_sha": "c36f9e9",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -559,12 +559,12 @@
       "date": "2026-11-04",
       "milestone": "C03",
       "verdict": "verified",
-      "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.137s [in-reach]",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-11-04-0900-c03",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-04-0900-c03.json",
+      "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.059s [in-reach]",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-11-04-1500-c03",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-04-1500-c03.json",
       "machine": "linux-rocm",
-      "at": "2026-11-04T14:00:07.442107+00:00",
-      "group_count": 2,
+      "at": "2026-11-04T20:00:07.171621+00:00",
+      "group_count": 3,
       "group_first_date": "2026-11-03",
       "group_machines": [
         "linux-rocm"
@@ -2542,11 +2542,11 @@
     }
   ],
   "turns": {
-    "count": 262,
-    "today": 1,
+    "count": 263,
+    "today": 2,
     "last_by_machine": {
       "windows-cuda": "2026-09-09T16:32:20.064436+00:00",
-      "linux-rocm": "2026-11-04T14:00:07.442107+00:00"
+      "linux-rocm": "2026-11-04T20:00:07.171621+00:00"
     },
     "expected_interval_h": 3
   },
@@ -2562,14 +2562,15 @@
       "gpu_tests_ran": false
     },
     "linux-rocm": {
-      "status": "fail",
-      "detail": "2534 passed, 8 failed, 2 skipped; the GPU-gated tests ran",
+      "status": "stale",
+      "detail": "last recorded test run was 41h ago (> 36h) \u2014 it graded 'fail' then, and says nothing about now",
       "at": "2026-11-03T02:57:47.976674+00:00",
       "machine": "linux-rocm",
       "passed": 2534,
       "failed": 8,
       "skipped": 2,
-      "gpu_tests_ran": true
+      "gpu_tests_ran": true,
+      "recorded_status": "fail"
     }
   },
   "hunt": {
