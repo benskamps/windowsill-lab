@@ -525,28 +525,23 @@
     }
   ],
   "total": 41,
-  "last_run": "2026-11-04T20:00:07.171621+00:00",
+  "last_run": "2026-11-05T02:07:17.563719+00:00",
   "runs": 84,
   "temp_c": 90.8,
   "latest_report": {
     "date": "2026-11-04",
-    "milestone": "C03",
-    "verdict": "verified",
-    "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.059s [in-reach]",
+    "milestone": "A03",
+    "verdict": "null",
+    "headline": "GW170817-v3: pipeline recovers an injected chirp mass to 4.0e-05 Msun in 2 detectors; the event itself is NOT recovered",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-04-1500-c03.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-04-2107-a03.json",
     "machine": "linux-rocm",
-    "at": "2026-11-04T20:00:07.171621+00:00",
-    "group_count": 3,
-    "group_first_date": "2026-11-03",
-    "group_machines": [
-      "linux-rocm"
-    ]
+    "at": "2026-11-05T02:07:17.563719+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-11-04T20:02:35.408031+00:00",
+  "updated": "2026-11-05T02:09:34.769184+00:00",
   "provenance": {
-    "code_sha": "c36f9e9",
+    "code_sha": "bf168f6",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -555,6 +550,16 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-11-04",
+      "milestone": "A03",
+      "verdict": "null",
+      "headline": "GW170817-v3: pipeline recovers an injected chirp mass to 4.0e-05 Msun in 2 detectors; the event itself is NOT recovered",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-11-04-2107-a03",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-04-2107-a03.json",
+      "machine": "linux-rocm",
+      "at": "2026-11-05T02:07:17.563719+00:00"
+    },
     {
       "date": "2026-11-04",
       "milestone": "C03",
@@ -2542,11 +2547,11 @@
     }
   ],
   "turns": {
-    "count": 263,
-    "today": 2,
+    "count": 264,
+    "today": 3,
     "last_by_machine": {
       "windows-cuda": "2026-09-09T16:32:20.064436+00:00",
-      "linux-rocm": "2026-11-04T20:00:07.171621+00:00"
+      "linux-rocm": "2026-11-05T02:07:17.563719+00:00"
     },
     "expected_interval_h": 3
   },
@@ -2563,7 +2568,7 @@
     },
     "linux-rocm": {
       "status": "stale",
-      "detail": "last recorded test run was 41h ago (> 36h) \u2014 it graded 'fail' then, and says nothing about now",
+      "detail": "last recorded test run was 47h ago (> 36h) \u2014 it graded 'fail' then, and says nothing about now",
       "at": "2026-11-03T02:57:47.976674+00:00",
       "machine": "linux-rocm",
       "passed": 2534,
