@@ -1,0 +1,22 @@
+{
+  "schema": "windowsill.selftest-receipt.v1",
+  "generated_at": "2026-11-10T03:22:23.715473+00:00",
+  "provenance": {
+    "python": "3.14.4",
+    "platform": "linux-x86_64",
+    "dependencies": {
+      "torch": "2.10.0.dev20251031+rocm6.4",
+      "numpy": "2.5.1"
+    }
+  },
+  "selftest": {
+    "status": "error",
+    "gpu_tests_ran": false,
+    "detail": "pytest did not finish inside 3600s \u2014 recorded as an error, not a pass",
+    "schema": 1,
+    "at": "2026-11-10T03:22:23.715473+00:00",
+    "utc_date": "2026-11-10",
+    "machine": "linux-rocm",
+    "duration_s": 3600.1
+  }
+}
