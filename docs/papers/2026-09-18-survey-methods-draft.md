@@ -2,6 +2,17 @@
 
 **Draft, 2026-09-18. Not submitted. Nothing in this paper has been sent anywhere.**
 
+**Overtaken on 2026-11-10, and not yet rewritten.** The worked example, TIC 374861595,
+was refuted, on outside review and then on the lab's own 24 sectors, as most likely an
+eclipsing binary at twice the period
+(`docs/investigations/2026-11-10-tic374861595-eb-at-2p-refutation.md`). Withdrawn:
+the abstract's claim that the object "remains open", §1's paragraph on the worked
+example, §5's "one is open", all of §6, and the parts of §8 that rest on that star's
+secondary-eclipse bound. §5's "Seven refutation rulings" is now eight, six of them
+counted. Only the census table in §3 has been updated for the ruling. The title's
+"five refutations" counts the survey's own gates; the sixth began with a TOI vetter.
+If this paper goes ahead, the star is its worked refuted lead.
+
 Target venue: *PASP* or *AJ* — a peer-reviewed journal, chosen for that property
 and not for speed. The venue reasoning is in `docs/submissions/TIC374861595-CTOI.md`
 §3; the short form is that Research Notes of the AAS is described by the AAS
@@ -263,9 +274,9 @@ receipt, 2026-09-13.
 | placebo candidates | 0 | |
 | known planets recovered | 9 | none designated in advance |
 | leads minted | 7 | |
-| leads refuted | 5 | by the survey's own gates; §5 |
+| leads refuted | 6 | five by the survey's own gates (§5); TIC 374861595 on outside review, 2026-11-10 |
 | leads parked | 1 | on a named gap |
-| leads awaiting review | 1 | TIC 374861595; §6 |
+| leads awaiting review | 0 | TIC 374861595 was the one; refuted 2026-11-10 |
 | planets claimed | 0 | pinned literal |
 
 ### 3.1 The denominator, stated precisely

@@ -24,7 +24,7 @@ Five rungs. Each one has **do this first** (a thing to look at or run), then **r
 
 The lab already has a from-zero layer. This ladder sends you through it rather than repeating it:
 
-- **TIC 374861595, "Start from zero"**: www.brokenbranch.dev/windowsill/tic-374861595/ — a real open lead explained from plain words up to the working file.
+- **TIC 374861595, "Start from zero"**: www.brokenbranch.dev/windowsill/tic-374861595/ — a real lead explained from plain words up to the working file. It was refuted on 2026-11-10: most likely an eclipsing binary at twice the period.
 - **The paper's reader's guide**: www.brokenbranch.dev/windowsill/paper/ — the survey in one breath, the numbers as a story, and a plain-language word list (transit, BLS, SDE, placebo, injection, eclipsing binary, harmonic alias, SPOC, TOI).
 - **The experiment rooms**: A01 (fold a known planet), A04 (search stars nobody pointed you at), A05 (every candidate's odds of being nothing), at www.brokenbranch.dev/windowsill/experiments/.
 - **Calibrate Before You Search**: www.brokenbranch.dev/learn/calibrate-before-you-search/ — the five habits, written so they carry over to A/B tests and model evals.
@@ -37,7 +37,7 @@ The lab already has a from-zero layer. This ladder sends you through it rather t
 
 **Do this first.**
 1. Watch NASA's transit animation, a planet crossing next to its light curve. [Exoplanet Transit Animations, NASA SVS](https://svs.gsfc.nasa.gov/13022/) — video files, a minute or two.
-2. Read the lab's [TIC 374861595 page](https://www.brokenbranch.dev/windowsill/tic-374861595/) down to "And there is no coin". Ten minutes. It is the whole method in one real example.
+2. Read the lab's [TIC 374861595 page](https://www.brokenbranch.dev/windowsill/tic-374861595/) down to "And there is no coin". Ten minutes. It is the whole method in one real example. The lead was refuted on 2026-11-10; how is in `docs/investigations/2026-11-10-tic374861595-eb-at-2p-refutation.md`.
 3. Read [xkcd 882, "Significant"](https://xkcd.com/882/). One minute. It is the most important idea on this ladder, drawn as jelly beans.
 
 **Read this.**
@@ -69,7 +69,7 @@ The lab already has a from-zero layer. This ladder sends you through it rather t
 | Number | Example | Rule of thumb | Trap |
 |---|---|---|---|
 | **Depth** | Jupiter across the Sun dims it about 1%. Earth across the Sun: about 0.008% (84 parts per million). | depth ≈ (planet radius / star radius)². Same planet, smaller star, deeper dip. | A grazing transit (clipping the edge, like TIC 374861595) is shallower and V-shaped, so depth underestimates size. Light from a neighbour star dilutes the dip and also hides size. |
-| **Period** | WASP-18 b: 0.94 days. TIC 374861595: 1.94 days. | the time between dips. Needs at least two, really three or more. | The search can lock onto half or double the true period (a harmonic alias). An eclipsing binary at half its real period looks like one planet. |
+| **Period** | WASP-18 b: 0.94 days. TIC 374861595: a dip every 1.94 days. | the time between dips. Needs at least two, really three or more. | The search can lock onto half or double the true period (a harmonic alias). An eclipsing binary at half its real period looks like one planet. That is most likely what happened to TIC 374861595. |
 | **Duration** | A hot Jupiter: 1–3 hours. Earth seen from afar: about 13 hours. | set by the star's size and the orbit's speed. A too-long or too-short duration for the star is a warning. | A box-shaped search guesses durations from a grid; a wrong guess blurs the depth. |
 | **Shape** | flat bottom = whole planet in front of the star. V = grazing, or two stars. | U-shaped with a flat floor is what a planet usually looks like. | V-shapes are where eclipsing binaries hide. |
 | **SNR (signal-to-noise)** | A 1% dip on a star that scatters 0.1% per point, with 100 points in transit: SNR ≈ (1 / 0.1) × √100 = 100. | SNR ≈ (depth / scatter) × √(points in transit). NASA's TESS pipeline flags a signal around 7.1σ. | SNR says the dip is probably not random scatter. It says nothing about whether it is a planet. |
@@ -200,7 +200,7 @@ This is the hard half. Finding a dip is easy. The work is killing it, and writin
 | PC / APC | planet candidate / ambiguous planet candidate. |
 | FP / FA | false positive (astrophysical, e.g. an eclipsing binary) / false alarm (instrumental or noise). |
 | KP / CP | known planet / confirmed planet. Confirmation usually means a mass measurement or statistical validation that passes published thresholds. |
-| the lab's own | a closed 18-term vocabulary with no word for "planet"; the furthest a machine goes is *lead awaiting human review*. TIC 374861595 is an **open lead**. |
+| the lab's own | a closed 18-term vocabulary with no word for "planet"; the furthest a machine goes is *lead awaiting human review*. TIC 374861595 was an **open lead** until it was refuted on outside review on 2026-11-10. |
 
 TFOP working-group dispositions as listed on ExoFOP are **unverified from here** (ExoFOP is blocked from the sandbox); the PC/APC/FP/FA/KP/CP set above is the one the TOI catalog paper uses.
 
@@ -218,7 +218,7 @@ TFOP working-group dispositions as listed on ExoFOP are **unverified from here**
 
 Context for the count, 2026-10-08 per the Archive's counts page: 6,445 confirmed planets; 8,148 TESS project candidates, 4,823 of them still awaiting a disposition; 1,008 TESS planets confirmed. A new candidate joins a queue of thousands. That's why the paragraph that says what it is not matters more than the claim.
 
-**When to stop.** A single-telescope photometry search can't measure mass. If the open question is mass (as it is for TIC 374861595: giant planet or brown dwarf), the next step is radial-velocity time on a large telescope, which a home lab doesn't have. Write that down, file what you have, and say "open lead".
+**When to stop.** A single-telescope photometry search can't measure mass. If the open question is mass, the next step is radial-velocity time on a large telescope, which a home lab doesn't have. Write that down, file what you have, and say "open lead". The lab said exactly that about TIC 374861595 and was most likely wrong: a vetter pointed to an eclipsing binary at twice the period in the light curve, and the lab's own 24 sectors agree (`docs/investigations/2026-11-10-tic374861595-eb-at-2p-refutation.md`). Before you stop at "needs RVs", fold at twice the period and look at the light between the dips.
 
 ---
 

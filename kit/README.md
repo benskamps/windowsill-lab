@@ -8,7 +8,7 @@ the search for you in an afternoon.
 This kit is what the windowsill lab learned doing exactly that, slowly and in
 public, from August 2026 onward: 12,898 searches, 116 signals, nine known
 planets re-found blind, seven leads, five of those killed by our own tests,
-one still open, **zero planets claimed**. It gives you the same pipeline and the same rules,
+one refuted on outside review, one parked, none open, **zero planets claimed**. It gives you the same pipeline and the same rules,
 cut down to one person and one star.
 
 It will not let you say you found a planet. Nothing automated can, and every

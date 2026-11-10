@@ -227,5 +227,6 @@ record: these rules were enforced in code, with refusals on file, from August
 - `docs/shelf-exit-contract.md`: how a lead enters, exits, and who decides.
 - `docs/doctrine/research-doctrine.md`: why the lab works this way.
 - `docs/submissions/TIC374861595-CTOI.md`: one lead worked end to end,
-  including the ExoFOP rule.
+  including the ExoFOP rule. Refuted on 2026-11-10
+  (`docs/investigations/2026-11-10-tic374861595-eb-at-2p-refutation.md`).
 - `src/lab/a05*.py`: the pipeline. `src/lab/planetkit.py`: this kit.

@@ -2693,9 +2693,9 @@
     },
     "known_recovered": 9,
     "leads_minted": 7,
-    "leads_refuted": 5,
+    "leads_refuted": 6,
     "leads_parked": 1,
-    "leads_awaiting_human_review": 1,
+    "leads_awaiting_human_review": 0,
     "planets_discovered": 0,
     "last_hunt": {
       "date": "2026-09-13",
