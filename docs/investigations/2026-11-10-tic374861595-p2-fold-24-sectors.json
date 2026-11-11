@@ -1,0 +1,3386 @@
+{
+ "tic": 374861595,
+ "ephemeris": {
+  "period_days": 1.9369484453819672,
+  "t0_btjd": 2036.5479415409804,
+  "source": "docs/submissions/TIC374861595-spoc-s1-s96-dvr.xml allTransitsFit"
+ },
+ "thresholds": {
+  "P2_ALIAS_SIGMA": 5.0,
+  "MIN_ECLIPSE_SIGMA": 5.0,
+  "ODD_EVEN_SIGMA": 5.0,
+  "MIN_AMP_SIGMA": 3.0
+ },
+ "n_sectors": 24,
+ "sectors": [
+  {
+   "sector": 27,
+   "file": "tess2020186164531-s0027-0000000374861595-0189-s_lc.fits",
+   "sha256": "0434977d31fefe9546dbc1bf6f8510fa690021b4f767a1e959a5749176863915",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08825507745388483,
+     "sigma": 0.0006439760902172419,
+     "depth_sigma": 137.0471338836702,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 459,
+     "n_out": 2090,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.003432441729406932,
+    "difference_sigma": 2.1409529497127697,
+    "depth_ratio": 1.038255448711367,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.09315669918889458,
+     "sigma": 0.0010880059562374254,
+     "depth_sigma": 85.62149743283746,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 230,
+     "n_out": 1003,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08972425745948764,
+     "sigma": 0.0011775364392795297,
+     "depth_sigma": 76.1965867607333,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 232,
+     "n_out": 1087,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.003432441729406932,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.09049094796397605,
+     "sigma": 0.0009875265075968119,
+     "depth_sigma": 91.63394325909252,
+     "duration_phase": 0.025,
+     "n_in": 210,
+     "n_out": 1087,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.08898356548893827,
+     "sigma": 0.0008681031545433997,
+     "depth_sigma": 102.50344676577217,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 230,
+     "n_out": 1003,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "difference": 0.0015073824750377884,
+    "difference_sigma": 1.1464354756489734,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 16781,
+   "t_mid_btjd": 2048.4598129739857,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 6,
+    "n_odd": 6,
+    "difference_odd_minus_even": 0.0028502688839681656,
+    "depth_even": 0.09605795959741643,
+    "depth_odd": 0.0989082284813846,
+    "sigma": 0.0014282524144989624
+   },
+   "between_dips": {
+    "amplitude": 0.004069796714394545,
+    "amplitude_sigma": 0.00016350883458418473,
+    "amplitude_snr": 24.890378093295965,
+    "phase_of_max_cycles": 0.3438872111298651,
+    "harmonic_amplitude": 0.0038493738826442855,
+    "residual_rms": 0.013969410882196278,
+    "n_used": 14721,
+    "n_clipped": 6
+   }
+  },
+  {
+   "sector": 28,
+   "file": "tess2020212050318-s0028-0000000374861595-0190-s_lc.fits",
+   "sha256": "d257c072f71062af8af9e7c6bbdf9464f5ed15c4c4ef7a0704ac30498db0e1ba",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08834102702094349,
+     "sigma": 0.0006753090271571373,
+     "depth_sigma": 130.8157058004016,
+     "duration_phase": 0.025,
+     "n_in": 313,
+     "n_out": 1498,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.008212517043008849,
+    "difference_sigma": 4.793528329375199,
+    "depth_ratio": 1.0952855718474888,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.09440098066637426,
+     "sigma": 0.001235292025902165,
+     "depth_sigma": 76.41997089508519,
+     "duration_phase": 0.0125,
+     "n_in": 139,
+     "n_out": 693,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08618846362336541,
+     "sigma": 0.0011871320418493211,
+     "depth_sigma": 72.60225533892634,
+     "duration_phase": 0.0125,
+     "n_in": 174,
+     "n_out": 805,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.008212517043008849,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08615770702285586,
+     "sigma": 0.0009471943278259544,
+     "depth_sigma": 90.96096174964343,
+     "duration_phase": 0.025,
+     "n_in": 174,
+     "n_out": 805,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.09111596796993848,
+     "sigma": 0.0009856204355502309,
+     "depth_sigma": 92.44529098980404,
+     "duration_phase": 0.025,
+     "n_in": 139,
+     "n_out": 693,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": -0.004958260947082627,
+    "difference_sigma": 3.6271735216665033,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 13397,
+   "t_mid_btjd": 2073.1966895268197,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 4,
+    "difference_odd_minus_even": 0.006589082803447693,
+    "depth_even": 0.08950441071490509,
+    "depth_odd": 0.09609349351835278,
+    "sigma": 0.0022541508827785372
+   },
+   "between_dips": {
+    "amplitude": 0.0011493239479883207,
+    "amplitude_sigma": 0.00016603830778182701,
+    "amplitude_snr": 6.922040843119908,
+    "phase_of_max_cycles": 0.23375377271979902,
+    "harmonic_amplitude": 0.00350599160669375,
+    "residual_rms": 0.012256394429449983,
+    "n_used": 11884,
+    "n_clipped": 20
+   }
+  },
+  {
+   "sector": 30,
+   "file": "tess2020266004630-s0030-0000000374861595-0195-s_lc.fits",
+   "sha256": "4e5d8bceb4fc4638f18336a0ae404dd92454749be32398103ecbbf232c9171d3",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08464944230419114,
+     "sigma": 0.0005897490985869525,
+     "depth_sigma": 143.53467009447314,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 456,
+     "n_out": 1939,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.0054049770627033755,
+    "difference_sigma": 3.6597299578863254,
+    "depth_ratio": 1.0641251655408015,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.08969290079935721,
+     "sigma": 0.0010309262724713271,
+     "depth_sigma": 87.00224564492493,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 226,
+     "n_out": 933,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08428792373665384,
+     "sigma": 0.0010575261633770216,
+     "depth_sigma": 79.70292050978233,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 231,
+     "n_out": 1006,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.0054049770627033755,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08644213372224074,
+     "sigma": 0.0008870825353939156,
+     "depth_sigma": 97.44542392986631,
+     "duration_phase": 0.025,
+     "n_in": 209,
+     "n_out": 1006,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.08627037606851151,
+     "sigma": 0.0008207463498307458,
+     "depth_sigma": 105.11210447210905,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 227,
+     "n_out": 933,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": 0.00017175765372923202,
+    "difference_sigma": 0.14212136557607669,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 16249,
+   "t_mid_btjd": 2128.7739717256622,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 6,
+    "n_odd": 5,
+    "difference_odd_minus_even": 0.005268943601031459,
+    "depth_even": 0.09133286485833408,
+    "depth_odd": 0.09660180845936554,
+    "sigma": 0.0016376333555226075
+   },
+   "between_dips": {
+    "amplitude": 0.005898861746627319,
+    "amplitude_sigma": 0.00016453529329521686,
+    "amplitude_snr": 35.851649992462754,
+    "phase_of_max_cycles": 0.9707568473916325,
+    "harmonic_amplitude": 0.003955875671929763,
+    "residual_rms": 0.012719650428512903,
+    "n_used": 14274,
+    "n_clipped": 1
+   }
+  },
+  {
+   "sector": 31,
+   "file": "tess2020294194027-s0031-0000000374861595-0198-s_lc.fits",
+   "sha256": "4ab878b6130a7d34ea7cff5c10dd9359d87ed123c91c413d7f216fcae0d0a607",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08463515465987237,
+     "sigma": 0.0005934615871840995,
+     "depth_sigma": 142.61269219033287,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 421,
+     "n_out": 1831,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.0005282430457742571,
+    "difference_sigma": 0.3539043221480505,
+    "depth_ratio": 1.0060752464149492,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.0874783039477367,
+     "sigma": 0.0011162981328051904,
+     "depth_sigma": 78.36464236297606,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 193,
+     "n_out": 829,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08695006090196244,
+     "sigma": 0.000990847742192345,
+     "depth_sigma": 87.75320081930768,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 228,
+     "n_out": 1002,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.0005282430457742571,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08859335991183603,
+     "sigma": 0.0008277186516381511,
+     "depth_sigma": 107.033180581952,
+     "duration_phase": 0.025,
+     "n_in": 208,
+     "n_out": 1002,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -2
+    },
+    "depth_even": {
+     "depth": 0.0841413400915223,
+     "sigma": 0.0008953281321105571,
+     "depth_sigma": 93.97821544284095,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 191,
+     "n_out": 829,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": 0.004452019820313735,
+    "difference_sigma": 3.6512447421822234,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 16545,
+   "t_mid_btjd": 2157.2296038639797,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 6,
+    "n_odd": 5,
+    "difference_odd_minus_even": -0.0015185727388791481,
+    "depth_even": 0.09404002809223898,
+    "depth_odd": 0.09252145535335983,
+    "sigma": 0.0020572548759410433
+   },
+   "between_dips": {
+    "amplitude": 0.006306787478496445,
+    "amplitude_sigma": 0.00015893396808074943,
+    "amplitude_snr": 39.68180971415853,
+    "phase_of_max_cycles": 0.9558580287167615,
+    "harmonic_amplitude": 0.004060512810099879,
+    "residual_rms": 0.01261173671905626,
+    "n_used": 14713,
+    "n_clipped": 3
+   }
+  },
+  {
+   "sector": 35,
+   "file": "tess2021039152502-s0035-0000000374861595-0205-s_lc.fits",
+   "sha256": "ab685daeb556e6bee99e1b13534c74fcbb43c7822331c8248e772be73f19db2c",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08558119893719807,
+     "sigma": 0.0006395591799105148,
+     "depth_sigma": 133.81279109960133,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 383,
+     "n_out": 1622,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.003427954199254457,
+    "difference_sigma": 2.1711937514431257,
+    "depth_ratio": 1.0406453551000903,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.08776610774258131,
+     "sigma": 0.0011604227971424611,
+     "depth_sigma": 75.63287101796448,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 192,
+     "n_out": 786,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08433815354332685,
+     "sigma": 0.0010705770741485363,
+     "depth_sigma": 78.77821744913008,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 191,
+     "n_out": 836,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.003427954199254457,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08479673639480512,
+     "sigma": 0.0008519695434561279,
+     "depth_sigma": 99.53024382868882,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 192,
+     "n_out": 836,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.08613289232725119,
+     "sigma": 0.0009283040482590225,
+     "depth_sigma": 92.78521674960716,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 191,
+     "n_out": 786,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": -0.0013361559324460703,
+    "difference_sigma": 1.0604410462362255,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 13571,
+   "t_mid_btjd": 2267.980097729618,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 5,
+    "difference_odd_minus_even": 0.0001999119326885207,
+    "depth_even": 0.09371426121566621,
+    "depth_odd": 0.09391417314835473,
+    "sigma": 0.0014855899897735815
+   },
+   "between_dips": {
+    "amplitude": 0.016706861223571803,
+    "amplitude_sigma": 0.00017711241356965432,
+    "amplitude_snr": 94.32913756212447,
+    "phase_of_max_cycles": 0.880438091012636,
+    "harmonic_amplitude": 0.0028030485909736947,
+    "residual_rms": 0.012997224303764652,
+    "n_used": 11900,
+    "n_clipped": 5
+   }
+  },
+  {
+   "sector": 36,
+   "file": "tess2021065132309-s0036-0000000374861595-0207-s_lc.fits",
+   "sha256": "048116643bec4b6d931a607fa426345fe6baba5772c50fa468e3cb3d54e0749d",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08425441398297262,
+     "sigma": 0.0005895332666114772,
+     "depth_sigma": 142.9171494719045,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 459,
+     "n_out": 1918,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.0009356510701306053,
+    "difference_sigma": 0.6331774577384471,
+    "depth_ratio": 1.0110318309279536,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.0857494119264317,
+     "sigma": 0.0010220413706828887,
+     "depth_sigma": 83.90013788692062,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 231,
+     "n_out": 998,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.0848137608563011,
+     "sigma": 0.0010672632546968588,
+     "depth_sigma": 79.46845399487802,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 228,
+     "n_out": 920,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": -0.0009356510701306053,
+    "deeper_phase": 0.7104148529291849
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.0859097834847834,
+     "sigma": 0.0008190242976748396,
+     "depth_sigma": 104.89283862356228,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 229,
+     "n_out": 998,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.08254320220547406,
+     "sigma": 0.0008478423855485441,
+     "depth_sigma": 97.35677717040483,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 230,
+     "n_out": 920,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -2
+    },
+    "difference": 0.003366581279309333,
+    "difference_sigma": 2.8558693780860684,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 14869,
+   "t_mid_btjd": 2294.23205873969,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 6,
+    "n_odd": 5,
+    "difference_odd_minus_even": -0.0035394654195943093,
+    "depth_even": 0.09312889736305886,
+    "depth_odd": 0.08958943194346455,
+    "sigma": 0.002205058809121225
+   },
+   "between_dips": {
+    "amplitude": 0.020985218134891903,
+    "amplitude_sigma": 0.0001666339285096205,
+    "amplitude_snr": 125.93604629371944,
+    "phase_of_max_cycles": 0.8886476929157489,
+    "harmonic_amplitude": 0.0020245320447829836,
+    "residual_rms": 0.012801219117683074,
+    "n_used": 12904,
+    "n_clipped": 1
+   }
+  },
+  {
+   "sector": 37,
+   "file": "tess2021091135823-s0037-0000000374861595-0208-s_lc.fits",
+   "sha256": "d9a934e1ee50f45a302397472244b7544fd11e37ad671ce43590b4769e7e281d",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08485957677256717,
+     "sigma": 0.0007066714942628933,
+     "depth_sigma": 120.08348640280377,
+     "duration_phase": 0.025,
+     "n_in": 349,
+     "n_out": 1672,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.006025416806789474,
+    "difference_sigma": 3.3576448536837242,
+    "depth_ratio": 1.0713596496182851,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.09046272611282524,
+     "sigma": 0.0012893467732060385,
+     "depth_sigma": 70.16167255600618,
+     "duration_phase": 0.0125,
+     "n_in": 174,
+     "n_out": 835,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08443730930603577,
+     "sigma": 0.001248177371155596,
+     "depth_sigma": 67.64848591018875,
+     "duration_phase": 0.0125,
+     "n_in": 175,
+     "n_out": 837,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": -0.006025416806789474,
+    "deeper_phase": 0.7104148529291849
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08349264666846323,
+     "sigma": 0.0009768002651595698,
+     "depth_sigma": 85.47565929952313,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 193,
+     "n_out": 835,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.08336943650884199,
+     "sigma": 0.000995901453588558,
+     "depth_sigma": 83.71253622377465,
+     "duration_phase": 0.025,
+     "n_in": 175,
+     "n_out": 837,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": 0.00012321015962124537,
+    "difference_sigma": 0.08832420503251406,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 14173,
+   "t_mid_btjd": 2320.8888911206386,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 5,
+    "difference_odd_minus_even": -0.002999034832862832,
+    "depth_even": 0.09183072486215169,
+    "depth_odd": 0.08883169002928885,
+    "sigma": 0.00202908192024318
+   },
+   "between_dips": {
+    "amplitude": 0.020688158923212546,
+    "amplitude_sigma": 0.00018127554355367185,
+    "amplitude_snr": 114.12548277416815,
+    "phase_of_max_cycles": 0.8971298206304488,
+    "harmonic_amplitude": 0.0008459597059385129,
+    "residual_rms": 0.013443846266141268,
+    "n_used": 12493,
+    "n_clipped": 7
+   }
+  },
+  {
+   "sector": 38,
+   "file": "tess2021118034608-s0038-0000000374861595-0209-s_lc.fits",
+   "sha256": "ac484c9f908e33acf76f4a979a13b0b442b70690531dab316c1ed12f741cf9f0",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.0835770374588426,
+     "sigma": 0.0006495127949604568,
+     "depth_sigma": 128.6765066174422,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 420,
+     "n_out": 1947,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.002387258672374881,
+    "difference_sigma": 1.429421365350665,
+    "depth_ratio": 1.0286560135418266,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.08569468274552505,
+     "sigma": 0.0013102506837624913,
+     "depth_sigma": 65.40327267713825,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 155,
+     "n_out": 788,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08330742407315017,
+     "sigma": 0.0010355844781764047,
+     "depth_sigma": 80.44483654278886,
+     "duration_phase": 0.013750000000000002,
+     "n_in": 268,
+     "n_out": 1159,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": -0.002387258672374881,
+    "deeper_phase": 0.7104148529291849
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08594195028543095,
+     "sigma": 0.0010556951141628293,
+     "depth_sigma": 81.4079265239219,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 152,
+     "n_out": 788,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "depth_even": {
+     "depth": 0.08523866098950883,
+     "sigma": 0.000867740472783309,
+     "depth_sigma": 98.23059274405253,
+     "duration_phase": 0.025,
+     "n_in": 243,
+     "n_out": 1159,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "difference": 0.000703289295922116,
+    "difference_sigma": 0.514644920082923,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 15422,
+   "t_mid_btjd": 2348.431171069731,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 4,
+    "n_odd": 7,
+    "difference_odd_minus_even": -0.006130922010775031,
+    "depth_even": 0.09460453317348194,
+    "depth_odd": 0.08847361116270691,
+    "sigma": 0.002342631262149824
+   },
+   "between_dips": {
+    "amplitude": 0.018883132176569804,
+    "amplitude_sigma": 0.00019212770577688585,
+    "amplitude_snr": 98.28427451529774,
+    "phase_of_max_cycles": 0.9282049977621385,
+    "harmonic_amplitude": 0.002227145152077104,
+    "residual_rms": 0.014439080681512017,
+    "n_used": 13500,
+    "n_clipped": 19
+   }
+  },
+  {
+   "sector": 61,
+   "file": "tess2023018032328-s0061-0000000374861595-0250-s_lc.fits",
+   "sha256": "e9e37fe0c40b26bd9801dcd34a777f0c0e7e5f2a866c534cd30641c741969d43",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08700335149198735,
+     "sigma": 0.0006216712145806056,
+     "depth_sigma": 139.9507480021926,
+     "duration_phase": 0.025,
+     "n_in": 413,
+     "n_out": 1956,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.004426023336013607,
+    "difference_sigma": 2.8472043729883683,
+    "depth_ratio": 1.0517890769714031,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.08988851069522208,
+     "sigma": 0.00109657861518583,
+     "depth_sigma": 81.9717888443313,
+     "duration_phase": 0.0125,
+     "n_in": 210,
+     "n_out": 983,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08546248735920847,
+     "sigma": 0.0011018320142352806,
+     "depth_sigma": 77.56399002303738,
+     "duration_phase": 0.0125,
+     "n_in": 203,
+     "n_out": 973,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.004426023336013607,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08540649770839781,
+     "sigma": 0.0008791347527566534,
+     "depth_sigma": 97.14835801973868,
+     "duration_phase": 0.025,
+     "n_in": 203,
+     "n_out": 973,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -2
+    },
+    "depth_even": {
+     "depth": 0.08839802913041106,
+     "sigma": 0.0008749431467633605,
+     "depth_sigma": 101.03288363068856,
+     "duration_phase": 0.025,
+     "n_in": 210,
+     "n_out": 983,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "difference": -0.0029915314220132494,
+    "difference_sigma": 2.411895293354449,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 15210,
+   "t_mid_btjd": 2975.8909738382126,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 6,
+    "n_odd": 6,
+    "difference_odd_minus_even": 0.0030495999705257154,
+    "depth_even": 0.08919259982828925,
+    "depth_odd": 0.09224219979881497,
+    "sigma": 0.0030546885051636998
+   },
+   "between_dips": {
+    "amplitude": 0.0024988248259117836,
+    "amplitude_sigma": 0.00016715319720210116,
+    "amplitude_snr": 14.949309183063432,
+    "phase_of_max_cycles": 0.6027615265764348,
+    "harmonic_amplitude": 0.003078496268855505,
+    "residual_rms": 0.012962203669301044,
+    "n_used": 13233,
+    "n_clipped": 1
+   }
+  },
+  {
+   "sector": 62,
+   "file": "tess2023043185947-s0062-0000000374861595-0254-s_lc.fits",
+   "sha256": "1299edb5903d52299cba271fcef229a84649c112c7190dcabb8152eea3c5ab10",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08380701325536477,
+     "sigma": 0.000710234695977532,
+     "depth_sigma": 117.99904134508232,
+     "duration_phase": 0.025,
+     "n_in": 383,
+     "n_out": 1768,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.0076783173863419485,
+    "difference_sigma": 4.315924453319853,
+    "depth_ratio": 1.0966099698744944,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.087155801918392,
+     "sigma": 0.0012137894803702781,
+     "depth_sigma": 71.80471023014987,
+     "duration_phase": 0.0125,
+     "n_in": 209,
+     "n_out": 930,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.07947748453205006,
+     "sigma": 0.0013006895661977146,
+     "depth_sigma": 61.10411476920303,
+     "duration_phase": 0.0125,
+     "n_in": 174,
+     "n_out": 838,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.0076783173863419485,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": "eclipsing-binary-odd-even",
+    "depth_odd": {
+     "depth": 0.0788013039631904,
+     "sigma": 0.000987956283504439,
+     "depth_sigma": 79.76193408444104,
+     "duration_phase": 0.027500000000000004,
+     "n_in": 192,
+     "n_out": 838,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "depth_even": {
+     "depth": 0.08573911348602192,
+     "sigma": 0.0009684638864523776,
+     "depth_sigma": 88.5310383643696,
+     "duration_phase": 0.025,
+     "n_in": 209,
+     "n_out": 930,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": -0.006937809522831517,
+    "difference_sigma": 5.014800769526744,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 15486,
+   "t_mid_btjd": 3001.9005817433363,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 5,
+    "difference_odd_minus_even": 0.006464253097005615,
+    "depth_even": 0.08436163148229044,
+    "depth_odd": 0.09082588457929605,
+    "sigma": 0.004641451615654966
+   },
+   "between_dips": {
+    "amplitude": 0.004695874888690056,
+    "amplitude_sigma": 0.00018717028267050269,
+    "amplitude_snr": 25.088784510502357,
+    "phase_of_max_cycles": 0.5694736155439175,
+    "harmonic_amplitude": 0.00241648746495698,
+    "residual_rms": 0.014341386555655622,
+    "n_used": 13650,
+    "n_clipped": 29
+   }
+  },
+  {
+   "sector": 63,
+   "file": "tess2023069172124-s0063-0000000374861595-0255-s_lc.fits",
+   "sha256": "0fdb293c86ab21744e538b0e3fdb1a7ac51d8cd680f82b7088ca1305ca2ce3d7",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08617338233081973,
+     "sigma": 0.0006623058266214202,
+     "depth_sigma": 130.1111644607004,
+     "duration_phase": 0.025,
+     "n_in": 440,
+     "n_out": 2067,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.0019316625302725488,
+    "difference_sigma": 1.1643441567886756,
+    "depth_ratio": 1.022042161289883,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.08956655934772573,
+     "sigma": 0.001222021603617828,
+     "depth_sigma": 73.29376099617348,
+     "duration_phase": 0.0125,
+     "n_in": 201,
+     "n_out": 919,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08763489681745318,
+     "sigma": 0.0011220466040822196,
+     "depth_sigma": 78.10272452019436,
+     "duration_phase": 0.0125,
+     "n_in": 239,
+     "n_out": 1148,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.0019316625302725488,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08275920056119646,
+     "sigma": 0.0008550652598001907,
+     "depth_sigma": 96.78699913563953,
+     "duration_phase": 0.027499999999999997,
+     "n_in": 262,
+     "n_out": 1148,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "depth_even": {
+     "depth": 0.08667684411649423,
+     "sigma": 0.0009750321704942241,
+     "depth_sigma": 88.89639412877986,
+     "duration_phase": 0.025,
+     "n_in": 201,
+     "n_out": 919,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "difference": -0.003917643555297778,
+    "difference_sigma": 3.0208878586796795,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 17727,
+   "t_mid_btjd": 3028.07129114592,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 7,
+    "n_odd": 5,
+    "difference_odd_minus_even": 0.0009740299175409195,
+    "depth_even": 0.09193095033789381,
+    "depth_odd": 0.09290498025543473,
+    "sigma": 0.003326395010785431
+   },
+   "between_dips": {
+    "amplitude": 0.006652640096925288,
+    "amplitude_sigma": 0.00017207341822904015,
+    "amplitude_snr": 38.66163737196305,
+    "phase_of_max_cycles": 0.559659652637862,
+    "harmonic_amplitude": 0.0015085355242279793,
+    "residual_rms": 0.014243911036867863,
+    "n_used": 15644,
+    "n_clipped": 4
+   }
+  },
+  {
+   "sector": 65,
+   "file": "tess2023124020739-s0065-0000000374861595-0259-s_lc.fits",
+   "sha256": "5c2b709ead44d48bdcb346857a52407337f23c8419c509b8f6fcc93b943b1b5c",
+   "p2_fold": {
+    "verdict": "eclipsing-binary-p2-alias",
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.0878487320328869,
+     "sigma": 0.0006178566955322277,
+     "depth_sigma": 142.1830218368244,
+     "duration_phase": 0.025,
+     "n_in": 400,
+     "n_out": 1756,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.008917254269868446,
+    "difference_sigma": 5.769782020719925,
+    "depth_ratio": 1.1053354177041952,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.09357305631842583,
+     "sigma": 0.0010885366425016153,
+     "depth_sigma": 85.96224753939505,
+     "duration_phase": 0.0125,
+     "n_in": 209,
+     "n_out": 1003,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08465580204855738,
+     "sigma": 0.0010971273000394838,
+     "depth_sigma": 77.16133036294946,
+     "duration_phase": 0.0125,
+     "n_in": 191,
+     "n_out": 753,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.008917254269868446,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": "eclipsing-binary-odd-even",
+    "depth_odd": {
+     "depth": 0.08161455543276797,
+     "sigma": 0.0008429079631791934,
+     "depth_sigma": 96.82499038796905,
+     "duration_phase": 0.027499999999999997,
+     "n_in": 206,
+     "n_out": 753,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.09120370455819382,
+     "sigma": 0.0008685265809202272,
+     "depth_sigma": 105.00968716646652,
+     "duration_phase": 0.025,
+     "n_in": 209,
+     "n_out": 1003,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": -0.009589149125425855,
+    "difference_sigma": 7.9229355885521535,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 14479,
+   "t_mid_btjd": 3080.6641651421114,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 3,
+    "n_odd": 6,
+    "difference_odd_minus_even": 0.004268811579310916,
+    "depth_even": 0.09146874493663455,
+    "depth_odd": 0.09573755651594547,
+    "sigma": 0.002113086999882615
+   },
+   "between_dips": {
+    "amplitude": 0.00999523851992324,
+    "amplitude_sigma": 0.00017628485549965898,
+    "amplitude_snr": 56.699360200811896,
+    "phase_of_max_cycles": 0.5458222422627172,
+    "harmonic_amplitude": 0.002197107200357531,
+    "residual_rms": 0.01283129249865187,
+    "n_used": 12673,
+    "n_clipped": 15
+   }
+  },
+  {
+   "sector": 66,
+   "file": "tess2023153011303-s0066-0000000374861595-0260-s_lc.fits",
+   "sha256": "5053b675c56e516ef35d02405db18762e991f1cfb9c5bce31da90aff70ef45a2",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.084976588128164,
+     "sigma": 0.0007801048855682168,
+     "depth_sigma": 108.92969612191098,
+     "duration_phase": 0.027499999999999997,
+     "n_in": 307,
+     "n_out": 1381,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.0031733065788047687,
+    "difference_sigma": 1.662517055632418,
+    "depth_ratio": 1.03756676452571,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.08764442403777584,
+     "sigma": 0.001307418946188893,
+     "depth_sigma": 67.03621994560967,
+     "duration_phase": 0.013749999999999998,
+     "n_in": 153,
+     "n_out": 628,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08447111745897107,
+     "sigma": 0.0013906580423212482,
+     "depth_sigma": 60.741832203389265,
+     "duration_phase": 0.013749999999999998,
+     "n_in": 155,
+     "n_out": 753,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.0031733065788047687,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": "eclipsing-binary-odd-even",
+    "depth_odd": {
+     "depth": 0.08495523143831119,
+     "sigma": 0.0011717065620282612,
+     "depth_sigma": 72.50555232126634,
+     "duration_phase": 0.025,
+     "n_in": 139,
+     "n_out": 753,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.09394625410991142,
+     "sigma": 0.0011449820825033305,
+     "depth_sigma": 82.05041419033573,
+     "duration_phase": 0.0225,
+     "n_in": 127,
+     "n_out": 628,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 1
+    },
+    "difference": -0.008991022671600235,
+    "difference_sigma": 5.488169635039085,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 11746,
+   "t_mid_btjd": 3109.1342752296296,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 4,
+    "n_odd": 3,
+    "difference_odd_minus_even": 0.005174698815198955,
+    "depth_even": 0.08804965838260206,
+    "depth_odd": 0.09322435719780102,
+    "sigma": 0.0044223691880551875
+   },
+   "between_dips": {
+    "amplitude": 0.010831594817969366,
+    "amplitude_sigma": 0.00019790792572146567,
+    "amplitude_snr": 54.73047518679814,
+    "phase_of_max_cycles": 0.5069076198380276,
+    "harmonic_amplitude": 0.0032415977485457962,
+    "residual_rms": 0.012817077208021527,
+    "n_used": 10375,
+    "n_clipped": 1
+   }
+  },
+  {
+   "sector": 67,
+   "file": "tess2023181235917-s0067-0000000374861595-0261-s_lc.fits",
+   "sha256": "fb59c1103324de7d8be300819bb9077bdfdffcb7edee498c14b5e157f87d40ff",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08620302329808704,
+     "sigma": 0.0006968374681510384,
+     "depth_sigma": 123.70606811200152,
+     "duration_phase": 0.025,
+     "n_in": 347,
+     "n_out": 1611,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.0041776337232580785,
+    "difference_sigma": 2.3750331346464204,
+    "depth_ratio": 1.0492475500110015,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.08900690385598209,
+     "sigma": 0.0013150967532334355,
+     "depth_sigma": 67.6808787164445,
+     "duration_phase": 0.0125,
+     "n_in": 173,
+     "n_out": 827,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08482927013272401,
+     "sigma": 0.0011681301805988517,
+     "depth_sigma": 72.61970586979918,
+     "duration_phase": 0.0125,
+     "n_in": 174,
+     "n_out": 784,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.0041776337232580785,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08406674600888575,
+     "sigma": 0.0009320330361076867,
+     "depth_sigma": 90.1971740829718,
+     "duration_phase": 0.025,
+     "n_in": 174,
+     "n_out": 784,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "depth_even": {
+     "depth": 0.08872907937361618,
+     "sigma": 0.001049295395366934,
+     "depth_sigma": 84.56062970007412,
+     "duration_phase": 0.025,
+     "n_in": 173,
+     "n_out": 827,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": -0.004662333364730431,
+    "difference_sigma": 3.322022535880413,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 12827,
+   "t_mid_btjd": 3138.3780529951696,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 4,
+    "n_odd": 5,
+    "difference_odd_minus_even": 0.003780618163697208,
+    "depth_even": 0.08866340822990154,
+    "depth_odd": 0.09244402639359875,
+    "sigma": 0.002564488375471935
+   },
+   "between_dips": {
+    "amplitude": 0.009854749538049186,
+    "amplitude_sigma": 0.00018663551646299782,
+    "amplitude_snr": 52.80211250682814,
+    "phase_of_max_cycles": 0.4716903822348647,
+    "harmonic_amplitude": 0.004276524424382773,
+    "residual_rms": 0.012420589021149042,
+    "n_used": 11160,
+    "n_clipped": 13
+   }
+  },
+  {
+   "sector": 68,
+   "file": "tess2023209231226-s0068-0000000374861595-0262-s_lc.fits",
+   "sha256": "860c52e63fece62c828775402f329d797793381aad6bc8ef2cf427101851a89a",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08684917462597075,
+     "sigma": 0.0006373225444212426,
+     "depth_sigma": 136.27193229895724,
+     "duration_phase": 0.025,
+     "n_in": 314,
+     "n_out": 1603,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.003793960342572955,
+    "difference_sigma": 2.349057599588569,
+    "depth_ratio": 1.0440154797204004,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.08999000697601511,
+     "sigma": 0.001197916546443239,
+     "depth_sigma": 75.12210031926386,
+     "duration_phase": 0.0125,
+     "n_in": 140,
+     "n_out": 766,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08619604663344216,
+     "sigma": 0.0010833006974148823,
+     "depth_sigma": 79.56797853000072,
+     "duration_phase": 0.0125,
+     "n_in": 174,
+     "n_out": 837,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.003793960342572955,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08469446091705246,
+     "sigma": 0.0008643489011743111,
+     "depth_sigma": 97.98642747388921,
+     "duration_phase": 0.025,
+     "n_in": 174,
+     "n_out": 837,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.08935023084927396,
+     "sigma": 0.0009557991175373492,
+     "depth_sigma": 93.48222781319159,
+     "duration_phase": 0.025,
+     "n_in": 140,
+     "n_out": 766,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "difference": -0.0046557699322214985,
+    "difference_sigma": 3.6128699487552605,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 14459,
+   "t_mid_btjd": 3166.973265205287,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 4,
+    "difference_odd_minus_even": 0.0027843137045539534,
+    "depth_even": 0.08998812293616829,
+    "depth_odd": 0.09277243664072224,
+    "sigma": 0.0024223996076369676
+   },
+   "between_dips": {
+    "amplitude": 0.0115046828231568,
+    "amplitude_sigma": 0.0001736017629332831,
+    "amplitude_snr": 66.27054143210611,
+    "phase_of_max_cycles": 0.4832916670252103,
+    "harmonic_amplitude": 0.0043557818166147875,
+    "residual_rms": 0.012143259851878916,
+    "n_used": 12914,
+    "n_clipped": 6
+   }
+  },
+  {
+   "sector": 69,
+   "file": "tess2023237165326-s0069-0000000374861595-0264-s_lc.fits",
+   "sha256": "02ad102f7778550936cf493345652ba9107daee5631272689d7ffccf2d08dd2b",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08512659432491942,
+     "sigma": 0.0006638149763096192,
+     "depth_sigma": 128.2384359541993,
+     "duration_phase": 0.025,
+     "n_in": 347,
+     "n_out": 1669,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.00353678194212681,
+    "difference_sigma": 2.121769149139666,
+    "depth_ratio": 1.0416190144595197,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.08851673613029776,
+     "sigma": 0.0011737613901697077,
+     "depth_sigma": 75.41288789325368,
+     "duration_phase": 0.0125,
+     "n_in": 173,
+     "n_out": 836,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08497995418817095,
+     "sigma": 0.0011835740714149785,
+     "depth_sigma": 71.79943886957264,
+     "duration_phase": 0.0125,
+     "n_in": 174,
+     "n_out": 833,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.00353678194212681,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08388205107602487,
+     "sigma": 0.0009443554781485994,
+     "depth_sigma": 88.82465662239275,
+     "duration_phase": 0.025,
+     "n_in": 174,
+     "n_out": 833,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.0864023906517205,
+     "sigma": 0.000936526091282918,
+     "depth_sigma": 92.25839136351296,
+     "duration_phase": 0.025,
+     "n_in": 173,
+     "n_out": 836,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": -0.0025203395756956404,
+    "difference_sigma": 1.8949983816671288,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 14552,
+   "t_mid_btjd": 3194.2282231054724,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 5,
+    "difference_odd_minus_even": 0.005414095186106221,
+    "depth_even": 0.08736439584824576,
+    "depth_odd": 0.09277849103435198,
+    "sigma": 0.002670353763642393
+   },
+   "between_dips": {
+    "amplitude": 0.010744635928699533,
+    "amplitude_sigma": 0.00017689668358028763,
+    "amplitude_snr": 60.73961202230733,
+    "phase_of_max_cycles": 0.5393355225623291,
+    "harmonic_amplitude": 0.006782616720497107,
+    "residual_rms": 0.012994071362428711,
+    "n_used": 12888,
+    "n_clipped": 21
+   }
+  },
+  {
+   "sector": 87,
+   "file": "tess2024353092137-s0087-0000000374861595-0284-s_lc.fits",
+   "sha256": "e3e87d1a520d57787df9f0ce36a98d0bfc9e4ebdb88697c116187102159f69b2",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.09079784809035929,
+     "sigma": 0.0007035486862125339,
+     "depth_sigma": 129.05695066983654,
+     "duration_phase": 0.025,
+     "n_in": 347,
+     "n_out": 1621,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.002200754198765642,
+    "difference_sigma": 1.2542297901275612,
+    "depth_ratio": 1.0240455546359397,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.09372512251074783,
+     "sigma": 0.0012231542447841436,
+     "depth_sigma": 76.62575910635701,
+     "duration_phase": 0.0125,
+     "n_in": 173,
+     "n_out": 786,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.09152436831198218,
+     "sigma": 0.0012580723305597164,
+     "depth_sigma": 72.74968703211444,
+     "duration_phase": 0.0125,
+     "n_in": 174,
+     "n_out": 835,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.002200754198765642,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08837108111016789,
+     "sigma": 0.0010037964889268766,
+     "depth_sigma": 88.03685018328994,
+     "duration_phase": 0.025,
+     "n_in": 174,
+     "n_out": 835,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "depth_even": {
+     "depth": 0.09305167947647863,
+     "sigma": 0.0009759358873937569,
+     "depth_sigma": 95.34609873295442,
+     "duration_phase": 0.025,
+     "n_in": 173,
+     "n_out": 786,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 1
+    },
+    "difference": -0.00468059836631074,
+    "difference_sigma": 3.3432348704321404,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 14103,
+   "t_mid_btjd": 3678.0249936996797,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 5,
+    "difference_odd_minus_even": -0.0007486682226219704,
+    "depth_even": 0.09580672303898015,
+    "depth_odd": 0.09505805481635818,
+    "sigma": 0.0027734772948059872
+   },
+   "between_dips": {
+    "amplitude": 0.01074840651568226,
+    "amplitude_sigma": 0.0001981054098082893,
+    "amplitude_snr": 54.25599697698168,
+    "phase_of_max_cycles": 0.5031066679851386,
+    "harmonic_amplitude": 0.00406584402704797,
+    "residual_rms": 0.013421056602584691,
+    "n_used": 12436,
+    "n_clipped": 2
+   }
+  },
+  {
+   "sector": 88,
+   "file": "tess2025014115807-s0088-0000000374861595-0285-s_lc.fits",
+   "sha256": "5e139989714d0cf0573b52292fb7e308a308040b9177dc99ddbcd8e439159551",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.09064147371701892,
+     "sigma": 0.0006500254212776043,
+     "depth_sigma": 139.4429675363557,
+     "duration_phase": 0.025,
+     "n_in": 421,
+     "n_out": 2012,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.006563682153025163,
+    "difference_sigma": 4.038486187388,
+    "depth_ratio": 1.07352861674402,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.0958307246145439,
+     "sigma": 0.0011230395769229228,
+     "depth_sigma": 85.33156496328981,
+     "duration_phase": 0.0125,
+     "n_in": 209,
+     "n_out": 992,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08926704246151873,
+     "sigma": 0.0011748728869171092,
+     "depth_sigma": 75.98017066829868,
+     "duration_phase": 0.0125,
+     "n_in": 212,
+     "n_out": 1020,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.006563682153025163,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08811190210889441,
+     "sigma": 0.0009374129373770523,
+     "depth_sigma": 93.994757908332,
+     "duration_phase": 0.025,
+     "n_in": 212,
+     "n_out": 1020,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "depth_even": {
+     "depth": 0.09321041146108,
+     "sigma": 0.0008960559395973821,
+     "depth_sigma": 104.02298265324988,
+     "duration_phase": 0.025,
+     "n_in": 209,
+     "n_out": 992,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": -0.005098509352185587,
+    "difference_sigma": 3.931644287437583,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 16289,
+   "t_mid_btjd": 3705.488098872577,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 6,
+    "difference_odd_minus_even": 0.005026049813119687,
+    "depth_even": 0.09370098117459873,
+    "depth_odd": 0.09872703098771841,
+    "sigma": 0.0018521315282842676
+   },
+   "between_dips": {
+    "amplitude": 0.012125314111568204,
+    "amplitude_sigma": 0.00017450833545519273,
+    "amplitude_snr": 69.48272172753339,
+    "phase_of_max_cycles": 0.5170058096082112,
+    "harmonic_amplitude": 0.003012495759905406,
+    "residual_rms": 0.013511168428039306,
+    "n_used": 14240,
+    "n_clipped": 4
+   }
+  },
+  {
+   "sector": 89,
+   "file": "tess2025042113628-s0089-0000000374861595-0286-s_lc.fits",
+   "sha256": "8e4c187a83c8d1fa8a91b4d80c6a88d6a28a926d8db0437384bcd76ffd026aa2",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08742689227717959,
+     "sigma": 0.0005856993804679269,
+     "depth_sigma": 149.26922443956235,
+     "duration_phase": 0.025,
+     "n_in": 489,
+     "n_out": 2339,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.0060192342352271,
+    "difference_sigma": 4.041102021342966,
+    "depth_ratio": 1.0704826386799182,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.09141947389654503,
+     "sigma": 0.0009646430612157171,
+     "depth_sigma": 94.77026018445746,
+     "duration_phase": 0.0125,
+     "n_in": 278,
+     "n_out": 1264,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08540023966131793,
+     "sigma": 0.0011349376332890403,
+     "depth_sigma": 75.24663660489318,
+     "duration_phase": 0.0125,
+     "n_in": 211,
+     "n_out": 1075,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.0060192342352271,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08533117281593983,
+     "sigma": 0.0009055492150754695,
+     "depth_sigma": 94.23140277232555,
+     "duration_phase": 0.025,
+     "n_in": 211,
+     "n_out": 1075,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "depth_even": {
+     "depth": 0.08899821836225463,
+     "sigma": 0.0007696738052296342,
+     "depth_sigma": 115.63108651684175,
+     "duration_phase": 0.025,
+     "n_in": 278,
+     "n_out": 1264,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "difference": -0.0036670455463148066,
+    "difference_sigma": 3.085565808332171,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 20256,
+   "t_mid_btjd": 3732.5414489560612,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 6,
+    "n_odd": 7,
+    "difference_odd_minus_even": 0.003919610748089664,
+    "depth_even": 0.0910153692901884,
+    "depth_odd": 0.09493498003827806,
+    "sigma": 0.0025100522235479293
+   },
+   "between_dips": {
+    "amplitude": 0.012944636466334375,
+    "amplitude_sigma": 0.00014731586772059936,
+    "amplitude_snr": 87.86994005890317,
+    "phase_of_max_cycles": 0.5178689705176007,
+    "harmonic_amplitude": 0.0030519545137169383,
+    "residual_rms": 0.012838870028854567,
+    "n_used": 17879,
+    "n_clipped": 1
+   }
+  },
+  {
+   "sector": 90,
+   "file": "tess2025071122000-s0090-0000000374861595-0287-s_lc.fits",
+   "sha256": "ce08e783cb3fa90c36bd8fb93953de271d9358d78e81d412c17209e54f3279b3",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.0894176902880891,
+     "sigma": 0.00068373883051083,
+     "depth_sigma": 130.77755174630641,
+     "duration_phase": 0.025,
+     "n_in": 408,
+     "n_out": 1926,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.006865026289911924,
+    "difference_sigma": 4.002105098407833,
+    "depth_ratio": 1.0776524443587732,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.09527211181826734,
+     "sigma": 0.0012169330741042595,
+     "depth_sigma": 78.28870284291821,
+     "duration_phase": 0.0125,
+     "n_in": 209,
+     "n_out": 1005,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08840708552835541,
+     "sigma": 0.0012089303698777957,
+     "depth_sigma": 73.12835191433896,
+     "duration_phase": 0.0125,
+     "n_in": 199,
+     "n_out": 921,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.006865026289911924,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08750217613955191,
+     "sigma": 0.0009645868772111906,
+     "depth_sigma": 90.71466573600692,
+     "duration_phase": 0.025,
+     "n_in": 199,
+     "n_out": 921,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 1
+    },
+    "depth_even": {
+     "depth": 0.08810913036063217,
+     "sigma": 0.0009235787016164754,
+     "depth_sigma": 95.39969924211212,
+     "duration_phase": 0.027499999999999997,
+     "n_in": 231,
+     "n_out": 1005,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": -0.0006069542210802581,
+    "difference_sigma": 0.45449431443319327,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 16459,
+   "t_mid_btjd": 3759.961463246829,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 6,
+    "difference_odd_minus_even": 0.0073570362923142535,
+    "depth_even": 0.09072883730056525,
+    "depth_odd": 0.0980858735928795,
+    "sigma": 0.002390255441756876
+   },
+   "between_dips": {
+    "amplitude": 0.015556124800032118,
+    "amplitude_sigma": 0.00018350671207082502,
+    "amplitude_snr": 84.77142129835654,
+    "phase_of_max_cycles": 0.5356436495603021,
+    "harmonic_amplitude": 0.0033127730128566196,
+    "residual_rms": 0.014381859696240194,
+    "n_used": 14526,
+    "n_clipped": 1
+   }
+  },
+  {
+   "sector": 93,
+   "file": "tess2025154050500-s0093-0000000374861595-0290-s_lc.fits",
+   "sha256": "22984169ac99433d392b4980914b43d29d5f2ea1c3048218ebe32f4d5d99d6a6",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.083096276453412,
+     "sigma": 0.0006092049315253835,
+     "depth_sigma": 136.40118809502718,
+     "duration_phase": 0.025,
+     "n_in": 350,
+     "n_out": 1672,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.003187758519289541,
+    "difference_sigma": 2.089891190256876,
+    "depth_ratio": 1.0386866653003086,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.08558717171616981,
+     "sigma": 0.0010465368050998067,
+     "depth_sigma": 81.78132990555213,
+     "duration_phase": 0.0125,
+     "n_in": 175,
+     "n_out": 836,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08239941319688027,
+     "sigma": 0.0011096711775270308,
+     "depth_sigma": 74.25570282947452,
+     "duration_phase": 0.0125,
+     "n_in": 175,
+     "n_out": 836,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.003187758519289541,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.07913254230199451,
+     "sigma": 0.0008430915512474548,
+     "depth_sigma": 93.85996358866181,
+     "duration_phase": 0.027499999999999997,
+     "n_in": 193,
+     "n_out": 836,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 1
+    },
+    "depth_even": {
+     "depth": 0.08403885925647558,
+     "sigma": 0.0008350155591010932,
+     "depth_sigma": 100.64346507141099,
+     "duration_phase": 0.025,
+     "n_in": 175,
+     "n_out": 836,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "difference": -0.004906316954481071,
+    "difference_sigma": 4.1347179721807406,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 14845,
+   "t_mid_btjd": 3842.720979128142,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 5,
+    "difference_odd_minus_even": 0.0025031148563452454,
+    "depth_even": 0.08677110192907447,
+    "depth_odd": 0.08927421678541972,
+    "sigma": 0.0027317596693335697
+   },
+   "between_dips": {
+    "amplitude": 0.017084406914100465,
+    "amplitude_sigma": 0.00016934629786585174,
+    "amplitude_snr": 100.88444288067011,
+    "phase_of_max_cycles": 0.5586540635514665,
+    "harmonic_amplitude": 0.0018756867318963973,
+    "residual_rms": 0.01231689898383378,
+    "n_used": 13168,
+    "n_clipped": 3
+   }
+  },
+  {
+   "sector": 94,
+   "file": "tess2025180145000-s0094-0000000374861595-0291-s_lc.fits",
+   "sha256": "f7ec9e81cefae4d56d858b7be7b60d580640478b36bc021351b89189d9bfca48",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.0803211838847715,
+     "sigma": 0.0005990527682744822,
+     "depth_sigma": 134.08031502154554,
+     "duration_phase": 0.025,
+     "n_in": 405,
+     "n_out": 1873,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.006006553781396251,
+    "difference_sigma": 4.001293490345603,
+    "depth_ratio": 1.0749313502820317,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.0861673110450566,
+     "sigma": 0.0010643249728462232,
+     "depth_sigma": 80.95958776070765,
+     "duration_phase": 0.0125,
+     "n_in": 195,
+     "n_out": 953,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.08016075726366034,
+     "sigma": 0.0010586183082044657,
+     "depth_sigma": 75.72205831167032,
+     "duration_phase": 0.0125,
+     "n_in": 210,
+     "n_out": 920,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.006006553781396251,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08191440553099738,
+     "sigma": 0.0008879986570333584,
+     "depth_sigma": 92.24609168290691,
+     "duration_phase": 0.022500000000000003,
+     "n_in": 190,
+     "n_out": 920,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "depth_even": {
+     "depth": 0.08194133622352218,
+     "sigma": 0.0008492084635109304,
+     "depth_sigma": 96.4914267160592,
+     "duration_phase": 0.025,
+     "n_in": 195,
+     "n_out": 953,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "difference": -2.6930692524795852e-05,
+    "difference_sigma": 0.021918088630244394,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 14732,
+   "t_mid_btjd": 3869.0633681704335,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 5,
+    "difference_odd_minus_even": 0.00364688410324035,
+    "depth_even": 0.08539746337156737,
+    "depth_odd": 0.08904434747480772,
+    "sigma": 0.001797750596004304
+   },
+   "between_dips": {
+    "amplitude": 0.01530986869652551,
+    "amplitude_sigma": 0.0001601164011007287,
+    "amplitude_snr": 95.61711724268723,
+    "phase_of_max_cycles": 0.5559063461597658,
+    "harmonic_amplitude": 0.0024234832983751576,
+    "residual_rms": 0.012032966482763537,
+    "n_used": 12851,
+    "n_clipped": 3
+   }
+  },
+  {
+   "sector": 96,
+   "file": "tess2025232030459-s0096-0000000374861595-0293-s_lc.fits",
+   "sha256": "b62e132d5e6d669805da4db8efa532796f484199773ac578385b013e1ab4c547",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.09086032410158773,
+     "sigma": 0.0006185856972899448,
+     "depth_sigma": 146.88397177569962,
+     "duration_phase": 0.025,
+     "n_in": 386,
+     "n_out": 1952,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.002051536933379783,
+    "difference_sigma": 1.310438636714371,
+    "depth_ratio": 1.0225904800900416,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.09286576156263626,
+     "sigma": 0.0009964208430927452,
+     "depth_sigma": 93.19933661202275,
+     "duration_phase": 0.0125,
+     "n_in": 210,
+     "n_out": 1001,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.09081422462925648,
+     "sigma": 0.0012074948710739393,
+     "depth_sigma": 75.20878705553989,
+     "duration_phase": 0.0125,
+     "n_in": 176,
+     "n_out": 951,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.002051536933379783,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.0865812123234363,
+     "sigma": 0.0009153019433319066,
+     "depth_sigma": 94.59306074262342,
+     "duration_phase": 0.027499999999999997,
+     "n_in": 195,
+     "n_out": 951,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "depth_even": {
+     "depth": 0.09183252314212564,
+     "sigma": 0.0007950288067658759,
+     "depth_sigma": 115.50842228685299,
+     "duration_phase": 0.025,
+     "n_in": 210,
+     "n_out": 1001,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "difference": -0.005251310818689348,
+    "difference_sigma": 4.331431443134176,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 15068,
+   "t_mid_btjd": 3921.228803394586,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 5,
+    "n_odd": 6,
+    "difference_odd_minus_even": -0.0011234163336901748,
+    "depth_even": 0.09599431177061397,
+    "depth_odd": 0.0948708954369238,
+    "sigma": 0.0018299816695449345
+   },
+   "between_dips": {
+    "amplitude": 0.01823675821560133,
+    "amplitude_sigma": 0.00016251932530364008,
+    "amplitude_snr": 112.21285949550312,
+    "phase_of_max_cycles": 0.573273014001594,
+    "harmonic_amplitude": 0.001893715481491127,
+    "residual_rms": 0.012421070393691695,
+    "n_used": 13131,
+    "n_clipped": 0
+   }
+  },
+  {
+   "sector": 97,
+   "file": "tess2025258001959-s0097-0000000374861595-0294-s_lc.fits",
+   "sha256": "84300a9fd0b2811d5b6004440d5a1433597553ef82b2d89392b659d38d47c69f",
+   "p2_fold": {
+    "verdict": null,
+    "period_2p_days": 3.8738968907639344,
+    "support": {
+     "depth": 0.08995502138959499,
+     "sigma": 0.00047418460133407135,
+     "depth_sigma": 189.70464485037147,
+     "duration_phase": 0.025,
+     "n_in": 764,
+     "n_out": 3635,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "support_half_window_phase": 0.03,
+    "phase_separation": 0.5,
+    "depth_difference": 0.002989236566668718,
+    "difference_sigma": 2.4924492476231164,
+    "depth_ratio": 1.0327817034667812,
+    "both_eclipses_significant": true,
+    "eclipse_a": {
+     "depth": 0.09417536329427512,
+     "sigma": 0.0007786574453942116,
+     "depth_sigma": 120.94582007958181,
+     "duration_phase": 0.0125,
+     "n_in": 417,
+     "n_out": 1908,
+     "reason": null
+    },
+    "eclipse_b": {
+     "depth": 0.0911861267276064,
+     "sigma": 0.0009121697586749456,
+     "depth_sigma": 99.96618048384659,
+     "duration_phase": 0.0125,
+     "n_in": 347,
+     "n_out": 1727,
+     "reason": null
+    },
+    "phase_a": 0.21041485292918496,
+    "phase_b": 0.7104148529291849,
+    "signed_difference": 0.002989236566668718,
+    "deeper_phase": 0.21041485292918496
+   },
+   "odd_even_fold": {
+    "verdict": null,
+    "depth_odd": {
+     "depth": 0.08886847273341003,
+     "sigma": 0.0007278061672780147,
+     "depth_sigma": 122.1045887338066,
+     "duration_phase": 0.025,
+     "n_in": 347,
+     "n_out": 1727,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": 0
+    },
+    "depth_even": {
+     "depth": 0.09095923603350231,
+     "sigma": 0.0006212787538342416,
+     "depth_sigma": 146.4064809429656,
+     "duration_phase": 0.025,
+     "n_in": 417,
+     "n_out": 1908,
+     "edge_limited": false,
+     "reason": null,
+     "peak_offset_bins": -1
+    },
+    "difference": -0.00209076330009228,
+    "difference_sigma": 2.18489637541616,
+    "dilution": null,
+    "both_eclipses_significant": true
+   },
+   "n_cadences": 29409,
+   "t_mid_btjd": 3962.196992341377,
+   "prewhitened_components": [],
+   "event_depths": {
+    "n_even": 10,
+    "n_odd": 11,
+    "difference_odd_minus_even": 0.0032849232980157184,
+    "depth_even": 0.09256682714219358,
+    "depth_odd": 0.0958517504402093,
+    "sigma": 0.002261554519993045
+   },
+   "between_dips": {
+    "amplitude": 0.016926918468605577,
+    "amplitude_sigma": 0.00012501951740042578,
+    "amplitude_snr": 135.39420740515456,
+    "phase_of_max_cycles": 0.5949860817466032,
+    "harmonic_amplitude": 0.0026404704937836735,
+    "residual_rms": 0.013401118446863793,
+    "n_used": 25751,
+    "n_clipped": 10
+   }
+  }
+ ],
+ "gates_fired": [
+  {
+   "sector": 62,
+   "gate": "odd_even_fold",
+   "verdict": "eclipsing-binary-odd-even",
+   "difference_sigma": 5.014800769526744
+  },
+  {
+   "sector": 65,
+   "gate": "p2_fold",
+   "verdict": "eclipsing-binary-p2-alias",
+   "difference_sigma": 5.769782020719925
+  },
+  {
+   "sector": 65,
+   "gate": "odd_even_fold",
+   "verdict": "eclipsing-binary-odd-even",
+   "difference_sigma": 7.9229355885521535
+  },
+  {
+   "sector": 66,
+   "gate": "odd_even_fold",
+   "verdict": "eclipsing-binary-odd-even",
+   "difference_sigma": 5.488169635039085
+  }
+ ],
+ "combined_p2_fold": {
+  "verdict": null,
+  "n_sectors": 24,
+  "difference": 0.003573304301209401,
+  "sigma": 0.0003246360432549607,
+  "difference_sigma": 11.00710896233731,
+  "sign_consistent": false,
+  "per_sector_sigma": [
+   2.1409529497127697,
+   4.793528329375199,
+   3.6597299578863254,
+   0.3539043221480505,
+   2.1711937514431257,
+   0.6331774577384471,
+   3.3576448536837242,
+   1.429421365350665,
+   2.8472043729883683,
+   4.315924453319853,
+   1.1643441567886756,
+   5.769782020719925,
+   1.662517055632418,
+   2.3750331346464204,
+   2.349057599588569,
+   2.121769149139666,
+   1.2542297901275612,
+   4.038486187388,
+   4.041102021342966,
+   4.002105098407833,
+   2.089891190256876,
+   4.001293490345603,
+   1.310438636714371,
+   2.4924492476231164
+  ],
+  "deeper_phases": [
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.7104148529291849,
+   0.7104148529291849,
+   0.7104148529291849,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496,
+   0.21041485292918496
+  ]
+ },
+ "p2_fold_slot1_minus_slot2": {
+  "n_sectors": 24,
+  "mean": 0.0035733043012094,
+  "sigma_formal": 0.0003246360432549607,
+  "sigmas_formal": 11.007108962337309,
+  "chi2": 96.69797876810884,
+  "dof": 23,
+  "bar_inflation": 2.050429210297082,
+  "sigmas_after_inflation": 5.368197500825944,
+  "unweighted_mean": 0.0035490220549073415,
+  "standard_error_from_scatter": 0.0006967156108889433,
+  "sigmas_from_scatter": 5.093932157453922,
+  "n_positive": 21,
+  "n_negative": 3,
+  "sign_binomial_p_two_sided": 0.0002771615982055664
+ },
+ "event_level_odd_minus_even": {
+  "n_sectors": 24,
+  "mean": 0.002098936760136431,
+  "sigma_formal": 0.00044479050360695326,
+  "sigmas_formal": 4.718933392497049,
+  "chi2": 55.6515993463984,
+  "dof": 23,
+  "bar_inflation": 1.5555175197313704,
+  "sigmas_after_inflation": 3.0336742162261108,
+  "unweighted_mean": 0.0023540069669907,
+  "standard_error_from_scatter": 0.0007161293519576319,
+  "sigmas_from_scatter": 3.2871253783352383,
+  "n_positive": 18,
+  "n_negative": 6,
+  "sign_binomial_p_two_sided": 0.022655844688415527
+ },
+ "between_dips_coherence": {
+  "n_sectors_used": 24,
+  "sectors_used": [
+   27,
+   28,
+   30,
+   31,
+   35,
+   36,
+   37,
+   38,
+   61,
+   62,
+   63,
+   65,
+   66,
+   67,
+   68,
+   69,
+   87,
+   88,
+   89,
+   90,
+   93,
+   94,
+   96,
+   97
+  ],
+  "at_2P": {
+   "eps": 0.0,
+   "n": 24,
+   "R": 0.4786420586721109,
+   "p": 0.003279684393471207,
+   "mean_phase_cycles": 0.5693299742379092
+  },
+  "controls": {
+   "-0.01": {
+    "eps": -0.01,
+    "n": 24,
+    "R": 0.2743635893998386,
+    "p": 0.16481895508336558,
+    "mean_phase_cycles": 0.34599594285757623
+   },
+   "-0.003": {
+    "eps": -0.003,
+    "n": 24,
+    "R": 0.3993030116960339,
+    "p": 0.0201598433824421,
+    "mean_phase_cycles": 0.15897181228813773
+   },
+   "0.003": {
+    "eps": 0.003,
+    "n": 24,
+    "R": 0.14941810598800728,
+    "p": 0.589945456722655,
+    "mean_phase_cycles": 0.8442987483428255
+   },
+   "0.01": {
+    "eps": 0.01,
+    "n": 24,
+    "R": 0.16460480372432132,
+    "p": 0.5266610238283093,
+    "mean_phase_cycles": 0.09380787001609799
+   }
+  },
+  "scan_best": {
+   "eps": -0.001,
+   "period_days": 3.8700229938731705,
+   "R": 0.7013755134661926,
+   "two_p_days": 3.8738968907639344,
+   "scan_step_eps": 0.0002,
+   "scan_half_range_eps": 0.02
+  },
+  "sectors_61_onward": {
+   "n_sectors": 16,
+   "cycles_spanned": 254.6030641276734,
+   "phase_min": 0.4716903822348647,
+   "phase_max": 0.6027615265764348,
+   "phase_mean": 0.5397116769882528,
+   "slope_cycles_per_cycle": 5.498310654993554e-05,
+   "slope_sigma": 0.00010074742652000809,
+   "rms_about_line_cycles": 0.03862834795306302,
+   "implied_period_days": 3.874109889649443,
+   "implied_period_sigma_days": 0.0003902851423483273,
+   "R": 0.9739322218706644
+  },
+  "scan": [
+   {
+    "eps": -0.02,
+    "R": 0.3367509923557774
+   },
+   {
+    "eps": -0.0198,
+    "R": 0.3191745531066867
+   },
+   {
+    "eps": -0.0196,
+    "R": 0.2844891892720793
+   },
+   {
+    "eps": -0.0194,
+    "R": 0.23636881001292087
+   },
+   {
+    "eps": -0.0192,
+    "R": 0.18166989365462616
+   },
+   {
+    "eps": -0.019,
+    "R": 0.13398355556384825
+   },
+   {
+    "eps": -0.0188,
+    "R": 0.11840219924812008
+   },
+   {
+    "eps": -0.0186,
+    "R": 0.1457371870825712
+   },
+   {
+    "eps": -0.0184,
+    "R": 0.1907192822343565
+   },
+   {
+    "eps": -0.0182,
+    "R": 0.2321841334597402
+   },
+   {
+    "eps": -0.018,
+    "R": 0.260310723492986
+   },
+   {
+    "eps": -0.0178,
+    "R": 0.27047594596658725
+   },
+   {
+    "eps": -0.0176,
+    "R": 0.26095413122662875
+   },
+   {
+    "eps": -0.0174,
+    "R": 0.23221909974960375
+   },
+   {
+    "eps": -0.0172,
+    "R": 0.18660852423494997
+   },
+   {
+    "eps": -0.017,
+    "R": 0.12801045287291818
+   },
+   {
+    "eps": -0.0168,
+    "R": 0.06152806253110346
+   },
+   {
+    "eps": -0.0166,
+    "R": 0.009669613812319216
+   },
+   {
+    "eps": -0.0164,
+    "R": 0.07323035101811143
+   },
+   {
+    "eps": -0.0162,
+    "R": 0.12935649936526175
+   },
+   {
+    "eps": -0.016,
+    "R": 0.17180207607993547
+   },
+   {
+    "eps": -0.0158,
+    "R": 0.1971329151219522
+   },
+   {
+    "eps": -0.0156,
+    "R": 0.20352845765334762
+   },
+   {
+    "eps": -0.0154,
+    "R": 0.19092447490825
+   },
+   {
+    "eps": -0.0152,
+    "R": 0.16107325977472442
+   },
+   {
+    "eps": -0.015,
+    "R": 0.11765811707027736
+   },
+   {
+    "eps": -0.0148,
+    "R": 0.06768203589107019
+   },
+   {
+    "eps": -0.0146,
+    "R": 0.03881139414583597
+   },
+   {
+    "eps": -0.0144,
+    "R": 0.07583598815623258
+   },
+   {
+    "eps": -0.0142,
+    "R": 0.12614777209849742
+   },
+   {
+    "eps": -0.014,
+    "R": 0.16924189176566495
+   },
+   {
+    "eps": -0.0138,
+    "R": 0.1997108210499903
+   },
+   {
+    "eps": -0.0136,
+    "R": 0.21520026459007002
+   },
+   {
+    "eps": -0.0134,
+    "R": 0.21548764657838346
+   },
+   {
+    "eps": -0.0132,
+    "R": 0.202528208061991
+   },
+   {
+    "eps": -0.013,
+    "R": 0.18076805787261688
+   },
+   {
+    "eps": -0.0128,
+    "R": 0.1577187567373864
+   },
+   {
+    "eps": -0.0126,
+    "R": 0.14384101648951575
+   },
+   {
+    "eps": -0.0124,
+    "R": 0.14773482297845245
+   },
+   {
+    "eps": -0.0122,
+    "R": 0.16790587836107806
+   },
+   {
+    "eps": -0.012,
+    "R": 0.19536036202628235
+   },
+   {
+    "eps": -0.0118,
+    "R": 0.22215632315933442
+   },
+   {
+    "eps": -0.0116,
+    "R": 0.2439979350969371
+   },
+   {
+    "eps": -0.0114,
+    "R": 0.2595882221509333
+   },
+   {
+    "eps": -0.0112,
+    "R": 0.26967118514600635
+   },
+   {
+    "eps": -0.011,
+    "R": 0.27606553081761914
+   },
+   {
+    "eps": -0.0108,
+    "R": 0.2805878906671254
+   },
+   {
+    "eps": -0.0106,
+    "R": 0.28403703936805885
+   },
+   {
+    "eps": -0.0104,
+    "R": 0.28565327225846865
+   },
+   {
+    "eps": -0.0102,
+    "R": 0.28332477111521254
+   },
+   {
+    "eps": -0.01,
+    "R": 0.2743635893998386
+   },
+   {
+    "eps": -0.0098,
+    "R": 0.2564062536065455
+   },
+   {
+    "eps": -0.0096,
+    "R": 0.2281038511834267
+   },
+   {
+    "eps": -0.0094,
+    "R": 0.18950363939723147
+   },
+   {
+    "eps": -0.0092,
+    "R": 0.1421935813506689
+   },
+   {
+    "eps": -0.009,
+    "R": 0.08955325538710308
+   },
+   {
+    "eps": -0.0088,
+    "R": 0.04051893083807366
+   },
+   {
+    "eps": -0.0086,
+    "R": 0.044371764222372094
+   },
+   {
+    "eps": -0.0084,
+    "R": 0.09125019210236955
+   },
+   {
+    "eps": -0.0082,
+    "R": 0.13804139240039456
+   },
+   {
+    "eps": -0.008,
+    "R": 0.1804800876649101
+   },
+   {
+    "eps": -0.0078,
+    "R": 0.22020132664446865
+   },
+   {
+    "eps": -0.0076,
+    "R": 0.2612451143602659
+   },
+   {
+    "eps": -0.0074,
+    "R": 0.3080997405405733
+   },
+   {
+    "eps": -0.0072,
+    "R": 0.3633934745116694
+   },
+   {
+    "eps": -0.007,
+    "R": 0.426419842333224
+   },
+   {
+    "eps": -0.0068,
+    "R": 0.493237112545339
+   },
+   {
+    "eps": -0.0066,
+    "R": 0.5577779478383994
+   },
+   {
+    "eps": -0.0064,
+    "R": 0.6131195679786144
+   },
+   {
+    "eps": -0.0062,
+    "R": 0.6525438035937626
+   },
+   {
+    "eps": -0.006,
+    "R": 0.6703622439672962
+   },
+   {
+    "eps": -0.0058,
+    "R": 0.6625573341942437
+   },
+   {
+    "eps": -0.0056,
+    "R": 0.6272752875315848
+   },
+   {
+    "eps": -0.0054,
+    "R": 0.5652084378947465
+   },
+   {
+    "eps": -0.0052,
+    "R": 0.479978262429079
+   },
+   {
+    "eps": -0.005,
+    "R": 0.3789202994183922
+   },
+   {
+    "eps": -0.0048,
+    "R": 0.2758065418879596
+   },
+   {
+    "eps": -0.0046,
+    "R": 0.2002099366550981
+   },
+   {
+    "eps": -0.0044,
+    "R": 0.19954014297355593
+   },
+   {
+    "eps": -0.0042,
+    "R": 0.26511347010545855
+   },
+   {
+    "eps": -0.004,
+    "R": 0.34465032537874807
+   },
+   {
+    "eps": -0.0038,
+    "R": 0.41054879411870093
+   },
+   {
+    "eps": -0.0036,
+    "R": 0.4512620246835268
+   },
+   {
+    "eps": -0.0034,
+    "R": 0.4621398837015385
+   },
+   {
+    "eps": -0.0032,
+    "R": 0.44321432539572236
+   },
+   {
+    "eps": -0.003,
+    "R": 0.3993030116960339
+   },
+   {
+    "eps": -0.0028,
+    "R": 0.34176947357291554
+   },
+   {
+    "eps": -0.0026,
+    "R": 0.29252039863691603
+   },
+   {
+    "eps": -0.0024,
+    "R": 0.28378086277116105
+   },
+   {
+    "eps": -0.0022,
+    "R": 0.33139706285997605
+   },
+   {
+    "eps": -0.002,
+    "R": 0.41515299257346583
+   },
+   {
+    "eps": -0.0018,
+    "R": 0.5078085409508287
+   },
+   {
+    "eps": -0.0016,
+    "R": 0.5912813857800131
+   },
+   {
+    "eps": -0.0014,
+    "R": 0.6547725584334824
+   },
+   {
+    "eps": -0.0012,
+    "R": 0.6922401063697842
+   },
+   {
+    "eps": -0.001,
+    "R": 0.7013755134661926
+   },
+   {
+    "eps": -0.0008,
+    "R": 0.6832784509768141
+   },
+   {
+    "eps": -0.0006,
+    "R": 0.6424015798360154
+   },
+   {
+    "eps": -0.0004,
+    "R": 0.5866295684893851
+   },
+   {
+    "eps": -0.0002,
+    "R": 0.5273342007079945
+   },
+   {
+    "eps": 0.0,
+    "R": 0.4786420586721109
+   },
+   {
+    "eps": 0.0002,
+    "R": 0.4538792781468664
+   },
+   {
+    "eps": 0.0004,
+    "R": 0.45836233657094616
+   },
+   {
+    "eps": 0.0006,
+    "R": 0.4851681652244888
+   },
+   {
+    "eps": 0.0008,
+    "R": 0.5202911214636876
+   },
+   {
+    "eps": 0.001,
+    "R": 0.5503212110051882
+   },
+   {
+    "eps": 0.0012,
+    "R": 0.5657424925592217
+   },
+   {
+    "eps": 0.0014,
+    "R": 0.5610270687132773
+   },
+   {
+    "eps": 0.0016,
+    "R": 0.5339043974988784
+   },
+   {
+    "eps": 0.0018,
+    "R": 0.48466546610968336
+   },
+   {
+    "eps": 0.002,
+    "R": 0.4156410455485502
+   },
+   {
+    "eps": 0.0022,
+    "R": 0.3309170967181093
+   },
+   {
+    "eps": 0.0024,
+    "R": 0.23669915720247794
+   },
+   {
+    "eps": 0.0026,
+    "R": 0.14502666000772593
+   },
+   {
+    "eps": 0.0028,
+    "R": 0.09779484081094607
+   },
+   {
+    "eps": 0.003,
+    "R": 0.14941810598800728
+   },
+   {
+    "eps": 0.0032,
+    "R": 0.2363955177222924
+   },
+   {
+    "eps": 0.0034,
+    "R": 0.32178509998157107
+   },
+   {
+    "eps": 0.0036,
+    "R": 0.39587819335324675
+   },
+   {
+    "eps": 0.0038,
+    "R": 0.45437021797773697
+   },
+   {
+    "eps": 0.004,
+    "R": 0.494908225805437
+   },
+   {
+    "eps": 0.0042,
+    "R": 0.5164655808889386
+   },
+   {
+    "eps": 0.0044,
+    "R": 0.519248587295929
+   },
+   {
+    "eps": 0.0046,
+    "R": 0.5047594675145094
+   },
+   {
+    "eps": 0.0048,
+    "R": 0.4759400520646617
+   },
+   {
+    "eps": 0.005,
+    "R": 0.43738031279840156
+   },
+   {
+    "eps": 0.0052,
+    "R": 0.3955330560039086
+   },
+   {
+    "eps": 0.0054,
+    "R": 0.3586112140508235
+   },
+   {
+    "eps": 0.0056,
+    "R": 0.3352099420556587
+   },
+   {
+    "eps": 0.0058,
+    "R": 0.33066426744037525
+   },
+   {
+    "eps": 0.006,
+    "R": 0.3432976788779168
+   },
+   {
+    "eps": 0.0062,
+    "R": 0.3653167728379389
+   },
+   {
+    "eps": 0.0064,
+    "R": 0.3873725568384016
+   },
+   {
+    "eps": 0.0066,
+    "R": 0.4018289825225678
+   },
+   {
+    "eps": 0.0068,
+    "R": 0.40365971346561497
+   },
+   {
+    "eps": 0.007,
+    "R": 0.3903199146033865
+   },
+   {
+    "eps": 0.0072,
+    "R": 0.3614541453403433
+   },
+   {
+    "eps": 0.0074,
+    "R": 0.31868746653769126
+   },
+   {
+    "eps": 0.0076,
+    "R": 0.2656062739283968
+   },
+   {
+    "eps": 0.0078,
+    "R": 0.20822300726303808
+   },
+   {
+    "eps": 0.008,
+    "R": 0.15676495493722856
+   },
+   {
+    "eps": 0.0082,
+    "R": 0.1285464210635088
+   },
+   {
+    "eps": 0.0084,
+    "R": 0.13718940291818904
+   },
+   {
+    "eps": 0.0086,
+    "R": 0.1693144705077038
+   },
+   {
+    "eps": 0.0088,
+    "R": 0.2043325349239187
+   },
+   {
+    "eps": 0.009,
+    "R": 0.23125470553297967
+   },
+   {
+    "eps": 0.0092,
+    "R": 0.24529634064980746
+   },
+   {
+    "eps": 0.0094,
+    "R": 0.24477335371093975
+   },
+   {
+    "eps": 0.0096,
+    "R": 0.2299090653749836
+   },
+   {
+    "eps": 0.0098,
+    "R": 0.20230445564572444
+   },
+   {
+    "eps": 0.01,
+    "R": 0.16460480372432132
+   },
+   {
+    "eps": 0.0102,
+    "R": 0.12028182181561309
+   },
+   {
+    "eps": 0.0104,
+    "R": 0.07385740259126648
+   },
+   {
+    "eps": 0.0106,
+    "R": 0.03528721474667731
+   },
+   {
+    "eps": 0.0108,
+    "R": 0.0412039543444506
+   },
+   {
+    "eps": 0.011,
+    "R": 0.0749406385122177
+   },
+   {
+    "eps": 0.0112,
+    "R": 0.10614319765840319
+   },
+   {
+    "eps": 0.0114,
+    "R": 0.1301873016787646
+   },
+   {
+    "eps": 0.0116,
+    "R": 0.146430442834846
+   },
+   {
+    "eps": 0.0118,
+    "R": 0.1555922790194207
+   },
+   {
+    "eps": 0.012,
+    "R": 0.1592032066182778
+   },
+   {
+    "eps": 0.0122,
+    "R": 0.1591776269748289
+   },
+   {
+    "eps": 0.0124,
+    "R": 0.1573063367179571
+   },
+   {
+    "eps": 0.0126,
+    "R": 0.15473210336203305
+   },
+   {
+    "eps": 0.0128,
+    "R": 0.15161813234053848
+   },
+   {
+    "eps": 0.013,
+    "R": 0.14720202039210914
+   },
+   {
+    "eps": 0.0132,
+    "R": 0.1402005264263594
+   },
+   {
+    "eps": 0.0134,
+    "R": 0.1293234145206553
+   },
+   {
+    "eps": 0.0136,
+    "R": 0.11368134158044829
+   },
+   {
+    "eps": 0.0138,
+    "R": 0.09305058948460578
+   },
+   {
+    "eps": 0.014,
+    "R": 0.06819584612071311
+   },
+   {
+    "eps": 0.0142,
+    "R": 0.04241831116934244
+   },
+   {
+    "eps": 0.0144,
+    "R": 0.031525702985316435
+   },
+   {
+    "eps": 0.0146,
+    "R": 0.05414797449230418
+   },
+   {
+    "eps": 0.0148,
+    "R": 0.08934869445269263
+   },
+   {
+    "eps": 0.015,
+    "R": 0.12694702599978422
+   },
+   {
+    "eps": 0.0152,
+    "R": 0.1639539435012154
+   },
+   {
+    "eps": 0.0154,
+    "R": 0.19860114188861863
+   },
+   {
+    "eps": 0.0156,
+    "R": 0.22941775640258208
+   },
+   {
+    "eps": 0.0158,
+    "R": 0.25503091118902815
+   },
+   {
+    "eps": 0.016,
+    "R": 0.2741231588172693
+   },
+   {
+    "eps": 0.0162,
+    "R": 0.2854599248430437
+   },
+   {
+    "eps": 0.0164,
+    "R": 0.28796666886957273
+   },
+   {
+    "eps": 0.0166,
+    "R": 0.2808415213646628
+   },
+   {
+    "eps": 0.0168,
+    "R": 0.26368559235539557
+   },
+   {
+    "eps": 0.017,
+    "R": 0.23663131922895964
+   },
+   {
+    "eps": 0.0172,
+    "R": 0.2004536805709054
+   },
+   {
+    "eps": 0.0174,
+    "R": 0.15666930606356402
+   },
+   {
+    "eps": 0.0176,
+    "R": 0.10772307849792566
+   },
+   {
+    "eps": 0.0178,
+    "R": 0.05814047095715281
+   },
+   {
+    "eps": 0.018,
+    "R": 0.029721448485979934
+   },
+   {
+    "eps": 0.0182,
+    "R": 0.06164332604586432
+   },
+   {
+    "eps": 0.0184,
+    "R": 0.10248072924010511
+   },
+   {
+    "eps": 0.0186,
+    "R": 0.13571861311285693
+   },
+   {
+    "eps": 0.0188,
+    "R": 0.15718667897531946
+   },
+   {
+    "eps": 0.019,
+    "R": 0.16450546854089382
+   },
+   {
+    "eps": 0.0192,
+    "R": 0.15637846163020955
+   },
+   {
+    "eps": 0.0194,
+    "R": 0.1325682667634504
+   },
+   {
+    "eps": 0.0196,
+    "R": 0.09394284888703787
+   },
+   {
+    "eps": 0.0198,
+    "R": 0.04275646590929641
+   },
+   {
+    "eps": 0.02,
+    "R": 0.023137733943312925
+   }
+  ]
+ },
+ "claim_boundary": [
+  "The fold gates are the lab's own code on a fixed SPOC ephemeris; they grade a depth difference and are blind to a near-equal pair by construction.",
+  "A per-sector gate firing rests on white-noise bars; the event-level block says how much the scatter between events widens them.",
+  "The between-dips fit is a measurement, not a gate.",
+  "A wandering phase would not rule out a binary; a held phase is evidence of rotation locked to 2P."
+ ]
+}

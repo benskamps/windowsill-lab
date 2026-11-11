@@ -5,7 +5,7 @@ All three lead to the same search, the same rules and the same six answers.
 
 | If you... | Start with | You need |
 |---|---|---|
-| want to understand it first | **Read.** The lab's [TIC 374861595 page](https://www.brokenbranch.dev/windowsill/tic-374861595/) walks one real signal from plain words up, then [`LEARN.md`](LEARN.md), rung 0 | a browser |
+| want to understand it first | **Read.** The lab's [TIC 374861595 page](https://www.brokenbranch.dev/windowsill/tic-374861595/) walks one real signal from plain words up (the lead was refuted on 2026-11-10: most likely two stars), then [`LEARN.md`](LEARN.md), rung 0 | a browser |
 | want to run it without installing anything | **Run in the browser.** [Open the starter notebook in Google Colab](https://colab.research.google.com/github/benskamps/windowsill-lab/blob/main/kit/start-in-browser.ipynb). It checks your setup on a known planet, WASP-18, and draws the folded light curve | a browser and a Google account |
 | code, or have a coding agent | **Run it locally.** The [quickstart](README.md#quickstart), or install the Claude Code plugin and ask Claude to "find a planet the windowsill way" | Python 3, numpy and git |
 

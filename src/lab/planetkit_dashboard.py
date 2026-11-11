@@ -19,7 +19,8 @@ What it will not do is show more than the verdict says:
 * A light curve passed with ``--fits`` or ``--csv`` must hash to the receipt's
   ``sha256`` for its sector, or the page is refused.
 
-The worked example is TIC 374861595, the lab's open lead; its dashboard was
+The worked example is TIC 374861595, the lab's lead until it was refuted on
+2026-11-10; its dashboard was
 built from the dossier by hand and this module is that page, generalised.
 """
 from __future__ import annotations

@@ -25,9 +25,10 @@ and the differences are the point:
 * The disposition vocabulary has 19 terms. 14 of them were used. A paper that
   says "a closed 14-term vocabulary" has described the sample, not the
   contract.
-* Seven refutation rulings are on the record; five of them count against a
-  currently-minted lead. The other two are not missing, and the reason each
-  one dropped out is printed.
+* Not every refutation ruling counts: only those against a currently-minted
+  lead do. The others are not missing, and the reason each one dropped out
+  is printed. Nor did every counted refutation come from the survey's own
+  gates: TIC 374861595 was refuted on outside review (2026-11-10).
 
 Usage::
 
@@ -295,7 +296,7 @@ def _render(n: dict) -> str:
     for tic, name in o["recoveries"].items():
         w(f"      {name:<14} TIC {tic}")
     w(f"  leads minted                       {o['leads_minted']}")
-    w(f"  refuted by the survey's own gates  {len(o['leads_refuted_and_counted'])}"
+    w(f"  leads refuted                      {len(o['leads_refuted_and_counted'])}"
       f"   {', '.join(o['leads_refuted_and_counted'])}")
     w(f"  parked on a named gap              {len(o['leads_parked'])}"
       f"   {', '.join(o['leads_parked'])}")

@@ -47,5 +47,12 @@
     "by": "Ben",
     "date": "2026-09-12",
     "why": "Second look in sector 31 (followup-144122210-s31.json): the machine dispositioned it eclipsing-binary-secondary. Audit item 6 had it documented as an EB missed by 0.13 sigma in sector 30; the second sector settled it."
+  },
+  {
+    "tic": "374861595",
+    "ruling": "refuted",
+    "by": "Ben",
+    "date": "2026-11-10",
+    "why": "Most likely an eclipsing binary at 2P = 3.874 d, not a planet candidate. A TOI vetter gave the reasons in issue #189: a planet over 2 R_Jup is implausible around an M dwarf, and the light varies coherently at twice the period. This lab's own files already held both (2.59 R_Jup from SPOC, 2.65-3.92 from the refit; modulation at 3.80-3.87 d) and explained them away. Run on all 24 sectors on 2026-11-10, the lab's own data agree: the brightness modulation between the dips has matched 2P to about one part in ten thousand over 255 cycles (3.87411 +/- 0.00039 d against 3.87390 d), and the two dips at 2P differ by 0.2 to 0.4 percentage points at 3 to 5 sigma, the same slot deeper in 18 to 21 of 24 sectors. No mass was measured. docs/investigations/2026-11-10-tic374861595-eb-at-2p-refutation.md."
   }
 ]

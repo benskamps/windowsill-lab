@@ -48,7 +48,8 @@ Name your source. Any other key is refused.
 
 ## The worked example
 
-The lab's own open lead, TIC 374861595, has a hand-built version of this
+TIC 374861595, the lead the lab carried until it was refuted on 2026-11-10,
+has a hand-built version of this
 page drawn from its dossier: two orbit radii that disagree (the density
 tension), the grazing path, a Gaia neighbour chart, and three sectors'
 folds. This module is that page made general enough for any run.
