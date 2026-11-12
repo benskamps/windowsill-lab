@@ -525,23 +525,23 @@
     }
   ],
   "total": 41,
-  "last_run": "2026-11-12T02:07:14.155524+00:00",
-  "runs": 91,
-  "temp_c": 90.0,
+  "last_run": "2026-11-12T08:00:07.111794+00:00",
+  "runs": 92,
+  "temp_c": 87.2,
   "latest_report": {
-    "date": "2026-11-11",
-    "milestone": "A03",
-    "verdict": "null",
-    "headline": "GW170817-v3: pipeline recovers an injected chirp mass to 4.0e-05 Msun in 2 detectors; the event itself is NOT recovered",
+    "date": "2026-11-12",
+    "milestone": "C03",
+    "verdict": "verified",
+    "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.045s [in-reach]",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-11-2107-a03.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-12-0300-c03.json",
     "machine": "linux-rocm",
-    "at": "2026-11-12T02:07:14.155524+00:00"
+    "at": "2026-11-12T08:00:07.111794+00:00"
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-11-12T02:11:28.482798+00:00",
+  "updated": "2026-11-12T08:04:29.573195+00:00",
   "provenance": {
-    "code_sha": "fd871fc",
+    "code_sha": "3b5af95",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -550,6 +550,16 @@
     }
   },
   "reports": [
+    {
+      "date": "2026-11-12",
+      "milestone": "C03",
+      "verdict": "verified",
+      "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.045s [in-reach]",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-11-12-0300-c03",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-12-0300-c03.json",
+      "machine": "linux-rocm",
+      "at": "2026-11-12T08:00:07.111794+00:00"
+    },
     {
       "date": "2026-11-11",
       "milestone": "A03",
@@ -2672,11 +2682,11 @@
     }
   ],
   "turns": {
-    "count": 284,
-    "today": 4,
+    "count": 285,
+    "today": 1,
     "last_by_machine": {
       "windows-cuda": "2026-09-09T16:32:20.064436+00:00",
-      "linux-rocm": "2026-11-12T02:07:14.155524+00:00"
+      "linux-rocm": "2026-11-12T08:00:07.111794+00:00"
     },
     "expected_interval_h": 3
   },
@@ -2692,15 +2702,14 @@
       "gpu_tests_ran": false
     },
     "linux-rocm": {
-      "status": "stale",
-      "detail": "last recorded test run was 47h ago (> 36h) \u2014 it graded 'error' then, and says nothing about now",
-      "at": "2026-11-10T03:22:23.715473+00:00",
+      "status": "error",
+      "detail": "pytest did not finish inside 3600s \u2014 recorded as an error, not a pass",
+      "at": "2026-11-12T03:13:40.251805+00:00",
       "machine": "linux-rocm",
       "passed": null,
       "failed": null,
       "skipped": null,
-      "gpu_tests_ran": false,
-      "recorded_status": "error"
+      "gpu_tests_ran": false
     }
   },
   "hunt": {
@@ -2773,7 +2782,7 @@
     "why_now": "Every unknown in the catalogue has been priced and none attempted. Pricing is the half this box is good at and the half that cannot produce a result.",
     "set_on": "2026-08-24",
     "deadline": "2026-09-24",
-    "days_remaining": -48,
+    "days_remaining": -49,
     "state": "MET",
     "conditions": {
       "every_track_charted": true,
