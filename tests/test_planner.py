@@ -369,7 +369,7 @@ def test_decision_record_shape():
     """The record a receipt will carry: planner version, chosen, one-line
     reason, top-5 scoreboard sorted by descending score, per-entry fields."""
     pick, decision = plan_turn([], _verified_estate(), now=NOW)
-    assert decision["planner"] == "v2"
+    assert decision["planner"] == "v3"
     assert decision["chosen"] == pick
     assert isinstance(decision["reason"], str) and decision["reason"]
     board = decision["scoreboard"]
@@ -398,7 +398,7 @@ def test_receipt_carries_planned_block_only_when_the_scheduler_armed_it():
         receipt_mod.clear_planned_decision()
     assert planned["chosen"] == decision["chosen"]
     assert planned["reason"] == decision["reason"]
-    assert planned["planner"] == "v2"
+    assert planned["planner"] == "v3"
     assert len(planned["scoreboard"]) == 3
     assert [e["mid"] for e in planned["scoreboard"]] == \
         [e["mid"] for e in decision["scoreboard"][:3]]
@@ -466,7 +466,7 @@ def test_next_dry_run_prints_the_planner_reason(
     out = capsys.readouterr().out
     assert rc == 0
     assert "would run `lab m03`" in out
-    assert "planner v2" in out
+    assert "planner v3" in out
 
 
 def test_planner_failure_falls_back_to_the_rotation_walk(
@@ -528,7 +528,7 @@ def test_scheduled_dispatch_arms_the_receipt_seam_and_clears_it(
     assert rc == 0
     assert len(seen) == 1
     assert seen[0] is not None and seen[0]["chosen"] == "M03"
-    assert seen[0]["planner"] == "v2"
+    assert seen[0]["planner"] == "v3"
     assert receipt_mod._PLANNED_DECISION is None       # cleared after dispatch
 
 # ── the hunt seam: committed coverage state → the survey slot ─────────────────

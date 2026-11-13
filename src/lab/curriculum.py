@@ -534,7 +534,15 @@ def newest_receipt_milestone(records: Iterable[tuple[str, str]]) -> str | None:
 #: paid for replay; its receipts are not regraded (check_planned_decision's
 #: PLANNER_VERSION boundary passes them vacuously) because they were not wrong
 #: under the law they were planned by — the LAW was wrong.
-PLANNER_VERSION = "v2"
+#:
+#: v3 (2026-11-04): a candidate whose next run would repeat its newest receipt
+#: exactly (same code closure, Python and libraries; see ``lab.rerun_gate``)
+#: is not a candidate at all — it leaves the board as a named skip. Scoring is
+#: unchanged, so every v2 ceiling still holds; v3 only removes entries. The
+#: repeat decay could not do this: it is per CONSECUTIVE run and resets when
+#: anything else runs, so C03/C03/C03/A03/C03… repeated two identical results
+#: for three days without ever tripping it.
+PLANNER_VERSION = "v3"
 
 #: Class base values, strictly ordered: an OPEN frontier milestone is the whole
 #: point of the lab; a rung that has NEVER produced a receipt is a missing
@@ -652,6 +660,7 @@ def plan_turn(
     now: datetime | None = None,
     hunt_status: Mapping[str, object] | None = None,
     durations: Mapping[str, Sequence[float]] | None = None,
+    unchanged: Mapping[str, str] | None = None,
 ) -> tuple[str | None, dict]:
     """Score every eligible candidate and pick the most valuable turn.
 
@@ -684,6 +693,12 @@ def plan_turn(
       clamping at 1.0 keeps a cheap canary from buying its way past the class
       ordering, so the invariant above survives the cost seam.
 
+    ``unchanged`` (planner v3) maps mid → reason for every mid whose next run
+    would only repeat its newest receipt (``rerun_gate.unchanged_since_last_run``
+    computes it; the caller passes it in so this function stays pure). Such a
+    mid is never scored: it is disclosed in ``skips`` with its reason. The hunt
+    is exempt here exactly as it is from the repeat decay.
+
     Ties break by the rotation walk order starting after the ledger pointer —
     the planner degrades EXACTLY to ``select_rotation`` when the scores cannot
     distinguish candidates, which keeps two boxes reading the same committed
@@ -695,6 +710,7 @@ def plan_turn(
     must disclose.
     """
     statuses = dict(milestones or {})
+    unchanged = dict(unchanged or {})
     if now is None:
         now = datetime.now(timezone.utc)
     ordered = sorted(
@@ -724,7 +740,7 @@ def plan_turn(
             continue  # ranked below with its rotation slot; class still wins
         if mid not in RUNNERS:
             continue  # branch-1 territory: cli names "no runner" itself
-        reason = hardware_gate_reason(mid)
+        reason = hardware_gate_reason(mid) or unchanged.get(mid)
         if reason is not None:
             skips.append((mid, reason))
             continue
@@ -746,7 +762,7 @@ def plan_turn(
         if mid not in RUNNERS:
             skips.append((mid, "no runner registered"))
             continue
-        reason = hardware_gate_reason(mid)
+        reason = hardware_gate_reason(mid) or unchanged.get(mid)
         if reason is not None:
             skips.append((mid, reason))
             continue
