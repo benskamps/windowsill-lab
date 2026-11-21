@@ -325,7 +325,14 @@ while :; do
     # restore, and the next successful pass rebuilds it from the committed receipts
     # anyway.
     publishable=1
-    if ! "$PY" -m lab.cli next --seed "$seed" --device "$DEVICE" >> "$LOG" 2>&1; then
+    # `lab next` writes this file only when it DECLARES an idle turn: every
+    # eligible experiment is unchanged since its last receipt (planner v3), so
+    # it ran nothing on purpose. Removed first so a marker can never outlive
+    # the pass that wrote it.
+    idle_marker="$STATE_DIR/next.idle"
+    rm -f "$idle_marker"
+    if ! LAB_NEXT_IDLE_FILE="$idle_marker" \
+        "$PY" -m lab.cli next --seed "$seed" --device "$DEVICE" >> "$LOG" 2>&1; then
       publishable=0
       log "campaign: pass $iter — experiment failed; publishing withheld"
       withhold_pass
@@ -341,7 +348,17 @@ while :; do
       git reset -q -- pot.json physics-latest.json reports/ 2>/dev/null || true
       log "campaign: pass $iter — staging campaign-owned paths failed"
     elif git diff --cached --quiet -- pot.json physics-latest.json reports/ 2>/dev/null; then
-      log "campaign: pass $iter — nothing changed"
+      if [ -f "$idle_marker" ] && [ -z "${LAB_CAMPAIGN_DRY:-}" ]; then
+        # A declared idle turn beats, exactly as the reader's empty queue does:
+        # the lane synced, looked, verified clean and honestly found nothing
+        # new to run. Without this a lab with nothing new reads as a DEAD lane
+        # to groundskeeper/checks/freshness.py after 18h. A pass that produced
+        # nothing WITHOUT declaring it still does not beat.
+        : > "$STATE_DIR/campaign.published" 2>/dev/null || true
+        log "campaign: pass $iter — idle: every experiment is unchanged since its last run; nothing to publish"
+      else
+        log "campaign: pass $iter — nothing changed"
+      fi
     elif [ -n "${LAB_CAMPAIGN_DRY:-}" ]; then
       if git reset -q -- pot.json physics-latest.json reports/ 2>/dev/null; then
         log "campaign: pass $iter — DRY, ran+rendered, campaign paths left unstaged"
@@ -362,7 +379,8 @@ while :; do
           safe_pull_rebase || break
         done
         if [ "$pushed" -eq 1 ]; then
-          # Heartbeat for the estate watcher, touched ONLY here. Everything else
+          # Heartbeat for the estate watcher, touched here and on a DECLARED
+          # idle pass (the `nothing changed` branch above). Everything else
           # this loop writes moves on a REFUSED pass too — the counter advances,
           # the log grows, pot.json gets rewritten by the other lane — so an
           # mtime watcher reading any of them scores a halted campaign as
