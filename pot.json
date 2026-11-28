@@ -525,28 +525,28 @@
     }
   ],
   "total": 41,
-  "last_run": "2026-11-28T02:00:08.198233+00:00",
-  "runs": 107,
-  "temp_c": 88.9,
+  "last_run": "2026-11-28T08:00:07.513491+00:00",
+  "runs": 108,
+  "temp_c": 87.5,
   "latest_report": {
-    "date": "2026-11-27",
+    "date": "2026-11-28",
     "milestone": "C03",
     "verdict": "verified",
-    "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.069s [in-reach]",
+    "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.054s [in-reach]",
     "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/latest.html",
-    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-27-2100-c03.json",
+    "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-28-0300-c03.json",
     "machine": "linux-rocm",
-    "at": "2026-11-28T02:00:08.198233+00:00",
-    "group_count": 2,
+    "at": "2026-11-28T08:00:07.513491+00:00",
+    "group_count": 3,
     "group_first_date": "2026-11-27",
     "group_machines": [
       "linux-rocm"
     ]
   },
   "archive_url": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html",
-  "updated": "2026-11-28T02:09:26.895039+00:00",
+  "updated": "2026-11-28T08:09:43.419228+00:00",
   "provenance": {
-    "code_sha": "3ee3904",
+    "code_sha": "1c88770",
     "env": "python 3.14.4 \u00b7 linux",
     "deps": {
       "torch": "2.10.0.dev20251031+rocm6.4",
@@ -556,15 +556,15 @@
   },
   "reports": [
     {
-      "date": "2026-11-27",
+      "date": "2026-11-28",
       "milestone": "C03",
       "verdict": "verified",
-      "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.069s [in-reach]",
-      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-11-27-2100-c03",
-      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-27-2100-c03.json",
+      "headline": "A001006 (Motzkin numbers): 2107 known terms regenerated EXACTLY and cross-verified by a second method (agree); 64 new terms computed past n=2106 in 4.054s [in-reach]",
+      "href": "https://htmlpreview.github.io/?https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/index.html#run-2026-11-28-0300-c03",
+      "receipt_url": "https://raw.githubusercontent.com/benskamps/windowsill-lab/main/reports/receipts/run-2026-11-28-0300-c03.json",
       "machine": "linux-rocm",
-      "at": "2026-11-28T02:00:08.198233+00:00",
-      "group_count": 2,
+      "at": "2026-11-28T08:00:07.513491+00:00",
+      "group_count": 3,
       "group_first_date": "2026-11-27",
       "group_machines": [
         "linux-rocm"
@@ -3042,11 +3042,11 @@
     }
   ],
   "turns": {
-    "count": 342,
-    "today": 4,
+    "count": 343,
+    "today": 1,
     "last_by_machine": {
       "windows-cuda": "2026-09-09T16:32:20.064436+00:00",
-      "linux-rocm": "2026-11-28T02:00:08.198233+00:00"
+      "linux-rocm": "2026-11-28T08:00:07.513491+00:00"
     },
     "expected_interval_h": 3
   },
@@ -3064,7 +3064,7 @@
     "linux-rocm": {
       "status": "error",
       "detail": "pytest did not finish inside 3600s \u2014 recorded as an error, not a pass",
-      "at": "2026-11-27T03:14:00.336366+00:00",
+      "at": "2026-11-28T03:14:19.954324+00:00",
       "machine": "linux-rocm",
       "passed": null,
       "failed": null,
@@ -3142,7 +3142,7 @@
     "why_now": "Every unknown in the catalogue has been priced and none attempted. Pricing is the half this box is good at and the half that cannot produce a result.",
     "set_on": "2026-08-24",
     "deadline": "2026-09-24",
-    "days_remaining": -64,
+    "days_remaining": -65,
     "state": "MET",
     "conditions": {
       "every_track_charted": true,
