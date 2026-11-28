@@ -311,6 +311,37 @@ def _planner_ledger() -> tuple[list[tuple[str, str]], dict[str, list[float]]]:
     return records, durations
 
 
+def _unchanged_runs() -> dict[str, str]:
+    """The rerun gate's ``{mid: reason}`` for this turn, or ``{}`` — named on
+    stdout — when the gate itself cannot run. A broken gate must cost at most
+    a repeat, never the lab's turn."""
+    from . import publish as publish_mod
+    from . import rerun_gate
+    try:
+        return rerun_gate.unchanged_since_last_run(
+            list(RUNNERS), RUNNERS, publish_mod.RECEIPTS_DIR)
+    except Exception as exc:  # noqa: BLE001 — same discipline as the planner
+        print(f"lab next · rerun gate unavailable ({exc}) — every run allowed")
+        return {}
+
+
+def _next_untried_input(mid: str, subcmd: str,
+                        passthrough: list[str]) -> tuple[str, str] | None:
+    """``(flag, value)`` naming a multi-target milestone's next untried target,
+    or ``None`` (single-target milestone, an explicit choice already in the
+    arguments, every target done, or a gate that cannot answer)."""
+    from . import publish as publish_mod
+    from . import rerun_gate
+    flag = rerun_gate.INPUT_FLAG.get(mid)
+    if flag is None or flag in passthrough:
+        return None
+    try:
+        value = rerun_gate.next_input(mid, subcmd, publish_mod.RECEIPTS_DIR)
+    except Exception:  # noqa: BLE001 — fall back to the runner's own default
+        return None
+    return (flag, value) if value is not None else None
+
+
 def _hunt_status() -> dict | None:
     """Remaining survey coverage from the newest committed hunt receipt.
 
@@ -1197,7 +1228,14 @@ def _run_next(args, dry, lock_path=None):
          falls back to the round-robin `select_rotation` walk, logged by name
          — the scheduler must never die of its own planner.
       3. M01 HEARTBEAT — only when nothing is eligible (fail closed,
-         named reason).
+         named reason) — unless the heartbeat itself is unchanged since its
+         last receipt, in which case the turn runs nothing and says so.
+
+    Every branch first consults the planner-v3 rerun gate
+    (``rerun_gate.unchanged_since_last_run``): a run that would only repeat
+    its newest receipt — same code, Python and libraries — is skipped with a
+    named reason, the frontier bench included. A multi-target milestone (C03)
+    is dispatched with the first registered target not yet run on this code.
 
     Selection is read-only — it never edits MILESTONES.md; a milestone is only
     marked done by the verify gate + a human-reviewed PR. Decisions:
@@ -1213,13 +1251,16 @@ def _run_next(args, dry, lock_path=None):
             if publish_mod.MILESTONES_MD.exists() else "")
     milestones = publish_mod.parse_milestones(text)
     open_mid, has_runner = _select_next(milestones)
+    unchanged = _unchanged_runs()
     skips: list[tuple[str, str]] = []
     mid: str | None = None
     subcmd: str | None = None
     reason = ""
+    idle = False
     planned_decision: dict | None = None
     if open_mid is not None and has_runner:
-        gate_reason = curriculum.hardware_gate_reason(open_mid)
+        gate_reason = (curriculum.hardware_gate_reason(open_mid)
+                       or unchanged.get(open_mid))
         if gate_reason is None:
             mid, subcmd = open_mid, RUNNERS[open_mid]
             reason = f"open milestone {open_mid}"
@@ -1233,6 +1274,8 @@ def _run_next(args, dry, lock_path=None):
             why = "no open milestone"
         elif not has_runner:
             why = f"no runner for {open_mid} yet"
+        elif open_mid in unchanged:
+            why = f"open milestone {open_mid} is unchanged since its last run"
         else:
             why = f"open milestone {open_mid} is hardware-gated"
         try:
@@ -1246,6 +1289,7 @@ def _run_next(args, dry, lock_path=None):
                 pick, decision = curriculum.plan_turn(
                     records, status_map, durations=durations,
                     hunt_status=_hunt_status_for_dispatch(),
+                    unchanged=unchanged,
                 )
                 skips.extend(decision.get("skips", []))
                 if pick == curriculum.HUNT_CANDIDATE:
@@ -1261,6 +1305,13 @@ def _run_next(args, dry, lock_path=None):
                     mid, subcmd = pick, RUNNERS[pick]
                     reason = f"{why} — {decision['reason']}"
                     planned_decision = decision
+                elif "M01" in unchanged:
+                    # The heartbeat is a rerun too. When it would only repeat
+                    # its own newest receipt, the honest turn is no turn.
+                    idle = True
+                    reason = (f"{why} — planner found nothing eligible, and the "
+                              "M01 heartbeat is unchanged since its last run too "
+                              "— nothing to run this pass")
                 else:
                     subcmd = "run"
                     reason = (f"{why} — planner found nothing eligible "
@@ -1305,10 +1356,26 @@ def _run_next(args, dry, lock_path=None):
         f" · ignored unsupported scheduler option(s): {', '.join(dropped)}"
         if dropped else ""
     )
+    if mid is not None and subcmd == RUNNERS.get(mid):
+        next_input = _next_untried_input(mid, subcmd, passthrough)
+        if next_input is not None:
+            flag, value = next_input
+            passthrough = [*passthrough, flag, value]
+            reason += f" · {value}, its first target not yet run on this code"
     # Disclosed once per pass, to stdout/log — a skip is not a failure and
     # not a success; it is a named absence, and it must not spam receipts.
-    for skipped_mid, skip_reason in skips:
+    # The frontier branch and the planner can both name the same skip.
+    for skipped_mid, skip_reason in dict.fromkeys(skips):
         print(f"lab next · skipped {skipped_mid} — {skip_reason}")
+    if idle:
+        print(f"lab next → —: nothing to run ({reason}){option_note}")
+        # The campaign names a file here so it can tell a DECLARED idle turn
+        # (healthy: the lane looked and found nothing new) from a turn that
+        # silently produced nothing. Unset for manual runs, never on a dry run.
+        marker = os.environ.get("LAB_NEXT_IDLE_FILE")
+        if marker and not dry:
+            Path(marker).write_text(reason + "\n", encoding="utf-8")
+        return 0
     if dry:
         print(
             f"lab next → {label}: would run `lab {subcmd}` "

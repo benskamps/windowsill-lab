@@ -62,6 +62,15 @@ def main():
             print("stub: next FAILED after writing partial artifacts",
                   file=sys.stderr)
             return rc
+        quiet = os.environ.get("STUB_NEXT_QUIET", "")
+        if quiet:
+            # A turn that wrote nothing: "declared" is the real idle (every
+            # experiment unchanged, planner v3), which names itself in the file
+            # the campaign passes; "silent" produced nothing and said nothing.
+            if quiet == "declared" and os.environ.get("LAB_NEXT_IDLE_FILE"):
+                Path(os.environ["LAB_NEXT_IDLE_FILE"]).write_text(
+                    "nothing to run", encoding="utf-8")
+            return 0
         seed = argv[argv.index("--seed") + 1] if "--seed" in argv else "0"
         (reports / "receipts" / f"run-seed{seed}.json").write_text(
             json.dumps({"run": f"seed{seed}"}), encoding="utf-8")
@@ -131,7 +140,7 @@ class Campaign:
         self.home, self.stubpath, self.bash = home, stubpath, bash
 
     def run_pass(self, next_rc=0, verify_rc=0, selftest_rc=0, seed_base=1000,
-                 selftest_receipt=False, dry=False):
+                 selftest_receipt=False, dry=False, next_quiet=""):
         """One real pass of the loop. MAX_ITERS=1 exits before any sleep."""
         env = dict(os.environ,
                    HOME=str(self.home),
@@ -146,6 +155,7 @@ class Campaign:
                    LAB_CAMPAIGN_MAX_ITERS="1",
                    LAB_CAMPAIGN_INTERVAL="1",
                    STUB_NEXT_RC=str(next_rc),
+                   STUB_NEXT_QUIET=next_quiet,
                    STUB_VERIFY_RC=str(verify_rc),
                    STUB_SELFTEST_RC=str(selftest_rc),
                    STUB_SELFTEST_RECEIPT="1" if selftest_receipt else "")
@@ -426,3 +436,37 @@ def test_a_receipt_commit_that_fails_leaves_the_lane_runnable(campaign):
         "refuse to run at all:\n" + proc.campaign_log)
     staged = _git(campaign.repo, "diff", "--cached", "--name-only")
     assert staged == "", f"still staged: {staged!r}"
+
+
+# --- planner v3: an idle turn is a healthy pass, a silent one is not ---------
+
+def test_a_declared_idle_pass_beats_without_committing(campaign):
+    """Every experiment unchanged since its last run: `lab next` runs nothing on
+    purpose and says so. The lane is healthy, so the heartbeat must move, or
+    freshness scores a lab with nothing new as a dead lane after 18h."""
+    before = campaign.commit_count()
+    proc = campaign.run_pass(next_quiet="declared")
+    assert campaign.commit_count() == before
+    assert campaign.heartbeat(), proc.campaign_log
+    assert "idle: every experiment is unchanged" in proc.campaign_log
+
+
+def test_a_silent_empty_pass_does_not_beat(campaign):
+    """Control: the same empty pass WITHOUT the declaration is not proof of
+    health — it could be a runner that quietly wrote nothing."""
+    proc = campaign.run_pass(next_quiet="silent")
+    assert not campaign.heartbeat(), proc.campaign_log
+    assert "nothing changed" in proc.campaign_log
+
+
+def test_a_stale_idle_marker_cannot_vouch_for_a_later_pass(campaign):
+    """The marker is removed before `lab next` runs, so one written by an
+    earlier pass (or a manual run) never makes a silent pass look idle."""
+    (campaign.home / "next.idle").write_text("left over", encoding="utf-8")
+    campaign.run_pass(next_quiet="silent")
+    assert not campaign.heartbeat()
+
+
+def test_a_dry_idle_pass_does_not_beat(campaign):
+    campaign.run_pass(next_quiet="declared", dry=True)
+    assert not campaign.heartbeat()
